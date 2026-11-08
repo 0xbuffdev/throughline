@@ -14,8 +14,6 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 - Removed obsolete public-release planning records and excluded source-only
   development documentation from the npm tarball.
 
-No compiler, trace-schema, React player or supported export changes.
-
 ## [0.0.1] — 2026-11-08
 
 Initial public release:
