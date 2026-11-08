@@ -30,8 +30,8 @@ or links to private planning or host repositories in public-facing files.
 - src/examples.ts: public copyable examples and acceptance fixtures.
 - src/**/__tests__/ and scripts/: unit, browser, build and tarball audits.
 - tsdown.config.ts and scripts/verify-dist.mjs: compiled distribution.
-- RELEASING.md, PUBLIC_RELEASE_AUDIT.md and PUBLIC_SOURCE_HISTORY.md:
-  internal release, rights and Git-history review (not package exports).
+- RELEASING.md: maintained npm OIDC staging and release procedure.
+- SECURITY.md: confidential vulnerability reporting.
 
 Support exactly four public package imports:
 @0xbuff/throughline, @0xbuff/throughline/react,
@@ -93,15 +93,16 @@ Only its staging job has OIDC; actual publication requires npm 2FA approval.
 
 - Keep production changes separate from administrative release work; avoid
   duplicated workflows, premature scaffolding and private host integration.
-- The maintainer authorized a publishable public npm manifest for 0.0.1.
-  The GitHub repository is now public, but the npm version and provenance
-  must be independently verified before declaring a release complete.
-  Apache-2.0 and Copyright 2026 0xBUFF do not establish underlying
-  legal ownership or third-party redistribution rights.
-- The original Git history contains a private planning reference that
-  may already be accessible because this repository became public.
-  Review PUBLIC_SOURCE_HISTORY.md and inspect exposed refs/credentials.
-  A later history rewrite cannot guarantee deletion from outside copies.
+- npm versions must remain immutable. The current planned patch is
+  0.0.2, and each staged version requires a reviewed signed tag,
+  protected GitHub OIDC submission and separate npm 2FA approval.
+- Copyright 2026 0xBUFF and Apache-2.0 attribution do not independently
+  establish rights to all underlying source. Review third-party notices
+  and redistribution rights before any new release.
+- Earlier public Git history retains a private planning reference in
+  the initial extraction commit. That exposure remains unresolved;
+  check public refs and credentials before changing history. Removing
+  a file on main cannot erase outside copies.
 - Registry registration/staging, signing/pushing release tags, final
   approval, new package versions, and any history rewrite require
   separate maintainer decisions and applicable release gates.

@@ -7,7 +7,7 @@ For usage questions, consult the [README](README.md),
 
 For a reproducible bug, use the
 [bug report template](https://github.com/0xbuffdev/throughline/issues/new/choose)
-once the public repository is available. Include the version,
+and include the version,
 minimal authored `thl` block, expected/actual behavior and relevant
 runtime (Node, browser, React). Avoid disclosing secrets or sensitive
 content.

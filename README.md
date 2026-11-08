@@ -12,11 +12,6 @@ operation, a recursive call or a system workflow. Throughline does not
 execute arbitrary code or require an account, server, network connection
 or application-specific runtime.
 
-> **Release status:** GitHub source is public and npm version `0.0.1`
-> is prepared for release. Check the registry for actual publication and
-> provenance; see [release operations](RELEASING.md).
-> The historical private planning reference still needs review.
-
 ## Features
 
 - **Author in Markdown:** write a `thl` code fence with explicit, named steps.
@@ -33,7 +28,7 @@ or application-specific runtime.
 
 ## Installation
 
-Once the first release is published to npm:
+Install the package from npm:
 
 ~~~sh
 npm install @0xbuff/throughline
@@ -93,8 +88,11 @@ export function TraceDemo() {
 }
 ~~~
 
-Import the stylesheet once in the host application. The player accepts
+Import the optional stylesheet once in the host application. The player accepts
 `light`, `dark` or `auto` themes and supports `--thl-*` CSS variables.
+Override those variables using the player's `className` prop and a host
+stylesheet loaded after the package CSS. A complete custom stylesheet is
+also possible, but must provide the required layout and accessibility styles.
 Pass a stable trace reference while stepping; replacing it resets playback.
 Audio controls are absent unless you explicitly supply `sonification`.
 
@@ -138,16 +136,17 @@ React-free, network-free and usable in offline tooling.
    render a responsive scene, controls, captions and an inspectable state.
    Seeking a frame does not execute the source a second time.
 
-Trace schema version `1` is separate from package version `0.0.1`.
+Trace schema version `1` is independent of the npm package version.
 Source length is capped at 262,144 UTF-16 code units; the authored
 program is limited to 200 entities, 1,000 relations, 2,000 steps and
 10,000 events, plus work/expansion budgets. These limits are for
 deterministic work, not a guarantee of exact heap or CPU usage.
 
-For technical details, see the [architecture notes](docs/architecture.md).
+For the complete guide, see the [Throughline documentation](https://docs.0xbuff.com/docs/throughline) and the [architecture notes](docs/architecture.md).
 
 ## Documentation
 
+- [Throughline documentation](https://docs.0xbuff.com/docs/throughline)
 - [Grammar and authored flow](docs/grammar.md)
 - [Domain catalog and domain-specific limits](docs/catalog.md)
 - [Architecture, trace format and runtime boundaries](docs/architecture.md)
@@ -173,8 +172,7 @@ pnpm audit:browser
 ~~~
 
 The packed-consumer audits install the built archive into independent
-Node, TypeScript, React SSR and Vite/browser environments. Build success
-does not, by itself, authorize a public release.
+Node, TypeScript, React SSR and Vite/browser environments.
 
 ## Community
 

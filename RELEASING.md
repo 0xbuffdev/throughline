@@ -1,238 +1,97 @@
-# First npm publication — Throughline v0.0.1
+# Releasing Throughline
 
-**This is the first release of `@0xbuff/throughline`.** The npm
-organization `0xbuff` already exists, but the Throughline package
-does **not**. GitHub source is public and `publish.yml` is merged.
-The intended first functional release is `0.0.1`, with npm provenance.
+The package is distributed as [@0xbuff/throughline](https://www.npmjs.com/package/@0xbuff/throughline).
+Each version is published from an immutable, GitHub-verified signed
+`vX.Y.Z` tag using manual GitHub Actions OIDC staged publishing.
+**The GitHub workflow only stages a release; npm 2FA approval publishes it.**
 
-**Release flow:** create npm package registration → bind GitHub OIDC →
-sign version tag → run the existing GitHub release workflow → approve
-the staged version using npm 2FA.
+## Release checklist
 
-No npm access token, direct `npm publish` or functional `0.0.0`
-publication is required.
+1. Confirm source ownership, third-party licenses, security reporting,
+   public Git-history safety and the final changelog. The repository's
+   earliest Git history contains a historical private planning reference.
+   This has already been exposed by public visibility; deleting files from
+   the latest tree does not erase old commits, forks or caches.
+2. Update the version in `package.json` and document the changes in
+   `CHANGELOG.md`. Maintain the four public package exports and keep
+   `Program.version` / `Trace.version` independent of npm SemVer.
+3. Run the source, TypeScript, unit, browser, build, license and packed
+   consumer checks described in `AGENTS.md`. Review the exact archive
+   contents. Merge the release PR after review and ensure main CI is green.
+4. From a clean checkout with a signing key registered with GitHub, create
+   and push an immutable signed tag **only after** the release commit is
+   merged. For version `0.0.2`:
 
-## 1. Register the new package (one time only)
+   ~~~sh
+   git switch main
+   git pull --ff-only
+   git tag -s v0.0.2 -m "Throughline v0.0.2"
+   git tag -v v0.0.2
+   git push origin v0.0.2
+   ~~~
 
-From a local terminal authenticated as the owner of the `0xbuff` npm
-organization, verify:
+   GitHub must show the tag as **Verified**. Protect `v*` tag updates and
+   deletions. Do not move or reuse existing release tags.
+5. In [GitHub Actions](https://github.com/0xbuffdev/throughline/actions),
+   run **Throughline npm release (staged with provenance)** from `main`.
+   Enter the exact signed tag (e.g. `v0.0.2`) and confirmation
+   `STAGE-v0.0.2`. The read-only verification job checks the signed tag,
+   manifest, build, tests, packed consumers and archive SHA-256.
+6. Inspect the GitHub release artifact and approve the protected
+   `npm-publish` environment job. Its **stage-only** Trusted Publisher
+   uses GitHub-hosted OIDC and npm provenance, without an npm token or a
+   direct `npm publish`. The npm connection must match GitHub
+   `0xbuffdev/throughline`, workflow filename `publish.yml`,
+   environment `npm-publish`; direct publishing and dist-tag writes
+   must remain disabled.
+7. Once the workflow succeeds, review the staged version and its archive
+   through npmjs.com's **Staged Packages** page or:
 
-~~~sh
-node --version              # Node 24 is recommended for this repository
-npm --version               # Must be npm 11.15.0+ for staged publishing
-npm whoami                  # Expected: sezugh
-npm org ls 0xbuff           # Expected: sezugh - owner
-~~~
+   ~~~sh
+   npm stage list @0xbuff/throughline
+   npm stage view <stage-id>
+   npm stage download <stage-id>
+   ~~~
 
-If npm is too old, use a supported Node.js version and update to the
-current compatible npm 11 release, for example `npm install -g npm@11`.
-Do not run registration from `/mnt/c/WINDOWS/system32`.
+   Confirm the exact version, contents and provenance, then approve
+   **that stage only** with npm account 2FA:
 
-From the local Throughline clone's root, create a **temporary,
-nonfunctional registration package** with no code:
+   ~~~sh
+   npm stage approve <stage-id>
+   ~~~
 
-~~~sh
-cd /path/to/throughline
-test -f LICENSE && test -f COPYRIGHT.md
-BOOTSTRAP="$(mktemp -d)"
-cat > "$BOOTSTRAP/package.json" <<'JSON'
-{
-  "name": "@0xbuff/throughline",
-  "version": "0.0.0",
-  "description": "Nonfunctional npm registration only",
-  "private": false,
-  "license": "Apache-2.0",
-  "files": ["README.md", "LICENSE", "COPYRIGHT.md"],
-  "publishConfig": { "access": "public" }
-}
-JSON
-printf '# Registration only\n\nNONFUNCTIONAL. Do not install.\n' > "$BOOTSTRAP/README.md"
-cp LICENSE COPYRIGHT.md "$BOOTSTRAP/"
-(cd "$BOOTSTRAP" && npm pack --dry-run)
-~~~
+8. Confirm the registry version, latest dist-tag, clean installation,
+   public exports and npm provenance:
 
-**Inspect the dry-run list.** It should contain just
-`package.json`, `README.md`, `LICENSE` and `COPYRIGHT.md`
-(and no source/compiler code, secrets or dependencies).
+   ~~~sh
+   npm view @0xbuff/throughline version
+   npm view @0xbuff/throughline dist-tags
+   npm view @0xbuff/throughline@0.0.2 version
+   ~~~
 
-Only when satisfied with those contents, perform the one-time
-registry registration:
+   Check [npm's package page](https://www.npmjs.com/package/@0xbuff/throughline)
+   for the provenance badge and linked source workflow. In a fresh npm
+   consumer with a lockfile, run `npm audit signatures`.
 
-~~~sh
-(cd "$BOOTSTRAP" && npm stage publish --access public)
-npm stage list @0xbuff/throughline
-~~~
+## Operational safeguards
 
-This is a **real public registry write**. npm automatically creates
-the public `0.0.0-stage` package placeholder. It holds the temporary
-`0.0.0` candidate in staging but does not make that candidate
-installable. **Never approve that nonfunctional candidate.** You may
-delete your local temporary bootstrap directory afterward. The
-existing repository stays at version `0.0.1`.
-
-Sources: [npm staged publishing](https://docs.npmjs.com/staged-publishing/),
-[October 2026 new-package registration](https://github.blog/changelog/2026-10-02-npm-staged-publishing-now-supports-creating-new-packages/).
-
-## 2. Configure GitHub environment and npm OIDC
-
-1. In [Throughline GitHub Environments](https://github.com/0xbuffdev/throughline/settings/environments),
-   create an environment named **`npm-publish`**. Require approval
-   from the actual sole maintainer account; do not enable
-   **Prevent self-review**. Restrict allowed deployment branches to
-   `main`. Protect signed version tags `v*` against replacement/deletion.
-2. Open npmjs.com → **Packages → @0xbuff/throughline → Settings →
-   Trusted Publishing → GitHub Actions**. Enter **exactly**:
-
-   | npm Trusted Publishing field | Value |
-   | --- | --- |
-   | Organization/user | `0xbuffdev` |
-   | Repository | `throughline` |
-   | Workflow filename | `publish.yml` |
-   | GitHub environment | `npm-publish` |
-   | Allow stage publish | Yes |
-   | Allow direct publish | **No** |
-   | Allow dist-tag changes | **No** |
-
-   Use the workflow **filename only**, not
-   `.github/workflows/publish.yml`. Configure shortly before first
-   staging: a new trust must validate its first successful publish
-   within **two days** or expire.
-
-3. Use npm package **Publishing access → Require 2FA and disallow
-   tokens**, once Trusted Publishing is configured. OIDC still works
-   with this restriction; no `NPM_TOKEN` GitHub secret is needed.
-
-Official: [npm Trusted Publishers](https://docs.npmjs.com/trusted-publishers/).
-
-## 3. Sign the actual v0.0.1 source
-
-After reviewing source rights, third-party notices and security,
-and confirming the merged `main` CI is green:
-
-~~~sh
-git switch main
-git pull --ff-only
-git tag -s v0.0.1 -m "Throughline v0.0.1"
-git tag -v v0.0.1
-git push origin v0.0.1
-~~~
-
-Confirm the tag is shown as **Verified** on GitHub. The workflow
-refuses lightweight/unsigned tags and rejects a tag pointing outside
-main. Do not move this tag after creating it.
-
-**Existing public history warning:** an old commit contains a private
-planning reference (see `PUBLIC_SOURCE_HISTORY.md`). Its potential
-exposure is not undone by current source checks. Audit historical
-refs and artifacts, and rotate credentials if any are exposed.
-Confirm rights to distribute the current code under Apache-2.0.
-
-## 4. Run the provenance-staging workflow
-
-On GitHub [Actions](https://github.com/0xbuffdev/throughline/actions),
-select **Throughline npm release (staged with provenance)** and
-**Run workflow**, from branch **`main`**:
-
-- Tag: `v0.0.1`
-- Confirmation: `STAGE-0.0.1`
-
-The workflow validates the signed tag, runs the entire compiler,
-browser, TypeScript, licensing, packed Node/SSR and Vite/hydration
-test matrix, then creates one SHA-256-checked npm archive.
-
-Inspect the verification artifact and approve the waiting
-**`npm-publish` GitHub environment**. The protected stage job
-rechecks the **same archive** and executes
-`npm stage publish ... --provenance` via **GitHub OIDC**, with no npm
-write token. This puts the functional `0.0.1` into **npm staging**,
-not the live registry. Do not manually run `npm publish`.
-
-## 5. Publish v0.0.1 with your npm 2FA
-
-On npmjs.com → **Staged Packages**, choose the
-**functional `@0xbuff/throughline@0.0.1`** entry. Inspect the
-staged artifact and provenance, then **Approve** using account 2FA.
-Alternatively, from your authenticated terminal:
-
-~~~sh
-npm stage list @0xbuff/throughline
-npm stage view <actual-stage-id>
-npm stage download <actual-stage-id>
-npm stage approve <actual-stage-id>
-~~~
-
-The first three commands review; **the final command is the actual
-public release**. Do not approve the `0.0.0` bootstrap candidate.
-After successful `0.0.1` publication, reject the unused
-`0.0.0` stage with npm 2FA.
-
-## 6. Verify completion
-
-~~~sh
-npm view @0xbuff/throughline@0.0.1 version
-npm view @0xbuff/throughline dist-tags
-~~~
-
-In a **fresh** consuming project with Node 24+, install
-`@0xbuff/throughline@0.0.1` and verify the four public exports,
-then run `npm audit signatures` from a project with its npm
-lockfile. The npm package page should display verified **GitHub
-provenance** and identify the source repository, commit and
-GitHub Actions workflow.
-
-Only after those checks should the README and CHANGELOG be updated
-from “pending publication” to “released.” No additional CLI,
-version bump or second npm publish is needed for this first release.
-
-### E401 when the GitHub workflow tries to stage
-
-The first staging run (November 8, 2026) built and verified the
-tarball and produced a Sigstore provenance log entry, but npm
-rejected the actual registry staging request with `E401`.
-This does **not** mean the npm stage succeeded.
-
-Two issues were identified:
-
-1. The npm Trusted Publisher screenshot displayed GitHub
-   `0xbuff/throughline`, but the verified GitHub repository
-   is `0xbuffdev/throughline`. The npm `0xbuff` namespace is
-   **not** the GitHub repository owner. Trusted Publisher must
-   match `0xbuffdev` / `throughline` exactly, with workflow
-   `publish.yml`, environment `npm-publish` and permission to
-   `npm stage publish`. npm's provider/required fields are
-   immutable once saved; delete the incorrect connection and
-   recreate it if it cannot be corrected.
-2. `actions/setup-node@v6` used the `registry-url` option and
-   injected a placeholder `NODE_AUTH_TOKEN` into the staging
-   job. This can force classic token authentication instead of
-   OIDC, producing `E401`. The workflow no longer configures
-   `registry-url` through setup-node and explicitly fails if a
-   classic npm auth token is present.
-
-Fix **both** before the next staging attempt. Do not run
-`npm login` on GitHub-hosted Actions and do not add an
-`NPM_TOKEN` secret. The existing signed `v0.0.1` tag can be
-retained; the manual workflow dispatch uses the workflow file
-from the selected `main` branch and checks out the signed tag
-for packaging. Re-run the whole manual publish workflow from
-`main` after merging this workflow fix. It rebuilds and
-rechecks the exact tagged source; no tag replacement is needed.
-
-A Sigstore transparency log entry can be created before the
-npm registry accepts the staging request. Do not treat its
-existence as proof of a published version or an accepted stage.
-
-If authentication still fails after both changes, inspect
-GitHub Actions staging-job logs and the npm Trusted Publisher
-setup (matching names, permissions and first-publish expiry).
-Do not switch to long-lived tokens or direct publishing.
-
-Reference: https://docs.npmjs.com/trusted-publishers/
-
+- `publish.yml` is manual-only and uses the version from the signed
+  tag and package manifest. Do not attempt to stage a version twice:
+  npm versions are immutable and already-staged versions return `E409`.
+- The workflow uses `actions/setup-node` **without** `registry-url`
+  in the OIDC job. Supplying `registry-url` can inject a placeholder
+  `NODE_AUTH_TOKEN`, causing legacy-token `E401` failures. The job
+  requires GitHub OIDC request variables and rejects conventional tokens.
+- A Sigstore transparency entry by itself does **not** prove that
+  registry staging succeeded. Confirm the workflow's successful stage
+  ID before requesting approval.
+- No GITHUB_TOKEN/NPM_TOKEN can approve staged npm versions; a human
+  approval with npm 2FA is always required.
+- Only the protected staging job has `id-token: write`; ordinary CI
+  and verification remain read-only.
 
 ## References
 
 - [npm staged publishing](https://docs.npmjs.com/staged-publishing/)
-- [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/)
-- [npm stage CLI](https://docs.npmjs.com/cli/v11/commands/npm-stage/)
-- [GitHub Environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)
+- [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/)
+- [GitHub protected environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)

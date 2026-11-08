@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const scratch = mkdtempSync(join(tmpdir(), "throughline-audit-"));
 
 function run(command, args, cwd) {
@@ -70,10 +71,11 @@ try {
 	);
 	assert.match(copyrightText, /Copyright 2026 0xBUFF/);
 	assert.equal(packed.name, "@0xbuff/throughline");
-	assert.equal(packed.version, "0.0.1", "Packed version must match release candidate");
+	assert.equal(packed.version, manifest.version, "Packed version must match the source manifest");
 	assert.equal(packed.private, false, "Packed package must not be private");
 	assert.equal(packed.publishConfig?.access, "public", "Public scoped access required");
 	assert.equal(packed.license, "Apache-2.0", "Packed metadata must include the approved license");
+	assert.equal(packed.homepage, "https://docs.0xbuff.com/docs/throughline");
 	assert(
 		!packed.bundleDependencies && !packed.bundledDependencies,
 		"Bundled dependencies require a separate third-party rights audit",
@@ -81,6 +83,10 @@ try {
 	assert(
 		!entries.some((entry) => entry.startsWith("package/node_modules/")),
 		"Unexpected bundled dependency content in published archive",
+	);
+	assert(
+		!entries.some((entry) => entry.startsWith("package/docs/")),
+		"Development documentation should remain in the source repository",
 	);
 	assert.deepEqual(
 		Object.keys(packed.exports).sort(),

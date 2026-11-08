@@ -1,6 +1,6 @@
 {
 	"name": "@0xbuff/throughline",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "Readable state over time, authored in Markdown. A deterministic trace compiler with an optional React player.",
 	"private": false,
 	"license": "Apache-2.0",
@@ -44,7 +44,6 @@
 	"files": [
 		"dist",
 		"src/styles",
-		"docs",
 		"README.md",
 		"LICENSE",
 		"COPYRIGHT.md",
@@ -85,7 +84,7 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"homepage": "https://github.com/0xbuffdev/throughline#readme",
+	"homepage": "https://docs.0xbuff.com/docs/throughline",
 	"keywords": [
 		"state-traces",
 		"visualization",
