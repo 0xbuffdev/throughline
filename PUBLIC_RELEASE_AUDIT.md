@@ -65,9 +65,14 @@ repository visibility before the remaining rights and release gates pass.
 6. **Source authority:** retire the old private incubation copy by moving
    private integrations to a version-pinned published package under a separate
    reviewed change. Do not leave two permanent authoritative implementations.
-7. **Release controls:** verify ownership of the npm scope, public repository
-   readiness, provenance-capable trusted publishing, version `0.0.1`,
-   changelog, immutable tag, manual authorization and final package checksum.
+7. **Release controls:** the maintainer demonstrated owner access to
+   the `0xbuff` npm organization and confirmed 2FA was configured.
+   Registration and package staging remain unauthorized. Before release,
+   verify the package name/state, source rights, protected stage-only
+   Trusted Publishing, version `0.0.1`, changelog, signed tag, public
+   source history and final artifact checksum. The one-time registry
+   and registration preview tools were retired after verification;
+   `RELEASING.md` preserves the manual release plan.
 8. **Public Git history:** the original extracted `AGENTS.md` in commit
    `ccd888e648cd` contains a private planning URL and internal host
    references. Removing those strings from the current tree did **not**

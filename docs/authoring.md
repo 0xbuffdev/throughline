@@ -48,6 +48,7 @@ adapter-specific additions:
   transfer assertion, and one failure/edge case (zero carry, rebind,
   1×1 grid, depth 1).
 - Registry: one routing test per domain in `__tests__/registry.test.ts`.
-- Run `pnpm --filter @0xbuff/throughline test:run` and `typecheck`;
-  both green before commit. No `describe.only`/`test.skip` — CI
-  forbids them.
+- From this standalone package root, run `pnpm test:run` and
+  `pnpm typecheck`, plus browser tests for interactive changes.
+  Avoid `describe.only`, `test.only`, and skipped tests; current CI
+  does not automatically reject them.

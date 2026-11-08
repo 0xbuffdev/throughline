@@ -1,137 +1,100 @@
-# Release playbook — Throughline
+# Throughline release operations
 
-Status: **Preparatory only. No npm publication or visibility change authorized.**
+Status: preparatory only. The source repository is private;
+@0xbuff/throughline remains version 0.0.0 with private: true.
+No npm package registration, staged submission, approval or publication
+has been authorized. First planned functional release: v0.0.1.
 
-The initial target is `@0xbuff/throughline@0.0.1` from
-`https://github.com/0xbuffdev/throughline`. The independent engine is currently
-a **private repository**, and its package remains `private: true` at version
-`0.0.0`. The Apache-2.0 license is selected. These notes are operational
-release gates, not an instruction to publish.
+## 1. Resolve source and legal rights
 
-## 1. Complete rights and source review
+- Confirm legal ownership and redistribution rights for code, examples,
+  tests, documentation and styles. The approved public-facing attribution
+  is Copyright 2026 0xBUFF (COPYRIGHT.md) under Apache-2.0, but the brand
+  and npm organization do not themselves prove chain of legal title.
+- Review third-party sources, licensing and NOTICE obligations. Regex
+  scans and installed dependency license checks are evidence, not a
+  complete rights or security audit.
+- Inspect the current tree, full Git history, packed artifact and all
+  externally accessible references for sensitive material. A private
+  planning reference survives in this repository's initial Git history.
+  Read PUBLIC_SOURCE_HISTORY.md. Do NOT change visibility on this
+  history-bearing repository.
+- Separately authorize a clean public-source snapshot/cutover and
+  audit the resulting public history, URL, CI, repository metadata and
+  provenance before the functional package release.
 
-- The requested project attribution is **Copyright 2026 0xBUFF**, recorded
-  in `COPYRIGHT.md` and included in the npm package. Verify that the
-  underlying legal person/entity has title or sufficient permissions to
-  license every source, example, test, style and documentation component.
-  A brand/trading name or npm organization does not independently acquire
-  legal ownership of work.
-- Verify copyright holder names, applicable years and any third-party material
-  requiring retained attribution or an Apache-2.0 `NOTICE` file. Do not invent
-  a NOTICE or imply Apache Software Foundation sponsorship.
-- Review tracked source, commit history and the exact tarball for accidental
-  secrets, commercial host code, private links, and licensing issues.
-- A specific **historical private planning reference** remains in the initial
-  extracted Git commit, even though current files were sanitized. See
-  `PUBLIC_SOURCE_HISTORY.md`. Do **not** change this repository's visibility
-  until a separately authorized clean-public-history cutover is verified.
-  This is distinct from the nonfunctional npm registration candidate.
-- Require passing TypeScript, compiler, real Chromium, tsdown, source/licensing,
-  packed Node/SSR and independent Vite/hydration tests.
-- Confirm the `@0xbuff` npm scope is controlled by the intended publisher.
-  A similarly named GitHub organization does not prove npm scope ownership.
+## 2. Maintain quality gates
 
-## 2. Review a build artifact without publishing
+The only routine workflow is .github/workflows/ci.yml. The supported
+local checks from Node 24 and pinned pnpm 11.2.2 are:
 
-`.github/workflows/release-preview.yml` is a **read-only rehearsal**, not an
-npm release workflow. It can run on its own PR or be dispatched manually after
-merging. It has only `contents: read`; there is no `id-token: write`, npm
-write credential, `npm publish`, tag, or repository visibility modification.
+    pnpm install --frozen-lockfile
+    pnpm audit:source
+    pnpm typecheck
+    pnpm test:run
+    pnpm exec playwright install chromium
+    pnpm test:browser:run
+    pnpm build
+    pnpm audit:licenses
+    pnpm audit:pack
+    pnpm audit:browser
 
-The rehearsal repeats current quality/consumer tests, runs `pnpm pack` and
-uploads `throughline-preview.tgz`, `SHA256SUMS` and `ARTIFACT_INFO.txt`
-for private review. The checksum identifies *that particular rehearsal
-archive*. It is not a provenance attestation or proof of the future published
-tarball's checksum. The workflow fails unless the source remains deliberately
-unreleased (`private: true`, version `0.0.0`).
+These verify current source guards, deterministic compiler, browser
+accessibility, tsdown exports/types, third-party license texts, packed
+Node/TypeScript/SSR consumers and independent Vite/React hydration.
 
-The separate source dependency-notice audit must pass on the candidate revision
-before actual release. Do not use this rehearsal alone to declare readiness.
+An offline pack and SHA-256 preview is not an npm publication or
+provenance attestation. The one-time registry/registration/preflight
+workflows and generators are retired after review to keep the source
+repository focused. PR #10 preserves the historical candidate plan and
+verification; any actual registration archive must be freshly generated
+and independently inspected at the time of authorization.
 
-## 3. Register the package through staged publishing
+## 3. Register npm package only after separate authorization
 
-**Updated November 8, 2026:** npm added new-package staged publishing on
-October 2, 2026. A normal `npm publish` of an initial bootstrap version
-is **not** required. `npm stage publish` can register a new package;
-npm automatically creates a **public `0.0.0-stage` placeholder**
-while holding the actual staged version and tarball for later review.
-Creating that placeholder is an external public action and requires
-separate authorization.
+The maintainer verified owner membership in the npm 0xbuff organization
+and configured 2FA. Recheck scope ownership, authenticated privileges,
+package-name status and any staged versions when release is imminent.
 
-The preferred sequence to preserve provenance on functional `0.0.1`:
+npm supports first-package staged publishing, which creates a PUBLIC
+0.0.0-stage placeholder even while candidate contents remain withheld.
+This is an external write and must be separately authorized.
 
-1. Confirm source redistribution rights, accurate copyright attribution,
-   dependency notices, `@0xbuff` npm scope control, package status,
-   account 2FA, and the exact archive. A public registry query cannot
-   prove npm scope ownership, private/staged package absence or access.
-2. After explicit approval, prepare an independently reviewed, minimal,
-   **nonfunctional registration-only** candidate at version `0.0.0`,
-   containing no private engine/source, secrets or third-party material.
-   Stage it from an authenticated maintainer session with npm **11.15.0+**
-   using `npm stage publish` and appropriate public scoped access.
-   **Do not approve** this nonfunctional stage. The registry will create
-   the publicly visible `0.0.0-stage` placeholder.
-3. Configure the new package's Trusted Publisher to match GitHub owner
-   `0xbuffdev`, repository `throughline`, workflow `publish.yml` and
-   a protected `npm-publish` environment (if enabled). Grant
-   **stage-only**, not direct publish or dist-tag permissions.
-4. Once source rights, public GitHub visibility, an immutable reviewed
-   signed tag and version `0.0.1` are separately approved, use the
-   protected GitHub-hosted workflow with OIDC to stage the functional
-   release with `npm stage publish` (never direct publish).
-5. Independently review the staged tarball, manifest, provenance,
-   Apache-2.0 notices, checksum and exact source revision. The
-   maintainer must **approve** the functional stage using 2FA.
-   Reject the unused nonfunctional registration stage and verify
-   public installability and provenance.
+Proposed provenance-preserving workflow for functional v0.0.1:
 
-An alternative is to stage the functional `0.0.1` as the very first
-version from an authenticated session. That stage was not submitted
-through a configured Trusted Publisher, so do **not** assume it
-carries OIDC provenance. Staged versions reserve their version number;
-do not assume the same version can be restaged.
+1. Confirm rights and review a tiny isolated, nonfunctional 0.0.0
+   registration candidate: manifest, explicit nonfunctional README,
+   LICENSE and COPYRIGHT, no engine, dependencies or scripts. After
+   explicit consent, stage it using current documented npm commands,
+   without approving the nonfunctional staged version.
+2. Configure an npm Trusted Publisher with stage-only privileges,
+   exactly matched to the approved public GitHub repository, workflow
+   filename and protected environment. No direct publish rights.
+3. After the clean public-source cutover, separately approve a signed
+   immutable v0.0.1 tag, reviewed manifest and exact tarball. All source,
+   third-party and packed consumer checks must pass.
+4. Add a protected stage-only GitHub workflow in a separate reviewed PR.
+   Use a GitHub-hosted runner and OIDC id-token: write only for staging;
+   do not embed long-lived npm tokens or auto-approve staged versions.
+5. Review staged tarball, checksum, metadata, licenses and provenance.
+   The maintainer approves functional v0.0.1 with npm 2FA, rejects the
+   unused registration-only stage, then verifies the live package.
 
-Nothing has been registered, staged, approved or published.
+This is a plan, not permission to register, stage or publish. Check the
+current official npm CLI and provider requirements before implementing it.
 
-## 4. Trusted release workflow requirements (not yet implemented)
+## 4. Post-release
 
-The actual publish/stage workflow requires a **separate reviewed PR**
-after rights, scope and registration review. The existing release
-preview remains read-only and must not request OIDC permissions.
+Independently install the live registry package in Node and React 19
+consumers. Migrate private integrations to a version-pinned release
+through separate PRs; retire the duplicate incubated implementation.
+Publish public API documentation and a changelog. Evolve package SemVer
+independently from schema version 1.
 
-- Restrict execution to an explicitly approved signed `v0.0.1` tag
-  matching the exact source revision and version.
-- Require public GitHub source for npm provenance; private repositories
-  cannot produce npm provenance even with Trusted Publishing.
-- Use Node 24, npm CLI >=11.15.0, frozen installs and every source,
-  third-party, compiler, React, hydration and packed-artifact check.
-- Request `contents: read` and `id-token: write` only in the protected
-  staging job; use GitHub-hosted runners and no long-lived npm token.
-- Use only `npm stage publish` with stage-only trusted-publisher
-  permission. Do not automatically approve a stage or allow direct
-  `npm publish`. Require human review and npm 2FA approval.
-- Configure the Trusted Publisher shortly before first use: its first
-  successful publish must validate the binding within two days.
-- Verify the approved live package metadata, runtime imports,
-  integrity, published provenance and registry dist-tags.
-
-Do not remove `private: true`, bump to `0.0.1`, stage/register any
-package, create a release tag or change GitHub visibility without
-specific release authorization.
-
-## 5. Integrate and document the published package
-
-After a real verified release, migrate private consumers to the version-pinned
-package through separate PRs, retire the old incubated implementation as the
-source of truth, and add released public API documentation to the separate
-documentation repository. None of these steps is implied by green CI.
-
-Official current references:
-
-- https://github.blog/changelog/2026-10-02-npm-staged-publishing-now-supports-creating-new-packages/
+Official references:
 - https://docs.npmjs.com/staged-publishing/
-- https://docs.npmjs.com/cli/v11/commands/npm-stage/
 - https://docs.npmjs.com/trusted-publishers/
-- https://docs.npmjs.com/cli/v11/commands/npm-trust/
 - https://docs.npmjs.com/generating-provenance-statements/
-- https://www.apache.org/foundation/license-faq
+
+No publication, public-source move, tag, version or visibility change
+is authorized by these instructions or by passing CI.
