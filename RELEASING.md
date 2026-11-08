@@ -10,9 +10,12 @@ release gates, not an instruction to publish.
 
 ## 1. Complete rights and source review
 
-- Confirm who legally holds the copyright for the source, examples, tests,
-  styles and documentation; verify ownership/permission for each extracted
-  component. Do not infer ownership from GitHub organization membership.
+- The requested project attribution is **Copyright 2026 0xBUFF**, recorded
+  in `COPYRIGHT.md` and included in the npm package. Verify that the
+  underlying legal person/entity has title or sufficient permissions to
+  license every source, example, test, style and documentation component.
+  A brand/trading name or npm organization does not independently acquire
+  legal ownership of work.
 - Verify copyright holder names, applicable years and any third-party material
   requiring retained attribution or an Apache-2.0 `NOTICE` file. Do not invent
   a NOTICE or imply Apache Software Foundation sponsorship.

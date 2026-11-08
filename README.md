@@ -167,6 +167,10 @@ Throughline is licensed under the [Apache License, Version 2.0](LICENSE).
 The license allows use in open-source and proprietary applications, subject
 to its terms, including attribution and modification-notice requirements.
 
+Project attribution: **Copyright 2026 0xBUFF**. See
+[COPYRIGHT.md](COPYRIGHT.md) for the project notice and remaining legal-rights
+verification requirements.
+
 The standalone source is still undergoing final rights, third-party notice,
 external-consumer and release-provenance checks. This private repository is
 not yet an approved npm release; the package remains `private: true` at
