@@ -1,128 +1,113 @@
-# Publishing Throughline with npm provenance
+# First npm publication — Throughline v0.0.1
 
-Status: the GitHub source at https://github.com/0xbuffdev/throughline
-is PUBLIC. The manifest is a publishable @0xbuff/throughline@0.0.1
-(public access, Apache-2.0, Copyright 2026 0xBUFF). The npm registry
-status of version 0.0.1 has NOT been independently verified. Do not
-claim a live npm release until the exact version and provenance are
-confirmed on npm.
+**This is the first release of `@0xbuff/throughline`.** The npm
+organization `0xbuff` already exists, but the Throughline package
+does **not**. GitHub source is public and `publish.yml` is merged.
+The intended first functional release is `0.0.1`, with npm provenance.
 
-The manual `.github/workflows/publish.yml` verifies a signed version
-tag, runs all tests, packs a checksum-verified archive, and submits
-that archive via GitHub OIDC to npm STAGING. It NEVER calls
-`npm publish` and NEVER approves a stage. The maintainer must review
-and publish a staged version with separate npm 2FA approval.
+**Release flow:** create npm package registration → bind GitHub OIDC →
+sign version tag → run the existing GitHub release workflow → approve
+the staged version using npm 2FA.
 
-## 1. Resolve ownership and source exposure
+No npm access token, direct `npm publish` or functional `0.0.0`
+publication is required.
 
-Before live publication, verify legal source ownership/redistribution
-rights, Apache-2.0 notices, third-party attribution, and the absence
-of sensitive material from the shipped archive.
+## 1. Register the new package (one time only)
 
-IMPORTANT: this repository was made public while the original Git
-history still retained a private planning reference in an old AGENTS.md.
-See `PUBLIC_SOURCE_HISTORY.md`. Assume historical material may have
-been accessed; inspect all old commits, public refs and artifacts.
-If credentials or other secrets were exposed, revoke/rotate them.
-Moving a repo back to private or rewriting main does NOT guarantee
-earlier third-party copies or caches are erased. Do not misrepresent
-this Git history as clean merely because source CI is green.
-
-## 2. Verify npm package registration
-
-From an authenticated local terminal, run:
+From a local terminal authenticated as the owner of the `0xbuff` npm
+organization, verify:
 
 ~~~sh
-npm whoami
-npm org ls 0xbuff
-npm view @0xbuff/throughline version
-npm view @0xbuff/throughline@0.0.1 version
+node --version              # Node 24 is recommended for this repository
+npm --version               # Must be npm 11.15.0+ for staged publishing
+npm whoami                  # Expected: sezugh
+npm org ls 0xbuff           # Expected: sezugh - owner
+~~~
+
+If npm is too old, use a supported Node.js version and update to the
+current compatible npm 11 release, for example `npm install -g npm@11`.
+Do not run registration from `/mnt/c/WINDOWS/system32`.
+
+From the local Throughline clone's root, create a **temporary,
+nonfunctional registration package** with no code:
+
+~~~sh
+cd /path/to/throughline
+test -f LICENSE && test -f COPYRIGHT.md
+BOOTSTRAP="$(mktemp -d)"
+cat > "$BOOTSTRAP/package.json" <<'JSON'
+{
+  "name": "@0xbuff/throughline",
+  "version": "0.0.0",
+  "description": "Nonfunctional npm registration only",
+  "private": false,
+  "license": "Apache-2.0",
+  "files": ["README.md", "LICENSE", "COPYRIGHT.md"],
+  "publishConfig": { "access": "public" }
+}
+JSON
+printf '# Registration only\n\nNONFUNCTIONAL. Do not install.\n' > "$BOOTSTRAP/README.md"
+cp LICENSE COPYRIGHT.md "$BOOTSTRAP/"
+(cd "$BOOTSTRAP" && npm pack --dry-run)
+~~~
+
+**Inspect the dry-run list.** It should contain just
+`package.json`, `README.md`, `LICENSE` and `COPYRIGHT.md`
+(and no source/compiler code, secrets or dependencies).
+
+Only when satisfied with those contents, perform the one-time
+registry registration:
+
+~~~sh
+(cd "$BOOTSTRAP" && npm stage publish --access public)
 npm stage list @0xbuff/throughline
 ~~~
 
-The maintainer previously confirmed ownership of the npm 0xbuff
-organization and configured 2FA. If the registry reports 0.0.1
-already published, it is IMPOSSIBLE to publish the same immutable
-version a second time with provenance. Use a later separately reviewed
-version and update all hardcoded first-release checks.
+This is a **real public registry write**. npm automatically creates
+the public `0.0.0-stage` package placeholder. It holds the temporary
+`0.0.0` candidate in staging but does not make that candidate
+installable. **Never approve that nonfunctional candidate.** You may
+delete your local temporary bootstrap directory afterward. The
+existing repository stays at version `0.0.1`.
 
-If the npm package does not yet exist at all, create a minimal,
-separate bootstrap candidate before configuring Trusted Publishing.
-In a clean temporary directory outside this source checkout, create
-only these four reviewed files:
+Sources: [npm staged publishing](https://docs.npmjs.com/staged-publishing/),
+[October 2026 new-package registration](https://github.blog/changelog/2026-10-02-npm-staged-publishing-now-supports-creating-new-packages/).
 
-- `package.json`: name `@0xbuff/throughline`, version `0.0.0`,
-  `private: false`, `license: Apache-2.0` and
-  `publishConfig.access: public`, no dependencies/exports/scripts.
-- `README.md`: explicitly say NONFUNCTIONAL, DO NOT INSTALL.
-- `LICENSE`: copy the approved Apache-2.0 license.
-- `COPYRIGHT.md`: copy the reviewed 0xBUFF attribution.
+## 2. Configure GitHub environment and npm OIDC
 
-Inspect the exact contents using `npm pack --dry-run`. Only after
-separate explicit authorization for this public registry action,
-run from that isolated directory:
+1. In [Throughline GitHub Environments](https://github.com/0xbuffdev/throughline/settings/environments),
+   create an environment named **`npm-publish`**. Require approval
+   from the actual sole maintainer account; do not enable
+   **Prevent self-review**. Restrict allowed deployment branches to
+   `main`. Protect signed version tags `v*` against replacement/deletion.
+2. Open npmjs.com → **Packages → @0xbuff/throughline → Settings →
+   Trusted Publishing → GitHub Actions**. Enter **exactly**:
 
-~~~sh
-npm --version                  # must be 11.15.0 or newer
-npm stage publish --access public
-~~~
+   | npm Trusted Publishing field | Value |
+   | --- | --- |
+   | Organization/user | `0xbuffdev` |
+   | Repository | `throughline` |
+   | Workflow filename | `publish.yml` |
+   | GitHub environment | `npm-publish` |
+   | Allow stage publish | Yes |
+   | Allow direct publish | **No** |
+   | Allow dist-tag changes | **No** |
 
-For a new package, npm creates a PUBLIC `0.0.0-stage` placeholder.
-The functional 0.0.1 code is NOT part of the bootstrap. Never
-approve the nonfunctional 0.0.0 stage; it is registration-only.
-Skip the bootstrap entirely if the package already exists.
+   Use the workflow **filename only**, not
+   `.github/workflows/publish.yml`. Configure shortly before first
+   staging: a new trust must validate its first successful publish
+   within **two days** or expire.
 
-## 3. Create the protected GitHub environment
+3. Use npm package **Publishing access → Require 2FA and disallow
+   tokens**, once Trusted Publishing is configured. OIDC still works
+   with this restriction; no `NPM_TOKEN` GitHub secret is needed.
 
-In this public repository, use Settings > Environments > New environment:
+Official: [npm Trusted Publishers](https://docs.npmjs.com/trusted-publishers/).
 
-- Name exactly: `npm-publish`.
-- Required reviewer: YOUR actual GitHub maintainer account.
-- Do NOT enable Prevent self-review when you are the only reviewer:
-  it would prevent you from approving the job you initiated.
-- Restrict deployment branches to `main`. The workflow is dispatched
-  from main; it checks out the signed tag only after validating inputs.
-- Set a GitHub Ruleset for version tags matching `v*` to prohibit
-  deletion/retargeting and restrict creation to the maintainer.
+## 3. Sign the actual v0.0.1 source
 
-IMPORTANT: referencing an environment name in YAML does not itself
-configure reviewers. Complete the protection rules BEFORE dispatching
-the release workflow.
-
-## 4. Configure npm Trusted Publishing (OIDC)
-
-After a real npm package exists (including an initial placeholder),
-open that package on npmjs.com > Settings > Trusted Publishing,
-select GitHub Actions and enter the exact values:
-
-| npm setting | Value |
-| --- | --- |
-| Organization or user | `0xbuffdev` |
-| Repository | `throughline` |
-| Workflow filename | `publish.yml` |
-| GitHub environment | `npm-publish` |
-| Allow npm stage publish | Yes (always allowed) |
-| Allow direct npm publish | NO |
-| Allow npm dist-tag | NO |
-
-The workflow filename is ONLY `publish.yml`, not the full path.
-GitHub-hosted runners use short-lived OIDC; DO NOT create or add
-an NPM_TOKEN or bypass-2FA token. Grant OIDC only to the protected
-stage job. Configure a newly created npm trust relationship shortly
-before its first use: the first successful publish must validate
-the relationship within TWO DAYS or it expires.
-
-With GitHub OIDC and public source/package, npm automatically
-generates provenance. The staged-publish command also explicitly
-requests `--provenance`. Once trust is established, prefer npm
-package Settings > Publishing access > Require two-factor authentication
-and disallow tokens. This does not disable OIDC Trusted Publishing.
-
-## 5. Merge release workflow, then sign and push the tag
-
-After PR review/signing/merge and green main CI, confirm the exact
-v0.0.1 source contents, licenses and release notes. In a clean
-checkout with a signing key registered and verified on GitHub:
+After reviewing source rights, third-party notices and security,
+and confirming the merged `main` CI is green:
 
 ~~~sh
 git switch main
@@ -132,90 +117,81 @@ git tag -v v0.0.1
 git push origin v0.0.1
 ~~~
 
-GitHub must show the ANNOTATED tag signature as Verified.
-The release workflow rejects unsigned/lightweight tags, tags whose
-commit is not on main, versions other than the reviewed 0.0.1,
-and tag commits without the publish.yml file.
+Confirm the tag is shown as **Verified** on GitHub. The workflow
+refuses lightweight/unsigned tags and rejects a tag pointing outside
+main. Do not move this tag after creating it.
 
-Protect the tag and do not retarget or re-create it after staging.
-Do not create v0.0.1 if an immutable published/staged 0.0.1 already
-exists in the registry; first resolve any existing stage/version.
+**Existing public history warning:** an old commit contains a private
+planning reference (see `PUBLIC_SOURCE_HISTORY.md`). Its potential
+exposure is not undone by current source checks. Audit historical
+refs and artifacts, and rotate credentials if any are exposed.
+Confirm rights to distribute the current code under Apache-2.0.
 
-## 6. Submit with GitHub Actions (not a direct release)
+## 4. Run the provenance-staging workflow
 
-GitHub > Actions > Throughline npm release (staged with provenance)
-> Run workflow:
+On GitHub [Actions](https://github.com/0xbuffdev/throughline/actions),
+select **Throughline npm release (staged with provenance)** and
+**Run workflow**, from branch **`main`**:
 
-- Dispatch from branch `main`.
-- Tag: `v0.0.1`.
-- Confirmation: `STAGE-0.0.1`.
+- Tag: `v0.0.1`
+- Confirmation: `STAGE-0.0.1`
 
-The read-only verify job validates the GitHub-verified signed tag,
-frozen pnpm dependencies, source/license audits, TypeScript,
-compiler tests, Chromium browser behavior, build, packed
-Node/TypeScript/SSR consumers and Vite hydration. It creates a
-tarball, checksum and release-commit marker, then uploads them for
-review.
+The workflow validates the signed tag, runs the entire compiler,
+browser, TypeScript, licensing, packed Node/SSR and Vite/hydration
+test matrix, then creates one SHA-256-checked npm archive.
 
-Review the build output. Approve the waiting `npm-publish` GitHub
-environment job. The stage job downloads the SAME exact artifact,
-checks the SHA-256 and release commit, then uses npm 11.21.2
-on a GitHub-hosted runner with OIDC to run:
+Inspect the verification artifact and approve the waiting
+**`npm-publish` GitHub environment**. The protected stage job
+rechecks the **same archive** and executes
+`npm stage publish ... --provenance` via **GitHub OIDC**, with no npm
+write token. This puts the functional `0.0.1` into **npm staging**,
+not the live registry. Do not manually run `npm publish`.
 
-~~~sh
-npm stage publish ./release-artifacts/throughline-0.0.1.tgz --access public --provenance
-~~~
+## 5. Publish v0.0.1 with your npm 2FA
 
-The stage submission does not make version 0.0.1 live. If OIDC fails,
-check npm publisher organization/repository/workflow/environment
-case and status, OIDC permissions, repo public visibility and the
-two-day trust-validation window. Never silently substitute a token.
-
-## 7. Inspect, approve using npm 2FA, and verify provenance
-
-From npmjs.com > Staged Packages or an authenticated npm CLI:
+On npmjs.com → **Staged Packages**, choose the
+**functional `@0xbuff/throughline@0.0.1`** entry. Inspect the
+staged artifact and provenance, then **Approve** using account 2FA.
+Alternatively, from your authenticated terminal:
 
 ~~~sh
 npm stage list @0xbuff/throughline
-npm stage view <stage-id>
-npm stage download <stage-id>
+npm stage view <actual-stage-id>
+npm stage download <actual-stage-id>
+npm stage approve <actual-stage-id>
 ~~~
 
-Inspect the functional staged archive, source commit, license,
-content and provenance. Verify it matches the GitHub workflow's
-published SHA-256 review artifact. Then, and ONLY then, approve
-the FUNCTIONAL 0.0.1 stage with npm 2FA:
+The first three commands review; **the final command is the actual
+public release**. Do not approve the `0.0.0` bootstrap candidate.
+After successful `0.0.1` publication, reject the unused
+`0.0.0` stage with npm 2FA.
 
-~~~sh
-npm stage approve <stage-id>
-~~~
-
-Do not approve the nonfunctional registration-only 0.0.0 stage.
-Reject the unused bootstrap stage after successful functional release.
-
-After approval, verify:
+## 6. Verify completion
 
 ~~~sh
 npm view @0xbuff/throughline@0.0.1 version
 npm view @0xbuff/throughline dist-tags
-npm install @0xbuff/throughline@0.0.1
-npm audit signatures
 ~~~
 
-Run the signature audit from a fresh consumer with a package
-lockfile. On npmjs.com, check the green provenance badge and its
-source commit, GitHub workflow run and public transparency ledger.
-The actual public installation and registry checks determine
-whether the release is complete.
+In a **fresh** consuming project with Node 24+, install
+`@0xbuff/throughline@0.0.1` and verify the four public exports,
+then run `npm audit signatures` from a project with its npm
+lockfile. The npm package page should display verified **GitHub
+provenance** and identify the source repository, commit and
+GitHub Actions workflow.
 
-Finally update README and CHANGELOG to reflect real publication,
-and migrate private consumers to the released pinned package.
-The npm version and the Trace/Program schema v1 remain independent.
+Only after those checks should the README and CHANGELOG be updated
+from “pending publication” to “released.” No additional CLI,
+version bump or second npm publish is needed for this first release.
 
-## Official documentation
+If OIDC fails, check **exact npm package scope**, trusted-publisher
+repo/workflow/environment matching, public GitHub visibility,
+environment approvals, and `id-token: write` on the staging job.
+Do not fall back to an unreviewed token.
 
-- https://docs.npmjs.com/staged-publishing/
-- https://docs.npmjs.com/cli/v11/commands/npm-stage/
-- https://docs.npmjs.com/trusted-publishers/
-- https://docs.npmjs.com/viewing-package-provenance/
-- https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments
+## References
+
+- [npm staged publishing](https://docs.npmjs.com/staged-publishing/)
+- [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/)
+- [npm stage CLI](https://docs.npmjs.com/cli/v11/commands/npm-stage/)
+- [GitHub Environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)
