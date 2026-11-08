@@ -1,0 +1,175 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`compileProgram > compiles a full authored block to a stable snapshot 1`] = `
+{
+  "frames": [
+    {
+      "events": [],
+      "index": 0,
+      "label": "Initial state",
+      "state": {
+        "active": [],
+        "changed": [],
+        "entities": [
+          {
+            "id": "cache",
+            "label": "Cache",
+            "value": [
+              0,
+              0,
+            ],
+            "view": "array",
+          },
+          {
+            "id": "hits",
+            "label": "Hits",
+            "value": 0,
+          },
+        ],
+        "notes": [],
+        "relations": [
+          {
+            "from": "cache",
+            "id": "fill",
+            "to": "hits",
+          },
+        ],
+        "transfers": [],
+      },
+    },
+    {
+      "events": [
+        {
+          "op": "set",
+          "source": {
+            "line": 6,
+          },
+          "target": "cache[0]",
+          "value": 1,
+        },
+        {
+          "op": "send",
+          "relation": "fill",
+          "source": {
+            "line": 7,
+          },
+          "value": 1,
+        },
+      ],
+      "index": 1,
+      "label": "Prime",
+      "source": {
+        "line": 5,
+      },
+      "state": {
+        "active": [
+          "cache[0]",
+        ],
+        "changed": [
+          "cache[0]",
+        ],
+        "entities": [
+          {
+            "id": "cache",
+            "label": "Cache",
+            "value": [
+              1,
+              0,
+            ],
+            "view": "array",
+          },
+          {
+            "id": "hits",
+            "label": "Hits",
+            "value": 0,
+          },
+        ],
+        "notes": [],
+        "relations": [
+          {
+            "from": "cache",
+            "id": "fill",
+            "to": "hits",
+          },
+        ],
+        "transfers": [
+          {
+            "relation": "fill",
+            "value": 1,
+          },
+        ],
+      },
+    },
+    {
+      "events": [
+        {
+          "op": "focus",
+          "source": {
+            "line": 9,
+          },
+          "targets": [
+            "cache[0]",
+          ],
+        },
+        {
+          "op": "set",
+          "source": {
+            "line": 10,
+          },
+          "target": "hits",
+          "value": 1,
+        },
+        {
+          "op": "note",
+          "source": {
+            "line": 11,
+          },
+          "text": "hit",
+        },
+      ],
+      "index": 2,
+      "label": "Read",
+      "source": {
+        "line": 8,
+      },
+      "state": {
+        "active": [
+          "cache[0]",
+          "hits",
+        ],
+        "changed": [
+          "hits",
+        ],
+        "entities": [
+          {
+            "id": "cache",
+            "label": "Cache",
+            "value": [
+              1,
+              0,
+            ],
+            "view": "array",
+          },
+          {
+            "id": "hits",
+            "label": "Hits",
+            "value": 1,
+          },
+        ],
+        "notes": [
+          "hit",
+        ],
+        "relations": [
+          {
+            "from": "cache",
+            "id": "fill",
+            "to": "hits",
+          },
+        ],
+        "transfers": [],
+      },
+    },
+  ],
+  "version": 1,
+}
+`;

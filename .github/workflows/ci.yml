@@ -1,0 +1,46 @@
+name: Throughline CI
+
+# Quality only: no publication or deployment.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: throughline-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Compiler, browser and distribution
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      # First extraction has no lockfile. Commit an audited generated lockfile
+      # before changing to --frozen-lockfile for release.
+      - name: Install standalone dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Compiler tests
+        run: pnpm test:run
+      - name: Install browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Browser tests
+        run: pnpm test:browser:run
+      - name: Build distributable
+        run: pnpm build
+      - name: Inspect packed archive in external consumers
+        run: pnpm audit:pack

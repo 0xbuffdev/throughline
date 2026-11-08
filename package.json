@@ -1,0 +1,79 @@
+{
+	"name": "@0xbuff/throughline",
+	"version": "0.0.0",
+	"description": "Readable state over time, authored in Markdown. A deterministic trace compiler with an optional React player.",
+	"private": true,
+	"license": "UNLICENSED",
+	"type": "module",
+	"packageManager": "pnpm@11.2.2",
+	"engines": {
+		"node": ">=24"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/0xbuffdev/throughline.git"
+	},
+	"bugs": {
+		"url": "https://github.com/0xbuffdev/throughline/issues"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./react": {
+			"types": "./dist/react/index.d.ts",
+			"default": "./dist/react/index.js"
+		},
+		"./examples": {
+			"types": "./dist/examples.d.ts",
+			"default": "./dist/examples.js"
+		},
+		"./styles/throughline.css": "./src/styles/throughline.css"
+	},
+	"scripts": {
+		"build": "tsdown && node scripts/verify-dist.mjs",
+		"typecheck": "tsc --noEmit",
+		"test:run": "vitest run",
+		"test:browser:run": "vitest run --config vitest.browser.config.ts",
+		"audit:pack": "node scripts/audit-pack.mjs"
+	},
+	"files": [
+		"dist",
+		"src/styles",
+		"docs",
+		"README.md"
+	],
+	"sideEffects": [
+		"**/*.css"
+	],
+	"dependencies": {
+		"cn": "^0.4.0"
+	},
+	"peerDependencies": {
+		"react": "^19.2.7",
+		"react-dom": "^19.2.7"
+	},
+	"peerDependenciesMeta": {
+		"react": {
+			"optional": true
+		},
+		"react-dom": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.61.0",
+		"@types/node": "^24.0.0",
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
+		"@vitest/browser-playwright": "^4.1.11",
+		"react": "^19.2.7",
+		"react-dom": "^19.2.7",
+		"tsdown": "^0.23.5",
+		"typescript": "^5.9.3",
+		"vite": "^8.0.3",
+		"vitest": "^4.1.8",
+		"vitest-browser-react": "^2.3.0"
+	}
+}

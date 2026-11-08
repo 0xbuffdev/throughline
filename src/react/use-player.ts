@@ -1,0 +1,70 @@
+import type * as React from "react";
+import { useEffect, useReducer, useState } from "react";
+import type { Trace } from "../model.js";
+import {
+	initialSeek,
+	type SeekAction,
+	type SeekState,
+	seekReducer,
+	stepDelayMs,
+} from "../seek.js";
+
+export function usePlayer(trace: Trace): {
+	state: SeekState;
+	dispatch: React.Dispatch<SeekAction>;
+	onKeyDown: React.KeyboardEventHandler;
+} {
+	const [identity, setIdentity] = useState(trace);
+	const [state, dispatch] = useReducer(
+		seekReducer,
+		Math.max(0, trace.frames.length - 1),
+		initialSeek,
+	);
+	// Reset during render, before any child can read a stale frame index.
+	if (identity !== trace) {
+		setIdentity(trace);
+		dispatch({ type: "reset", max: Math.max(0, trace.frames.length - 1) });
+	}
+	useEffect(() => {
+		if (!state.playing) return;
+		const timer = setInterval(
+			() => dispatch({ type: "tick" }),
+			stepDelayMs(1500, state.speed),
+		);
+		return () => clearInterval(timer);
+	}, [state.playing, state.speed]);
+	const onKeyDown: React.KeyboardEventHandler = (event) => {
+		if (event.target !== event.currentTarget) return;
+		if (["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)) {
+			event.preventDefault();
+			const to =
+				event.key === "Home"
+					? 0
+					: event.key === "End"
+						? state.max
+						: state.step + (event.key === "ArrowRight" ? 1 : -1);
+			dispatch({ type: "step", to });
+		} else if (event.key === " " && state.max > 0) {
+			event.preventDefault();
+			dispatch({ type: "toggle" });
+		}
+	};
+	return { state, dispatch, onKeyDown };
+}
+
+export function useSceneWidth(
+	ref: React.RefObject<HTMLDivElement | null>,
+): number {
+	const [width, setWidth] = useState(720);
+	useEffect(() => {
+		const element = ref.current;
+		if (!element) return;
+		const observer = new ResizeObserver(([entry]) => {
+			if (entry.contentRect.width > 0)
+				setWidth(Math.floor(entry.contentRect.width));
+		});
+		observer.observe(element);
+		return () => observer.disconnect();
+	}, [ref]);
+	return width;
+}
