@@ -35,6 +35,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Verify lockfile remains unchanged
         run: git diff --exit-code -- pnpm-lock.yaml
+      - name: Audit public-source boundaries and dependency licenses
+        run: pnpm audit:source
       - name: Typecheck
         run: pnpm typecheck
       - name: Compiler tests

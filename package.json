@@ -36,7 +36,8 @@
 		"typecheck": "tsc --noEmit",
 		"test:run": "vitest run",
 		"test:browser:run": "vitest run --config vitest.browser.config.ts",
-		"audit:pack": "node scripts/audit-pack.mjs"
+		"audit:pack": "node scripts/audit-pack.mjs",
+		"audit:source": "node scripts/audit-source.mjs"
 	},
 	"files": [
 		"dist",
