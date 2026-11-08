@@ -4,11 +4,12 @@ This is the standalone private source repository for `@0xbuff/throughline`,
 an independently usable authored state-trace compiler and optional React player.
 
 ## Authority
-- Product release contract: https://github.com/0xbuffdev/context/blob/main/repos/throughline/specs/0001-public-engine.md
-- This source repository becomes implementation authority after the extraction
-  PR is reviewed and merged; the private platform copy is an incubating copy.
-- Keep the library independent of 0xNAND, OEE curriculum, assessments,
-  authentication, credentials, and private workspace packages.
+- This repository is the implementation authority for the reusable engine;
+  `README.md` and `docs/` define the supported code-facing surface.
+- Accepted product decisions are managed by the maintainer separately; do not
+  copy or link private planning repositories into publicly shareable files.
+- Keep the library independent of host applications, course curricula,
+  evaluation/grading systems, authentication, credentials, and private packages.
 
 ## Development
 - Node 24 and pnpm 11.2.2; use the repository's declared dependencies.
