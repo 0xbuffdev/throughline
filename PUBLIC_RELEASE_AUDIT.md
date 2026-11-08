@@ -1,6 +1,6 @@
 # Public-source and rights audit
 
-Status: **Apache-2.0 selected — public release still blocked**  
+Status: **Public `0.0.1` npm manifest prepared — public release still blocked**  
 Scope: standalone Throughline source tree, CI configuration, public package
 manifest, and first-release dependencies. First reviewed November 8, 2026.
 
@@ -47,7 +47,8 @@ repository visibility before the remaining rights and release gates pass.
    behind the brand, underlying authorship and chain of title, and any
    required third-party NOTICE obligations before public distribution.
    The attribution alone does not establish incorporation or ownership.
-   The package remains `private: true` at version `0.0.0`.
+   The manifest is now configured as a publishable public-scoped `0.0.1`
+   release candidate, but the source and actual publication are still blocked.
 3. **Dependency notices:** the accompanying CI audit checks installed MIT
    license metadata and license files across the runtime/peer dependency closure,
    and requires the generated React JavaScript to import `cn` externally.

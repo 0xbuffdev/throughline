@@ -91,9 +91,11 @@ main pushes with read-only permissions. It never stages/publishes or deploys.
 
 - Keep production changes separate from administrative release work; avoid
   duplicated workflows, premature scaffolding and private host integration.
-- This repository is private; the npm manifest stays 0.0.0 and private: true
-  until separately authorized. Apache-2.0 and Copyright 2026 0xBUFF do not
-  prove underlying source ownership or redistribution rights.
+- The maintainer has authorized preparation of the public npm manifest at
+  0.0.1 with private: false and public scoped access. This does NOT authorize
+  npm staging/publishing or changing the private GitHub repository's visibility.
+  Apache-2.0 and Copyright 2026 0xBUFF do not establish the underlying
+  legal source ownership or redistribution rights.
 - The original Git history contains a private planning reference even though
   the current tree is sanitized. Never make this repository public as-is.
   Review PUBLIC_SOURCE_HISTORY.md and require a clean approved public
