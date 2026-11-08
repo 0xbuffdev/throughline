@@ -21,6 +21,11 @@ release gates, not an instruction to publish.
   a NOTICE or imply Apache Software Foundation sponsorship.
 - Review tracked source, commit history and the exact tarball for accidental
   secrets, commercial host code, private links, and licensing issues.
+- A specific **historical private planning reference** remains in the initial
+  extracted Git commit, even though current files were sanitized. See
+  `PUBLIC_SOURCE_HISTORY.md`. Do **not** change this repository's visibility
+  until a separately authorized clean-public-history cutover is verified.
+  This is distinct from the nonfunctional npm registration candidate.
 - Require passing TypeScript, compiler, real Chromium, tsdown, source/licensing,
   packed Node/SSR and independent Vite/hydration tests.
 - Confirm the `@0xbuff` npm scope is controlled by the intended publisher.
