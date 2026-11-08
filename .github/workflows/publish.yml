@@ -5,12 +5,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Signed release tag (first release v0.0.1)"
+        description: "GitHub-verified signed release tag"
         type: string
         required: true
-        default: v0.0.1
+        default: v0.0.2
       confirmation:
-        description: "Enter STAGE-0.0.1 to authorize npm staging"
+        description: "Enter STAGE-<tag>, for example STAGE-v0.0.2"
         type: string
         required: true
 
@@ -38,8 +38,8 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$GITHUB_REF" == "refs/heads/main" ]] || exit 1
-          [[ "$RELEASE_TAG" == "v0.0.1" ]] || exit 1
-          [[ "$CONFIRMATION" == "STAGE-0.0.1" ]] || exit 1
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Use a signed vX.Y.Z tag"; exit 1; }
+          [[ "$CONFIRMATION" == "STAGE-$RELEASE_TAG" ]] || { echo "Type STAGE-$RELEASE_TAG to proceed"; exit 1; }
 
       - name: Checkout exact tag without persistent credentials
         uses: actions/checkout@v6
@@ -84,12 +84,13 @@ jobs:
           import assert from "node:assert/strict";
           import { readFileSync } from "node:fs";
           const pkg = JSON.parse(readFileSync("package.json", "utf8"));
-          assert.equal(process.env.RELEASE_TAG, "v0.0.1");
           assert.equal(pkg.name, "@0xbuff/throughline");
-          assert.equal(pkg.version, "0.0.1");
+          assert.match(pkg.version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
+          assert.equal(process.env.RELEASE_TAG, `v${pkg.version}`, "Signed tag must match package version");
           assert.equal(pkg.private, false);
           assert.equal(pkg.publishConfig?.access, "public");
           assert.equal(pkg.license, "Apache-2.0");
+          assert.equal(pkg.homepage, "https://docs.0xbuff.com/docs/throughline");
           assert.equal(pkg.repository?.url, "git+https://github.com/0xbuffdev/throughline.git");
           assert.deepEqual(Object.keys(pkg.exports).sort(),
             [".", "./react", "./examples", "./styles/throughline.css"].sort());
@@ -121,17 +122,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-artifacts
-          pnpm pack --out release-artifacts/throughline-0.0.1.tgz
-          (cd release-artifacts && sha256sum throughline-0.0.1.tgz > SHA256SUMS)
+          pnpm pack --out release-artifacts/throughline.tgz
+          (cd release-artifacts && sha256sum throughline.tgz > SHA256SUMS)
           git rev-parse HEAD > release-artifacts/RELEASE_COMMIT
           (cd release-artifacts && sha256sum --check SHA256SUMS)
 
       - name: Upload immutable release review artifact
         uses: actions/upload-artifact@v7
         with:
-          name: throughline-v0.0.1-${{ github.run_id }}
+          name: throughline-release-${{ github.run_id }}
           path: |
-            release-artifacts/throughline-0.0.1.tgz
+            release-artifacts/throughline.tgz
             release-artifacts/SHA256SUMS
             release-artifacts/RELEASE_COMMIT
           if-no-files-found: error
@@ -157,7 +158,7 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v8
         with:
-          name: throughline-v0.0.1-${{ github.run_id }}
+          name: throughline-release-${{ github.run_id }}
           path: release-artifacts
 
       - name: Recheck checksum, release commit and archive manifest
@@ -169,11 +170,13 @@ jobs:
           node --input-type=module <<'NODE'
           import assert from "node:assert/strict";
           import { execFileSync } from "node:child_process";
+          import { readFileSync } from "node:fs";
           const pkg = JSON.parse(execFileSync("tar", [
-            "-xOf", "release-artifacts/throughline-0.0.1.tgz", "package/package.json"
+            "-xOf", "release-artifacts/throughline.tgz", "package/package.json"
           ], { encoding: "utf8" }));
           assert.equal(pkg.name, "@0xbuff/throughline");
-          assert.equal(pkg.version, "0.0.1");
+          const source = JSON.parse(readFileSync("package.json", "utf8"));
+          assert.equal(pkg.version, source.version, "Archive version must match signed tag source");
           assert.equal(pkg.private, false);
           assert.equal(pkg.publishConfig?.access, "public");
           assert.equal(pkg.license, "Apache-2.0");
@@ -213,13 +216,14 @@ jobs:
           NPM_CONFIG_PROVENANCE: "true"
         run: |
           set -euo pipefail
-          npm stage publish ./release-artifacts/throughline-0.0.1.tgz --access public --provenance --registry=https://registry.npmjs.org/
+          npm stage publish ./release-artifacts/throughline.tgz --access public --provenance --registry=https://registry.npmjs.org/
 
       - name: State remaining npm manual approval
         shell: bash
         run: |
           {
-            echo "### @0xbuff/throughline@0.0.1 submitted to npm staging"
+            pkg_version="$(node -p "require('./package.json').version")"
+            echo "### @0xbuff/throughline@${pkg_version} submitted to npm staging"
             echo "This is NOT a published version. Review the staged package and"
             echo "approve separately with npm 2FA on npmjs.com or through npm CLI."
             echo "Source: $(git rev-parse HEAD)"
