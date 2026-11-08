@@ -17,8 +17,14 @@ assert.deepEqual(
 	"Unreviewed peer dependency",
 );
 assert.equal(manifest.license, "Apache-2.0");
-assert.equal(manifest.private, true, "Do not publish before the release gate");
-assert.equal(manifest.version, "0.0.0", "Do not version before the release gate");
+assert.equal(manifest.name, "@0xbuff/throughline");
+assert.equal(manifest.private, false, "Public package must not be private");
+assert.equal(manifest.version, "0.0.1", "First-release version mismatch");
+assert.equal(
+	manifest.publishConfig?.access,
+	"public",
+	"Scoped package must have public registry access",
+);
 assert(
 	!manifest.bundledDependencies && !manifest.bundleDependencies,
 	"Bundled third-party packages require separate license and notice review",
