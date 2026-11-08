@@ -1,11 +1,13 @@
 # Public-source and rights audit
 
-Status: **Review in progress — public release blocked**  
+Status: **Apache-2.0 selected — public release still blocked**  
 Scope: standalone Throughline source tree, CI configuration, public package
 manifest, and first-release dependencies. First reviewed November 8, 2026.
 
-This record summarizes technical findings, not a legal opinion or permission
-to distribute any code under an open-source license.
+This record summarizes technical findings, not a legal opinion or proof of
+copyright ownership. The maintainer selected Apache-2.0 for the independent
+Throughline project; this does not authorize npm publication or public
+repository visibility before the remaining rights and release gates pass.
 
 ## Verified technical evidence
 
@@ -34,11 +36,12 @@ to distribute any code under an open-source license.
    distribution rights to every retained implementation, example, screenshot,
    test fixture, and documentation passage. Inspect any external inspirations,
    snippets, or contributed work beyond automated pattern checks.
-2. **License decision:** there is no approved open-source license. The
-   package deliberately remains `private: true`, version `0.0.0`,
-   and `license: "UNLICENSED"`. Select and approve a license (MIT or
-   Apache-2.0 are candidates), then add its exact text, copyright owner/year,
-   package metadata, and any required notices in a separately reviewed PR.
+2. **Copyright ownership and attribution:** Apache-2.0 is selected, and the
+   standard LICENSE file and npm SPDX metadata have been added. Before the
+   public release, confirm the rights holder(s), accurate copyright year(s),
+   any file-level copyright attributions, and third-party NOTICE obligations.
+   Do not invent a legal entity or author attribution. The package intentionally
+   remains `private: true` at version `0.0.0`.
 3. **Dependency notices:** verify the packed artifacts do not embed any
    third-party code without its required license and notices; review all
    transitive runtime dependencies and their actual distributed license files.
@@ -58,9 +61,9 @@ to distribute any code under an open-source license.
 
 ## Outcome
 
-**Not approved for open-source distribution or npm publication.** A passing
-source audit only demonstrates the checks it actually performed; it cannot
-grant ownership rights, establish license compatibility for unknown code, or
-authorize a visibility change.
+**Apache-2.0 is selected; public release is not yet authorized.** A passing
+source audit only demonstrates the checks it performed. The license selection
+cannot establish ownership rights, clear unknown third-party code, or authorize
+an npm publication or repository visibility change.
 
 The source repository may remain private while these gates are resolved.

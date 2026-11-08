@@ -160,6 +160,17 @@ A successful build is not a public-release test: independently install the
 packed archive in clean Node, React/browser, SSR, and TypeScript consumers
 before publishing v0.0.1.
 
+## License
+
+Throughline is licensed under the [Apache License, Version 2.0](LICENSE).
+The license allows use in open-source and proprietary applications, subject
+to its terms, including attribution and modification-notice requirements.
+
+The standalone source is still undergoing final rights, third-party notice,
+external-consumer and release-provenance checks. This private repository is
+not yet an approved npm release; the package remains `private: true` at
+version `0.0.0`. The license does not grant trademark rights.
+
 ## Current limitations
 
 - **Unpublished.** `private: true` and version `0.0.0` are intentional
