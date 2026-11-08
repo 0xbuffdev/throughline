@@ -142,16 +142,16 @@ program is limited to 200 entities, 1,000 relations, 2,000 steps and
 10,000 events, plus work/expansion budgets. These limits are for
 deterministic work, not a guarantee of exact heap or CPU usage.
 
-For the complete guide, see the [Throughline documentation](https://docs.0xbuff.com/docs/throughline) and the [architecture notes](docs/architecture.md).
+For the complete guide, see the [Throughline documentation](https://docs.0xbuff.com/docs/throughline) and the [architecture notes](https://github.com/0xbuffdev/throughline/blob/main/docs/architecture.md).
 
 ## Documentation
 
 - [Throughline documentation](https://docs.0xbuff.com/docs/throughline)
-- [Grammar and authored flow](docs/grammar.md)
-- [Domain catalog and domain-specific limits](docs/catalog.md)
-- [Architecture, trace format and runtime boundaries](docs/architecture.md)
-- [Adding a computed domain](docs/authoring.md)
-- [Changelog](CHANGELOG.md)
+- [Grammar and authored flow](https://github.com/0xbuffdev/throughline/blob/main/docs/grammar.md)
+- [Domain catalog and domain-specific limits](https://github.com/0xbuffdev/throughline/blob/main/docs/catalog.md)
+- [Architecture, trace format and runtime boundaries](https://github.com/0xbuffdev/throughline/blob/main/docs/architecture.md)
+- [Adding a computed domain](https://github.com/0xbuffdev/throughline/blob/main/docs/authoring.md)
+- [Changelog](https://github.com/0xbuffdev/throughline/blob/main/CHANGELOG.md)
 
 ## Development
 
@@ -176,15 +176,15 @@ Node, TypeScript, React SSR and Vite/browser environments.
 
 ## Community
 
-Read [contributing guidelines](CONTRIBUTING.md) before opening a PR.
+Read [contributing guidelines](https://github.com/0xbuffdev/throughline/blob/main/CONTRIBUTING.md) before opening a PR.
 Use [GitHub issues](https://github.com/0xbuffdev/throughline/issues)
 for reproducible bugs and feature proposals; see
-[SUPPORT.md](SUPPORT.md) for support and [SECURITY.md](SECURITY.md)
+[SUPPORT.md](https://github.com/0xbuffdev/throughline/blob/main/SUPPORT.md) for support and [SECURITY.md](https://github.com/0xbuffdev/throughline/blob/main/SECURITY.md)
 for confidential vulnerability reports. Participation is governed by
-the [code of conduct](CODE_OF_CONDUCT.md).
+the [code of conduct](https://github.com/0xbuffdev/throughline/blob/main/CODE_OF_CONDUCT.md).
 
 ## License
 
-Licensed under [Apache-2.0](LICENSE).
-Copyright 2026 0xBUFF; see [COPYRIGHT.md](COPYRIGHT.md).
+Licensed under [Apache-2.0](https://github.com/0xbuffdev/throughline/blob/main/LICENSE).
+Copyright 2026 0xBUFF; see [COPYRIGHT.md](https://github.com/0xbuffdev/throughline/blob/main/COPYRIGHT.md).
 The license covers software rights under its terms, not trademark use.
