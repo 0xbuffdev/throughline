@@ -16,6 +16,10 @@ repository visibility before the remaining rights and release gates pass.
   history. The extraction review compared 64 source file Git blob hashes.
 - GitHub Actions has built the standalone project under Node 24 and passed
   unit tests, browser tests, TypeScript checks, and tarball-installed consumers.
+- The independent packed Vite/React 19 test now passes real Chromium hydration
+  and exercises mobile layout, package CSS, keyboard playback, reduced-motion
+  environment, and blocked deep imports. The merged run completed on
+  November 8, 2026 (CI run 42491042736).
 - The package exposes only the root compiler, optional React player, examples,
   and explicit stylesheet. The compiler does not require accounts or React.
 - A source review found no apparent credential material, host-only package
@@ -42,16 +46,20 @@ repository visibility before the remaining rights and release gates pass.
    any file-level copyright attributions, and third-party NOTICE obligations.
    Do not invent a legal entity or author attribution. The package intentionally
    remains `private: true` at version `0.0.0`.
-3. **Dependency notices:** verify the packed artifacts do not embed any
-   third-party code without its required license and notices; review all
-   transitive runtime dependencies and their actual distributed license files.
+3. **Dependency notices:** the accompanying CI audit checks installed MIT
+   license metadata and license files across the runtime/peer dependency closure,
+   and requires the generated React JavaScript to import `cn` externally.
+   The archive must contain no `node_modules` or bundled dependencies.
+   Review future dependency additions, unknown notices and all actual shipped
+   source before publication; no NOTICE file is added without a verified
+   attribution obligation. These checks do not establish IP ownership.
 4. **Security:** perform a release-candidate secret scan and manual inspection
    across every tracked and packed file. The new static source guard is
    intentionally a preliminary, narrow detector.
-5. **External API validation:** finish an independently installed Vite/React
-   browser and hydration consumer, including an export/deep-import probe and
-   reduced-motion coverage; in-repository browser tests and SSR alone do not
-   satisfy the complete external acceptance matrix.
+5. **External API validation:** the independent packed Vite/React browser
+   and hydration consumer now passes in CI. The remaining matrix work includes
+   release-candidate public-export type coverage and any new code changes;
+   a successful test run does not constitute release authorization.
 6. **Source authority:** retire the old private incubation copy by moving
    private integrations to a version-pinned published package under a separate
    reviewed change. Do not leave two permanent authoritative implementations.

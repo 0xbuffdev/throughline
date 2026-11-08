@@ -47,6 +47,8 @@ jobs:
         run: pnpm test:browser:run
       - name: Build distributable
         run: pnpm build
+      - name: Check runtime and peer dependency notices
+        run: pnpm audit:licenses
       - name: Inspect packed archive in external consumers
         run: pnpm audit:pack
       - name: Validate packed Vite browser hydration

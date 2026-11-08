@@ -63,6 +63,14 @@ try {
 	);
 	assert.equal(packed.name, "@0xbuff/throughline");
 	assert.equal(packed.license, "Apache-2.0", "Packed metadata must include the approved license");
+	assert(
+		!packed.bundleDependencies && !packed.bundledDependencies,
+		"Bundled dependencies require a separate third-party rights audit",
+	);
+	assert(
+		!entries.some((entry) => entry.startsWith("package/node_modules/")),
+		"Unexpected bundled dependency content in published archive",
+	);
 	assert.deepEqual(
 		Object.keys(packed.exports).sort(),
 		[".", "./react", "./examples", "./styles/throughline.css"].sort(),
