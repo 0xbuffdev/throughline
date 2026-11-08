@@ -47,7 +47,8 @@
 		"docs",
 		"README.md",
 		"LICENSE",
-		"COPYRIGHT.md"
+		"COPYRIGHT.md",
+		"CHANGELOG.md"
 	],
 	"sideEffects": [
 		"**/*.css"

@@ -13,6 +13,21 @@ assert.equal(manifest.version, "0.0.1", "First-release version requires review")
 assert.equal(manifest.private, false, "Public package must not be marked private");
 assert.equal(manifest.publishConfig?.access, "public", "Scoped npm package must publish publicly");
 assert.equal(manifest.license, "Apache-2.0", "License must match approved choice");
+for (const file of ["README.md", "CHANGELOG.md", "LICENSE", "COPYRIGHT.md"]) {
+	assert(
+		manifest.files.includes(file),
+		"Public package must ship " + file,
+	);
+}
+for (const file of [
+	"CONTRIBUTING.md",
+	"CODE_OF_CONDUCT.md",
+	"SECURITY.md",
+	"SUPPORT.md",
+]) {
+	const contents = readFileSync(join(root, file), "utf8");
+	assert(contents.length >= 300, "Incomplete community file: " + file);
+}
 const attribution = readFileSync(join(root, "COPYRIGHT.md"), "utf8");
 assert.match(
 	attribution,

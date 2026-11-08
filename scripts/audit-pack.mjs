@@ -39,6 +39,7 @@ try {
 		"package/README.md",
 		"package/LICENSE",
 		"package/COPYRIGHT.md",
+		"package/CHANGELOG.md",
 		"package/dist/index.js",
 		"package/dist/index.d.ts",
 		"package/dist/react/index.js",
@@ -69,6 +70,9 @@ try {
 	);
 	assert.match(copyrightText, /Copyright 2026 0xBUFF/);
 	assert.equal(packed.name, "@0xbuff/throughline");
+	assert.equal(packed.version, "0.0.1", "Packed version must match release candidate");
+	assert.equal(packed.private, false, "Packed package must not be private");
+	assert.equal(packed.publishConfig?.access, "public", "Public scoped access required");
 	assert.equal(packed.license, "Apache-2.0", "Packed metadata must include the approved license");
 	assert(
 		!packed.bundleDependencies && !packed.bundledDependencies,
