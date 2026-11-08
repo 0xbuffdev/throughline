@@ -12,9 +12,10 @@ operation, a recursive call or a system workflow. Throughline does not
 execute arbitrary code or require an account, server, network connection
 or application-specific runtime.
 
-> **Release status:** Package version `0.0.1` is configured for public npm
-> distribution but has **not been published yet**. A separately audited
-> clean public-source repository is required before the first release.
+> **Release status:** GitHub source is public and npm version `0.0.1`
+> is prepared for release. Check the registry for actual publication and
+> provenance; see [release operations](RELEASING.md).
+> The historical private planning reference still needs review.
 
 ## Features
 

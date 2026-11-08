@@ -84,25 +84,26 @@ exports/types, installed third-party licenses, packed Node/TypeScript/React
 SSR consumers, and real Vite/React hydration. Packed consumer checks may
 install public dependencies from the network. Report only tests actually run.
 
-The sole routine workflow is .github/workflows/ci.yml, triggered on PRs and
-main pushes with read-only permissions. It never stages/publishes or deploys.
+The routine quality workflow is .github/workflows/ci.yml (PRs/main, read-only).
+The separate .github/workflows/publish.yml requires explicit manual dispatch,
+a signed tag, complete tests and the protected npm-publish environment.
+Only its staging job has OIDC; actual publication requires npm 2FA approval.
 
 ## Release boundaries
 
 - Keep production changes separate from administrative release work; avoid
   duplicated workflows, premature scaffolding and private host integration.
-- The maintainer has authorized preparation of the public npm manifest at
-  0.0.1 with private: false and public scoped access. This does NOT authorize
-  npm staging/publishing or changing the private GitHub repository's visibility.
-  Apache-2.0 and Copyright 2026 0xBUFF do not establish the underlying
-  legal source ownership or redistribution rights.
-- The original Git history contains a private planning reference even though
-  the current tree is sanitized. Never make this repository public as-is.
-  Review PUBLIC_SOURCE_HISTORY.md and require a clean approved public
-  snapshot and verified public Git history.
-- npm registry registration/staging (which may create a public placeholder),
-  source migration, version bumps, signed tags, provenance workflow,
-  publishing, history rewriting and repository visibility changes each
-  require the appropriate evidence and separate explicit authorization.
-- See RELEASING.md. A passing CI check is not publishing approval; do not
-  place npm write credentials or OIDC permission in quality CI.
+- The maintainer authorized a publishable public npm manifest for 0.0.1.
+  The GitHub repository is now public, but the npm version and provenance
+  must be independently verified before declaring a release complete.
+  Apache-2.0 and Copyright 2026 0xBUFF do not establish underlying
+  legal ownership or third-party redistribution rights.
+- The original Git history contains a private planning reference that
+  may already be accessible because this repository became public.
+  Review PUBLIC_SOURCE_HISTORY.md and inspect exposed refs/credentials.
+  A later history rewrite cannot guarantee deletion from outside copies.
+- Registry registration/staging, signing/pushing release tags, final
+  approval, new package versions, and any history rewrite require
+  separate maintainer decisions and applicable release gates.
+- See RELEASING.md. Green CI does not mean published. Never put npm
+  write credentials or OIDC permissions in routine quality CI.

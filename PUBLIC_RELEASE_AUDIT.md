@@ -1,13 +1,13 @@
 # Public-source and rights audit
 
-Status: **Public `0.0.1` npm manifest prepared — public release still blocked**  
+Status: **GitHub source public; npm `0.0.1` provenance release not verified**  
 Scope: standalone Throughline source tree, CI configuration, public package
 manifest, and first-release dependencies. First reviewed November 8, 2026.
 
 This record summarizes technical findings, not a legal opinion or proof of
 copyright ownership. The maintainer selected Apache-2.0 for the independent
-Throughline project; this does not authorize npm publication or public
-repository visibility before the remaining rights and release gates pass.
+Throughline project; the repository was already made public, but npm publication and
+redistribution/legal clearance must still be verified.
 
 ## Verified technical evidence
 
@@ -76,16 +76,16 @@ repository visibility before the remaining rights and release gates pass.
    `RELEASING.md` preserves the manual release plan.
 8. **Public Git history:** the original extracted `AGENTS.md` in commit
    `ccd888e648cd` contains a private planning URL and internal host
-   references. Removing those strings from the current tree did **not**
-   remove them from Git history. The repository must not be made public as-is;
-   review `PUBLIC_SOURCE_HISTORY.md` and approve a clean-source public
-   cutover or independently verified historical purging first.
+   references. Their historical Git objects remained even after
+   current files were sanitized. This repository is now public,
+   so the references may already have been exposed. Audit public
+   refs, artifacts and credentials; later cleanup cannot erase
+   third-party copies. See `PUBLIC_SOURCE_HISTORY.md`.
 
 ## Outcome
 
-**Apache-2.0 is selected; public release is not yet authorized.** A passing
+**Apache-2.0 is selected; npm publication/provenance remain unverified.** A passing
 source audit only demonstrates the checks it performed. The license selection
-cannot establish ownership rights, clear unknown third-party code, or authorize
-an npm publication or repository visibility change.
-
-The source repository may remain private while these gates are resolved.
+cannot establish ownership rights, clear unknown third-party code,
+or authorize direct npm publication. GitHub is already public, but
+its historical sensitive references have not been cleared.

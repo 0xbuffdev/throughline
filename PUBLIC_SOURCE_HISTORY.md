@@ -1,7 +1,7 @@
-# Pre-public Git history exposure review
+# Public Git history exposure review
 
-Status: **Unresolved visibility blocker**  
-Scope: private standalone Throughline repository, not its released npm artifact.
+Status: **Existing historical private reference potentially exposed**  
+Scope: now-public GitHub Throughline repository (separate from npm package).
 
 ## Verified finding — November 8, 2026
 
@@ -14,8 +14,11 @@ from the latest `AGENTS.md`. **It does not erase the old commit.**
 The GitHub repository's main history included 24 commits at the
 time of this review. A new public viewer can normally inspect
 historical commits and their blobs, not just the current branch tip.
-The historical private planning reference would therefore be
-discoverable if this exact repository were made public unchanged.
+This repository is now PUBLIC. The historical private planning
+reference is consequently potentially accessible through GitHub
+history. Treat it as an exposure; inspect all reachable refs and
+artifacts. Making the repository private or rewriting main later
+cannot guarantee removal from third-party clones or caches.
 
 The old reference is not a credential by itself, but it is a private
 architecture/planning disclosure. This is a **confirmed historical
@@ -80,5 +83,6 @@ a rehearsal archive checksum as a claim about a future live release.
 - Is the separate **public npm registration stage** explicitly
   authorized after scope ownership, 2FA, and candidate review?
 
-Until those decisions and checks are complete: **repository remains
-private; no registration, functional stage or publication is authorized.**
+The GitHub repository is already public; its history needs review.
+The npm registration/state and final package publication still require
+the separate decisions described in RELEASING.md.
