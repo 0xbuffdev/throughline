@@ -7,9 +7,10 @@ import { fileURLToPath } from "node:url";
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
-// This is a publishable manifest, not authorization to publish anything.
+// Version is validated against the signed Git tag by the release workflow.
 assert.equal(manifest.name, "@0xbuff/throughline");
-assert.equal(manifest.version, "0.0.1", "First-release version requires review");
+assert.match(manifest.version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/, "Invalid stable SemVer version");
+assert.equal(manifest.homepage, "https://docs.0xbuff.com/docs/throughline");
 assert.equal(manifest.private, false, "Public package must not be marked private");
 assert.equal(manifest.publishConfig?.access, "public", "Scoped npm package must publish publicly");
 assert.equal(manifest.license, "Apache-2.0", "License must match approved choice");

@@ -1,109 +1,125 @@
-# Throughline — repository instructions
+# AGENTS.md
 
-These instructions apply to the whole repository. Read them and relevant
-docs before modifications. Respect any future nested AGENTS.md by scope.
+Instructions for coding agents working in this repository. This file applies
+to the entire repository; follow any more specific `AGENTS.md` in a
+subdirectory when present.
 
-## Authority and ownership
+## Project overview
 
-Throughline is an independently usable, offline, deterministic authored-state
-trace compiler with an optional React 19 player, eventually distributed as
-@0xbuff/throughline. I am the sole developer, maintainer and reviewer. Make
-changes on dedicated branches and open PRs to main. Final review, commit
-signing if required and merge remain my actions. Never fabricate these actions
-or approvals, or invent additional reviewers.
+Throughline (`@0xbuff/throughline`) is a standalone TypeScript/ESM package
+for compiling Markdown-authored state traces into bounded, deterministic
+snapshots. Its React 19 player is optional. The package must remain usable
+without a host application, account, backend, network connection, or React
+when importing the core compiler.
 
-README.md and docs/ specify the public authoring and package contract;
-src/ and package.json implement it. The standalone package must not depend
-on application code, curricula, accounts, grading, telemetry, hidden network
-calls, unpublished packages or private workspaces. Never include references
-or links to private planning or host repositories in public-facing files.
+Read `README.md`, `docs/architecture.md`, and the relevant grammar/domain
+documentation before changing observable behavior. The source and
+`package.json` define the implementation and published package contract.
 
-## Code map and contract
+## Development and verification
 
-- src/index.ts, compiler.ts, dsl.ts, model.ts and tracer.ts:
-  parsing, authoring API, schema, bounded deterministic state traces.
-- src/domains/: the five accepted domains flow, bindings, binary, matrix,
-  callstack; keep registry, fixtures, documentation and tests in sync.
-- src/layout/, layout.ts and scene.ts: React-free scene and layout data.
-- src/react/: optional accessible React playback, inspector and sound.
-- src/styles/throughline.css: explicitly imported, thl-prefixed CSS.
-- src/examples.ts: public copyable examples and acceptance fixtures.
-- src/**/__tests__/ and scripts/: unit, browser, build and tarball audits.
-- tsdown.config.ts and scripts/verify-dist.mjs: compiled distribution.
-- RELEASING.md, PUBLIC_RELEASE_AUDIT.md and PUBLIC_SOURCE_HISTORY.md:
-  internal release, rights and Git-history review (not package exports).
+Use Node.js 24+, pnpm **11.2.2**, and the committed `pnpm-lock.yaml`.
+This is a **single package**, not a workspace. Do not introduce workspace
+filters or application-specific build steps.
 
-Support exactly four public package imports:
-@0xbuff/throughline, @0xbuff/throughline/react,
-@0xbuff/throughline/examples, and
-@0xbuff/throughline/styles/throughline.css.
-No wildcard or undocumented deep exports. The root compiler must not import
-React, DOM globals or network services; React and React DOM stay optional
-peer dependencies. Keep Trace.version and Program.version at schema 1,
-independent of npm SemVer. Any changes to public types, grammar meaning,
-state transitions, limits, diagnostics, CSS or controls need explicit
-compatibility review, documentation and regression tests.
+```sh
+pnpm install --frozen-lockfile
+pnpm audit:source
+pnpm typecheck
+pnpm test:run
+pnpm exec playwright install chromium
+pnpm test:browser:run
+pnpm build
+pnpm audit:licenses
+pnpm audit:pack
+pnpm audit:browser
+```
 
-## Safety, semantics and accessibility
+Run the checks relevant to each change and the full sequence before
+submitting a release-related PR. `audit:licenses` requires a build;
+`audit:pack` and `audit:browser` exercise the packed package in
+independent Node, TypeScript, React SSR, and Vite/browser consumers.
+Some consumer checks install public dependencies. Report any skipped or
+failed checks accurately; do not suppress failures with focused or
+skipped tests.
 
-- Compile synchronously and deterministically. Never eval authored text,
-  execute arbitrary code, fetch user URLs, log data to an outside service
-  or store source by default.
-- Render author-provided strings as text, never untrusted HTML. Preserve
-  bounded work/input/depth checks, typed errors and source coordinates,
-  cycle rejection, atomic steps, stable identifiers and deterministic seek.
-- Retain accessible labels and keyboard controls, live status, sensible
-  focus behavior, reduced motion, SSR/hydration, narrow-screen layout
-  and strictly opt-in sonification.
-- Use existing idiomatic TypeScript/ESM conventions and prefer simplicity.
-  Review new dependencies for licenses, security and package impact.
-- Cover behavioral changes with relevant unit, browser and independent
-  tarball-consumer tests. Do not hide failures using focused/skipped tests.
-  Current CI does not automatically forbid focused/skipped tests.
+## Repository map
 
-## Development and mandatory checks
+- `src/index.ts`, `src/compiler.ts`, `src/dsl.ts`, `src/model.ts`,
+  `src/tracer.ts`: the core parser, validation, types, and trace compiler.
+- `src/domains/`: the five supported domains: `flow`, `bindings`,
+  `binary`, `matrix`, and `callstack`.
+- `src/layout/`, `src/layout.ts`, `src/scene.ts`: React-independent
+  scene composition and layout.
+- `src/react/`: optional player, controls, inspector, accessible
+  captions, and opt-in sonification.
+- `src/styles/throughline.css`: explicitly imported, `thl-`-namespaced
+  player styles and `--thl-*` customization tokens.
+- `src/examples.ts`: public examples and acceptance fixtures.
+- `src/**/__tests__/`, `scripts/`: regression, browser, packaging,
+  source-boundary, and license checks.
+- `docs/`: grammar, authoring, domain, and architecture documentation.
+- `.github/workflows/ci.yml`: read-only quality checks.
+- `.github/workflows/publish.yml`, `RELEASING.md`: manual npm
+  staging, provenance, and maintainer approval procedures.
 
-Use Node 24 and the pinned pnpm 11.2.2 with the committed lockfile.
-This repository is a standalone package, not a pnpm workspace; do not
-use pnpm --filter or introduce application-specific workspace scripts.
+## Public API and compatibility
 
-Run:
-1. pnpm install --frozen-lockfile
-2. pnpm audit:source
-3. pnpm typecheck
-4. pnpm test:run
-5. pnpm exec playwright install chromium
-6. pnpm test:browser:run
-7. pnpm build
-8. pnpm audit:licenses
-9. pnpm audit:pack
-10. pnpm audit:browser
+Support exactly these package imports:
 
-These gates cover source boundaries, compiler and browser tests, ESM
-exports/types, installed third-party licenses, packed Node/TypeScript/React
-SSR consumers, and real Vite/React hydration. Packed consumer checks may
-install public dependencies from the network. Report only tests actually run.
+- `@0xbuff/throughline`
+- `@0xbuff/throughline/react`
+- `@0xbuff/throughline/examples`
+- `@0xbuff/throughline/styles/throughline.css`
 
-The routine quality workflow is .github/workflows/ci.yml (PRs/main, read-only).
-The separate .github/workflows/publish.yml requires explicit manual dispatch,
-a signed tag, complete tests and the protected npm-publish environment.
-Only its staging job has OIDC; actual publication requires npm 2FA approval.
+Do not add undocumented deep imports or wildcard exports. The core
+compiler must never depend on React, browser globals, or host-specific
+code. Keep `react` and `react-dom` as optional peer dependencies.
 
-## Release boundaries
+`Program.version` and `Trace.version` are schema version `1`, not the
+npm package version. Review compatibility and update documentation and
+regression tests when changing public types, grammar, trace semantics,
+diagnostics, limits, CSS selectors, theming, or playback behavior.
+Preserve deterministic compilation and stable seeking through frames.
 
-- Keep production changes separate from administrative release work; avoid
-  duplicated workflows, premature scaffolding and private host integration.
-- The maintainer authorized a publishable public npm manifest for 0.0.1.
-  The GitHub repository is now public, but the npm version and provenance
-  must be independently verified before declaring a release complete.
-  Apache-2.0 and Copyright 2026 0xBUFF do not establish underlying
-  legal ownership or third-party redistribution rights.
-- The original Git history contains a private planning reference that
-  may already be accessible because this repository became public.
-  Review PUBLIC_SOURCE_HISTORY.md and inspect exposed refs/credentials.
-  A later history rewrite cannot guarantee deletion from outside copies.
-- Registry registration/staging, signing/pushing release tags, final
-  approval, new package versions, and any history rewrite require
-  separate maintainer decisions and applicable release gates.
-- See RELEASING.md. Green CI does not mean published. Never put npm
-  write credentials or OIDC permissions in routine quality CI.
+## Implementation and security rules
+
+- Follow the existing strict TypeScript, ESM, and code formatting
+  conventions; keep changes small and avoid unnecessary dependencies.
+- Never execute authored source, call `eval`, or fetch remote resources
+  as part of compilation. No telemetry or persistent source storage.
+- Render author-provided strings as text, not untrusted HTML.
+- Preserve bounds on source size, work, state and expansion, plus
+  source-positioned errors, cycle rejection, and atomic state updates.
+- Preserve accessible labels, keyboard navigation, live status, focus
+  visibility, reduced-motion behavior, responsive layout, and SSR
+  hydration. Keep sound opt-in.
+- Review dependency licenses, notices, bundled output, and package
+  contents before changing dependencies or build configuration.
+- Never add credentials, private planning links, host-only packages,
+  unpublished dependencies, or sensitive materials to public source.
+
+## Change and release workflow
+
+- Work on a dedicated branch and open a focused PR against `main`.
+  Document purpose, compatibility impact, implementation, and checks
+  actually run. Keep `README.md`, relevant `docs/`, tests, and
+  `CHANGELOG.md` in sync with user-visible changes.
+- This project has one maintainer. Final review, required signing,
+  merges, Git tags, and npm release approvals are maintainer actions;
+  never invent other reviewers or claim those actions happened.
+- Do not publish, stage, approve, move release tags, change repository
+  visibility, or rewrite Git history without explicit authorization.
+- Publication uses an immutable, GitHub-verified signed tag and the
+  manually dispatched `publish.yml` workflow. Only its protected
+  `npm-publish` staging job receives `id-token: write`. No npm
+  token or OIDC write permission belongs in quality CI. npm staging
+  is not a public release; final npm 2FA approval is separate.
+- The repository's public Git history includes a historical reference
+  to private planning material. Treat this as an unresolved exposure;
+  inspect historical refs and credentials when relevant. Removing a
+  reference from the current tree does not erase already-public history.
+  Review rights and third-party attribution before distributing changes.
+
+See `CONTRIBUTING.md`, `SECURITY.md`, and `RELEASING.md` for the
+corresponding contributor, vulnerability-reporting, and release details.

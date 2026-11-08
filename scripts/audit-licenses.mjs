@@ -19,7 +19,7 @@ assert.deepEqual(
 assert.equal(manifest.license, "Apache-2.0");
 assert.equal(manifest.name, "@0xbuff/throughline");
 assert.equal(manifest.private, false, "Public package must not be private");
-assert.equal(manifest.version, "0.0.1", "First-release version mismatch");
+assert.match(manifest.version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/, "Invalid stable SemVer version");
 assert.equal(
 	manifest.publishConfig?.access,
 	"public",
