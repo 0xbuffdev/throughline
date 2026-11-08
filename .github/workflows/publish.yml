@@ -179,17 +179,33 @@ jobs:
           assert.equal(pkg.license, "Apache-2.0");
           NODE
 
-      - name: Set up Node 24 and npm registry
+      # Avoid setup-node's registry-url input for tokenless OIDC:
+      # it creates an .npmrc authToken placeholder and NODE_AUTH_TOKEN,
+      # causing npm to attempt classic token authentication (E401).
+      # The staging command itself explicitly selects registry.npmjs.org.
+      - name: Set up Node 24 without token-based npm registry authentication
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
       - name: Install compatible npm CLI
         run: |
           npm install --global npm@11.21.2
           npm --version
+
+      - name: Confirm tokenless OIDC authentication path
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]] || { echo "GitHub OIDC unavailable"; exit 1; }
+          [[ -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]] || { echo "GitHub OIDC token request unavailable"; exit 1; }
+          [[ -z "${NODE_AUTH_TOKEN:-}" ]] || { echo "Unexpected traditional npm token; OIDC only"; exit 1; }
+          userconfig="$(npm config get userconfig)"
+          if [[ -f "$userconfig" ]] && grep -Eq '(^|/):_authToken[[:space:]]*=' "$userconfig"; then
+            echo "An npm authToken entry would prevent tokenless OIDC"
+            exit 1
+          fi
 
       - name: Stage only with provenance (never direct-publish)
         shell: bash

@@ -184,10 +184,51 @@ Only after those checks should the README and CHANGELOG be updated
 from “pending publication” to “released.” No additional CLI,
 version bump or second npm publish is needed for this first release.
 
-If OIDC fails, check **exact npm package scope**, trusted-publisher
-repo/workflow/environment matching, public GitHub visibility,
-environment approvals, and `id-token: write` on the staging job.
-Do not fall back to an unreviewed token.
+### E401 when the GitHub workflow tries to stage
+
+The first staging run (November 8, 2026) built and verified the
+tarball and produced a Sigstore provenance log entry, but npm
+rejected the actual registry staging request with `E401`.
+This does **not** mean the npm stage succeeded.
+
+Two issues were identified:
+
+1. The npm Trusted Publisher screenshot displayed GitHub
+   `0xbuff/throughline`, but the verified GitHub repository
+   is `0xbuffdev/throughline`. The npm `0xbuff` namespace is
+   **not** the GitHub repository owner. Trusted Publisher must
+   match `0xbuffdev` / `throughline` exactly, with workflow
+   `publish.yml`, environment `npm-publish` and permission to
+   `npm stage publish`. npm's provider/required fields are
+   immutable once saved; delete the incorrect connection and
+   recreate it if it cannot be corrected.
+2. `actions/setup-node@v6` used the `registry-url` option and
+   injected a placeholder `NODE_AUTH_TOKEN` into the staging
+   job. This can force classic token authentication instead of
+   OIDC, producing `E401`. The workflow no longer configures
+   `registry-url` through setup-node and explicitly fails if a
+   classic npm auth token is present.
+
+Fix **both** before the next staging attempt. Do not run
+`npm login` on GitHub-hosted Actions and do not add an
+`NPM_TOKEN` secret. The existing signed `v0.0.1` tag can be
+retained; the manual workflow dispatch uses the workflow file
+from the selected `main` branch and checks out the signed tag
+for packaging. Re-run the whole manual publish workflow from
+`main` after merging this workflow fix. It rebuilds and
+rechecks the exact tagged source; no tag replacement is needed.
+
+A Sigstore transparency log entry can be created before the
+npm registry accepts the staging request. Do not treat its
+existence as proof of a published version or an accepted stage.
+
+If authentication still fails after both changes, inspect
+GitHub Actions staging-job logs and the npm Trusted Publisher
+setup (matching names, permissions and first-publish expiry).
+Do not switch to long-lived tokens or direct publishing.
+
+Reference: https://docs.npmjs.com/trusted-publishers/
+
 
 ## References
 
