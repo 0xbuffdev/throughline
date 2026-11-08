@@ -68,6 +68,12 @@ repository visibility before the remaining rights and release gates pass.
 7. **Release controls:** verify ownership of the npm scope, public repository
    readiness, provenance-capable trusted publishing, version `0.0.1`,
    changelog, immutable tag, manual authorization and final package checksum.
+8. **Public Git history:** the original extracted `AGENTS.md` in commit
+   `ccd888e648cd` contains a private planning URL and internal host
+   references. Removing those strings from the current tree did **not**
+   remove them from Git history. The repository must not be made public as-is;
+   review `PUBLIC_SOURCE_HISTORY.md` and approve a clean-source public
+   cutover or independently verified historical purging first.
 
 ## Outcome
 
