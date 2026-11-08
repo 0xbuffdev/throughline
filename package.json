@@ -46,7 +46,8 @@
 		"src/styles",
 		"docs",
 		"README.md",
-		"LICENSE"
+		"LICENSE",
+		"COPYRIGHT.md"
 	],
 	"sideEffects": [
 		"**/*.css"

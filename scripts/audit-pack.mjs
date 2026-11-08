@@ -38,6 +38,7 @@ try {
 		"package/package.json",
 		"package/README.md",
 		"package/LICENSE",
+		"package/COPYRIGHT.md",
 		"package/dist/index.js",
 		"package/dist/index.d.ts",
 		"package/dist/react/index.js",
@@ -61,6 +62,12 @@ try {
 	const packed = JSON.parse(
 		run("tar", ["-xOf", tarball, "package/package.json"], root),
 	);
+	const copyrightText = run(
+		"tar",
+		["-xOf", tarball, "package/COPYRIGHT.md"],
+		root,
+	);
+	assert.match(copyrightText, /Copyright 2026 0xBUFF/);
 	assert.equal(packed.name, "@0xbuff/throughline");
 	assert.equal(packed.license, "Apache-2.0", "Packed metadata must include the approved license");
 	assert(

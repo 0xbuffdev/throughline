@@ -40,12 +40,14 @@ repository visibility before the remaining rights and release gates pass.
    distribution rights to every retained implementation, example, screenshot,
    test fixture, and documentation passage. Inspect any external inspirations,
    snippets, or contributed work beyond automated pattern checks.
-2. **Copyright ownership and attribution:** Apache-2.0 is selected, and the
-   standard LICENSE file and npm SPDX metadata have been added. Before the
-   public release, confirm the rights holder(s), accurate copyright year(s),
-   any file-level copyright attributions, and third-party NOTICE obligations.
-   Do not invent a legal entity or author attribution. The package intentionally
-   remains `private: true` at version `0.0.0`.
+2. **Copyright ownership and attribution:** the maintainer designated
+   **0xBUFF** for the project's **2026** copyright notice. The source and packed
+   archive now include `COPYRIGHT.md` with this attribution, alongside
+   Apache-2.0 in `LICENSE` and npm SPDX metadata. Confirm the legal identity
+   behind the brand, underlying authorship and chain of title, and any
+   required third-party NOTICE obligations before public distribution.
+   The attribution alone does not establish incorporation or ownership.
+   The package remains `private: true` at version `0.0.0`.
 3. **Dependency notices:** the accompanying CI audit checks installed MIT
    license metadata and license files across the runtime/peer dependency closure,
    and requires the generated React JavaScript to import `cn` externally.

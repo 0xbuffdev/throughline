@@ -11,6 +11,16 @@ const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 assert.equal(manifest.private, true, "Release is not authorized");
 assert.equal(manifest.version, "0.0.0", "Version bump requires review");
 assert.equal(manifest.license, "Apache-2.0", "License must match approved choice");
+const attribution = readFileSync(join(root, "COPYRIGHT.md"), "utf8");
+assert.match(
+	attribution,
+	/Copyright 2026 0xBUFF/,
+	"Expected maintainer-designated project attribution is missing",
+);
+assert(
+	manifest.files.includes("COPYRIGHT.md"),
+	"Project copyright attribution must ship with npm archive",
+);
 const licenseText = readFileSync(join(root, "LICENSE"), "utf8");
 for (const clause of [
 	"Apache License",
