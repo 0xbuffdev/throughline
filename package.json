@@ -38,7 +38,8 @@
 		"test:browser:run": "vitest run --config vitest.browser.config.ts",
 		"audit:pack": "node scripts/audit-pack.mjs",
 		"audit:source": "node scripts/audit-source.mjs",
-		"audit:browser": "node scripts/audit-browser.mjs"
+		"audit:browser": "node scripts/audit-browser.mjs",
+		"audit:licenses": "node scripts/audit-licenses.mjs"
 	},
 	"files": [
 		"dist",
