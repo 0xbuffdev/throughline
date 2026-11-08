@@ -3,9 +3,9 @@
 Readable state over time, authored in Markdown. Throughline compiles a trace to
 immutable snapshots and renders it with a small SVG step player.
 
-This private repository is a release candidate for the independent package.
-Source extraction, licensing and external consumer tests must be reviewed before
-its source becomes public or any npm release occurs.
+This private repository contains the independently tested library. Its
+public-source cutover and npm release still require separate rights, Git-history
+and publication approval. See [release operations](RELEASING.md).
 
 ## Package exports
 
@@ -19,8 +19,10 @@ public release is approved. Subpath exports:
 | `./examples` | `dist/examples.js` | `EXAMPLES` — the canonical copyable sources used by the playground and acceptance tests. |
 | `./styles/throughline.css` | `src/styles/throughline.css` | The stylesheet; import it once per app (shown below). Declared a side effect. |
 
-`files` ships `dist/`, `src/styles/`, `docs/`, and this README. All runtime imports refer to local code or independently installable third-party packages. The pure engine (`.`) is
-dependency-free; `cn` is an npm dependency used only by the renderer.
+`files` ships `dist/`, `src/styles/`, `docs/`, `README.md`, `LICENSE`,
+and `COPYRIGHT.md`. All runtime imports refer to local code or independently
+installable public dependencies. The pure compiler (`.`) is dependency-free;
+`cn` is an npm dependency used only by the renderer.
 
 ## Use the player
 
@@ -141,12 +143,14 @@ and writes through a saved step writer after its callback returns are errors.
 From this repository:
 
 ```sh
-pnpm install
+pnpm install --frozen-lockfile
+pnpm audit:source
 pnpm typecheck
 pnpm test:run
 pnpm exec playwright install chromium
 pnpm test:browser:run
 pnpm build
+pnpm audit:licenses
 pnpm audit:pack
 pnpm audit:browser
 ```
@@ -157,9 +161,10 @@ missing declarations, accidental test output, and simple runtime imports. The
 optional React peer remains external, and the stylesheet stays an explicit
 consumer import. Build tooling is declared directly by this repository.
 
-A successful build is not a public-release test: independently install the
-packed archive in clean Node, React/browser, SSR, and TypeScript consumers
-before publishing v0.0.1.
+The single CI workflow runs these checks, including the independent
+packed Node, TypeScript, SSR, browser and hydration consumers. A successful
+build or CI run does not authorize npm publication or resolve the private
+repository's historical Git-reference exposure.
 
 ## License
 
