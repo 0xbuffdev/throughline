@@ -1,8 +1,8 @@
 {
 	"name": "@0xbuff/throughline",
-	"version": "0.0.0",
+	"version": "0.0.1",
 	"description": "Readable state over time, authored in Markdown. A deterministic trace compiler with an optional React player.",
-	"private": true,
+	"private": false,
 	"license": "Apache-2.0",
 	"type": "module",
 	"packageManager": "pnpm@11.2.2",
@@ -80,5 +80,18 @@
 		"vite": "^8.0.3",
 		"vitest": "^4.1.8",
 		"vitest-browser-react": "^2.3.0"
-	}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"homepage": "https://github.com/0xbuffdev/throughline#readme",
+	"keywords": [
+		"state-traces",
+		"visualization",
+		"markdown",
+		"typescript",
+		"react",
+		"developer-tools",
+		"education"
+	]
 }

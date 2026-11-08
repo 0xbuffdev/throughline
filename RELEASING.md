@@ -1,9 +1,10 @@
 # Throughline release operations
 
-Status: preparatory only. The source repository is private;
-@0xbuff/throughline remains version 0.0.0 with private: true.
-No npm package registration, staged submission, approval or publication
-has been authorized. First planned functional release: v0.0.1.
+Status: the maintainer authorized a publishable npm manifest for
+@0xbuff/throughline@0.0.1 (private: false, publishConfig.access: public).
+This is a **release candidate configuration only**. The GitHub repository
+remains private and no npm package registration, staging, approval or
+publication has occurred or been authorized by this manifest change.
 
 ## 1. Resolve source and legal rights
 
@@ -22,6 +23,10 @@ has been authorized. First planned functional release: v0.0.1.
 - Separately authorize a clean public-source snapshot/cutover and
   audit the resulting public history, URL, CI, repository metadata and
   provenance before the functional package release.
+- The current manifest is intentionally publishable. Prevent premature
+  publication operationally through maintainer approval, an audited source
+  cutover, release checks and restricted npm credentials. No repository CI
+  job grants a write token or uses npm stage/publish.
 
 ## 2. Maintain quality gates
 
