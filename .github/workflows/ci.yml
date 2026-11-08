@@ -35,6 +35,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Verify lockfile remains unchanged
         run: git diff --exit-code -- pnpm-lock.yaml
+      - name: Parse manual publish workflow YAML
+        run: ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/publish.yml")'
       - name: Audit public-source boundaries and dependency licenses
         run: pnpm audit:source
       - name: Typecheck

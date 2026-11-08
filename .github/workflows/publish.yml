@@ -1,0 +1,210 @@
+name: Throughline npm release (staged with provenance)
+
+# Manual only: staging is not publication; final npm 2FA approval is separate.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Signed release tag (first release v0.0.1)"
+        type: string
+        required: true
+        default: v0.0.1
+      confirmation:
+        description: "Enter STAGE-0.0.1 to authorize npm staging"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: throughline-npm-stage
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify tag and build release archive
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    permissions:
+      contents: read
+    steps:
+      - name: Require explicit manual release request
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == "refs/heads/main" ]] || exit 1
+          [[ "$RELEASE_TAG" == "v0.0.1" ]] || exit 1
+          [[ "$CONFIRMATION" == "STAGE-0.0.1" ]] || exit 1
+
+      - name: Checkout exact tag without persistent credentials
+        uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify signed annotated tag on main using GitHub API
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag_ref="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG")"
+          [[ "$(jq -r '.object.type' <<< "$tag_ref")" == "tag" ]] || { echo "Signed annotated tag required"; exit 1; }
+          tag_sha="$(jq -er '.object.sha' <<< "$tag_ref")"
+          tag_data="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_sha")"
+          [[ "$(jq -r '.tag' <<< "$tag_data")" == "$RELEASE_TAG" ]] || exit 1
+          [[ "$(jq -r '.verification.verified' <<< "$tag_data")" == "true" ]] || { echo "Tag not GitHub Verified"; exit 1; }
+          [[ "$(jq -r '.object.type' <<< "$tag_data")" == "commit" ]] || exit 1
+          [[ "$(jq -r '.object.sha' <<< "$tag_data")" == "$(git rev-parse HEAD)" ]] || exit 1
+          git fetch origin main --no-tags
+          git merge-base --is-ancestor HEAD origin/main || { echo "Tagged commit is not on main"; exit 1; }
+          git cat-file -e HEAD:.github/workflows/publish.yml
+
+      - uses: pnpm/action-setup@v6
+        name: Set up pinned pnpm
+      - uses: actions/setup-node@v6
+        name: Set up Node 24 without release caching
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Validate package, version, license and export map
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { readFileSync } from "node:fs";
+          const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+          assert.equal(process.env.RELEASE_TAG, "v0.0.1");
+          assert.equal(pkg.name, "@0xbuff/throughline");
+          assert.equal(pkg.version, "0.0.1");
+          assert.equal(pkg.private, false);
+          assert.equal(pkg.publishConfig?.access, "public");
+          assert.equal(pkg.license, "Apache-2.0");
+          assert.equal(pkg.repository?.url, "git+https://github.com/0xbuffdev/throughline.git");
+          assert.deepEqual(Object.keys(pkg.exports).sort(),
+            [".", "./react", "./examples", "./styles/throughline.css"].sort());
+          NODE
+
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Source and license boundary audit
+        run: pnpm audit:source
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Compiler tests
+        run: pnpm test:run
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Browser tests
+        run: pnpm test:browser:run
+      - name: Build typed ESM distributable
+        run: pnpm build
+      - name: Verify installed dependency licenses
+        run: pnpm audit:licenses
+      - name: Verify packed Node, TypeScript and React SSR consumers
+        run: pnpm audit:pack
+      - name: Verify packed Vite/React browser hydration
+        run: pnpm audit:browser
+
+      - name: Pack reviewed tarball and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-artifacts
+          pnpm pack --out release-artifacts/throughline-0.0.1.tgz
+          (cd release-artifacts && sha256sum throughline-0.0.1.tgz > SHA256SUMS)
+          git rev-parse HEAD > release-artifacts/RELEASE_COMMIT
+          (cd release-artifacts && sha256sum --check SHA256SUMS)
+
+      - name: Upload immutable release review artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: throughline-v0.0.1-${{ github.run_id }}
+          path: |
+            release-artifacts/throughline-0.0.1.tgz
+            release-artifacts/SHA256SUMS
+            release-artifacts/RELEASE_COMMIT
+          if-no-files-found: error
+          retention-days: 7
+
+  stage:
+    name: Stage reviewed tarball using GitHub OIDC provenance
+    needs: verify
+    if: needs.verify.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout same release tag
+        uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          persist-credentials: false
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: throughline-v0.0.1-${{ github.run_id }}
+          path: release-artifacts
+
+      - name: Recheck checksum, release commit and archive manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd release-artifacts && sha256sum --check SHA256SUMS)
+          [[ "$(cat release-artifacts/RELEASE_COMMIT)" == "$(git rev-parse HEAD)" ]] || { echo "Tag changed since build"; exit 1; }
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { execFileSync } from "node:child_process";
+          const pkg = JSON.parse(execFileSync("tar", [
+            "-xOf", "release-artifacts/throughline-0.0.1.tgz", "package/package.json"
+          ], { encoding: "utf8" }));
+          assert.equal(pkg.name, "@0xbuff/throughline");
+          assert.equal(pkg.version, "0.0.1");
+          assert.equal(pkg.private, false);
+          assert.equal(pkg.publishConfig?.access, "public");
+          assert.equal(pkg.license, "Apache-2.0");
+          NODE
+
+      - name: Set up Node 24 and npm registry
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install compatible npm CLI
+        run: |
+          npm install --global npm@11.21.2
+          npm --version
+
+      - name: Stage only with provenance (never direct-publish)
+        shell: bash
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
+        run: |
+          set -euo pipefail
+          npm stage publish ./release-artifacts/throughline-0.0.1.tgz --access public --provenance --registry=https://registry.npmjs.org/
+
+      - name: State remaining npm manual approval
+        shell: bash
+        run: |
+          {
+            echo "### @0xbuff/throughline@0.0.1 submitted to npm staging"
+            echo "This is NOT a published version. Review the staged package and"
+            echo "approve separately with npm 2FA on npmjs.com or through npm CLI."
+            echo "Source: $(git rev-parse HEAD)"
+          } >> "$GITHUB_STEP_SUMMARY"
