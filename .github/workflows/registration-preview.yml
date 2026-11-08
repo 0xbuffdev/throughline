@@ -31,7 +31,7 @@ jobs:
       - name: Upload preview for human review (never stage)
         uses: actions/upload-artifact@v7
         with:
-          name: throughline-registration-preview-\${{ github.sha }}
+          name: throughline-registration-preview-${{ github.sha }}
           path: |
             registration-preview/*.tgz
             registration-preview/SHA256SUMS
