@@ -49,3 +49,5 @@ jobs:
         run: pnpm build
       - name: Inspect packed archive in external consumers
         run: pnpm audit:pack
+      - name: Validate packed Vite browser hydration
+        run: pnpm audit:browser

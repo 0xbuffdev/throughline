@@ -148,6 +148,7 @@ pnpm exec playwright install chromium
 pnpm test:browser:run
 pnpm build
 pnpm audit:pack
+pnpm audit:browser
 ```
 
 The `tsdown` build emits ESM, declarations, and JavaScript source maps for the
