@@ -28,10 +28,13 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-      # First extraction has no lockfile. Commit an audited generated lockfile
-      # before changing to --frozen-lockfile for release.
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      # The committed lockfile is the authoritative dependency resolution.
       - name: Install standalone dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
+      - name: Verify lockfile remains unchanged
+        run: git diff --exit-code -- pnpm-lock.yaml
       - name: Typecheck
         run: pnpm typecheck
       - name: Compiler tests
