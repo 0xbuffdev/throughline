@@ -40,59 +40,76 @@ unreleased (`private: true`, version `0.0.0`).
 The separate source dependency-notice audit must pass on the candidate revision
 before actual release. Do not use this rehearsal alone to declare readiness.
 
-## 3. Decide npm first-publication bootstrap
+## 3. Register the package through staged publishing
 
-**Important:** npm requires an existing registry package before configuring a
-Trusted Publisher. A previously unused `@0xbuff/throughline` name cannot
-normally receive its *first* publication via the later OIDC Trusted Publisher
-configuration. Verify registry scope/name availability and current npm policy
-before choosing an approach.
+**Updated November 8, 2026:** npm added new-package staged publishing on
+October 2, 2026. A normal `npm publish` of an initial bootstrap version
+is **not** required. `npm stage publish` can register a new package;
+npm automatically creates a **public `0.0.0-stage` placeholder**
+while holding the actual staged version and tarball for later review.
+Creating that placeholder is an external public action and requires
+separate authorization.
 
-Two possible plans require a separate explicit approval:
+The preferred sequence to preserve provenance on functional `0.0.1`:
 
-1. **Provenance-first functional release (preferred if `0.0.1` must have
-   provenance):** after public-source/rights clearance, register an explicitly
-   labelled, nonfunctional bootstrap package as `@0xbuff/throughline@0.0.0`
-   using an authorized one-time interactive npm publication, under a non-latest
-   dist-tag (e.g. `bootstrap`). Review exactly what the bootstrap archive ships;
-   do **not** silently publish the current engine as a placeholder. Then configure
-   the npm Trusted Publisher and release functional `0.0.1` by the approved OIDC
-   workflow with provenance.
-2. **No-placeholder initial release:** publish the functional `0.0.1`
-   interactively after approval. Configure Trusted Publishing for later
-   versions. The initial release then lacks OIDC-generated provenance; disclose
-   that tradeoff rather than claiming an attestation.
+1. Confirm source redistribution rights, accurate copyright attribution,
+   dependency notices, `@0xbuff` npm scope control, package status,
+   account 2FA, and the exact archive. A public registry query cannot
+   prove npm scope ownership, private/staged package absence or access.
+2. After explicit approval, prepare an independently reviewed, minimal,
+   **nonfunctional registration-only** candidate at version `0.0.0`,
+   containing no private engine/source, secrets or third-party material.
+   Stage it from an authenticated maintainer session with npm **11.15.0+**
+   using `npm stage publish` and appropriate public scoped access.
+   **Do not approve** this nonfunctional stage. The registry will create
+   the publicly visible `0.0.0-stage` placeholder.
+3. Configure the new package's Trusted Publisher to match GitHub owner
+   `0xbuffdev`, repository `throughline`, workflow `publish.yml` and
+   a protected `npm-publish` environment (if enabled). Grant
+   **stage-only**, not direct publish or dist-tag permissions.
+4. Once source rights, public GitHub visibility, an immutable reviewed
+   signed tag and version `0.0.1` are separately approved, use the
+   protected GitHub-hosted workflow with OIDC to stage the functional
+   release with `npm stage publish` (never direct publish).
+5. Independently review the staged tarball, manifest, provenance,
+   Apache-2.0 notices, checksum and exact source revision. The
+   maintainer must **approve** the functional stage using 2FA.
+   Reject the unused nonfunctional registration stage and verify
+   public installability and provenance.
 
-Neither plan is executed by this repository's current automation. Never put a
-persistent npm publish token in a source file, GitHub log, or release script.
+An alternative is to stage the functional `0.0.1` as the very first
+version from an authenticated session. That stage was not submitted
+through a configured Trusted Publisher, so do **not** assume it
+carries OIDC provenance. Staged versions reserve their version number;
+do not assume the same version can be restaged.
 
-## 4. Configure the eventual trusted-release path
+Nothing has been registered, staged, approved or published.
 
-After the package exists on npm and **while the planned publication is
-imminent**, create the npm Trusted Publisher binding for the exact owner
-`0xbuffdev`, repository `throughline`, workflow filename (for example
-`publish.yml`), and optional protected environment (for example
-`npm-publish`). Verify the current npm UI and policy at that time; a newly
-created binding may expire if not first used successfully within two days.
+## 4. Trusted release workflow requirements (not yet implemented)
 
-Prepare a **separate reviewed PR** for the real publishing workflow:
+The actual publish/stage workflow requires a **separate reviewed PR**
+after rights, scope and registration review. The existing release
+preview remains read-only and must not request OIDC permissions.
 
-- Start only from a maintainer-approved immutable signed `v0.0.1` release tag
-  matching the package version and the exact reviewed commit.
-- Require the source repository to be public for npm provenance, and publish
-  under `--access public` using npm CLI `>=11.5.1` on a GitHub-hosted runner.
-- Use `contents: read` and, only for the publishing job, `id-token: write`;
-  avoid long-lived npm tokens. Apply appropriate environment and tag protections.
-- Choose staged publication with explicit maintainer approval if supported by
-  the configured npm account/publisher permissions; direct `npm publish`
-  requires separate authorization.
-- Verify a clean frozen install, tests, the exact packed contents and license,
-  source commit, dist-tag and checksum before external publication.
-- Confirm published metadata, installability and provenance on npm afterwards.
+- Restrict execution to an explicitly approved signed `v0.0.1` tag
+  matching the exact source revision and version.
+- Require public GitHub source for npm provenance; private repositories
+  cannot produce npm provenance even with Trusted Publishing.
+- Use Node 24, npm CLI >=11.15.0, frozen installs and every source,
+  third-party, compiler, React, hydration and packed-artifact check.
+- Request `contents: read` and `id-token: write` only in the protected
+  staging job; use GitHub-hosted runners and no long-lived npm token.
+- Use only `npm stage publish` with stage-only trusted-publisher
+  permission. Do not automatically approve a stage or allow direct
+  `npm publish`. Require human review and npm 2FA approval.
+- Configure the Trusted Publisher shortly before first use: its first
+  successful publish must validate the binding within two days.
+- Verify the approved live package metadata, runtime imports,
+  integrity, published provenance and registry dist-tags.
 
-Do not set `private: false`, bump to `0.0.1`, create a release tag, or
-introduce a publishing command until the rights, scope, staging and public
-source gates have been separately reviewed.
+Do not remove `private: true`, bump to `0.0.1`, stage/register any
+package, create a release tag or change GitHub visibility without
+specific release authorization.
 
 ## 5. Integrate and document the published package
 
@@ -103,6 +120,9 @@ documentation repository. None of these steps is implied by green CI.
 
 Official current references:
 
+- https://github.blog/changelog/2026-10-02-npm-staged-publishing-now-supports-creating-new-packages/
+- https://docs.npmjs.com/staged-publishing/
+- https://docs.npmjs.com/cli/v11/commands/npm-stage/
 - https://docs.npmjs.com/trusted-publishers/
 - https://docs.npmjs.com/cli/v11/commands/npm-trust/
 - https://docs.npmjs.com/generating-provenance-statements/
