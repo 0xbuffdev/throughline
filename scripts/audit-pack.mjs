@@ -37,6 +37,7 @@ try {
 	for (const file of [
 		"package/package.json",
 		"package/README.md",
+		"package/LICENSE",
 		"package/dist/index.js",
 		"package/dist/index.d.ts",
 		"package/dist/react/index.js",
@@ -61,6 +62,7 @@ try {
 		run("tar", ["-xOf", tarball, "package/package.json"], root),
 	);
 	assert.equal(packed.name, "@0xbuff/throughline");
+	assert.equal(packed.license, "Apache-2.0", "Packed metadata must include the approved license");
 	assert.deepEqual(
 		Object.keys(packed.exports).sort(),
 		[".", "./react", "./examples", "./styles/throughline.css"].sort(),

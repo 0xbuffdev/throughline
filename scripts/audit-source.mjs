@@ -10,7 +10,22 @@ const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 // Publishing is deliberately a separate, reviewed change.
 assert.equal(manifest.private, true, "Release is not authorized");
 assert.equal(manifest.version, "0.0.0", "Version bump requires review");
-assert.equal(manifest.license, "UNLICENSED", "License choice requires review");
+assert.equal(manifest.license, "Apache-2.0", "License must match approved choice");
+const licenseText = readFileSync(join(root, "LICENSE"), "utf8");
+for (const clause of [
+	"Apache License",
+	"Version 2.0, January 2004",
+	"Grant of Copyright License",
+	"Grant of Patent License",
+	"END OF TERMS AND CONDITIONS",
+	"APPENDIX: How to apply the Apache License to your work.",
+]) {
+	assert(licenseText.includes(clause), "Missing Apache-2.0 clause: " + clause);
+}
+assert(
+	manifest.files.includes("LICENSE"),
+	"Explicitly ship the project license in the npm archive",
+);
 
 const paths = execFileSync("git", ["ls-files", "-z"], { cwd: root })
 	.toString("utf8")

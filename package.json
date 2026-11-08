@@ -3,7 +3,7 @@
 	"version": "0.0.0",
 	"description": "Readable state over time, authored in Markdown. A deterministic trace compiler with an optional React player.",
 	"private": true,
-	"license": "UNLICENSED",
+	"license": "Apache-2.0",
 	"type": "module",
 	"packageManager": "pnpm@11.2.2",
 	"engines": {
@@ -43,7 +43,8 @@
 		"dist",
 		"src/styles",
 		"docs",
-		"README.md"
+		"README.md",
+		"LICENSE"
 	],
 	"sideEffects": [
 		"**/*.css"
