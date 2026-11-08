@@ -57,6 +57,8 @@ jobs:
         run: pnpm test:browser:run
       - name: Produce tsdown distributable
         run: pnpm build
+      - name: Verify runtime and peer dependency license texts
+        run: pnpm audit:licenses
       - name: Check packed Node and React SSR consumers
         run: pnpm audit:pack
       - name: Check packed Vite browser hydration
