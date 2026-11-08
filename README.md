@@ -1,148 +1,165 @@
 # Throughline
 
-Readable state over time, authored in Markdown. Throughline compiles a trace to
-immutable snapshots and renders it with a small SVG step player.
+**Readable state over time, authored in Markdown.**
 
-This private repository contains the independently tested library. Its
-public-source cutover and npm release still require separate rights, Git-history
-and publication approval. See [release operations](RELEASING.md).
+Throughline compiles small, explanatory state traces into deterministic,
+versioned snapshots. Its optional React player makes each change visible as
+a step-by-step SVG scene—with keyboard controls, accessible descriptions,
+responsive layouts and opt-in sound.
 
-## Package exports
+Use it to explain what changes during an algorithm, a data-structure
+operation, a recursive call or a system workflow. Throughline does not
+execute arbitrary code or require an account, server, network connection
+or application-specific runtime.
 
-`private: true`, version `0.0.0` — publishing remains disabled until the
-public release is approved. Subpath exports:
+> **Release status:** Package version `0.0.1` is configured for public npm
+> distribution but has **not been published yet**. The existing source
+> repository is private pending a separately reviewed, clean public-source
+> cutover. See [release status](RELEASING.md).
 
-| Export | Resolves to | Use it for |
-|---|---|---|
-| `.` | `dist/index.js` (+ `.d.ts`) | The pure engine: `compile`, the `Program` IR, the domain adapters. Never loads React or touches the DOM — safe for content CI and scripts. |
-| `./react` | `dist/react/index.js` | The renderer (`ThroughlinePlayer` and friends). `react`/`react-dom` (`^19`) are optional peers. |
-| `./examples` | `dist/examples.js` | `EXAMPLES` — the canonical copyable sources used by the playground and acceptance tests. |
-| `./styles/throughline.css` | `src/styles/throughline.css` | The stylesheet; import it once per app (shown below). Declared a side effect. |
+## Features
 
-`files` ships `dist/`, `src/styles/`, `docs/`, `README.md`, `LICENSE`,
-and `COPYRIGHT.md`. All runtime imports refer to local code or independently
-installable public dependencies. The pure compiler (`.`) is dependency-free;
-`cn` is an npm dependency used only by the renderer.
+- **Author in Markdown:** write a `thl` code fence with explicit, named steps.
+- **Deterministic snapshots:** compile once, then seek through immutable
+  frames without re-running the authored program.
+- **Five supported domains:** hand-authored `flow`, reference `bindings`,
+  `binary` addition, `matrix` multiplication and recursive `callstack`.
+- **React is optional:** use the pure compiler from Node or other ESM
+  environments without loading React or browser globals.
+- **Accessible playback:** keyboard navigation, step captions, a state
+  inspector, reduced-motion support and explicit CSS/theme controls.
+- **Bounded by design:** source, state, event and expansion limits provide
+  predictable rejection rather than uncontrolled trace growth.
 
-## Use the player
+## Installation
 
-```tsx
+Once the first release is published to npm:
+
+~~~sh
+npm install @0xbuff/throughline
+~~~
+
+For the optional React player, use React 19 and React DOM 19 in the
+consuming application:
+
+~~~sh
+npm install react@^19 react-dom@^19
+~~~
+
+The package targets Node.js 24 or later, uses ESM and ships TypeScript
+declarations. React is not required for the root compiler import.
+
+## Quick start
+
+### Compile a trace
+
+~~~ts
 import { compile } from "@0xbuff/throughline";
+
+const source = [
+  "```thl flow",
+  'node counter "Counter" = 0',
+  'step "Increment"',
+  "  set counter = 1",
+  "  focus counter",
+  '  note "Counter now holds one."',
+  "```",
+].join("\n");
+
+const trace = compile(source);
+
+// Frame 0 contains the initial state; later frames capture authored steps.
+console.log(trace.version);       // 1
+console.log(trace.frames.length); // 2
+~~~
+
+A `thl flow` block declares entities and relationships first, followed by
+named steps using operations such as `set`, `focus`, `note`, `send`,
+`show` and `hide`. Markdown fences are optional when calling `compile`
+directly, but each source must identify its `thl` domain.
+
+### Render it with React
+
+~~~tsx
+import { compile } from "@0xbuff/throughline";
+import { EXAMPLES } from "@0xbuff/throughline/examples";
 import { ThroughlinePlayer } from "@0xbuff/throughline/react";
 import "@0xbuff/throughline/styles/throughline.css";
 
-const trace = compile(`\`\`\`thl flow
-node count "Count" = 0
-step "Increment"
-  set count = 1
-  note "One event, one visible change."
-\`\`\``);
+const trace = compile(EXAMPLES[0].source);
 
-export function Example() {
-  return <ThroughlinePlayer trace={trace} />;
+export function TraceDemo() {
+  return <ThroughlinePlayer trace={trace} theme="auto" />;
 }
-```
+~~~
 
-Compile once when source changes, or during your content build. Keep the returned
-`trace` stable during playback. Passing a new trace resets playback to its initial
-state. React 19 is a peer dependency for `./react`; importing the pure engine from
-`.` does not load React or access the DOM.
+Import the stylesheet once in the host application. The player accepts
+`light`, `dark` or `auto` themes and supports `--thl-*` CSS variables.
+Pass a stable trace reference while stepping; replacing it resets playback.
+Audio controls are absent unless you explicitly supply `sonification`.
 
-`theme` accepts `auto` (the default), `light`, or `dark`. Override `--thl-*` CSS
-variables on the player to match a host theme. The CSS has no Tailwind requirement
-and uses only namespaced selectors. Its color tokens use modern CSS `light-dark()`;
-container queries arrange the controls on narrow screens.
+## Supported domains
 
-## Authoring
+| Domain | What it explains | Authoring model |
+| --- | --- | --- |
+| `flow` | State, relationships and changes | Explicit nodes, links and steps |
+| `bindings` | Primitives, references, mutation and rebinding | Small assignment/push language |
+| `binary` | Ripple-carry binary addition | Two unsigned binary operands |
+| `matrix` | Matrix multiplication | Two small compatible matrices |
+| `callstack` | Recursive factorial calls and returns | A bounded factorial input |
 
-The language identifier is **`thl`** (renamed from `viz`; old ` ```viz ` fences
-do not parse). Use standard Markdown code fences — no directives, no plugins,
-no custom containers:
+All five domains produce the same version-1 trace shape. Domains are
+intentionally limited; Throughline is not a general-purpose JavaScript
+interpreter or an automatic execution tracer.
 
-    ```thl flow
-    group "Tree" as tree
-    node root "Root" in "Tree" = "ul"
-    node child "Child" in "Tree" hidden = "li"
-    link contains root -> child hidden
-    step "Insert child"
-      show node child
-      show link contains
-      focus child
-    ```
+## Public package exports
 
-The fence is ordinary Markdown: the language is `thl`, the domain
-(`flow`, `bindings`, `binary`, `matrix`, `callstack`) is the first word of the
-info string, and everything between the fences is the program. Standard fences
-work with ordinary Markdown editors and render as copyable code with no
-Throughline integration registered; `:::thl` is not part of the syntax.
+| Import path | Contents |
+| --- | --- |
+| `@0xbuff/throughline` | Core compiler, parser, types, validation, tracer |
+| `@0xbuff/throughline/react` | Optional `ThroughlinePlayer` and React types |
+| `@0xbuff/throughline/examples` | Copyable authored fixtures |
+| `@0xbuff/throughline/styles/throughline.css` | Opt-in, namespaced CSS |
 
-- `flow`: explicit state, relationships, and steps.
-- `bindings`: references, mutation, and rebinding.
-- `binary`: binary addition with carries.
-- `matrix`: matrix multiplication.
-- `callstack`: calls and returns.
+Only these four entry points are supported; importing from package
+`src/` or `dist/` paths is not part of the API. The compiler is
+React-free, network-free and usable in offline tooling.
 
-See [grammar](docs/grammar.md), [domain catalog](docs/catalog.md), and
-[adapter authoring](docs/authoring.md). `EXAMPLES` from `./examples` supplies the
-same copyable sources used by the playground and acceptance tests.
+## How it works
 
-## Composition and interaction
+1. **Parse:** `compile` reads one `thl <domain>` block, preserving useful
+   source-line information for diagnostics.
+2. **Build:** `flow` is parsed into an authored program; computed domains
+   construct the same program model from bounded input parameters.
+3. **Validate and compile:** the engine rejects invalid references, JSON
+   values, conflicting writes and excessive work, then produces an initial
+   frame plus a snapshot for each step.
+4. **Present (optional):** the React player uses the compiled frames to
+   render a responsive scene, controls, captions and an inspectable state.
+   Seeking a frame does not execute the source a second time.
 
-Groups support `row`, `column`, and `tree`. Omitted arrangements use `row`.
-Groups wrap to available width; text is never shrunk to fit a desktop scene onto
-a phone. Node dimensions reserve the largest values across the trace, including
-future hidden nodes, so stepping preserves spatial identity. This can leave
-intentional empty space before an allocation appears.
+Trace schema version `1` is separate from package version `0.0.1`.
+Source length is capped at 262,144 UTF-16 code units; the authored
+program is limited to 200 entities, 1,000 relations, 2,000 steps and
+10,000 events, plus work/expansion budgets. These limits are for
+deterministic work, not a guarantee of exact heap or CPU usage.
 
-Focus has a teal outline; actual changed values have an amber fill and outline.
-Transfers draw for 350 ms and remain highlighted while paused. Their payloads
-appear in the caption. Reduced motion removes the draw animation.
+For technical details, see the [architecture notes](docs/architecture.md).
 
-Large arrays, matrices, records, and stacks use bounded windows containing the
-first focused position. A window notice states the range; **Inspect state** exposes
-every current value as selectable text. Long individual cell values are ellipsized
-with their full text in the SVG title and inspector. Multiple distant foci may
-span more than one window. Layout is deterministic and suited to small explanatory
-scenes; it is not a general graph editor or large-network layout engine.
+## Documentation
 
-Focus the player and use Left/Right, Home/End, or Space. Native buttons, the
-range input, and speed select keep their own keyboard behavior. Each step has a
-semantic SVG label and live announcement. Audio controls appear only when
-`sonification` is supplied; sound indicates stage progression, without inferring
-memory cost or contention from visual focus.
+- [Grammar and authored flow](docs/grammar.md)
+- [Domain catalog and domain-specific limits](docs/catalog.md)
+- [Architecture, trace format and runtime boundaries](docs/architecture.md)
+- [Adding a computed domain](docs/authoring.md)
+- [Changelog](CHANGELOG.md)
 
-## Build and verify
+## Development
 
-`compile(source)` accepts one `thl <domain>` block, with optional Markdown
-backtick or tilde fences (three or more matching characters). Extra header
-options and content after the closing fence are errors. Blank lines and CRLF
-are preserved for diagnostics. A missing closing fence runs to end of input.
+The source is a standalone Node 24 / pnpm 11.2.2 package, not a
+multi-package workspace.
 
-A host Markdown parser can call `compileAst({ kind: "flow", lines,
-source: { line: 20 } })` directly. `lines` contains only the fence body;
-`source.line` is the header's one-based document line. The default header line
-is 1. The engine does not parse entire Markdown documents. `ThlBlock` now has
-only `kind`, `lines`, and optional `source`; the unused `raw`, `args`, and
-`props` fields were removed from the authoring API.
-
-`COMPILATION_LIMITS` exposes the fixed source, program, and trace ceilings.
-Source is limited to 262,144 UTF-16 code units. Program data is limited to
-1,000,000 budget units; expanded trace snapshots to 8,000,000. A unit counts
-one UTF-16 code unit in strings/keys, with eight units per scalar/container.
-Repeated values count each time they would appear in JSON. These are
-deterministic payload/work limits, not exact heap-byte measurements. Cycles
-and non-JSON data fail with `ProgramError` before serialization.
-
-Computed adapters check their parsed input before constructing labels or
-expanding steps. The programmatic `tracer()` enforces counts and data budgets
-as it records. Values passed to `node`, `set`, and `send` are captured immediately;
-later mutations cannot rewrite history. `get()` and `program()` return detached
-data. A step callback is synchronous and commits atomically; nested recording
-and writes through a saved step writer after its callback returns are errors.
-
-From this repository:
-
-```sh
+~~~sh
 pnpm install --frozen-lockfile
 pnpm audit:source
 pnpm typecheck
@@ -153,51 +170,23 @@ pnpm build
 pnpm audit:licenses
 pnpm audit:pack
 pnpm audit:browser
-```
+~~~
 
-The `tsdown` build emits ESM, declarations, and JavaScript source maps for the
-three public JavaScript entries. Its post-build check verifies exported files,
-missing declarations, accidental test output, and simple runtime imports. The
-optional React peer remains external, and the stylesheet stays an explicit
-consumer import. Build tooling is declared directly by this repository.
+The packed-consumer audits install the built archive into independent
+Node, TypeScript, React SSR and Vite/browser environments. Build success
+does not, by itself, authorize a public release.
 
-The single CI workflow runs these checks, including the independent
-packed Node, TypeScript, SSR, browser and hydration consumers. A successful
-build or CI run does not authorize npm publication or resolve the private
-repository's historical Git-reference exposure.
+## Community
+
+Read [contributing guidelines](CONTRIBUTING.md) before opening a PR.
+Use [GitHub issues](https://github.com/0xbuffdev/throughline/issues)
+for reproducible bugs and feature proposals; see
+[SUPPORT.md](SUPPORT.md) for support and [SECURITY.md](SECURITY.md)
+for confidential vulnerability reports. Participation is governed by
+the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
-Throughline is licensed under the [Apache License, Version 2.0](LICENSE).
-The license allows use in open-source and proprietary applications, subject
-to its terms, including attribution and modification-notice requirements.
-
-Project attribution: **Copyright 2026 0xBUFF**. See
-[COPYRIGHT.md](COPYRIGHT.md) for the project notice and remaining legal-rights
-verification requirements.
-
-The standalone source is still undergoing final rights, third-party notice,
-external-consumer and release-provenance checks. This private repository is
-not yet an approved npm release; the package remains `private: true` at
-version `0.0.0`. The license does not grant trademark rights.
-
-## Current limitations
-
-- **Unpublished.** `private: true` and version `0.0.0` are intentional
-  until source/rights review, licensing and release approval.
-- **Consumer integration.** Hosts decide when to compile authored traces. No
-  standalone CLI or SVG export is included.
-- **Authored traces only.** Automatically recorded executions are unsupported.
-- **Bounded programs.** 200 entities, 1000 relations, 2000 steps, 10000 events
-  per program; overlapping writes to the same path in one step fail at compile
-  time (`docs/grammar.md`).
-- **Bounded adapters.** `binary`: 1–16 unsigned bits; `matrix`: up to 4×4, copy
-  and dot-product only; `callstack`: factorial, depth ≤ 6; `bindings`: no
-  expressions or methods besides `push` (`docs/catalog.md`). An info string
-  naming any other domain fails compilation with the supported list.
-- **Small explanatory scenes.** Deterministic, bounded-window layout; not a
-  general graph editor or large-network layout engine. Text is never shrunk to
-  fit a desktop scene onto a phone.
-- **Motion and audio.** Reduced motion removes draw animations. Audio controls
-  appear only when `sonification` is supplied, and sound marks stage
-  progression — it does not infer memory cost or contention from visual focus.
+Licensed under [Apache-2.0](LICENSE).
+Copyright 2026 0xBUFF; see [COPYRIGHT.md](COPYRIGHT.md).
+The license covers software rights under its terms, not trademark use.
