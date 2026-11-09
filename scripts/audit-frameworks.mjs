@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { chromium } from "@playwright/test";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { fixtureManifest } from "./fixtures/integration-dependencies.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const scratch = mkdtempSync(join(tmpdir(), "throughline-frameworks-"));
@@ -33,14 +34,13 @@ function run(dir, executable, args) {
   return result.stdout;
 }
 
-function consumer(name, tarball, dependencies) {
+function consumer(name, tarball) {
   const dir = join(scratch, name);
   mkdirSync(dir, { recursive: true });
-  write(dir, "package.json", JSON.stringify({ name: "throughline-" + name, private: true, type: "module" }));
-  run(dir, "npm", [
-    "install", "--no-audit", "--no-fund", "--no-package-lock",
-    tarball, ...dependencies,
-  ]);
+  copyFileSync(tarball, join(dir, "throughline.tgz"));
+  write(dir, "package.json", JSON.stringify(fixtureManifest(name), null, 2) + "\n");
+  copyFileSync(join(root, "scripts/fixtures/lockfiles", name + ".json"), join(dir, "package-lock.json"));
+  run(dir, "npm", ["ci", "--no-audit", "--no-fund"]);
   return dir;
 }
 
@@ -137,11 +137,7 @@ try {
 
   // A real Fumadocs Unified project must generate entries from a source.config.ts
   // retaining existing remark/rehype hooks. It must also validate malformed fences.
-  const fumadocs = consumer("fumadocs", tarball, [
-    "fumadocs-mdx@15.4.10", "fumadocs-core@16.17.8", "react-router@8.5.1",
-    "remark-math@6.0.0", "rehype-katex@7.0.1",
-    "@mdx-js/mdx@3.1.1", "vite@8.3.6", "react@19.3.1", "react-dom@19.3.1",
-  ]);
+  const fumadocs = consumer("fumadocs", tarball);
   write(fumadocs, "source.config.ts", [
     'import { remarkMdxMermaid } from "fumadocs-core/mdx-plugins";',
     'import { defineConfig, defineDocs } from "fumadocs-mdx/config";',
@@ -244,11 +240,7 @@ try {
 
   // A Next.js App Router build checks the real @next/mdx loader, component map,
   // React client boundary and CSS import. webpack allows function-form plugins.
-  const next = consumer("next", tarball, [
-    "next@16.4.5", "@next/mdx@16.4.5",
-    "@mdx-js/loader@3.1.1", "@mdx-js/react@3.1.1", "@types/mdx@2.0.14",
-    "react@19.3.1", "react-dom@19.3.1",
-  ]);
+  const next = consumer("next", tarball);
   write(next, "next.config.mjs", [
     'import createMDX from "@next/mdx";',
     'import { remarkThroughline } from "@0xbuff/throughline/remark";',
@@ -289,10 +281,7 @@ try {
 
   // Astro's Markdown/MDX pipeline emits an Astro component wrapper, which in
   // turn owns the hydration directive for the React island and the player CSS.
-  const astro = consumer("astro", tarball, [
-    "astro@7.4.2", "@astrojs/mdx@8.1.3", "@astrojs/react@7.1.4", "@astrojs/markdown-remark@7.3.6",
-    "react@19.3.1", "react-dom@19.3.1",
-  ]);
+  const astro = consumer("astro", tarball);
   write(astro, "astro.config.mjs", [
     'import { defineConfig } from "astro/config";',
     'import mdx from "@astrojs/mdx";',
