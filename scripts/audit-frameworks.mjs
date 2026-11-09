@@ -57,7 +57,7 @@ try {
   // A real Fumadocs Unified project must generate entries from a source.config.ts
   // retaining existing remark/rehype hooks. It must also validate malformed fences.
   const fumadocs = consumer("fumadocs", tarball, [
-    "fumadocs-mdx@15.4.10", "fumadocs-core@16.15.4",
+    "fumadocs-mdx@15.4.10", "fumadocs-core@16.17.8",
     "remark-math@6.0.0", "rehype-katex@7.0.1",
     "@mdx-js/mdx@3.1.1", "react@19.3.1", "react-dom@19.3.1",
   ]);
