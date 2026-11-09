@@ -224,7 +224,11 @@ try {
 	// Node-only verification is complete before installing the optional peer.
 	run(
 		"npm",
-		["install", ...flags, "--no-save", "react@^19", "react-dom@^19"],
+		[
+			"install", ...flags, "--no-save",
+			"react@^19", "react-dom@^19", "@types/react@^19",
+			"@types/react-dom@^19", "typescript@^5.9.3", "@mdx-js/mdx@3.1.1",
+		],
 		consumer,
 	);
 	const ssr = [
@@ -239,7 +243,42 @@ try {
 		'assert(html.includes("Visualization player"));',
 	].join("\n");
 	run("node", ["--input-type=module", "-e", ssr], consumer);
-	console.log("Packed Throughline passed Node-only, TypeScript and React SSR checks.");
+	writeFileSync(join(consumer, "embed-typecheck.ts"), [
+		'import { ThroughlineEmbed, type ThroughlineEmbedProps } from "@0xbuff/throughline/react";',
+		'import { remarkThroughline, type ThroughlineRemarkOptions } from "@0xbuff/throughline/remark";',
+		'const props: ThroughlineEmbedProps = { source: "thl flow\\nnode x \\"X\\" = 1", theme: "dark" };',
+		'const plugin: ThroughlineRemarkOptions = { mode: "mdx", componentName: "CustomTrace" };',
+		'void [props, plugin, ThroughlineEmbed, remarkThroughline];',
+	].join("\n"));
+	run("node", ["node_modules/typescript/bin/tsc", "--strict", "--noEmit", "--skipLibCheck", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--target", "ES2022", "--jsx", "react-jsx", "embed-typecheck.ts"], consumer);
+
+	// Compile real MDX and render through its host component map, including
+	// source that resembles JSX/expression syntax but must remain inert data.
+	const mdx = [
+		'import assert from "node:assert/strict";',
+		'import { createElement } from "react";',
+		'import * as runtime from "react/jsx-runtime";',
+		'import { renderToString } from "react-dom/server";',
+		'import { compile as compileMdx, run as runMdx } from "@mdx-js/mdx";',
+		'import { remarkThroughline } from "@0xbuff/throughline/remark";',
+		'import { ThroughlineEmbed } from "@0xbuff/throughline/react";',
+		'const payload = \'</script><script>bad()</script> "{globalThis.__throughlineInjected = true}" \' + String.fromCharCode(96) + "backtick" + String.fromCharCode(96);',
+		'const md = ["# Example", "", "~~~thl flow", \'node x "X" = 0\', \'step "Read"\', "  note " + JSON.stringify(payload), "~~~", "", "~~~js", "const other = 1", "~~~"].join("\\n");',
+		'const mdxSource = String(await compileMdx(md, { remarkPlugins: [[remarkThroughline, { mode: "mdx" }]], outputFormat: "function-body" }));',
+		'assert.equal(globalThis.__throughlineInjected, undefined);',
+		'const { default: Content } = await runMdx(mdxSource, { ...runtime, baseUrl: import.meta.url });',
+		'assert.throws(() => renderToString(createElement(Content, {})), /ThroughlineEmbed/);',
+		'const html = renderToString(createElement(Content, { components: { ThroughlineEmbed } }));',
+		'assert.match(html, /Visualization player/);',
+		'assert.match(html, /const other = 1/);',
+		'assert.doesNotMatch(html, /<script>/);',
+		'assert.equal(globalThis.__throughlineInjected, undefined);',
+		'const customSource = String(await compileMdx(md, { remarkPlugins: [[remarkThroughline, { mode: "mdx", componentName: "CustomTrace" }]], outputFormat: "function-body" }));',
+		'const { default: CustomContent } = await runMdx(customSource, { ...runtime, baseUrl: import.meta.url });',
+		'assert.match(renderToString(createElement(CustomContent, { components: { CustomTrace: ThroughlineEmbed } })), /Visualization player/);',
+	].join("\n");
+	run("node", ["--input-type=module", "-e", mdx], consumer);
+	console.log("Packed Throughline passed Node-only, TypeScript, React SSR and MDX host checks.");
 } finally {
 	rmSync(scratch, { recursive: true, force: true });
 }
