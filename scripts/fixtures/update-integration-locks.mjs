@@ -7,7 +7,6 @@ import { fixtureDependencies, fixtureManifest } from "./integration-dependencies
 
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const scratch = mkdtempSync(join(tmpdir(), "throughline-lock-update-"));
-const emit = process.argv.includes("--emit");
 
 function run(cwd, command, args) {
   const result = spawnSync(command, args, { cwd, encoding: "utf8", maxBuffer: 8 * 1024 * 1024 });
@@ -36,16 +35,10 @@ try {
     }
     delete throughline.integrity;
     const data = JSON.stringify(lock, null, 2) + "\n";
-    if (emit) {
-      console.log("THL_LOCK_START " + name);
-      console.log(Buffer.from(data).toString("base64"));
-      console.log("THL_LOCK_END " + name);
-    } else {
-      const path = join(root, "scripts/fixtures/lockfiles");
-      mkdirSync(path, { recursive: true });
-      writeFileSync(join(path, name + ".json"), data);
-      console.log("Updated npm lockfile for " + name);
-    }
+    const path = join(root, "scripts/fixtures/lockfiles");
+    mkdirSync(path, { recursive: true });
+    writeFileSync(join(path, name + ".json"), data);
+    console.log("Updated npm lockfile for " + name);
   }
 } finally {
   rmSync(scratch, { recursive: true, force: true });
