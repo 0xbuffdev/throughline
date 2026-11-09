@@ -88,12 +88,7 @@ export function ThroughlinePlayer({
 		}
 	};
 
-	useSound(
-		state.step,
-		trace.frames.length,
-		!!sonification && sound,
-		sonification,
-	);
+	useSound(trace, state.step, !!sonification && sound, sonification);
 	const summary = frame
 		? describeFrame(frame, trace.frames.length)
 		: "No steps to display.";
