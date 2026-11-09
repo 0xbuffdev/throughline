@@ -148,3 +148,42 @@ it("keeps keyboard stepping on the player surface and audio explicitly optional"
 		.toHaveTextContent("Step 1 of 3");
 	await screen.getByRole("button", { name: "Pause" }).click();
 });
+
+it.each(["reconciliation", "distributed-checkout"] as const)(
+	"renders %s and seeks its final state in the React player",
+	async (id) => {
+		const example = EXAMPLES.find((candidate) => candidate.id === id)!;
+		const trace = compile(example.source);
+		const screen = await render(<ThroughlinePlayer trace={trace} />);
+		const timeline = screen.getByRole("slider", { name: "Timeline" });
+		await timeline.fill(String(trace.frames.length - 1));
+		await expect
+			.element(screen.getByRole("status"))
+			.toHaveTextContent(`Step ${trace.frames.length} of ${trace.frames.length}`);
+		expect(document.querySelectorAll(".thl-cell").length).toBeGreaterThan(0);
+		await screen.getByRole("button", { name: "Step back" }).click();
+		await expect
+			.element(screen.getByRole("status"))
+			.toHaveTextContent(`Step ${trace.frames.length - 1} of ${trace.frames.length}`);
+	},
+);
+
+it("renders the confirmed checkout transfer without inventing persistence", async () => {
+	const source = EXAMPLES.find((example) => example.id === "distributed-checkout")!.source;
+	const trace = compile(source);
+	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	const received = trace.frames.findIndex(
+		(frame) => frame.label === "Receive confirmed result",
+	);
+	expect(received).toBeGreaterThan(0);
+	await screen.getByRole("slider", { name: "Timeline" }).fill(String(received));
+	expect(
+		[...document.querySelectorAll(".thl-transferred title")].some((title) =>
+			title.textContent?.includes("provider → worker"),
+		),
+	).toBe(true);
+	expect(
+		trace.frames[received]!.state.entities.find((entity) => entity.id === "receipt")
+			?.value,
+	).toBe("unconfirmed");
+});
