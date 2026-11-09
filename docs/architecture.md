@@ -95,8 +95,10 @@ reduced-motion styles and replacement regressions.
 Sonification is explicitly opted into by the caller and is not
 triggered merely by importing the package. A provided `sonification`
 option is required to display sound controls. A running oscillator is
-stopped and disconnected at most once when playback changes; an
-already-ended voice does not break cleanup. Neither playback nor
+stopped and disconnected at most once when playback changes or when the
+trace object is replaced, including with an equal-length trace. Sound is
+not restarted by rerendering the same trace object. An already-ended
+voice does not break cleanup. Neither playback nor
 compilation records grades or authenticates learners.
 
 ## Build and trust boundaries
