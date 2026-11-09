@@ -59,7 +59,7 @@ try {
   const fumadocs = consumer("fumadocs", tarball, [
     "fumadocs-mdx@15.4.10", "fumadocs-core@16.17.8",
     "remark-math@6.0.0", "rehype-katex@7.0.1",
-    "@mdx-js/mdx@3.1.1", "react@19.3.1", "react-dom@19.3.1",
+    "@mdx-js/mdx@3.1.1", "vite@8.3.6", "react@19.3.1", "react-dom@19.3.1",
   ]);
   write(fumadocs, "source.config.ts", [
     'import { remarkMdxMermaid } from "fumadocs-core/mdx-plugins";',
