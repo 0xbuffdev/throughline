@@ -129,3 +129,22 @@ it("keeps stepping when audio is unavailable or a custom handler throws", async 
 		.toHaveTextContent("Step 3 of 3");
 	expect(onTone).toHaveBeenCalled();
 });
+
+it("releases an already-ended voice once even if a later stop throws", async () => {
+	const audio = audioBoundary();
+	const screen = await render(
+		<ThroughlinePlayer trace={trace} sonification={{ enabled: true }} />,
+	);
+	const first = audio.voices[0];
+	first.onended?.();
+	expect(first.disconnect).toHaveBeenCalledOnce();
+	expect(audio.gains[0].disconnect).toHaveBeenCalledOnce();
+	first.stop.mockImplementationOnce(() => {
+		throw new DOMException("Already ended", "InvalidStateError");
+	});
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 3");
+	expect(first.disconnect).toHaveBeenCalledOnce();
+	expect(audio.gains[0].disconnect).toHaveBeenCalledOnce();
+	await screen.unmount();
+});
