@@ -90,7 +90,10 @@ export function TraceMarkdown({ source }) {
       remarkPlugins={[remarkThroughline, attachSource]}
       components={{
         pre({ node, ...props }) {
-          const traceSource = node?.properties?.["data-thl-source"];
+          const code = node?.children?.find(
+            (child) => child.type === "element" && child.tagName === "code",
+          );
+          const traceSource = code?.properties?.["data-thl-source"];
           return typeof traceSource === "string"
             ? <ThroughlineEmbed source={traceSource} />
             : <pre {...props} />;
