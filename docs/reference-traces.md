@@ -10,12 +10,22 @@ exercising connected state, transfers, visibility and backward seeking.
 **Scenario:** An unordered list changes from children keyed `a, b` to
 children keyed `a, c`. Both roots are the same `ul` element type.
 
-1. Compare the roots and find the matching child `a` (same parent, stable
-   key and compatible element type).
-2. Retain `a`, plan removal of `b`, and prepare insertion of `c` in
-   the work-in-progress tree. The current tree is still unchanged.
-3. Review the commit plan. During the authored commit beat, hide old `b`
-   and show committed `c`. The retained `a` is not replaced.
+1. Compare the roots before revealing any child-match link.
+2. In the `Reuse key a` step, reveal the match for child `a` (same parent,
+   stable key and compatible element type).
+3. Retain `a`, plan removal of `b`, and prepare insertion of `c` in
+   the temporary work-in-progress illustration. The current tree remains
+   unchanged while the changes are planned.
+4. At commit, hide old `b`, retire the temporary work-in-progress nodes and
+   links, and show committed `c`. The retained `a` is not replaced.
+
+**Identity representation:** `added` denotes the proposed child in the
+temporary work-in-progress view; `committedC` denotes that same logical
+key `c` after it becomes a current-tree child. They are **illustrative
+phase-specific nodes**, not two simultaneously mounted React children or
+a claim about internal Fiber identity. The commit removes the WIP view
+altogether, leaving just current `a`, committed `c`, their root and the
+commit plan. The `a` entity retains its identity and value.
 
 **Accuracy boundary:** This is a simplified keyed-children explanation,
 not a complete simulation of React Fiber or an assertion about its
@@ -30,6 +40,7 @@ and [state preservation guidance](https://react.dev/learn/preserving-and-resetti
 | What makes key `a` eligible for reuse? | Its key, parent and element type match in this example. |
 | When is the old `b` removed? | In the commit beat, not while preparing the work-in-progress plan. |
 | Is the new `c` already in the current tree during planning? | No. It is first shown as work in progress and later as a committed child. |
+| Why do the two phases use different node IDs for `c`? | They represent one logical keyed child at different points in the illustration. The WIP representation is retired when the committed representation appears. |
 
 ## Distributed checkout: timeout, retry and recovery
 
