@@ -76,22 +76,32 @@ export function PlayerControls({
 				}
 			/>
 			<div className="thl-utilities">
-				<select
-					aria-label="Playback speed"
-					value={state.speed}
-					onChange={(event) =>
-						dispatch({
-							type: "speed",
-							to: Number(event.currentTarget.value) as Speed,
-						})
-					}
-				>
-					{SPEEDS.map((speed) => (
-						<option key={speed} value={speed}>
-							{speed}×
-						</option>
-					))}
-				</select>
+				<span className="thl-speed-control">
+					<select
+						aria-label="Playback speed"
+						value={state.speed}
+						onChange={(event) =>
+							dispatch({
+								type: "speed",
+								to: Number(event.currentTarget.value) as Speed,
+							})
+						}
+					>
+						{SPEEDS.map((speed) => (
+							<option key={speed} value={speed}>
+								{speed}×
+							</option>
+						))}
+					</select>
+					<svg
+						className="thl-speed-chevron"
+						viewBox="0 0 16 16"
+						fill="none"
+						aria-hidden="true"
+					>
+						<path d="m3.5 6 4.5 4 4.5-4" />
+					</svg>
+				</span>
 				{sound && (
 					<button
 						type="button"
