@@ -31,6 +31,16 @@ const html = renderToString(createElement(Content, { components: { ThroughlineEm
 assert.match(html, /Visualization player/);
 assert.match(html, /Bundler trace integration/);
 assert.match(html, /untouched/);
+const untouchedMarkdown = [
+  "# Unchanged MDX content", "", "Plain MDX without Throughline fences.", "",
+  "~~~js", "const stillPlain = true;", "~~~",
+].join("\n");
+const { code: plainCode } = await bundleMDX({ source: untouchedMarkdown, mdxOptions: withThroughline });
+const PlainContent = getMDXComponent(plainCode);
+const untouchedHtml = renderToString(createElement(PlainContent, { components: { ThroughlineEmbed } }));
+assert.match(untouchedHtml, /stillPlain = true/);
+assert.doesNotMatch(untouchedHtml, /Visualization player/);
+
 await assert.rejects(
   () => bundleMDX({
     source: "~~~thl flow\ninvalid\n~~~",
