@@ -34,9 +34,20 @@ build pipelines or other offline ESM environments without React or a DOM.
 | Module | Responsibility | React required? |
 | --- | --- | --- |
 | `@0xbuff/throughline` | Parsing, validation, compilation, tracer and types | No |
+| `@0xbuff/throughline/remark` | Validate parser-owned Markdown code nodes and report VFile errors | No |
 | `@0xbuff/throughline/react` | Accessible player and optional sonification | Yes, React 19 peer |
 | `@0xbuff/throughline/examples` | Public sample inputs | No |
 | `@0xbuff/throughline/styles/throughline.css` | Namespaced player CSS | No |
+
+The Remark entry point inspects mdast code nodes, checks domain-only metadata,
+compiles bounded parser-owned bodies and maps ProgramError line diagnostics
+through the host VFile. Statement columns are verified against the
+original Markdown when available, accounting for blockquote/list prefixes.
+Diagnostics without precise source provenance remain file-level instead of
+pointing at an unrelated fence header or Markdown container marker. The
+default mode is validation-only: it does not
+rewrite nodes, emit JSX, execute content or depend on a renderer. A document
+with many individual fences also needs host-level aggregate size limits.
 
 The root compiler does not fetch remote data or use runtime application
 services. External consumers import only the declared public exports;

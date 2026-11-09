@@ -7,6 +7,17 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ### Fixed
 
+- Use verified source coordinates for Remark body diagnostics in nested Markdown;
+  do not falsely attribute unpositioned semantic errors to the fence header.
+
+### Added
+
+- Added dependency-free `@0xbuff/throughline/remark` validation subpath for
+  parser-owned `thl` fences, source-positioned build failures and unchanged
+  Markdown ASTs; MDX rendering remains a separate integration.
+
+### Fixed
+
 - Announce native fullscreen request failures without interrupting in-page playback;
   expose player keyboard shortcuts and descriptive focus instructions.
 - Make ended sonification voices safe to clean up after step changes or unmount,

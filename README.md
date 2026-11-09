@@ -19,6 +19,7 @@ or application-specific runtime.
   frames without re-running the authored program.
 - **Five supported domains:** hand-authored `flow`, reference `bindings`,
   `binary` addition, `matrix` multiplication and recursive `callstack`.
+- **Remark validation is optional:** validate multiple `thl` fences with a standalone `./remark` plugin; Markdown remains unchanged.
 - **React is optional:** use the pure compiler from Node or other ESM
   environments without loading React or browser globals.
 - **Accessible playback:** keyboard navigation, step captions, a state
@@ -159,16 +160,49 @@ All five domains produce the same version-1 trace shape. Domains are
 intentionally limited; Throughline is not a general-purpose JavaScript
 interpreter or an automatic execution tracer.
 
+## Validate Markdown with Remark
+
+Import `remarkThroughline` from `@0xbuff/throughline/remark` and use it
+in a Unified/Remark pipeline. The default `validate` mode checks each
+`thl <domain>` fenced code node, fails the build with source-positioned
+VFile diagnostics for invalid content, and leaves all Markdown nodes
+unchanged. Ordinary fences are unaffected. No React dependency is required.
+
+~~~ts
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkStringify from "remark-stringify";
+import { remarkThroughline } from "@0xbuff/throughline/remark";
+
+const processor = unified()
+  .use(remarkParse)
+  .use(remarkThroughline) // or .use(remarkThroughline, { mode: "validate" })
+  .use(remarkStringify);
+
+await processor.process({ path: "lesson.md", value: markdownSource });
+~~~
+
+The code fence header must contain exactly a supported domain, such as
+\`\`\`thl flow\`\`\`; additional fence metadata is not supported. The host
+parser supplies code-body lines and file positions. The validator locates
+body tokens from the original Markdown, including list and blockquote prefixes.
+When no trustworthy position exists, the error remains file-level rather
+than pointing at an unrelated fence header. A Markdown document
+may contain multiple traces, but publishers should also bound total document
+size and number of fences. The validator never renders the player or emits
+JSX. The opt-in MDX transformation and React bridge are separate future work.
+
 ## Public package exports
 
 | Import path | Contents |
 | --- | --- |
 | `@0xbuff/throughline` | Core compiler, parser, types, validation, tracer |
+| `@0xbuff/throughline/remark` | Build-time `remarkThroughline` validator (no React dependency) |
 | `@0xbuff/throughline/react` | Optional `ThroughlinePlayer` and React types |
 | `@0xbuff/throughline/examples` | Copyable authored fixtures |
 | `@0xbuff/throughline/styles/throughline.css` | Opt-in, namespaced CSS |
 
-Only these four entry points are supported; importing from package
+Only these five entry points are supported; importing from package
 `src/` or `dist/` paths is not part of the API. The compiler is
 React-free, network-free and usable in offline tooling.
 
