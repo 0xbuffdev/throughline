@@ -5,6 +5,11 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Fixed
+
+- Use verified source coordinates for Remark body diagnostics in nested Markdown;
+  do not falsely attribute unpositioned semantic errors to the fence header.
+
 ### Added
 
 - Added dependency-free `@0xbuff/throughline/remark` validation subpath for
