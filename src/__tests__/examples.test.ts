@@ -3,6 +3,7 @@ import { compile } from "../domains/registry.js";
 import { EXAMPLES } from "../examples.js";
 import type { Frame, Trace } from "../model.js";
 import { initialSeek, seekReducer } from "../seek.js";
+import { visibleScene } from "../scene.js";
 
 const reference = (id: (typeof EXAMPLES)[number]["id"]) => {
 	const example = EXAMPLES.find((candidate) => candidate.id === id);
@@ -69,11 +70,29 @@ describe("reference explanations", () => {
 		},
 	);
 
-	it("plans keyed changes before committing them", () => {
+	it("reveals matching only when established and retires the temporary WIP tree at commit", () => {
 		const trace = reference("reconciliation");
 		const initial = trace.frames[0]!;
+		const compared = at(trace, "Compare the roots");
+		const reused = at(trace, "Reuse key a");
 		const ready = at(trace, "Ready to commit");
 		const committed = at(trace, "Commit the planned tree");
+		const match = (frame: Frame) =>
+			frame.state.relations.find((relation) => relation.id === "matchA")?.hidden;
+		const visibleIds = (frame: Frame) => {
+			const scene = visibleScene(frame.state);
+			return {
+				nodes: scene.entities.map((entity) => entity.id),
+				links: scene.relations.map((relation) => relation.id),
+			};
+		};
+
+		expect(match(initial)).toBe(true);
+		expect(match(compared)).toBe(true);
+		expect(visibleIds(compared).links).not.toContain("matchA");
+		expect(match(reused)).toBe(false);
+		expect(visibleIds(reused).links).toContain("matchA");
+		expect(match(ready)).toBe(false);
 
 		expect(value(ready, "changes")).toEqual(["remove b", "insert c"]);
 		expect(ready.state.entities.find((entity) => entity.id === "b")?.hidden)
@@ -82,12 +101,27 @@ describe("reference explanations", () => {
 			ready.state.entities.find((entity) => entity.id === "committedC")
 				?.hidden,
 		).toBe(true);
+		expect(visibleIds(ready).nodes).toEqual([
+			"current", "a", "b", "next", "reuse", "added", "changes",
+		]);
+		expect(visibleIds(ready).links).toEqual([
+			"currentA", "currentB", "nextA", "matchA", "nextC",
+		]);
+
 		expect(committed.state.entities.find((entity) => entity.id === "b")?.hidden)
 			.toBe(true);
 		expect(
 			committed.state.entities.find((entity) => entity.id === "committedC")
 				?.hidden,
 		).toBe(false);
+		expect(visibleIds(committed)).toEqual({
+			nodes: ["current", "a", "committedC", "changes"],
+			links: ["currentA", "currentC"],
+		});
+		for (const id of ["nextA", "nextC", "matchA", "currentB"]) {
+			expect(committed.state.relations.find((relation) => relation.id === id)
+				?.hidden).toBe(true);
+		}
 		expect(value(committed, "a")).toEqual(value(initial, "a"));
 		expect(value(committed, "changes")).toEqual([
 			"remove b",
@@ -95,6 +129,29 @@ describe("reference explanations", () => {
 			"committed",
 		]);
 		expect(committed.state.transfers).toEqual([]);
+	});
+
+	it.each([
+		["Receive checkout request", "request", "customer", "api"],
+		["Persist pending order", "create", "api", "order"],
+		["Enqueue payment job", "enqueue", "api", "queue"],
+		["Show processing status", "outcome", "api", "status"],
+		["Deliver first attempt", "dequeue", "queue", "worker"],
+		["Send first charge request", "charge", "worker", "provider"],
+		["Deliver retry", "dequeue", "queue", "worker"],
+		["Resend same charge key", "charge", "worker", "provider"],
+		["Receive confirmed result", "acknowledge", "provider", "worker"],
+		["Persist payment confirmation", "confirm", "worker", "receipt"],
+		["Mark order paid", "update", "worker", "order"],
+		["Notify customer of recovery", "outcome", "api", "status"],
+	] as const)("routes %s along %s from %s to %s", (label, relation, from, to) => {
+		const frame = at(reference("distributed-checkout"), label);
+		expect(frame.state.transfers.map((transfer) => transfer.relation)).toEqual([
+			relation,
+		]);
+		expect(
+			frame.state.relations.find((candidate) => candidate.id === relation),
+		).toMatchObject({ id: relation, from, to });
 	});
 
 	it("distinguishes checkout messages, unknown outcomes and persisted recovery", () => {
