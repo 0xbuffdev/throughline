@@ -414,3 +414,63 @@ it("keeps sound controllers alongside fullscreen at narrow widths", async () => 
 		.element(screen.getByRole("button", { name: "Maximize player" }))
 		.toBeInTheDocument();
 });
+
+it("keeps observing the same scene stage across empty and populated trace transitions", async () => {
+	const empty = { version: 1 as const, frames: [] };
+	const populated = compile(EXAMPLES[0].source);
+	const screen = await render(<ThroughlinePlayer trace={empty} />);
+	const player = document.querySelector(".thl") as HTMLElement;
+	const stage = player.querySelector(".thl-stage");
+	const sceneWidth = (): number | undefined => {
+		const viewBox = player.querySelector(".thl-scene")?.getAttribute("viewBox");
+		return viewBox ? Number(viewBox.split(" ")[2]) : undefined;
+	};
+
+	expect(stage).not.toBeNull();
+	expect(player.querySelector(".thl-scene")).toBeNull();
+	expect(player.querySelector(".thl-empty")?.textContent).toBe(
+		"No steps to display.",
+	);
+
+	player.style.width = "320px";
+	await screen.rerender(<ThroughlinePlayer trace={populated} />);
+	expect(player.querySelector(".thl-stage")).toBe(stage);
+	await expect.poll(sceneWidth).toBeLessThan(320);
+
+	player.style.width = "620px";
+	await expect.poll(sceneWidth).toBeGreaterThan(500);
+
+	await screen.rerender(<ThroughlinePlayer trace={empty} />);
+	expect(player.querySelector(".thl-stage")).toBe(stage);
+	expect(player.querySelector(".thl-scene")).toBeNull();
+
+	player.style.width = "300px";
+	await screen.rerender(<ThroughlinePlayer trace={populated} />);
+	expect(player.querySelector(".thl-stage")).toBe(stage);
+	await expect.poll(sceneWidth).toBeLessThan(300);
+	expect(player.scrollWidth).toBeLessThanOrEqual(player.clientWidth);
+});
+
+it("shows a decorative playback speed chevron without replacing the native select", async () => {
+	const trace = compile(EXAMPLES[0].source);
+	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	const speed = screen.getByRole("combobox", { name: "Playback speed" });
+	const chevron = document.querySelector(".thl-speed-chevron") as SVGElement;
+	const wrapper = document.querySelector(".thl-speed-control") as HTMLElement;
+
+	expect(wrapper.contains(speed.element())).toBe(true);
+	expect(wrapper.contains(chevron)).toBe(true);
+	expect(chevron.getAttribute("aria-hidden")).toBe("true");
+	expect(getComputedStyle(chevron).pointerEvents).toBe("none");
+	expect(getComputedStyle(chevron).position).toBe("absolute");
+	expect(chevron.getBoundingClientRect().width).toBeGreaterThan(0);
+	expect(chevron.getBoundingClientRect().right).toBeLessThanOrEqual(
+		wrapper.getBoundingClientRect().right,
+	);
+	expect(getComputedStyle(speed.element()).appearance).toBe("none");
+
+	await speed.selectOptions("2");
+	await expect.element(speed).toHaveValue("2");
+	await speed.selectOptions("0.5");
+	await expect.element(speed).toHaveValue("0.5");
+});
