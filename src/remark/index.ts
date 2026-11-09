@@ -93,7 +93,7 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 				}
 				const body = node.value;
 				if (typeof body !== "string") {
-					fail("Expected a Throughline code block body.", headerLine);
+					return fail("Expected a Throughline code block body.", headerLine);
 				}
 				try {
 					// compileAst deliberately bypasses the fenced-source parser;
