@@ -120,6 +120,28 @@ Sound controls appear only when the host supplies `sonification`. The
 inspector remains optional, the trace reference should remain stable while
 stepping, and complete custom stylesheets must retain accessibility.
 
+### Playback accessibility
+
+Focus the **Visualization player** to use Left/Right arrows for stepping,
+Home/End to jump to the first/last step, and Space to play or pause. Native
+buttons, the labeled timeline slider and the playback-speed selector keep
+their own keyboard interactions; shortcuts do not steal keystrokes from
+focused controls. Each frame has an accessible text summary. **Inspect
+state** is a native disclosure exposing complete visible values.
+
+Playback starts paused at the first frame. Changing to a different trace
+object resets the step, playback and speed; passing a stable trace object
+during ordinary renders avoids unnecessary resets. The timeline describes
+**steps**, not elapsed media time. At narrow widths the controls rearrange
+without a separate horizontal scroll area. Transfer animations are disabled
+under `prefers-reduced-motion: reduce`.
+
+Sound is off by default, and the host must provide a `sonification` option
+before the user can enable it. A host can explicitly start enabled using
+`sonification={{ enabled: true }}`. A refused fullscreen request is
+announced to assistive technology; playback remains available in-page.
+Browser support and host policies determine whether fullscreen can start.
+
 ## Supported domains
 
 | Domain | What it explains | Authoring model |
