@@ -138,7 +138,10 @@ under `prefers-reduced-motion: reduce`.
 
 Sound is off by default, and the host must provide a `sonification` option
 before the user can enable it. A host can explicitly start enabled using
-`sonification={{ enabled: true }}`. A refused fullscreen request is
+`sonification={{ enabled: true }}`. A new trace object restarts its initial
+sound cue and stops the previous one, even when both traces have the same
+number of frames; rerendering with the same trace does not replay audio.
+A refused fullscreen request is
 announced to assistive technology; playback remains available in-page.
 Browser support and host policies determine whether fullscreen can start.
 
