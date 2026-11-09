@@ -48,8 +48,8 @@ export function ThroughlinePlayer({
 			setFullscreenAvailable(
 				Boolean(
 					document.fullscreenEnabled &&
-						ref.current?.requestFullscreen &&
-						document.exitFullscreen &&
+						typeof ref.current?.requestFullscreen === "function" &&
+						typeof document.exitFullscreen === "function" &&
 						(!active || active === ref.current),
 				),
 			);
