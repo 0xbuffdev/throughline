@@ -155,7 +155,9 @@ it("releases the previous voice and cues a new trace with the same frame count",
 		<ThroughlinePlayer trace={replacement} sonification={{ enabled: true }} />,
 	);
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 3");
-	expect(first.stop).toHaveBeenLastCalledWith();
+	// The first stop schedules the tone end; the second cancels it on replacement.
+	expect(first.stop).toHaveBeenCalledTimes(2);
+	expect(first.stop).toHaveBeenNthCalledWith(2);
 	expect(first.disconnect).toHaveBeenCalledOnce();
 	expect(audio.gains[0].disconnect).toHaveBeenCalledOnce();
 	expect(audio.voices).toHaveLength(2);
