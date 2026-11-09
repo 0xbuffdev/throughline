@@ -17,6 +17,8 @@ type MarkdownNode = {
 type MarkdownRoot = { type: string; children: readonly MarkdownNode[] };
 type Point = { line: number; column: number };
 type DiagnosticFile = {
+	/** Original Markdown when available for precise source columns. */
+	value?: string | Uint8Array;
 	fail: (
 		reason: string,
 		options?: { place?: Point; source?: string; ruleId?: string },
@@ -52,73 +54,79 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 	}
 
 	return (tree: MarkdownRoot, file: DiagnosticFile): void => {
+		const markdownLines = typeof file.value === "string"
+			? file.value.split(/\r\n?|\n/)
+			: undefined;
 		const visit = (node: MarkdownNode): void => {
 			if (node.type === "code" && node.lang === "thl") {
 				const start = node.position?.start;
 				const positioned = validPoint(start);
 				const headerLine = positioned ? start.line : undefined;
-				const fail = (reason: string, line?: number): never => {
-					const place =
-						positioned
-							? {
-									line:
-										line !== undefined && Number.isSafeInteger(line) && line > 0
-											? line
-											: start.line,
-									column: line === undefined || line === start.line
-										? start.column
-										: 1,
-								}
-							: undefined;
-					return file.fail(reason, {
+				const fail = (reason: string, place?: Point): never =>
+					file.fail(reason, {
 						...(place ? { place } : {}),
 						source: "@0xbuff/throughline",
 						ruleId: "invalid-trace",
 					});
+
+				// mdast strips blockquote/list prefixes and indentation from
+				// code values. Locate the exact token in the original file,
+				// or omit the clickable position if it cannot be verified.
+				const bodyPosition = (line: number, lines: readonly string[]): Point | undefined => {
+					if (!positioned || !markdownLines || line <= start.line) return undefined;
+					const token = lines[line - start.line - 1]?.trim();
+					const original = markdownLines[line - 1];
+					if (!token || original === undefined) return undefined;
+					const offset = original.indexOf(token);
+					if (offset < 0 || original.lastIndexOf(token) !== offset) return undefined;
+					return { line, column: offset + 1 };
 				};
 				const meta = node.meta?.trim() ?? "";
 				const tokens = meta ? meta.split(/\s+/) : [];
 				if (tokens.length !== 1) {
 					fail(
 						'Expected exactly one domain after "thl" (no extra metadata).',
-						headerLine,
+						positioned ? start : undefined,
 					);
 				}
 				const domain = tokens[0];
 				if (!(SUPPORTED_DOMAINS as readonly string[]).includes(domain)) {
 					fail(
 						`Unknown Throughline domain "${domain}". Use ${SUPPORTED_DOMAINS.join(", ")}.`,
-						headerLine,
+						positioned ? start : undefined,
 					);
 				}
 				const body = node.value;
 				if (typeof body !== "string") {
-					return fail("Expected a Throughline code block body.", headerLine);
+					return fail("Expected a Throughline code block body.", positioned ? start : undefined);
 				}
+				const lines = body.split(/\r\n?|\n/);
 				try {
 					// compileAst deliberately bypasses the fenced-source parser;
 					// enforce the same input budget before splitting host-owned code.
 					checkSourceSize(body.length + domain.length + 5);
 					compileAst({
 						kind: domain,
-						lines: body.split(/\r\n?|\n/),
+						lines,
 						...(headerLine !== undefined ? { source: { line: headerLine } } : {}),
 					});
 				} catch (error) {
 					if (!(error instanceof ProgramError)) throw error;
-					const first = error.diagnostics.find(
-						(diagnostic) =>
-							diagnostic.line !== undefined &&
-							Number.isSafeInteger(diagnostic.line) &&
-							diagnostic.line > 0,
-					);
-					// The core uses line 1 when no source location is supplied.
-					// Do not pretend that line belongs to an unpositioned document.
+					// Semantic validation may report no source line (e.g. duplicate
+					// IDs). It must never be presented as a fence-header error.
+					const firstLine = error.diagnostics[0]?.line;
+					const place =
+						firstLine !== undefined &&
+						Number.isSafeInteger(firstLine) &&
+						firstLine > 0
+							? bodyPosition(firstLine, lines)
+							: undefined;
+					// Core line 1 is block-relative without mdast positions.
 					const reason =
 						headerLine === undefined
-							? error.message.replace(/(^|\n)Line \d+: /g, "$1")
+							? error.message.replace(/(^|\\n)Line \\d+: /g, "$1")
 							: error.message;
-					fail(reason, first?.line);
+					return fail(reason, place);
 				}
 			}
 			for (const child of node.children ?? []) visit(child);
