@@ -30,6 +30,22 @@ describe("seekReducer", () => {
 		expect(seekReducer(s, { type: "tick" })).toBe(s);
 	});
 
+	it("resets in-flight playback and speed on an unrelated trace", () => {
+		const running = { ...initialSeek(8), step: 5, playing: true, speed: 2 as const };
+		const reset = seekReducer(running, { type: "reset", max: 1 });
+		expect(reset).toEqual(initialSeek(1));
+		expect(seekReducer(reset, { type: "tick" })).toBe(reset);
+	});
+
+	it("changing speed preserves the current frame and paused state", () => {
+		const paused = { ...initialSeek(3), step: 2 };
+		expect(seekReducer(paused, { type: "speed", to: 0.5 })).toMatchObject({
+			step: 2,
+			playing: false,
+			speed: 0.5,
+		});
+	});
+
 	it("speed halves and doubles the cadence", () => {
 		expect(stepDelayMs(1500, 2)).toBe(750);
 		expect(stepDelayMs(1500, 0.5)).toBe(3000);
