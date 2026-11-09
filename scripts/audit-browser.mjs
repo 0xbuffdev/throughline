@@ -168,10 +168,16 @@ try {
 	const visual = await player.evaluate((element) => ({
 		overflow: element.scrollWidth > element.clientWidth,
 		border: getComputedStyle(element).borderTopWidth,
+		radiusToken: getComputedStyle(element).getPropertyValue("--thl-radius").trim(),
+		controls: getComputedStyle(element.querySelector(".thl-controls")).display,
+		captionBorder: getComputedStyle(element.querySelector(".thl-caption")).borderTopWidth,
 		reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
 	}));
 	assert.equal(visual.overflow, false, "Player overflows at phone width");
-	assert.equal(visual.border, "1px", "Package CSS did not load");
+	assert.equal(visual.radiusToken, "0.325rem", "Package CSS tokens did not load");
+	assert.equal(visual.border, "0px", "The player must not have an outer border");
+	assert.equal(visual.captionBorder, "0px", "The caption must remain borderless");
+	assert.equal(visual.controls, "grid", "Package control-bar styles did not load");
 	assert.equal(visual.reducedMotion, true, "Reduced-motion media preference absent");
 
 	await page.getByRole("button", { name: "Step forward" }).click();
