@@ -71,6 +71,8 @@ async function assertHydratedPage(dir, pagePath, label, plainPath = "/plain.html
       const pathname = decodeURIComponent(new URL(request.url, "http://localhost").pathname);
       let file = resolve(output, "." + (pathname === "/" ? "/index.html" : pathname));
       if (existsSync(file) && statSync(file).isDirectory()) file = join(file, "index.html");
+      // The Fumadocs/React Router fixture is a client-routed Vite export.
+      if (!existsSync(file) && pathname === "/plain") file = join(output, "index.html");
       if (!file.startsWith(output + sep) || !existsSync(file) || !statSync(file).isFile()) {
         response.writeHead(404);
         response.end("Not found");
@@ -114,6 +116,10 @@ async function assertHydratedPage(dir, pagePath, label, plainPath = "/plain.html
     }));
     assert.equal(styling.radius, "0.325rem", label + " did not load package CSS");
     assert.equal(styling.overflow, false, label + " overflows on mobile");
+    if (label === "Fumadocs / React Router") {
+      assert((await page.locator(".katex").count()) > 0, "Fumadocs lost remark-math / rehype-katex");
+      assert((await page.getByTestId("mermaid-fixture").count()) > 0, "Fumadocs lost Mermaid JSX output");
+    }
     assert.deepEqual(errors, [], label + " emitted browser errors");
     await page.goto(origin + plainPath, { waitUntil: "networkidle" });
     assert.match(await page.locator("body").textContent(), /Unchanged MDX content/);
@@ -132,7 +138,7 @@ try {
   // A real Fumadocs Unified project must generate entries from a source.config.ts
   // retaining existing remark/rehype hooks. It must also validate malformed fences.
   const fumadocs = consumer("fumadocs", tarball, [
-    "fumadocs-mdx@15.4.10", "fumadocs-core@16.17.8",
+    "fumadocs-mdx@15.4.10", "fumadocs-core@16.17.8", "react-router@8.5.1",
     "remark-math@6.0.0", "rehype-katex@7.0.1",
     "@mdx-js/mdx@3.1.1", "vite@8.3.6", "react@19.3.1", "react-dom@19.3.1",
   ]);
@@ -153,7 +159,13 @@ try {
     "---", "title: Trace integration", "description: A safe MDX build.", "---", "",
     "# Trace integration", "", "$1+1=2$", "",
     "~~~thl flow", 'node a "A" = 0', 'step "Advance"', "  set a = 1", "~~~",
+    "", "~~~mermaid", "graph TD", "  A --> B", "~~~",
     "", "~~~js", "const untouched = true;", "~~~",
+  ].join("\n"));
+  write(fumadocs, "content/docs/plain.mdx", [
+    "---", "title: Unchanged MDX content", "---", "",
+    "# Unchanged MDX content", "", "Ordinary Markdown without a trace.", "",
+    "~~~js", "const stillPlain = true;", "~~~",
   ].join("\n"));
   run(fumadocs, join(fumadocs, "node_modules/.bin/fumadocs-mdx"), []);
   assert(existsSync(join(fumadocs, ".source")), "Fumadocs config did not generate .source");
@@ -172,9 +184,63 @@ try {
     'assert.match(compiled, /ThroughlineEmbed/);',
     'assert.match(compiled, /untouched/);',
     'assert.match(compiled, /katex/);',
+    'assert.match(compiled, /Mermaid/);',
+    'const plain = readFileSync("./content/docs/plain.mdx", "utf8");',
+    'const plainCompiled = String(await compile(plain.replace(/^---[\\\\s\\\\S]*?---\\\\n/, ""), { remarkPlugins: plugins, rehypePlugins: rehype }));',
+    'assert.match(plainCompiled, /stillPlain/);',
+    'assert.doesNotMatch(plainCompiled, /ThroughlineEmbed/);',
     'await assert.rejects(() => compile("~~~thl flow\\ninvalid\\n~~~", { remarkPlugins: plugins, rehypePlugins: rehype }), /invalid|Expected|Unknown/i);',
   ].join("\n");
   run(fumadocs, "node", ["--experimental-strip-types", "--input-type=module", "-e", fumadocsCheck]);
+
+
+  // Exercise Fumadocs' real Vite MDX compiler and the React Router component
+  // boundary. The generated .source alone does not prove MDX renders in a route.
+  write(fumadocs, "vite.config.mjs", [
+    'import { defineConfig } from "vite";',
+    'import { fumadocsMdx } from "fumadocs-mdx/vite";',
+    'export default defineConfig({ plugins: [fumadocsMdx()] });',
+  ].join("\n"));
+  write(fumadocs, "src/docs.js", [
+    'import { defineDocs } from "fumadocs-mdx/macro";',
+    'export const docs = defineDocs({ dir: "content/docs" });',
+  ].join("\n"));
+  write(fumadocs, "index.html", [
+    '<!doctype html><html lang="en"><head><meta charset="utf-8"></head>',
+    '<body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>',
+  ].join("\n"));
+  write(fumadocs, "src/main.jsx", [
+    'import React, { useEffect } from "react";',
+    'import { createRoot } from "react-dom/client";',
+    'import { BrowserRouter, Routes, Route } from "react-router";',
+    'import { docs } from "./docs.js";',
+    'import { ThroughlineEmbed as BaseEmbed } from "@0xbuff/throughline/react";',
+    'import "@0xbuff/throughline/styles/throughline.css";',
+    'function ThroughlineEmbed(props) {',
+    '  useEffect(() => { window.__THL_HYDRATED = true; }, []);',
+    '  return React.createElement(BaseEmbed, props);',
+    '}',
+    'const components = {',
+    '  ThroughlineEmbed,',
+    '  Mermaid: () => React.createElement("div", { "data-testid": "mermaid-fixture" }, "Mermaid diagram"),',
+    '};',
+    'function Document({ name }) {',
+    '  const page = docs.getPage(name + ".mdx") ?? docs.getPage(name) ??',
+    '    docs.getPages().find((item) => item.path.endsWith("/" + name + ".mdx"));',
+    '  if (!page) throw new Error("Missing generated Fumadocs page: " + name);',
+    '  const Content = page.body;',
+    '  return React.createElement(Content, { components });',
+    '}',
+    'const app = React.createElement(BrowserRouter, null,',
+    '  React.createElement(Routes, null,',
+    '    React.createElement(Route, { path: "/", element: React.createElement(Document, { name: "index" }) }),',
+    '    React.createElement(Route, { path: "/plain", element: React.createElement(Document, { name: "plain" }) }),',
+    '  ));',
+    'createRoot(document.getElementById("root")).render(app);',
+  ].join("\n"));
+  run(fumadocs, join(fumadocs, "node_modules/.bin/vite"), ["build"]);
+  assert(existsSync(join(fumadocs, "dist/index.html")), "Fumadocs React Router fixture did not build");
+  await assertHydratedPage(join(fumadocs, "dist"), "/", "Fumadocs / React Router", "/plain");
 
   // A Next.js App Router build checks the real @next/mdx loader, component map,
   // React client boundary and CSS import. webpack allows function-form plugins.
