@@ -25,9 +25,10 @@ const code = (
 		: { position: { start: { line, column: 1 } } }),
 });
 
-function validate(tree: Node) {
+function validate(tree: Node, markdown?: string) {
 	const failures: Error[] = [];
 	const file = {
+		...(markdown === undefined ? {} : { value: markdown }),
 		fail: (
 			reason: string,
 			options?: {
@@ -68,12 +69,14 @@ describe("remarkThroughline validation", () => {
 	});
 
 	it("maps invalid source body lines to their original Markdown lines", () => {
+		const value = 'node x "X" = 0\ninvalid';
+		const markdown = "\n".repeat(19) + `~~~thl flow\n${value}\n~~~`;
 		const tree = {
 			type: "root",
-			children: [code("flow", 'node x "X" = 0\ninvalid', 20)],
+			children: [code("flow", value, 20)],
 		};
 		try {
-			validate(tree);
+			validate(tree, markdown);
 			throw new Error("Expected failure");
 		} catch (error) {
 			expect(error).toMatchObject({
@@ -105,6 +108,43 @@ describe("remarkThroughline validation", () => {
 			expect(error).not.toHaveProperty("column");
 			expect((error as Error).message).not.toMatch(/Line 1:/);
 			expect((error as Error).message).toMatch(/Expected node/);
+		}
+	});
+
+	it.each([
+		[
+			"duplicate entity",
+			'node a "A" = 1\nnode a "A" = 2',
+			/Duplicate entity/,
+		],
+		[
+			"unknown relation",
+			'node a "A" = 1\nstep "Send"\nsend missing',
+			/relation/i,
+		],
+	] as const)(
+		"does not attribute a semantic %s error to the fence header",
+		(_case, body, pattern) => {
+			const markdown = `~~~thl flow\n${body}\n~~~`;
+			try {
+				validate({ type: "root", children: [code("flow", body, 1)] }, markdown);
+				throw new Error("Expected failure");
+			} catch (error) {
+				expect((error as Error).message).toMatch(pattern);
+				expect(error).not.toHaveProperty("line");
+				expect(error).not.toHaveProperty("column");
+			}
+		},
+	);
+
+	it("does not guess a body column without original Markdown", () => {
+		try {
+			validate({ type: "root", children: [code("flow", "invalid", 4)] });
+			throw new Error("Expected failure");
+		} catch (error) {
+			expect((error as Error).message).toMatch(/Line 5/);
+			expect(error).not.toHaveProperty("line");
+			expect(error).not.toHaveProperty("column");
 		}
 	});
 
