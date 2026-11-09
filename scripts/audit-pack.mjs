@@ -182,7 +182,7 @@ try {
 		'const before = JSON.stringify(ast);',
 		'proc.runSync(ast, { path: "lesson.md" });',
 		'assert.equal(JSON.stringify(ast), before);',
-		'assert.match(String(await proc.process(md)), /~~~js/);',
+		'assert.match(String(await proc.process(md)), /(?:```|~~~)js\\nbad/);',
 		'await assert.rejects(() => proc.process({ path: "broken.md", value: "# Heading\\n\\n~~~thl flow\\nnode x \\\"X\\\" = 1\\ninvalid\\n~~~" }), (error) => { assert.equal(error.line, 5); assert.equal(error.file, "broken.md"); return true; });',
 	].join("\n");
 	run("node", ["--input-type=module", "-e", remark], consumer);
