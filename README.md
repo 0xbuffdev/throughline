@@ -184,7 +184,10 @@ await processor.process({ path: "lesson.md", value: markdownSource });
 
 The code fence header must contain exactly a supported domain, such as
 \`\`\`thl flow\`\`\`; additional fence metadata is not supported. The host
-parser supplies code-body lines and file positions. A Markdown document
+parser supplies code-body lines and file positions. The validator locates
+body tokens from the original Markdown, including list and blockquote prefixes.
+When no trustworthy position exists, the error remains file-level rather
+than pointing at an unrelated fence header. A Markdown document
 may contain multiple traces, but publishers should also bound total document
 size and number of fences. The validator never renders the player or emits
 JSX. The opt-in MDX transformation and React bridge are separate future work.
