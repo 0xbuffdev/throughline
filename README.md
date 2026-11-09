@@ -86,17 +86,39 @@ import "@0xbuff/throughline/styles/throughline.css";
 const trace = compile(EXAMPLES[0].source);
 
 export function TraceDemo() {
-  return <ThroughlinePlayer trace={trace} theme="auto" />;
+  return <ThroughlinePlayer trace={trace} title="React Reconciliation" theme="auto" />;
 }
 ~~~
 
-Import the optional stylesheet once in the host application. The player accepts
-`light`, `dark` or `auto` themes and supports `--thl-*` CSS variables.
-Override those variables using the player's `className` prop and a host
-stylesheet loaded after the package CSS. A complete custom stylesheet is
-also possible, but must provide the required layout and accessibility styles.
-Pass a stable trace reference while stepping; replacing it resets playback.
-Audio controls are absent unless you explicitly supply `sonification`.
+Import the optional stylesheet once in the host application. The player
+accepts an optional `title` (omitted when absent), and `light`, `dark` or
+`auto` themes. The borderless, pale-light/charcoal-dark shell centers the
+visualization above a caption with an exact `Step N of M` indicator and a
+bottom control bar. Playback is **step-based**: there is no invented media
+time. The optional state inspector remains in the caption.
+
+The shell's default `--thl-radius` is `0.325rem` and node outline width is
+`--thl-node-border-width: 0.125rem`. Host overrides are scoped to the
+player; for example, with `className="my-trace"` and a stylesheet loaded
+after the package CSS:
+
+~~~css
+.thl.my-trace {
+  --thl-radius: 0.5rem;
+  --thl-bg: light-dark(oklch(0.98 0 0), oklch(0.14 0 0));
+}
+~~~
+
+The `--thl-bg`, `--thl-panel`, `--thl-surface`, `--thl-text`,
+`--thl-muted`, `--thl-line`, `--thl-focus`, `--thl-change` and
+control tokens belong to the player, not the host's `:root` or `.dark`.
+
+The bottom-right **Maximize player** button enters native browser fullscreen
+and changes to **Minimize player** while active, including when fullscreen
+changes via Esc. It is disabled where the API is unavailable or blocked.
+Sound controls appear only when the host supplies `sonification`. The
+inspector remains optional, the trace reference should remain stable while
+stepping, and complete custom stylesheets must retain accessibility.
 
 ## Supported domains
 
