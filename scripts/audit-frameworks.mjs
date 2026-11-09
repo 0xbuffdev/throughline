@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import { chromium } from "@playwright/test";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -48,6 +50,78 @@ function assertBuiltPage(dir, path, label) {
   const html = readFileSync(file, "utf8");
   assert.match(html, /Visualization player/, label + " did not render the trace");
   assert.match(html, /trace integration/i, label + " lost surrounding MDX content");
+}
+
+
+/** Serve an actual framework export and verify browser hydration, not just SSR. */
+async function assertHydratedPage(dir, pagePath, label) {
+  const output = resolve(dir);
+  const types = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".mjs": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json",
+    ".svg": "image/svg+xml",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+  };
+  const server = createServer((request, response) => {
+    try {
+      const pathname = decodeURIComponent(new URL(request.url, "http://localhost").pathname);
+      const file = resolve(output, "." + (pathname === "/" ? "/index.html" : pathname));
+      if (!file.startsWith(output + sep) || !existsSync(file) || !statSync(file).isFile()) {
+        response.writeHead(404);
+        response.end("Not found");
+        return;
+      }
+      response.setHeader("Content-Type", types[extname(file)] ?? "application/octet-stream");
+      response.end(readFileSync(file));
+    } catch {
+      response.writeHead(400);
+      response.end("Bad request");
+    }
+  });
+  let browser;
+  try {
+    await new Promise((done, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", done);
+    });
+    browser = await chromium.launch();
+    const page = await browser.newPage({ viewport: { width: 375, height: 812 }, reducedMotion: "reduce" });
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    const origin = "http://127.0.0.1:" + server.address().port;
+    await page.goto(origin + pagePath, { waitUntil: "networkidle" });
+    const player = page.getByRole("group", { name: "Visualization player" });
+    await player.waitFor({ state: "visible" });
+    await page.waitForFunction(() => window.__THL_HYDRATED === true);
+    const initial = (await page.getByRole("status").textContent()).trim();
+    await page.getByRole("button", { name: "Step forward" }).click();
+    await page.waitForFunction((before) => {
+      const current = document.querySelector('[role="status"]')?.textContent?.trim();
+      return current && current !== before;
+    }, initial);
+    assert.match(await page.getByRole("status").textContent(), /Step 2 of/);
+    const styling = await player.evaluate((node) => ({
+      radius: getComputedStyle(node).getPropertyValue("--thl-radius").trim(),
+      overflow: node.scrollWidth > node.clientWidth,
+    }));
+    assert.equal(styling.radius, "0.325rem", label + " did not load package CSS");
+    assert.equal(styling.overflow, false, label + " overflows on mobile");
+    assert.deepEqual(errors, [], label + " emitted browser errors");
+    await page.goto(origin + "/plain.html", { waitUntil: "networkidle" });
+    assert.match(await page.locator("body").textContent(), /Unchanged MDX content/);
+    assert.equal(await page.getByRole("group", { name: "Visualization player" }).count(), 0);
+    assert.deepEqual(errors, [], label + " plain page emitted browser errors");
+  } finally {
+    await browser?.close();
+    await new Promise((done) => server.close(done));
+  }
 }
 
 try {
@@ -122,7 +196,12 @@ try {
   ].join("\n"));
   write(next, "app/trace-embed.jsx", [
     '"use client";',
-    'export { ThroughlineEmbed } from "@0xbuff/throughline/react";',
+    'import { useEffect } from "react";',
+    'import { ThroughlineEmbed as BaseEmbed } from "@0xbuff/throughline/react";',
+    'export function ThroughlineEmbed(props) {',
+    '  useEffect(() => { window.__THL_HYDRATED = true; }, []);',
+    '  return <BaseEmbed {...props} />;',
+    '}',
   ].join("\n"));
   write(next, "mdx-components.jsx", [
     'import { ThroughlineEmbed } from "./app/trace-embed";',
@@ -133,8 +212,13 @@ try {
     "~~~thl binary", "a = 1011", "b = 0110", "~~~",
     "", "~~~js", "const unaffected = true;", "~~~",
   ].join("\n"));
+  write(next, "app/plain/page.mdx", [
+    "# Unchanged MDX content", "", "Ordinary Markdown without a trace.", "",
+    "~~~js", "const stillPlain = true;", "~~~",
+  ].join("\n"));
   run(next, join(next, "node_modules/.bin/next"), ["build", "--webpack"]);
   assertBuiltPage(next, "out/index.html", "Next.js");
+  await assertHydratedPage(join(next, "out"), "/", "Next.js");
 
   // Astro's Markdown/MDX pipeline emits an Astro component wrapper, which in
   // turn owns the hydration directive for the React island and the player CSS.
@@ -152,24 +236,37 @@ try {
     '  mdx({ processor: unified({ remarkPlugins: [[remarkThroughline, { mode: "mdx" }]] }) }), react(),',
     '] });',
   ].join("\n"));
+  write(astro, "src/components/HydratedTrace.jsx", [
+    'import { useEffect } from "react";',
+    'import { ThroughlineEmbed } from "@0xbuff/throughline/react";',
+    'export default function HydratedTrace(props) {',
+    '  useEffect(() => { window.__THL_HYDRATED = true; }, []);',
+    '  return <ThroughlineEmbed {...props} />;',
+    '}',
+  ].join("\n"));
   write(astro, "src/components/ThroughlineEmbed.astro", [
     "---",
-    'import { ThroughlineEmbed as ReactEmbed } from "@0xbuff/throughline/react";',
+    'import HydratedTrace from "./HydratedTrace.jsx";',
     'import "@0xbuff/throughline/styles/throughline.css";',
     'const { source } = Astro.props;',
     "---",
-    "<ReactEmbed source={source} client:load />",
+    "<HydratedTrace source={source} client:load />",
   ].join("\n"));
   write(astro, "src/pages/index.mdx", [
     'import ThroughlineEmbed from "../components/ThroughlineEmbed.astro";',
     "", "# Astro trace integration", "",
     "~~~thl flow", 'node x "X" = 0', 'step "Change"', "  set x = 1", "~~~",
   ].join("\n"));
+  write(astro, "src/pages/plain.mdx", [
+    "# Unchanged MDX content", "", "Ordinary Markdown without a trace.", "",
+    "~~~js", "const stillPlain = true;", "~~~",
+  ].join("\n"));
   run(astro, join(astro, "node_modules/.bin/astro"), ["build"]);
   assertBuiltPage(astro, "dist/index.html", "Astro");
   const astroHtml = readFileSync(join(astro, "dist/index.html"), "utf8");
   assert.match(astroHtml, /astro-island/, "Astro must emit a hydrated React island");
-  console.log("Independent Fumadocs, Next.js and Astro consumers passed.");
+  await assertHydratedPage(join(astro, "dist"), "/", "Astro");
+  console.log("Independent Fumadocs, Next.js and Astro consumers passed (Next/Astro browser hydration verified).");
 } finally {
   rmSync(scratch, { recursive: true, force: true });
 }
