@@ -1,0 +1,102 @@
+# Sophisticated reference traces (TL-I06)
+
+The public `EXAMPLES` export contains two hand-authored `thl flow` teaching
+fixtures. They compile to version-1 traces; they do not execute React or a
+payment service. The examples are deliberately small enough to inspect while
+exercising connected state, transfers, visibility and backward seeking.
+
+## Keyed React reconciliation
+
+**Scenario:** An unordered list changes from children keyed `a, b` to
+children keyed `a, c`. Both roots are the same `ul` element type.
+
+1. Compare the roots and find the matching child `a` (same parent, stable
+   key and compatible element type).
+2. Retain `a`, plan removal of `b`, and prepare insertion of `c` in
+   the work-in-progress tree. The current tree is still unchanged.
+3. Review the commit plan. During the authored commit beat, hide old `b`
+   and show committed `c`. The retained `a` is not replaced.
+
+**Accuracy boundary:** This is a simplified keyed-children explanation,
+not a complete simulation of React Fiber or an assertion about its
+scheduler. Matching a key alone does not guarantee reuse if the parent
+or element type changes. See [React's list key guidance](https://react.dev/learn/rendering-lists)
+and [state preservation guidance](https://react.dev/learn/preserving-and-resetting-state).
+
+### Questions and expected explanations
+
+| Question | Expected explanation |
+| --- | --- |
+| What makes key `a` eligible for reuse? | Its key, parent and element type match in this example. |
+| When is the old `b` removed? | In the commit beat, not while preparing the work-in-progress plan. |
+| Is the new `c` already in the current tree during planning? | No. It is first shown as work in progress and later as a committed child. |
+
+## Distributed checkout: timeout, retry and recovery
+
+**Scenario:** The checkout API persists a pending order and queues a
+payment attempt. The provider supports idempotency for the stable
+`pay-ord-1042` key. The provider records the first charge, but its
+acknowledgement is lost. The worker times out without knowing the result,
+resends using the same key, receives the prior result and only then
+persists payment confirmation, marks the order paid and notifies the
+customer.
+
+The fixture deliberately distinguishes four things:
+
+- `send` only annotates a directed message/command; a matching `set`
+  models separately observed persistence.
+- A request timeout gives the **worker an unknown outcome**, not proof
+  that the provider failed or succeeded.
+- A repeated idempotency key is safe in **this authored provider scenario**.
+  It is not a promise that arbitrary payment providers deduplicate requests.
+- The local payment record, order state and customer-facing status advance
+  only at their explicit confirmation steps.
+
+### Questions and expected explanations
+
+| Question | Expected explanation |
+| --- | --- |
+| Is the order already saved when the checkout request arrives? | No; the `Persist pending order` beat first records it. |
+| Is the provider confirmed to have charged when the worker first sends a request? | No; sending does not persist the provider state. |
+| What can the worker conclude from the timeout? | The outcome is unknown; payment must not be marked failed or paid solely from timeout. |
+| Why is there one charge after retry? | The scenario explicitly assumes a provider that deduplicates the repeated idempotency key. |
+| When does the customer see success? | After the worker receives confirmation, records payment, updates the order and reports recovery. |
+
+## Evidence and compatibility boundaries
+
+At the observed **v0.0.2** implementation baseline:
+
+- `validateProgram` accepts JSON values nested through depth **32**
+  (starting at the value itself) and rejects depth **33**.
+  `createBudget` has a separate maximum traversal depth of **64**.
+  The validator is the effective smaller ceiling for program values;
+  a budget accounting limit is **not** a promise that depth-64 program
+  values are valid. Regression tests pin both behaviors independently.
+- `validateProgram` rejects unsupported `Program.version`; compilation
+  emits `Trace.version = 1`.
+- **Open compatibility gap:** `ThroughlinePlayer` consumes a TypeScript
+  `Trace` prop but does not currently reject an unsupported
+  `Trace.version` when an untrusted or serialized object is supplied at
+  runtime. The core compiler's validation of `Program.version` is not
+  equivalent to validation at this consumer boundary. Add a runtime
+  rejection guard in a separately reviewed compatibility PR or make an
+  explicit schema-reader decision before advertising support for arbitrary
+  serialized traces. This documentation does not attest such input is safe.
+
+The new deterministic compilation, arbitrary-seeking, message-endpoint
+and browser-player regression tests are source-level acceptance evidence
+once they run in CI; the presence of tests alone is not a passing result.
+
+## Present renderer limitations and follow-up work
+
+The v0.0.2 player has flat lane/row/column/tree layouts, not nested
+collapse, pan/zoom, follow-active camera, or a dedicated scene-projection
+boundary. Its large scenarios can be harder to follow on narrow screens.
+The minimal player redesign is TL-I07; interaction/accessibility
+regressions are TL-I08; projection and guided navigation are later work.
+Do not describe these reference examples as evidence that those features
+already exist.
+
+These questions are the initial **comprehension baseline**, not results
+from a participant study. A measured comparison against equivalent static
+material remains the V-10 release evidence gate.
