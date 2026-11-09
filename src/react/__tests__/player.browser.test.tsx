@@ -198,7 +198,7 @@ it("renders the checkout receipt only after persistence and restores it when see
 
 	await timeline.fill(String(persisted));
 	await expect.poll(renderedReceipt).toBe("paid: pay-ord-1042");
-	await expect.poll(receiptTitle).toBe("Payment record: paid: pay-ord-1042");
+	await expect.poll(receiptTitle).toBe("Payment record: paid: pay-ord-1042 (focus)");
 
 	await timeline.fill(String(received));
 	await expect.poll(renderedReceipt).toBe("unconfirmed");
