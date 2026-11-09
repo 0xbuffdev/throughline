@@ -5,6 +5,19 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Changed
+
+- Redesigned the React player with an optional unbranded title, centered
+  visualization, borderless caption/count, and bottom playback controls.
+- Introduced neutral OKLCH light/dark/auto CSS tokens and default `0.325rem`
+  radius while preserving existing trace/sonification contracts.
+
+### Added
+
+- Native fullscreen maximize/minimize toggle with safe unavailable-state
+  handling, browser state synchronization, and responsive controls.
+- Browser regression tests for shell, theme overrides, fullscreen and sound.
+
 ### Added
 
 - Expanded the keyed reconciliation reference to include its commit beat;

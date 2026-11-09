@@ -24,8 +24,10 @@ build pipelines or other offline ESM environments without React or a DOM.
 5. **Presentation:** `ThroughlinePlayer` derives a deterministic SVG
    scene from these frames and lays out nodes/links for the available
    width. Controls seek among precompiled frames instead of re-running
-   authoring code. Accessible captions and the inspector expose state
-   beyond the visual scene.
+   authoring code. The optional title, centered diagram, borderless
+   caption with step count, bottom controls and inspector disclosure
+   form the presentation shell. Browser fullscreen enters and exits for
+   this player element when supported; seeking never invents timing.
 
 ## Public module boundaries
 

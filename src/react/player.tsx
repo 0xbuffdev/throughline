@@ -1,19 +1,20 @@
 import { cn } from "cn";
 import type * as React from "react";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { describeFrame } from "../describe.js";
 import { composeTrace } from "../layout.js";
 import type { Trace } from "../model.js";
 import type { SonificationOptions } from "../sonify.js";
 import { PlayerCaption } from "./caption.js";
 import { PlayerControls } from "./controls.js";
-import { StateInspector } from "./inspector.js";
 import { TraceScene } from "./scene.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
 import { useSound } from "./use-sound.js";
 
 export interface ThroughlinePlayerProps {
 	trace: Trace;
+	/** Optional, unbranded heading above the visualization. */
+	title?: string;
 	className?: string;
 	theme?: "light" | "dark" | "auto";
 	/** Omit to remove audio controls entirely. */
@@ -22,17 +23,48 @@ export interface ThroughlinePlayerProps {
 
 export function ThroughlinePlayer({
 	trace,
+	title,
 	className,
 	theme = "auto",
 	sonification,
 }: ThroughlinePlayerProps): React.JSX.Element {
 	const ref = useRef<HTMLDivElement>(null);
-	const width = useSceneWidth(ref);
+	const sceneRef = useRef<HTMLDivElement>(null);
+	const width = useSceneWidth(sceneRef);
 	const { state, dispatch, onKeyDown } = usePlayer(trace);
 	const [sound, setSound] = useState(sonification?.enabled ?? false);
+	const [fullscreen, setFullscreen] = useState(false);
+	const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
 	const layout = useMemo(() => composeTrace(trace, width), [trace, width]);
 	const captionId = useId();
 	const frame = trace.frames[state.step] ?? trace.frames[0];
+
+	useEffect(() => {
+		const syncFullscreen = () => {
+			setFullscreen(document.fullscreenElement === ref.current);
+			setFullscreenAvailable(
+				Boolean(
+					document.fullscreenEnabled &&
+						ref.current?.requestFullscreen &&
+						document.exitFullscreen,
+				),
+			);
+		};
+		syncFullscreen();
+		document.addEventListener("fullscreenchange", syncFullscreen);
+		return () => document.removeEventListener("fullscreenchange", syncFullscreen);
+	}, []);
+
+	const toggleFullscreen = () => {
+		const element = ref.current;
+		if (!element || !document.fullscreenEnabled) return;
+		if (document.fullscreenElement === element) {
+			void document.exitFullscreen().catch(() => {});
+		} else if (!document.fullscreenElement) {
+			void element.requestFullscreen().catch(() => {});
+		}
+	};
+
 	useSound(
 		state.step,
 		trace.frames.length,
@@ -57,8 +89,11 @@ export function ThroughlinePlayer({
 			<p role="status" className="thl-sr-only">
 				{summary}
 			</p>
-			{frame ? (
-				<>
+			{title && <h2 className="thl-title">{title}</h2>}
+			{/* This measured stage must exist even for empty traces so ResizeObserver
+			    stays connected through empty/populated trace replacements. */}
+			<div className="thl-stage" ref={sceneRef}>
+				{frame ? (
 					<svg
 						width="100%"
 						height={layout.height}
@@ -74,7 +109,17 @@ export function ThroughlinePlayer({
 							layout={layout}
 						/>
 					</svg>
-					<PlayerCaption frame={frame} id={captionId} />
+				) : (
+					<p className="thl-empty">No steps to display.</p>
+				)}
+			</div>
+			{frame && (
+				<>
+					<PlayerCaption
+						frame={frame}
+						id={captionId}
+						total={trace.frames.length}
+					/>
 					<PlayerControls
 						state={state}
 						dispatch={dispatch}
@@ -83,11 +128,13 @@ export function ThroughlinePlayer({
 								? { enabled: sound, toggle: () => setSound(!sound) }
 								: undefined
 						}
+						fullscreen={{
+							active: fullscreen,
+							available: fullscreenAvailable,
+							toggle: toggleFullscreen,
+						}}
 					/>
-					<StateInspector frame={frame} />
 				</>
-			) : (
-				<p className="thl-empty">No steps to display.</p>
 			)}
 		</div>
 	);
