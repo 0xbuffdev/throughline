@@ -139,16 +139,17 @@ try {
   // Astro's Markdown/MDX pipeline emits an Astro component wrapper, which in
   // turn owns the hydration directive for the React island and the player CSS.
   const astro = consumer("astro", tarball, [
-    "astro@7.4.2", "@astrojs/mdx@8.1.3", "@astrojs/react@7.1.4",
+    "astro@7.4.2", "@astrojs/mdx@8.1.3", "@astrojs/react@7.1.4", "@astrojs/markdown-remark@7.3.6",
     "react@19.3.1", "react-dom@19.3.1",
   ]);
   write(astro, "astro.config.mjs", [
     'import { defineConfig } from "astro/config";',
     'import mdx from "@astrojs/mdx";',
     'import react from "@astrojs/react";',
+    'import { unified } from "@astrojs/markdown-remark";',
     'import { remarkThroughline } from "@0xbuff/throughline/remark";',
     'export default defineConfig({ integrations: [',
-    '  mdx({ remarkPlugins: [[remarkThroughline, { mode: "mdx" }]] }), react(),',
+    '  mdx({ processor: unified({ remarkPlugins: [[remarkThroughline, { mode: "mdx" }]] }) }), react(),',
     '] });',
   ].join("\n"));
   write(astro, "src/components/ThroughlineEmbed.astro", [
