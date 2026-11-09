@@ -114,7 +114,7 @@ Compile content with the same validation plugin before publishing if the Markdow
 
 ~~~jsx
 import { bundleMDX } from "mdx-bundler";
-import { getMDXComponent } from "mdx-bundler/client";
+import { getMDXComponent } from "mdx-bundler/client/index.js";
 import { remarkThroughline } from "@0xbuff/throughline/remark";
 import { ThroughlineEmbed } from "@0xbuff/throughline/react";
 import "@0xbuff/throughline/styles/throughline.css";
