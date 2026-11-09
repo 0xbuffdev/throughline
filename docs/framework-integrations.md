@@ -54,7 +54,7 @@ In `next.config.mjs`, configure `@next/mdx` with `remarkPlugins: [[remarkThrough
 
 ## Astro
 
-Configure `@astrojs/mdx` with the same Remark tuple and register `@astrojs/react`. Import an Astro wrapper named `ThroughlineEmbed` into the MDX page. The wrapper renders the React `ThroughlineEmbed` with `client:load` and imports Throughline CSS. Without the hydration directive, the player can render static markup but cannot respond to browser input.
+Astro 7 defaults to Sätteri, which does not run Remark plugins. Install `@astrojs/markdown-remark` and configure `@astrojs/mdx` with `processor: unified({ remarkPlugins: [[remarkThroughline, { mode: "mdx" }]] })`. Register `@astrojs/react`. Import an Astro wrapper named `ThroughlineEmbed` into the MDX page. The wrapper renders the React `ThroughlineEmbed` with `client:load` and imports Throughline CSS. Without the hydration directive, the player can render static markup but cannot respond to browser input.
 
 ## Release and test boundary
 
