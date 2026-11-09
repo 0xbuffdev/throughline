@@ -1,13 +1,15 @@
 import { useEffect, useRef } from "react";
+import type { Trace } from "../model.js";
 import { type SonificationOptions, sonificationEvent } from "../sonify.js";
 
-/** One short voice at a time; seeking or disabling sound stops the previous voice. */
+/** One short voice at a time; seeking, changing trace or disabling sound stops the previous voice. */
 export function useSound(
+	trace: Trace,
 	step: number,
-	total: number,
 	enabled: boolean,
 	options?: SonificationOptions,
 ): void {
+	const total = trace.frames.length;
 	const context = useRef<AudioContext | null>(null);
 	const handler = options?.onTone;
 	useEffect(
@@ -64,5 +66,5 @@ export function useSound(
 		} catch {
 			// Audio is optional; unavailable hardware or a consumer callback cannot stop playback.
 		}
-	}, [step, total, enabled, handler]);
+	}, [trace, step, total, enabled, handler]);
 }
