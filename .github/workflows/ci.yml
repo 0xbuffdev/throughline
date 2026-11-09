@@ -79,3 +79,27 @@ jobs:
         run: pnpm build
       - name: Test independent framework consumers
         run: pnpm audit:frameworks
+
+  markdown-hosts:
+    name: React Markdown, mdx-bundler and markdown-to-jsx
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install standalone dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build distributable
+        run: pnpm build
+      - name: Verify Markdown host integrations
+        run: pnpm audit:markdown-hosts
