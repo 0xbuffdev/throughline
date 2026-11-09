@@ -5,6 +5,14 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Fixed
+
+- Announce native fullscreen request failures without interrupting in-page playback;
+  expose player keyboard shortcuts and descriptive focus instructions.
+- Make ended sonification voices safe to clean up after step changes or unmount.
+- Add keyboard/slider, trace replacement during playback, reduced-motion CSS,
+  fullscreen refusal and sound lifecycle regression coverage.
+
 ### Changed
 
 - Redesigned the React player with an optional unbranded title, centered
