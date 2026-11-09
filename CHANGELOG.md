@@ -9,7 +9,8 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 - Announce native fullscreen request failures without interrupting in-page playback;
   expose player keyboard shortcuts and descriptive focus instructions.
-- Make ended sonification voices safe to clean up after step changes or unmount.
+- Make ended sonification voices safe to clean up after step changes or unmount,
+  and stop/restart the cue when replacing a trace with an equal frame count.
 - Add keyboard/slider, trace replacement during playback, reduced-motion CSS,
   fullscreen refusal and sound lifecycle regression coverage.
 
