@@ -25,6 +25,8 @@ or application-specific runtime.
   inspector, reduced-motion support and explicit CSS/theme controls.
 - **Bounded by design:** source, state, event and expansion limits provide
   predictable rejection rather than uncontrolled trace growth.
+- **Complex reference traces:** inspect keyed React reconciliation and a
+  distributed checkout with a lost acknowledgement, retry and recovery.
 
 ## Installation
 
@@ -150,6 +152,7 @@ For the complete guide, see the [Throughline documentation](https://docs.0xbuff.
 - [Grammar and authored flow](https://github.com/0xbuffdev/throughline/blob/main/docs/grammar.md)
 - [Domain catalog and domain-specific limits](https://github.com/0xbuffdev/throughline/blob/main/docs/catalog.md)
 - [Architecture, trace format and runtime boundaries](https://github.com/0xbuffdev/throughline/blob/main/docs/architecture.md)
+- [Complex reference traces, questions and compatibility boundaries](https://github.com/0xbuffdev/throughline/blob/main/docs/reference-traces.md)
 - [Adding a computed domain](https://github.com/0xbuffdev/throughline/blob/main/docs/authoring.md)
 - [Changelog](https://github.com/0xbuffdev/throughline/blob/main/CHANGELOG.md)
 

@@ -148,3 +148,94 @@ it("keeps keyboard stepping on the player surface and audio explicitly optional"
 		.toHaveTextContent("Step 1 of 3");
 	await screen.getByRole("button", { name: "Pause" }).click();
 });
+
+it.each(["reconciliation", "distributed-checkout"] as const)(
+	"renders %s and seeks its final state in the React player",
+	async (id) => {
+		const example = EXAMPLES.find((candidate) => candidate.id === id)!;
+		const trace = compile(example.source);
+		const screen = await render(<ThroughlinePlayer trace={trace} />);
+		const timeline = screen.getByRole("slider", { name: "Timeline" });
+		await timeline.fill(String(trace.frames.length - 1));
+		await expect
+			.element(screen.getByRole("status"))
+			.toHaveTextContent(`Step ${trace.frames.length} of ${trace.frames.length}`);
+		expect(document.querySelectorAll(".thl-cell").length).toBeGreaterThan(0);
+		await screen.getByRole("button", { name: "Step back" }).click();
+		await expect
+			.element(screen.getByRole("status"))
+			.toHaveTextContent(`Step ${trace.frames.length - 1} of ${trace.frames.length}`);
+	},
+);
+
+it("renders the checkout receipt only after persistence and restores it when seeking back", async () => {
+	const source = EXAMPLES.find(
+		(example) => example.id === "distributed-checkout",
+	)!.source;
+	const trace = compile(source);
+	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	const timeline = screen.getByRole("slider", { name: "Timeline" });
+	const frameIndex = (label: string): number => {
+		const index = trace.frames.findIndex((frame) => frame.label === label);
+		expect(index).toBeGreaterThan(0);
+		return index;
+	};
+	const received = frameIndex("Receive confirmed result");
+	const persisted = frameIndex("Persist payment confirmation");
+	const renderedReceipt = () =>
+		document.querySelector('[data-node="receipt"] .thl-cell text')?.textContent;
+	const receiptTitle = () =>
+		document.querySelector('[data-node="receipt"] > title')?.textContent;
+
+	await timeline.fill(String(received));
+	await expect.poll(renderedReceipt).toBe("unconfirmed");
+	await expect.poll(receiptTitle).toBe("Payment record: unconfirmed");
+	expect(
+		[...document.querySelectorAll(".thl-transferred title")].some((title) =>
+			title.textContent?.includes("provider → worker"),
+		),
+	).toBe(true);
+
+	await timeline.fill(String(persisted));
+	await expect.poll(renderedReceipt).toBe("paid: pay-ord-1042");
+	await expect.poll(receiptTitle).toBe("Payment record: paid: pay-ord-1042 (focus)");
+
+	await timeline.fill(String(received));
+	await expect.poll(renderedReceipt).toBe("unconfirmed");
+	await expect.poll(receiptTitle).toBe("Payment record: unconfirmed");
+});
+
+it("renders only the current tree and commit plan after reconciliation commits", async () => {
+	const source = EXAMPLES.find((example) => example.id === "reconciliation")!.source;
+	const trace = compile(source);
+	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	const timeline = screen.getByRole("slider", { name: "Timeline" });
+	const reused = trace.frames.findIndex((frame) => frame.label === "Reuse key a");
+	const committed = trace.frames.findIndex(
+		(frame) => frame.label === "Commit the planned tree",
+	);
+	expect(reused).toBeGreaterThan(0);
+	expect(committed).toBeGreaterThan(reused);
+	expect(
+		[...document.querySelectorAll(".thl-link title")].some((title) =>
+			title.textContent?.includes("a → reuse"),
+		),
+	).toBe(false);
+	await timeline.fill(String(reused));
+	await expect.poll(() =>
+		[...document.querySelectorAll(".thl-link title")].some((title) =>
+			title.textContent?.includes("a → reuse"),
+		),
+	).toBe(true);
+	await timeline.fill(String(committed));
+	await expect.poll(() =>
+		[...document.querySelectorAll("[data-node]")].map((node) =>
+			node.getAttribute("data-node"),
+		),
+	).toEqual(["current", "a", "committedC", "changes"]);
+	expect(
+		[...document.querySelectorAll(".thl-link title")].map(
+			(title) => title.textContent?.split(":")[0],
+		),
+	).toEqual(["current → a", "current → committedC"]);
+});

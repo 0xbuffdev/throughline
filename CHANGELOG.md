@@ -3,6 +3,17 @@
 Notable changes to Throughline are recorded here. Package versions follow
 Semantic Versioning independently of the version-1 trace and program schemas.
 
+## Unreleased
+
+### Added
+
+- Expanded the keyed reconciliation reference to include its commit beat;
+  added a distributed checkout timeout, idempotent retry and recovery trace.
+- Added deterministic seeking, transfer correctness, version/value-boundary,
+  and browser rendering regressions for sophisticated reference examples.
+- Documented teaching questions, current player limitations and the
+  unsupported serialized trace-version reader gap.
+
 ## [0.0.2] — 2026-11-08
 
 ### Changed

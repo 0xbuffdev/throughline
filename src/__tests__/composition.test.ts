@@ -65,7 +65,8 @@ it("keeps value cells within stable boxes at every example step", () => {
 });
 
 it("routes the first matrix operand around the intervening operand", () => {
-	const scene = composeTrace(compile(EXAMPLES[2].source), 720);
+	const example = EXAMPLES.find((candidate) => candidate.id === "matrix")!;
+	const scene = composeTrace(compile(example.source), 720);
 	const edge = scene.edges.readA;
 	expect(edge.from[1]).toBe(scene.nodes.A.y + scene.nodes.A.h);
 	expect(edge.to[1]).toBe(scene.nodes.C.y + scene.nodes.C.h);
