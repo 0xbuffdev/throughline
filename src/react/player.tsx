@@ -55,8 +55,10 @@ export function ThroughlinePlayer({
 			);
 			if (active === ref.current) setFullscreenError(null);
 		};
-		const onFullscreenError = () =>
-			setFullscreenError("Fullscreen is unavailable in this browser or embedded view.");
+		const onFullscreenError = (event: Event) => {
+			if (event.target === ref.current)
+				setFullscreenError("Fullscreen is unavailable in this browser or embedded view.");
+		};
 		syncFullscreen();
 		document.addEventListener("fullscreenchange", syncFullscreen);
 		document.addEventListener("fullscreenerror", onFullscreenError);
