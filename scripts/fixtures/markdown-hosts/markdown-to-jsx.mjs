@@ -31,6 +31,14 @@ const html = renderToString(createElement(Markdown, { options, children: markdow
 assert.match(html, /Visualization player/);
 assert.match(html, /Markdown-to-JSX trace integration/);
 assert.match(html, /const unaffected = true;/);
+const untouchedMarkdown = [
+  "# Unchanged MDX content", "", "Plain Markdown without Throughline fences.", "",
+  "~~~js", "const stillPlain = true;", "~~~",
+].join("\n");
+const untouchedHtml = renderToString(createElement(Markdown, { options, children: untouchedMarkdown }));
+assert.match(untouchedHtml, /stillPlain = true/);
+assert.doesNotMatch(untouchedHtml, /Visualization player/);
+
 assert.throws(
   () => renderToString(createElement(Markdown, {
     options, children: "~~~thl\nthl flow\ninvalid\n~~~",
