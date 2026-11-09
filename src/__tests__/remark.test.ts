@@ -83,7 +83,7 @@ describe("remarkThroughline validation", () => {
 				source: "@0xbuff/throughline",
 				ruleId: "invalid-trace",
 			});
-			expect((error as Error).message).toMatch(/Unknown statement/);
+			expect((error as Error).message).toMatch(/Expected node, link, or step/);
 		}
 	});
 
