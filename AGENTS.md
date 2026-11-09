@@ -49,6 +49,8 @@ skipped tests.
   `src/tracer.ts`: the core parser, validation, types, and trace compiler.
 - `src/domains/`: the five supported domains: `flow`, `bindings`,
   `binary`, `matrix`, and `callstack`.
+- `src/remark/`: optional mdast validation plugin; keep React out and preserve
+  host-owned source positions.
 - `src/layout/`, `src/layout.ts`, `src/scene.ts`: React-independent
   scene composition and layout.
 - `src/react/`: optional player, controls, inspector, accessible
@@ -68,6 +70,7 @@ skipped tests.
 Support exactly these package imports:
 
 - `@0xbuff/throughline`
+- `@0xbuff/throughline/remark`
 - `@0xbuff/throughline/react`
 - `@0xbuff/throughline/examples`
 - `@0xbuff/throughline/styles/throughline.css`

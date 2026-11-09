@@ -5,6 +5,12 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Added
+
+- Added dependency-free `@0xbuff/throughline/remark` validation subpath for
+  parser-owned `thl` fences, source-positioned build failures and unchanged
+  Markdown ASTs; MDX rendering remains a separate integration.
+
 ### Fixed
 
 - Announce native fullscreen request failures without interrupting in-page playback;

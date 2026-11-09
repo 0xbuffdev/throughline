@@ -8,6 +8,7 @@ const manifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"))
 const expected = [
 	".",
 	"./react",
+	"./remark",
 	"./examples",
 	"./styles/throughline.css",
 ];
@@ -48,7 +49,7 @@ assert(
 	"Declaration maps must not reference unshipped TypeScript sources",
 );
 
-for (const filename of ["index.js", "react/index.js", "examples.js"]) {
+for (const filename of ["index.js", "react/index.js", "remark/index.js", "examples.js"]) {
 	assert(
 		existsSync(resolve(root, "dist", `${filename}.map`)),
 		`Missing JavaScript source map: ${filename}.map`,
@@ -65,6 +66,8 @@ assert.deepEqual(
 		?.value,
 	[1, 0],
 );
+const { remarkThroughline } = await load("remark/index.js");
+assert.equal(typeof remarkThroughline, "function");
 const { EXAMPLES } = await load("examples.js");
 assert(Array.isArray(EXAMPLES) && EXAMPLES.length > 0);
 const { ThroughlinePlayer } = await load("react/index.js");

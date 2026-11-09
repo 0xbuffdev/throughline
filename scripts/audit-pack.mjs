@@ -45,6 +45,8 @@ try {
 		"package/dist/index.d.ts",
 		"package/dist/react/index.js",
 		"package/dist/react/index.d.ts",
+		"package/dist/remark/index.js",
+		"package/dist/remark/index.d.ts",
 		"package/dist/examples.js",
 		"package/dist/examples.d.ts",
 		"package/src/styles/throughline.css",
@@ -90,7 +92,7 @@ try {
 	);
 	assert.deepEqual(
 		Object.keys(packed.exports).sort(),
-		[".", "./react", "./examples", "./styles/throughline.css"].sort(),
+		[".", "./react", "./remark", "./examples", "./styles/throughline.css"].sort(),
 	);
 	assert.deepEqual(Object.keys(packed.dependencies ?? {}), ["cn"]);
 	for (const dependencies of [
@@ -125,7 +127,8 @@ try {
 		consumer,
 	);
 	assert(
-		!existsSync(join(consumer, "node_modules", "react")),
+		!existsSync(join(consumer, "node_modules", "react")) &&
+			!existsSync(join(consumer, "node_modules", "unified")),
 		"Core consumer unexpectedly installed React",
 	);
 	const core = [
@@ -163,6 +166,34 @@ try {
 		}),
 	);
 	run("node", ["node_modules/typescript/bin/tsc", "-p", "."], consumer);
+
+	// Run an independent real Remark parser without React. The adapter itself
+	// adds no runtime dependency to core or the published package.
+	run("npm", ["install", ...flags, "--no-save", "unified@11.0.5", "remark-parse@11.0.0", "remark-stringify@11.0.0"], consumer);
+	const remark = [
+		'import assert from "node:assert/strict";',
+		'import { unified } from "unified";',
+		'import remarkParse from "remark-parse";',
+		'import remarkStringify from "remark-stringify";',
+		'import { remarkThroughline } from "@0xbuff/throughline/remark";',
+		'const proc = unified().use(remarkParse).use(remarkThroughline).use(remarkStringify);',
+		'const md = ["# Lesson", "", "~~~thl flow", \'node x "X" = 1\', \'step "Read"\', "  focus x", "~~~", "", "~~~thl binary", "a = 1", "b = 1", "~~~", "", "~~~js", "bad", "~~~"].join("\\n");',
+		'const ast = proc.parse(md);',
+		'const before = JSON.stringify(ast);',
+		'proc.runSync(ast, { path: "lesson.md" });',
+		'assert.equal(JSON.stringify(ast), before);',
+		'assert.match(String(await proc.process(md)), /~~~js/);',
+		'await assert.rejects(() => proc.process({ path: "broken.md", value: "# Heading\\n\\n~~~thl flow\\nnode x \\\"X\\\" = 1\\ninvalid\\n~~~" }), (error) => { assert.equal(error.line, 5); assert.equal(error.file, "broken.md"); return true; });',
+	].join("\\n");
+	run("node", ["--input-type=module", "-e", remark], consumer);
+	writeFileSync(join(consumer, "remark-typecheck.ts"), [
+		'import { unified } from "unified";',
+		'import remarkParse from "remark-parse";',
+		'import { remarkThroughline } from "@0xbuff/throughline/remark";',
+		'unified().use(remarkParse).use(remarkThroughline);',
+	].join("\\n"));
+	run("node", ["node_modules/typescript/bin/tsc", "--strict", "--noEmit", "--skipLibCheck", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--target", "ES2022", "remark-typecheck.ts"], consumer);
+	assert(!existsSync(join(consumer, "node_modules", "react")), "Remark imported React");
 
 	// Node-only verification is complete before installing the optional peer.
 	run(

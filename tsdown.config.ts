@@ -1,13 +1,14 @@
 import { defineConfig } from "tsdown";
 
 /**
- * Keep these three JS + declaration entry paths aligned with package exports.
+ * Keep these four JS + declaration entry paths aligned with package exports.
  * The CSS remains an explicit, consumer-loaded source asset.
  */
 export default defineConfig({
 	entry: {
 		index: "src/index.ts",
 		"react/index": "src/react/index.ts",
+		"remark/index": "src/remark/index.ts",
 		examples: "src/examples.ts",
 	},
 	outDir: "dist",
