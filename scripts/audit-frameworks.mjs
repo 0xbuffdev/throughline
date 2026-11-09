@@ -54,7 +54,7 @@ function assertBuiltPage(dir, path, label) {
 
 
 /** Serve an actual framework export and verify browser hydration, not just SSR. */
-async function assertHydratedPage(dir, pagePath, label) {
+async function assertHydratedPage(dir, pagePath, label, plainPath = "/plain.html") {
   const output = resolve(dir);
   const types = {
     ".html": "text/html; charset=utf-8",
@@ -69,7 +69,8 @@ async function assertHydratedPage(dir, pagePath, label) {
   const server = createServer((request, response) => {
     try {
       const pathname = decodeURIComponent(new URL(request.url, "http://localhost").pathname);
-      const file = resolve(output, "." + (pathname === "/" ? "/index.html" : pathname));
+      let file = resolve(output, "." + (pathname === "/" ? "/index.html" : pathname));
+      if (existsSync(file) && statSync(file).isDirectory()) file = join(file, "index.html");
       if (!file.startsWith(output + sep) || !existsSync(file) || !statSync(file).isFile()) {
         response.writeHead(404);
         response.end("Not found");
@@ -114,7 +115,7 @@ async function assertHydratedPage(dir, pagePath, label) {
     assert.equal(styling.radius, "0.325rem", label + " did not load package CSS");
     assert.equal(styling.overflow, false, label + " overflows on mobile");
     assert.deepEqual(errors, [], label + " emitted browser errors");
-    await page.goto(origin + "/plain.html", { waitUntil: "networkidle" });
+    await page.goto(origin + plainPath, { waitUntil: "networkidle" });
     assert.match(await page.locator("body").textContent(), /Unchanged MDX content/);
     assert.equal(await page.getByRole("group", { name: "Visualization player" }).count(), 0);
     assert.deepEqual(errors, [], label + " plain page emitted browser errors");
@@ -265,7 +266,7 @@ try {
   assertBuiltPage(astro, "dist/index.html", "Astro");
   const astroHtml = readFileSync(join(astro, "dist/index.html"), "utf8");
   assert.match(astroHtml, /astro-island/, "Astro must emit a hydrated React island");
-  await assertHydratedPage(join(astro, "dist"), "/", "Astro");
+  await assertHydratedPage(join(astro, "dist"), "/", "Astro", "/plain/");
   console.log("Independent Fumadocs, Next.js and Astro consumers passed (Next/Astro browser hydration verified).");
 } finally {
   rmSync(scratch, { recursive: true, force: true });
