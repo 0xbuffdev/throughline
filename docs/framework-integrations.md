@@ -56,8 +56,127 @@ In `next.config.mjs`, configure `@next/mdx` with `remarkPlugins: [[remarkThrough
 
 Astro 7 defaults to Sätteri, which does not run Remark plugins. Install `@astrojs/markdown-remark` and configure `@astrojs/mdx` with `processor: unified({ remarkPlugins: [[remarkThroughline, { mode: "mdx" }]] })`. Register `@astrojs/react`. Import an Astro wrapper named `ThroughlineEmbed` into the MDX page. The wrapper renders the React `ThroughlineEmbed` with `client:load` and imports Throughline CSS. Without the hydration directive, the player can render static markup but cannot respond to browser input.
 
+## react-markdown (plain Markdown with a React player)
+
+`react-markdown` supports Remark plugins, but does **not** compile MDX component nodes. Configure the existing `remarkThroughline` in its default validation mode. A small host-owned Remark adapter can attach the already-validated source to its native `pre` element; the React `components.pre` override then renders `ThroughlineEmbed`. Unlike MDX, do **not** use `mode: "mdx"` in this host.
+
+~~~jsx
+import Markdown from "react-markdown";
+import { remarkThroughline } from "@0xbuff/throughline/remark";
+import { ThroughlineEmbed } from "@0xbuff/throughline/react";
+import "@0xbuff/throughline/styles/throughline.css";
+
+function attachSource() {
+  return (tree) => {
+    const visit = (node) => {
+      if (node.type === "code" && node.lang === "thl") {
+        node.data = {
+          ...node.data,
+          hProperties: {
+            ...node.data?.hProperties,
+            "data-thl-source": ["thl " + node.meta, node.value].join("\n"),
+          },
+        };
+      }
+      for (const child of node.children ?? []) visit(child);
+    };
+    visit(tree);
+  };
+}
+
+export function TraceMarkdown({ source }) {
+  return (
+    <Markdown
+      remarkPlugins={[remarkThroughline, attachSource]}
+      components={{
+        pre({ node, ...props }) {
+          const traceSource = node?.properties?.["data-thl-source"];
+          return typeof traceSource === "string"
+            ? <ThroughlineEmbed source={traceSource} />
+            : <pre {...props} />;
+        },
+      }}
+    >
+      {source}
+    </Markdown>
+  );
+}
+~~~
+
+Compile content with the same validation plugin before publishing if the Markdown is hosted externally. Never use `rehype-raw` or `dangerouslySetInnerHTML` merely to mount a player. The fixture verifies rendered frames, invalid fences, and unchanged unrelated code.
+
+## mdx-bundler
+
+`mdx-bundler` uses Unified/MDX, so it accepts `remarkThroughline({ mode: "mdx" })` directly. Preserve existing plugins when modifying the processor:
+
+~~~jsx
+import { bundleMDX } from "mdx-bundler";
+import { getMDXComponent } from "mdx-bundler/client";
+import { remarkThroughline } from "@0xbuff/throughline/remark";
+import { ThroughlineEmbed } from "@0xbuff/throughline/react";
+import "@0xbuff/throughline/styles/throughline.css";
+
+const { code } = await bundleMDX({
+  source: markdown,
+  mdxOptions(options) {
+    options.remarkPlugins = [
+      ...(options.remarkPlugins ?? []),
+      [remarkThroughline, { mode: "mdx" }],
+    ];
+    return options;
+  },
+});
+const Content = getMDXComponent(code);
+// Render in a React component:
+// <Content components={{ ThroughlineEmbed }} />
+~~~
+
+Bundle at build time and execute the compiled MDX **only for trusted content**: MDX is executable JavaScript, and this plugin's safe literal trace attributes do not make arbitrary MDX safe. The fixture verifies registered-component rendering and controlled build failure for invalid traces.
+
+## markdown-to-jsx (non-Remark parser)
+
+`markdown-to-jsx` has its own parser and does not support `remarkPlugins`; attaching the existing Remark plugin to it would be ineffective. Use its `RuleType.codeBlock` render hook and the existing `ThroughlineEmbed` source bridge instead. To preserve the required domain when the host only retains a single info-string language, put the complete Throughline header on the first body line:
+
+~~~md
+~~~thl
+thl flow
+node counter "Counter" = 0
+step "Increase"
+  set counter = 1
+~~~
+~~~
+
+~~~jsx
+import Markdown, { RuleType } from "markdown-to-jsx/react";
+import { ThroughlineEmbed } from "@0xbuff/throughline/react";
+import "@0xbuff/throughline/styles/throughline.css";
+
+export function TraceMarkdown({ source }) {
+  return (
+    <Markdown
+      options={{
+        renderRule(next, node, _children, state) {
+          if (node.type !== RuleType.codeBlock || node.lang !== "thl") {
+            return next();
+          }
+          const traceSource = String(node.text ?? "");
+          if (!/^thl (flow|bindings|binary|matrix|callstack)\r?\n/.test(traceSource)) {
+            throw new Error("Expected 'thl <domain>' on the first line of the block.");
+          }
+          return <ThroughlineEmbed key={state.key} source={traceSource} />;
+        },
+      }}
+    >
+      {source}
+    </Markdown>
+  );
+}
+~~~
+
+This adapter does not pretend to execute Remark, and it does not automatically transform a standard `~~~thl flow` info string. The fixture verifies that the renderer fails on invalid Throughline sources and preserves unrelated fenced code. When source comes from a publishing system, validate it separately before publication.
+
 ## Release and test boundary
 
-`pnpm audit:frameworks` packs the current source into a tarball and installs it into **independent** temporary Fumadocs, Next.js and Astro consumer projects, using pinned host dependencies. The integration checks validate Fumadocs config and MDX compilation, build Next.js's App Router static output, and build Astro's hydrated React island. They do not deploy either host, test private integrations, or establish manual assistive-technology approval. The existing `audit:pack` covers Node-only, Remark/MDX, source escaping, SSR and root/React import isolation. The existing `audit:browser` covers Vite React hydration; it does not imply Next.js or Astro browser-event testing.
+`pnpm audit:frameworks` packs the current source into a tarball and installs it into **independent** temporary Fumadocs, Next.js and Astro consumer projects, using pinned host dependencies. The integration checks validate Fumadocs config and MDX compilation, build Next.js's App Router static output, and build Astro's hydrated React island. They do not deploy either host, test private integrations, or establish manual assistive-technology approval. `pnpm audit:markdown-hosts` packs the same source and checks real SSR integration with `react-markdown`, `mdx-bundler`, and `markdown-to-jsx`, including invalid input and unrelated code fences. The existing `audit:pack` covers Node-only, Remark/MDX, source escaping, SSR and root/React import isolation. The existing `audit:browser` covers Vite React hydration; it does not imply Next.js or Astro browser-event testing.
 
 The production documentation application must continue using the current published package until a reviewed release candidate is approved and published. Release approval, package versioning, signing, npm distribution, site update and deployment are separate maintainer actions.
