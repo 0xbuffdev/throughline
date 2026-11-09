@@ -33,12 +33,15 @@ pnpm build
 pnpm audit:licenses
 pnpm audit:pack
 pnpm audit:browser
+pnpm audit:frameworks
+pnpm audit:markdown-hosts
 ```
 
 Run the checks relevant to each change and the full sequence before
 submitting a release-related PR. `audit:licenses` requires a build;
 `audit:pack` and `audit:browser` exercise the packed package in
 independent Node, TypeScript, React SSR, and Vite/browser consumers.
+The framework and Markdown-host consumer audits install pinned public dependencies into disposable directories and require network access.
 Some consumer checks install public dependencies. Report any skipped or
 failed checks accurately; do not suppress failures with focused or
 skipped tests.
