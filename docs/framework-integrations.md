@@ -137,14 +137,14 @@ Bundle at build time and execute the compiled MDX **only for trusted content**: 
 
 `markdown-to-jsx` has its own parser and does not support `remarkPlugins`; attaching the existing Remark plugin to it would be ineffective. Use its `RuleType.codeBlock` render hook and the existing `ThroughlineEmbed` source bridge instead. To preserve the required domain when the host only retains a single info-string language, put the complete Throughline header on the first body line:
 
-~~~md
+~~~~md
 ~~~thl
 thl flow
 node counter "Counter" = 0
 step "Increase"
   set counter = 1
 ~~~
-~~~
+~~~~
 
 ~~~jsx
 import Markdown, { RuleType } from "markdown-to-jsx/react";
