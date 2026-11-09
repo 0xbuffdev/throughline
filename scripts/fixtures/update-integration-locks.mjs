@@ -12,9 +12,9 @@ const emit = process.argv.includes("--emit");
 function run(cwd, command, args) {
   const result = spawnSync(command, args, { cwd, encoding: "utf8", maxBuffer: 8 * 1024 * 1024 });
   if (result.error || result.status !== 0) {
-    throw new Error(command + " " + args.join(" ") + " failed:\\n" +
-      (result.stdout ?? "") + "\\n" + (result.stderr ?? "") +
-      (result.error ? "\\n" + result.error.message : ""));
+    throw new Error(command + " " + args.join(" ") + " failed:\n" +
+      (result.stdout ?? "") + "\n" + (result.stderr ?? "") +
+      (result.error ? "\n" + result.error.message : ""));
   }
 }
 
@@ -25,7 +25,7 @@ try {
     const dir = join(scratch, name);
     mkdirSync(dir);
     copyFileSync(tarball, join(dir, "throughline.tgz"));
-    writeFileSync(join(dir, "package.json"), JSON.stringify(fixtureManifest(name), null, 2) + "\\n");
+    writeFileSync(join(dir, "package.json"), JSON.stringify(fixtureManifest(name), null, 2) + "\n");
     run(dir, "npm", ["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"]);
     const lock = JSON.parse(readFileSync(join(dir, "package-lock.json"), "utf8"));
     // Source changes must not invalidate a consumer lock. Pin all registry
@@ -35,7 +35,7 @@ try {
       throw new Error("Lockfile lost the local packed Throughline dependency: " + name);
     }
     delete throughline.integrity;
-    const data = JSON.stringify(lock, null, 2) + "\\n";
+    const data = JSON.stringify(lock, null, 2) + "\n";
     if (emit) {
       console.log("THL_LOCK_START " + name);
       console.log(Buffer.from(data).toString("base64"));
