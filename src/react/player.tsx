@@ -90,25 +90,31 @@ export function ThroughlinePlayer({
 				{summary}
 			</p>
 			{title && <h2 className="thl-title">{title}</h2>}
-			{frame ? (
+			{/* This measured stage must exist even for empty traces so ResizeObserver
+			    stays connected through empty/populated trace replacements. */}
+			<div className="thl-stage" ref={sceneRef}>
+				{frame ? (
+					<svg
+						width="100%"
+						height={layout.height}
+						viewBox={layout.viewBox}
+						role="img"
+						aria-label={summary}
+						aria-describedby={captionId}
+						className="thl-scene"
+					>
+						<TraceScene
+							frame={frame}
+							previous={trace.frames[state.step - 1]}
+							layout={layout}
+						/>
+					</svg>
+				) : (
+					<p className="thl-empty">No steps to display.</p>
+				)}
+			</div>
+			{frame && (
 				<>
-					<div className="thl-stage" ref={sceneRef}>
-						<svg
-							width="100%"
-							height={layout.height}
-							viewBox={layout.viewBox}
-							role="img"
-							aria-label={summary}
-							aria-describedby={captionId}
-							className="thl-scene"
-						>
-							<TraceScene
-								frame={frame}
-								previous={trace.frames[state.step - 1]}
-								layout={layout}
-							/>
-						</svg>
-					</div>
 					<PlayerCaption
 						frame={frame}
 						id={captionId}
@@ -129,8 +135,6 @@ export function ThroughlinePlayer({
 						}}
 					/>
 				</>
-			) : (
-				<p className="thl-empty">No steps to display.</p>
 			)}
 		</div>
 	);
