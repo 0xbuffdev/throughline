@@ -186,7 +186,7 @@ try {
     'assert.match(compiled, /katex/);',
     'assert.match(compiled, /Mermaid/);',
     'const plain = readFileSync("./content/docs/plain.mdx", "utf8");',
-    'const plainCompiled = String(await compile(plain.replace(/^---[\\\\s\\\\S]*?---\\\\n/, ""), { remarkPlugins: plugins, rehypePlugins: rehype }));',
+    'const plainCompiled = String(await compile(plain.replace(/^---[\\s\\S]*?---\\n/, ""), { remarkPlugins: plugins, rehypePlugins: rehype }));',
     'assert.match(plainCompiled, /stillPlain/);',
     'assert.doesNotMatch(plainCompiled, /ThroughlineEmbed/);',
     'await assert.rejects(() => compile("~~~thl flow\\ninvalid\\n~~~", { remarkPlugins: plugins, rehypePlugins: rehype }), /invalid|Expected|Unknown/i);',
