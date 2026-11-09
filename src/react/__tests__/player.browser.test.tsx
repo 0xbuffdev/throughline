@@ -570,18 +570,20 @@ it("reports refused fullscreen requests without preventing further interaction",
 
 it("keeps the transfer animation disabled in the reduced-motion stylesheet", async () => {
 	await render(<ThroughlinePlayer trace={compile(EXAMPLES[0].source)} />);
-	const reducedMotionRules: string[] = [];
+	const reducedMotionAnimationNames: string[] = [];
 	for (const sheet of document.styleSheets) {
 		for (const rule of sheet.cssRules) {
 			if (
 				rule instanceof CSSMediaRule &&
 				rule.conditionText.includes("prefers-reduced-motion: reduce")
 			) {
-				reducedMotionRules.push(
-					[...rule.cssRules].map((nested) => nested.cssText).join("\n"),
-				);
+				for (const nested of rule.cssRules) {
+					if (nested instanceof CSSStyleRule && nested.selectorText === ".thl-flow") {
+						reducedMotionAnimationNames.push(nested.style.animationName);
+					}
+				}
 			}
 		}
 	}
-	expect(reducedMotionRules.join("\n")).toMatch(/\.thl-flow\s*\{[^}]*animation:\s*none/s);
+	expect(reducedMotionAnimationNames).toContain("none");
 });
