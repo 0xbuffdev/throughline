@@ -33,12 +33,15 @@ pnpm build
 pnpm audit:licenses
 pnpm audit:pack
 pnpm audit:browser
+pnpm audit:frameworks
+pnpm audit:markdown-hosts
 ```
 
 Run the checks relevant to each change and the full sequence before
 submitting a release-related PR. `audit:licenses` requires a build;
 `audit:pack` and `audit:browser` exercise the packed package in
 independent Node, TypeScript, React SSR, and Vite/browser consumers.
+The framework and Markdown-host audits install the freshly packed package in disposable projects using committed npm lockfiles and `npm ci`. Registry access is required. Refresh intentional host-version updates with `node scripts/fixtures/update-integration-locks.mjs` and review the four generated lockfiles.
 Some consumer checks install public dependencies. Report any skipped or
 failed checks accurately; do not suppress failures with focused or
 skipped tests.

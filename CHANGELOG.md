@@ -5,6 +5,10 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Tested
+
+- Add packed package integration fixtures for Fumadocs Unified, Next.js App Router, Astro React islands, react-markdown, mdx-bundler and markdown-to-jsx, with frozen npm consumer locks, browser hydration/interaction checks, unchanged-document regressions, and a release-gated integration guide.
+
 ### Added
 
 - Add opt-in Remark MDX JSX output with literal source attributes and validated

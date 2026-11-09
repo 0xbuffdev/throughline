@@ -43,7 +43,9 @@
 		"audit:pack": "node scripts/audit-pack.mjs",
 		"audit:source": "node scripts/audit-source.mjs",
 		"audit:browser": "node scripts/audit-browser.mjs",
-		"audit:licenses": "node scripts/audit-licenses.mjs"
+		"audit:licenses": "node scripts/audit-licenses.mjs",
+		"audit:frameworks": "node scripts/audit-frameworks.mjs",
+		"audit:markdown-hosts": "node scripts/audit-markdown-hosts.mjs"
 	},
 	"files": [
 		"dist",
