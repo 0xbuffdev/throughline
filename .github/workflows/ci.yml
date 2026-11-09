@@ -55,30 +55,7 @@ jobs:
         run: pnpm audit:pack
       - name: Validate packed Vite browser hydration
         run: pnpm audit:browser
-
-  frameworks:
-    name: Fumadocs, Next.js and Astro package consumers
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v6
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install standalone dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build distributable
-        run: pnpm build
-      - name: Test independent framework consumers
+      - name: Validate framework integration consumers
         run: pnpm audit:frameworks
-      - name: Test Markdown host consumers
+      - name: Validate Markdown host consumers
         run: pnpm audit:markdown-hosts
-
