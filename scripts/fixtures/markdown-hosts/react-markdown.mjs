@@ -51,6 +51,14 @@ assert.match(html, /Visualization player/);
 assert.match(html, /React Markdown trace integration/);
 assert.match(html, /const unmodified = 1;/);
 assert.doesNotMatch(html, /data-thl-source=/);
+const untouchedMarkdown = [
+  "# Unchanged MDX content", "", "Plain Markdown without any Throughline fences.", "",
+  "~~~js", "const stillPlain = true;", "~~~",
+].join("\n");
+const untouchedHtml = renderToString(createElement(Markdown, { ...options, children: untouchedMarkdown }));
+assert.match(untouchedHtml, /stillPlain = true/);
+assert.doesNotMatch(untouchedHtml, /Visualization player/);
+
 assert.throws(
   () => renderToString(createElement(Markdown, {
     ...options, children: "~~~thl flow\ninvalid\n~~~",
