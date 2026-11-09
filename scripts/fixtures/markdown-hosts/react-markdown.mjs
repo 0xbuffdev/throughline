@@ -32,7 +32,8 @@ const options = {
   remarkPlugins: [remarkThroughline, attachValidatedSource],
   components: {
     pre({ node, ...props }) {
-      const source = node?.properties?.["data-thl-source"];
+      const code = node?.children?.find((child) => child.type === "element" && child.tagName === "code");
+      const source = code?.properties?.["data-thl-source"];
       return typeof source === "string"
         ? createElement(ThroughlineEmbed, { source })
         : createElement("pre", props);
