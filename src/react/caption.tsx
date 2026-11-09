@@ -1,27 +1,25 @@
 import type * as React from "react";
 import { format } from "../layout/measure.js";
 import type { Frame } from "../model.js";
+import { StateInspector } from "./inspector.js";
 
 interface PlayerCaptionProps {
 	frame: Frame;
 	id: string;
+	total: number;
 }
 export function PlayerCaption({
 	frame,
 	id,
+	total,
 }: PlayerCaptionProps): React.JSX.Element {
 	return (
 		<div className="thl-caption" id={id}>
-			<span className="thl-step">
-				{String(frame.index + 1).padStart(2, "0")}
-			</span>
-			<div>
-				<p>
-					<strong>{frame.label}</strong>
-					{frame.state.notes.length > 0 && (
-						<span>{frame.state.notes.join(" ")}</span>
-					)}
-				</p>
+			<div className="thl-caption-content">
+				<strong className="thl-caption-title">{frame.label}</strong>
+				{frame.state.notes.length > 0 && (
+					<p className="thl-caption-note">{frame.state.notes.join(" ")}</p>
+				)}
 				{frame.state.transfers.length > 0 && (
 					<ul className="thl-transfers" aria-label="Transfers">
 						{frame.state.transfers.map((transfer, index) => {
@@ -40,7 +38,11 @@ export function PlayerCaption({
 						})}
 					</ul>
 				)}
+				<StateInspector frame={frame} />
 			</div>
+			<span className="thl-step-count">
+				Step {frame.index + 1} of {total}
+			</span>
 		</div>
 	);
 }
