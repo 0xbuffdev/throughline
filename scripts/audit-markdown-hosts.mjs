@@ -3,6 +3,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { fixtureManifest } from "./fixtures/integration-dependencies.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const fixtures = join(root, "scripts/fixtures/markdown-hosts");
@@ -24,15 +25,12 @@ try {
 
   const consumer = join(scratch, "consumer");
   mkdirSync(consumer);
-  writeFileSync(join(consumer, "package.json"), JSON.stringify({
-    name: "throughline-markdown-consumer", private: true, type: "module",
-  }));
-  run(consumer, "npm", [
-    "install", "--no-audit", "--no-fund", "--no-package-lock",
-    tarball, "react@19.3.1", "react-dom@19.3.1",
-    "react-markdown@10.1.0", "mdx-bundler@10.1.1",
-    "markdown-to-jsx@9.10.6", "esbuild@0.25.12",
-  ]);
+  writeFileSync(join(consumer, "package.json"),
+    JSON.stringify(fixtureManifest("markdown-hosts"), null, 2) + "\n");
+  copyFileSync(tarball, join(consumer, "throughline.tgz"));
+  copyFileSync(join(root, "scripts/fixtures/lockfiles/markdown-hosts.json"),
+    join(consumer, "package-lock.json"));
+  run(consumer, "npm", ["ci", "--no-audit", "--no-fund"]);
 
   for (const host of ["react-markdown", "mdx-bundler", "markdown-to-jsx"]) {
     const name = host + ".mjs";
