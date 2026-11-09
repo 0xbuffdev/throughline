@@ -245,7 +245,27 @@
 	color: var(--thl-bg);
 }
 .thl-controls button:disabled { opacity: 0.42; cursor: default; }
-.thl-controls select { padding: 0 0.75rem; }
+.thl-speed-control {
+	display: inline-flex;
+	position: relative;
+	align-items: center;
+	min-width: 0;
+}
+.thl-controls .thl-speed-control select {
+	padding-inline: 0.75rem 1.875rem;
+}
+.thl-speed-chevron {
+	position: absolute;
+	right: 0.625rem;
+	width: 0.875rem;
+	height: 0.875rem;
+	pointer-events: none;
+	color: var(--thl-text);
+	stroke: currentColor;
+	stroke-width: 1.75;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
 .thl-controls .thl-sound[aria-pressed="true"] { background: var(--thl-focus-bg); }
 .thl-timeline {
 	appearance: none;
