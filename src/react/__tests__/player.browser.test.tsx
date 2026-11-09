@@ -474,3 +474,116 @@ it("shows a decorative playback speed chevron without replacing the native selec
 	await speed.selectOptions("0.5");
 	await expect.element(speed).toHaveValue("0.5");
 });
+
+it("advertises keyboard shortcuts and leaves native slider keys available", async () => {
+	const { userEvent } = await import("vitest/browser");
+	const trace = compile(
+		'```thl flow\nnode n "Number" = 0\nstep "One"\n set n = 1\nstep "Two"\n set n = 2\n```',
+	);
+	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	const player = screen.getByRole("group", { name: "Visualization player" }).element();
+	expect(player.getAttribute("aria-keyshortcuts")).toBe(
+		"ArrowLeft ArrowRight Home End Space",
+	);
+	expect(
+		document.getElementById(player.getAttribute("aria-describedby")!)?.textContent,
+	).toContain("Controls also work independently");
+
+	player.focus();
+	await userEvent.keyboard("{End}");
+	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 3");
+	await userEvent.keyboard("{Home}");
+	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 3");
+	await userEvent.keyboard("{ArrowRight}");
+	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 3");
+	await userEvent.keyboard(" ");
+	await expect.element(screen.getByRole("button", { name: "Pause" })).toBeEnabled();
+	await userEvent.keyboard(" ");
+	await expect.element(screen.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
+
+	const slider = screen.getByRole("slider", { name: "Timeline" });
+	slider.element().focus();
+	await userEvent.keyboard("{End}");
+	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 3");
+	expect(document.activeElement).toBe(slider.element());
+});
+
+it("resets an in-flight playback interval and speed on unrelated trace replacement", async () => {
+	const first = compile(
+		'```thl flow\nnode a "A" = 0\nstep "One"\n set a = 1\nstep "Two"\n set a = 2\n```',
+	);
+	const second = compile(
+		'```thl flow\nnode b "B" = 5\nstep "Changed"\n set b = 7\n```',
+	);
+	const screen = await render(<ThroughlinePlayer trace={first} />);
+	await screen.getByRole("combobox", { name: "Playback speed" }).selectOptions("2");
+	await screen.getByRole("button", { name: "Play", exact: true }).click();
+	await expect.element(screen.getByRole("button", { name: "Pause" })).toBeEnabled();
+
+	await screen.rerender(<ThroughlinePlayer trace={second} />);
+	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 2");
+	await expect.element(screen.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
+	await expect.element(screen.getByRole("combobox", { name: "Playback speed" })).toHaveValue("1");
+	await expect.element(screen.getByRole("slider", { name: "Timeline" })).toHaveAttribute(
+		"aria-valuetext",
+		"Step 1 of 2",
+	);
+	await screen.rerender(<ThroughlinePlayer trace={{ version: 1, frames: [] }} />);
+	await expect.element(screen.getByRole("status")).toHaveTextContent("No steps to display.");
+	await screen.rerender(<ThroughlinePlayer trace={first} />);
+	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 3");
+	await expect.element(screen.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
+});
+
+it("reports refused fullscreen requests without preventing further interaction", async () => {
+	const trace = compile(EXAMPLES[0].source);
+	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	const player = document.querySelector(".thl") as HTMLElement;
+	const keys = ["fullscreenEnabled", "fullscreenElement", "exitFullscreen"] as const;
+	const saved = keys.map((key) => [key, Object.getOwnPropertyDescriptor(document, key)] as const);
+	const oldRequest = Object.getOwnPropertyDescriptor(player, "requestFullscreen");
+	const request = vi.fn(async () => {
+		throw new DOMException("Permission denied", "NotAllowedError");
+	});
+	try {
+		Object.defineProperty(document, "fullscreenEnabled", { configurable: true, value: true });
+		Object.defineProperty(document, "fullscreenElement", { configurable: true, value: null });
+		Object.defineProperty(document, "exitFullscreen", { configurable: true, value: vi.fn() });
+		Object.defineProperty(player, "requestFullscreen", { configurable: true, value: request });
+		document.dispatchEvent(new Event("fullscreenchange"));
+		await screen.getByRole("button", { name: "Maximize player" }).click();
+		expect(request).toHaveBeenCalledOnce();
+		await expect.element(screen.getByRole("alert")).toHaveTextContent(
+			"Fullscreen is unavailable in this browser or embedded view.",
+		);
+		await screen.getByRole("button", { name: "Step forward" }).click();
+		await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of");
+	} finally {
+		for (const [key, descriptor] of saved) {
+			if (descriptor) Object.defineProperty(document, key, descriptor);
+			else Reflect.deleteProperty(document, key);
+		}
+		if (oldRequest) Object.defineProperty(player, "requestFullscreen", oldRequest);
+		else Reflect.deleteProperty(player, "requestFullscreen");
+	}
+});
+
+it("keeps the transfer animation disabled in the reduced-motion stylesheet", async () => {
+	await render(<ThroughlinePlayer trace={compile(EXAMPLES[0].source)} />);
+	const reducedMotionAnimationNames: string[] = [];
+	for (const sheet of document.styleSheets) {
+		for (const rule of sheet.cssRules) {
+			if (
+				rule instanceof CSSMediaRule &&
+				rule.conditionText.includes("prefers-reduced-motion: reduce")
+			) {
+				for (const nested of rule.cssRules) {
+					if (nested instanceof CSSStyleRule && nested.selectorText === ".thl-flow") {
+						reducedMotionAnimationNames.push(nested.style.animationName);
+					}
+				}
+			}
+		}
+	}
+	expect(reducedMotionAnimationNames).toContain("none");
+});

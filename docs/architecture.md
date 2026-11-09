@@ -76,8 +76,29 @@ provides a textual inspector. Keyboard navigation, native inputs,
 live status, reduced-motion preferences and SSR/hydration behavior
 are covered by browser and packed-consumer tests.
 
+Focus on the player group enables ArrowLeft/ArrowRight, Home/End and
+Space without intercepting events from focused native buttons, timeline
+range input, speed selector or the details inspector. Current-frame
+announcements use a screen-reader status and the scene has a textual
+description. A distinct alert reports refused fullscreen requests; failures
+do not disable in-page playback. An unrelated trace object resets step,
+speed and playing state; the reducer and timer lifecycle keep the timeline
+separate from immutable frame data.
+
+The named player stage stays mounted across empty/filled trace replacements
+so ResizeObserver can keep the SVG responsive. The scoped CSS disables
+transfer animations for reduced-motion users, and controls reflow for a
+375px viewport. Existing packed-consumer checks exercise React 19 SSR and
+client hydration, while browser tests cover keyboard, inspector, fullscreen,
+reduced-motion styles and replacement regressions.
+
 Sonification is explicitly opted into by the caller and is not
-triggered merely by importing the package. Neither playback nor
+triggered merely by importing the package. A provided `sonification`
+option is required to display sound controls. A running oscillator is
+stopped and disconnected at most once when playback changes or when the
+trace object is replaced, including with an equal-length trace. Sound is
+not restarted by rerendering the same trace object. An already-ended
+voice does not break cleanup. Neither playback nor
 compilation records grades or authenticates learners.
 
 ## Build and trust boundaries

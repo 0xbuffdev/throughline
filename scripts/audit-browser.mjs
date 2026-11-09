@@ -145,6 +145,7 @@ try {
 	context = await browser.newContext({
 		viewport: { width: 375, height: 850 },
 		reducedMotion: "reduce",
+		hasTouch: true,
 	});
 	const page = await context.newPage();
 	const errors = [];
@@ -185,9 +186,21 @@ try {
 	await player.focus();
 	await page.keyboard.press("ArrowRight");
 	assert.match(await page.getByRole("status").textContent(), /Step 3 of 3/);
+
+	// Use a real Chromium touch-enabled context, not a synthetic input event.
+	const timeline = page.getByRole("slider", { name: "Timeline" });
+	const bounds = await timeline.boundingBox();
+	assert(bounds && bounds.width > 0, "Hydrated timeline has no touch target");
+	await timeline.tap({
+		position: { x: Math.max(4, Math.floor(bounds.width * 0.02)), y: Math.floor(bounds.height / 2) },
+	});
+	await page.waitForFunction(
+		() => document.querySelector('[role="status"]')?.textContent?.includes("Step 1 of 3"),
+	);
+	assert.equal(await timeline.inputValue(), "0", "Touch seeking must select the first frame");
 	assert.deepEqual(errors, [], "Hydration or browser console errors were emitted");
 
-	console.log("Packed Vite React consumer passed SSR hydration, CSS, keyboard, mobile and export checks.");
+	console.log("Packed Vite React consumer passed SSR hydration, CSS, keyboard, touch timeline, mobile and export checks.");
 } finally {
 	await context?.close();
 	await browser?.close();

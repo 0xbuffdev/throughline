@@ -1,13 +1,15 @@
 import { useEffect, useRef } from "react";
+import type { Trace } from "../model.js";
 import { type SonificationOptions, sonificationEvent } from "../sonify.js";
 
-/** One short voice at a time; seeking or disabling sound stops the previous voice. */
+/** One short voice at a time; seeking, changing trace or disabling sound stops the previous voice. */
 export function useSound(
+	trace: Trace,
 	step: number,
-	total: number,
 	enabled: boolean,
 	options?: SonificationOptions,
 ): void {
+	const total = trace.frames.length;
 	const context = useRef<AudioContext | null>(null);
 	const handler = options?.onTone;
 	useEffect(
@@ -42,17 +44,27 @@ export function useSound(
 			);
 			oscillator.connect(gain);
 			gain.connect(audio.destination);
-			oscillator.onended = () => {
+			let released = false;
+			const release = () => {
+				if (released) return;
+				released = true;
 				oscillator.disconnect();
 				gain.disconnect();
 			};
+			oscillator.onended = release;
 			oscillator.start();
 			oscillator.stop(now + event.durationMs / 1000 + 0.02);
 			return () => {
-				oscillator.stop();
+				// A scheduled voice may already have ended when playback changes.
+				try {
+					oscillator.stop();
+				} catch {
+					// Stopping an already-ended oscillator must not break cleanup.
+				}
+				release();
 			};
 		} catch {
 			// Audio is optional; unavailable hardware or a consumer callback cannot stop playback.
 		}
-	}, [step, total, enabled, handler]);
+	}, [trace, step, total, enabled, handler]);
 }
