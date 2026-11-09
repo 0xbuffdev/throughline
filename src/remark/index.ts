@@ -91,16 +91,17 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 						headerLine,
 					);
 				}
-				if (typeof node.value !== "string") {
+				const body = node.value;
+				if (typeof body !== "string") {
 					fail("Expected a Throughline code block body.", headerLine);
 				}
 				try {
 					// compileAst deliberately bypasses the fenced-source parser;
 					// enforce the same input budget before splitting host-owned code.
-					checkSourceSize(node.value.length + domain.length + 5);
+					checkSourceSize(body.length + domain.length + 5);
 					compileAst({
 						kind: domain,
-						lines: node.value.split(/\r\n?|\n/),
+						lines: body.split(/\r\n?|\n/),
 						...(headerLine !== undefined ? { source: { line: headerLine } } : {}),
 					});
 				} catch (error) {
