@@ -7,7 +7,7 @@ type MdNode = {
 	meta?: string | null;
 	value?: string;
 	name?: string | null;
-	attributes?: Array<{ type: string; name: string; value: string }>;
+	attributes?: Array<{ type: "mdxJsxAttribute"; name: string; value: string }>;
 	children?: MdNode[];
 	position?: { start: { line: number; column: number } };
 };
