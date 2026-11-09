@@ -61,7 +61,7 @@ if (!existsSync(resolve(root, "dist/index.js.map"))) {
 	const rootFacade = readFileSync(resolve(root, "dist/index.js"), "utf8");
 	assert(
 		rootFacade.length < 1024 &&
-			artifacts.some((file) => /^registry-.*\\.js\\.map$/.test(file)),
+			artifacts.some((file) => /^registry-.*\.js\.map$/.test(file)),
 		"Unmapped root entry must remain a small facade backed by mapped core code",
 	);
 }
