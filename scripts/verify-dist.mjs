@@ -49,10 +49,20 @@ assert(
 	"Declaration maps must not reference unshipped TypeScript sources",
 );
 
-for (const filename of ["index.js", "react/index.js", "remark/index.js", "examples.js"]) {
+// With more than one compiler entry, Rolldown may emit a source-less
+// re-export facade for the root, with executable core in a mapped chunk.
+for (const filename of ["react/index.js", "remark/index.js", "examples.js"]) {
 	assert(
 		existsSync(resolve(root, "dist", `${filename}.map`)),
 		`Missing JavaScript source map: ${filename}.map`,
+	);
+}
+if (!existsSync(resolve(root, "dist/index.js.map"))) {
+	const rootFacade = readFileSync(resolve(root, "dist/index.js"), "utf8");
+	assert(
+		rootFacade.length < 1024 &&
+			artifacts.some((file) => /^registry-.*\\.js\\.map$/.test(file)),
+		"Unmapped root entry must remain a small facade backed by mapped core code",
 	);
 }
 
