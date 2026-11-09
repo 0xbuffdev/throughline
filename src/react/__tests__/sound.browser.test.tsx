@@ -133,7 +133,7 @@ it("keeps stepping when audio is unavailable or a custom handler throws", async 
 it("releases the previous voice and cues a new trace with the same frame count", async () => {
 	const audio = audioBoundary();
 	const replacement = compile(
-		'```thl flow\\nnode n "Other number" = 10\\nstep "Ten"\\n set n = 20\\nstep "Eleven"\\n set n = 21\\n```',
+		'```thl flow\nnode n "Other number" = 10\nstep "Ten"\n set n = 20\nstep "Eleven"\n set n = 21\n```',
 	);
 	expect(replacement.frames).toHaveLength(trace.frames.length);
 	const screen = await render(
