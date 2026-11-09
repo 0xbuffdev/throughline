@@ -34,8 +34,8 @@ build pipelines or other offline ESM environments without React or a DOM.
 | Module | Responsibility | React required? |
 | --- | --- | --- |
 | `@0xbuff/throughline` | Parsing, validation, compilation, tracer and types | No |
-| `@0xbuff/throughline/remark` | Validate parser-owned Markdown code nodes and report VFile errors | No |
-| `@0xbuff/throughline/react` | Accessible player and optional sonification | Yes, React 19 peer |
+| `@0xbuff/throughline/remark` | Validate Markdown code nodes or emit literal MDX JSX nodes | No |
+| `@0xbuff/throughline/react` | Accessible player, memoized source embed and optional sonification | Yes, React 19 peer |
 | `@0xbuff/throughline/examples` | Public sample inputs | No |
 | `@0xbuff/throughline/styles/throughline.css` | Namespaced player CSS | No |
 
@@ -45,9 +45,20 @@ through the host VFile. Statement columns are verified against the
 original Markdown when available, accounting for blockquote/list prefixes.
 Diagnostics without precise source provenance remain file-level instead of
 pointing at an unrelated fence header or Markdown container marker. The
-default mode is validation-only: it does not
-rewrite nodes, emit JSX, execute content or depend on a renderer. A document
+default mode is validation-only and does not rewrite nodes. Opt-in
+`mdx` mode validates all matching fences before atomically replacing their
+code nodes with `mdxJsxFlowElement` nodes containing only a literal
+`source` string attribute. Invalid component names and source fail rather
+than being interpreted as expressions. The plugin imports no React/DOM,
+and the MDX host must register the component in its mapping. A document
 with many individual fences also needs host-level aggregate size limits.
+
+`ThroughlineEmbed` lives only in `./react`: `useMemo` compiles when its
+literal source changes and passes a stable trace to `ThroughlinePlayer`.
+SSR performs the same deterministic compilation as the browser, so this
+bridge does not claim to eliminate client-side compilation. Untrusted
+MDX documents may contain other executable expressions independent of
+Throughline's literal-only transform.
 
 The root compiler does not fetch remote data or use runtime application
 services. External consumers import only the declared public exports;

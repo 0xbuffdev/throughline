@@ -5,6 +5,13 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Added
+
+- Add opt-in Remark MDX JSX output with literal source attributes and validated
+  component identifiers, plus a memoized `ThroughlineEmbed` React bridge.
+- Verify MDX escaping, atomic multi-fence validation, registered-component
+  rendering, stable-source playback and independent packed consumers.
+
 ### Fixed
 
 - Use verified source coordinates for Remark body diagnostics in nested Markdown;

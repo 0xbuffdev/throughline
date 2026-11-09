@@ -13,6 +13,8 @@ type MarkdownNode = {
 	meta?: string | null;
 	value?: string;
 	position?: { start: { line: number; column: number } };
+	name?: string | null;
+	attributes?: Array<{ type: "mdxJsxAttribute"; name: string; value: string }>;
 };
 type MarkdownRoot = { type: string; children: readonly MarkdownNode[] };
 type Point = { line: number; column: number };
@@ -25,7 +27,9 @@ type DiagnosticFile = {
 	) => never;
 };
 
-export type ThroughlineRemarkOptions = { mode?: "validate" };
+export type ThroughlineRemarkOptions =
+	| { mode?: "validate" }
+	| { mode: "mdx"; componentName?: string };
 
 const validPoint = (point: Point | undefined): point is Point =>
 	point !== undefined &&
@@ -37,19 +41,35 @@ const validPoint = (point: Point | undefined): point is Point =>
 /**
  * Validate every `thl <domain>` code fence in an mdast document.
  *
- * This does not transform the AST, evaluate authored input, or import React.
- * MDX component transformation belongs to the separate opt-in integration.
+ * Opt-in MDX mode replaces validated fences with JSX nodes containing only
+ * literal attributes. The host registers the component; nothing is evaluated.
  */
 export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
+	if (options === null || typeof options !== "object" || Array.isArray(options)) {
+		throw new TypeError('remarkThroughline expects { mode: "validate" | "mdx" }.');
+	}
+	const mode = options.mode ?? "validate";
 	if (
-		options === null ||
-		typeof options !== "object" ||
-		Array.isArray(options) ||
-		Object.keys(options).some((key) => key !== "mode") ||
-		(options.mode !== undefined && options.mode !== "validate")
+		(mode !== "validate" && mode !== "mdx") ||
+		Object.keys(options).some(
+			(key) => key !== "mode" && !(mode === "mdx" && key === "componentName"),
+		)
+	) {
+		throw new TypeError('remarkThroughline expects { mode: "validate" | "mdx" }.');
+	}
+	const componentName =
+		mode === "mdx" && "componentName" in options
+			? options.componentName ?? "ThroughlineEmbed"
+			: "ThroughlineEmbed";
+	// Disallow expressions, namespaces and intrinsic HTML element names.
+	if (
+		mode === "mdx" &&
+		(typeof componentName !== "string" ||
+			componentName.length > 128 ||
+			!/^[A-Z][A-Za-z0-9_]*$/.test(componentName))
 	) {
 		throw new TypeError(
-			'remarkThroughline currently supports only { mode: "validate" }.',
+			"componentName must be a capitalized React component identifier.",
 		);
 	}
 
@@ -57,7 +77,17 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 		const markdownLines = typeof file.value === "string"
 			? file.value.split(/\r\n?|\n/)
 			: undefined;
-		const visit = (node: MarkdownNode): void => {
+		// Delay writes until all blocks validate: no partial MDX on error.
+		const replacements: Array<{
+			siblings: readonly MarkdownNode[];
+			index: number;
+			node: MarkdownNode;
+		}> = [];
+		const visit = (
+			node: MarkdownNode,
+			siblings?: readonly MarkdownNode[],
+			index?: number,
+		): void => {
 			if (node.type === "code" && node.lang === "thl") {
 				const start = node.position?.start;
 				const positioned = validPoint(start);
@@ -110,6 +140,25 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 						lines,
 						...(headerLine !== undefined ? { source: { line: headerLine } } : {}),
 					});
+					if (mode === "mdx") {
+						if (!siblings || index === undefined)
+							throw new TypeError("Throughline code node has no Markdown parent.");
+						replacements.push({
+							siblings,
+							index,
+							node: {
+								type: "mdxJsxFlowElement",
+								name: componentName,
+								attributes: [{
+									type: "mdxJsxAttribute",
+									name: "source",
+									value: ["thl " + domain, body].join("\n"),
+								}],
+								children: [],
+								...(node.position ? { position: node.position } : {}),
+							},
+						});
+					}
 				} catch (error) {
 					if (!(error instanceof ProgramError)) throw error;
 					// Semantic validation may report no source line (e.g. duplicate
@@ -129,9 +178,12 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 					return fail(reason, place);
 				}
 			}
-			for (const child of node.children ?? []) visit(child);
+			for (const [childIndex, child] of (node.children ?? []).entries())
+				visit(child, node.children, childIndex);
 		};
 		visit(tree);
+		for (const { siblings, index, node } of replacements)
+			(siblings as MarkdownNode[])[index] = node;
 	};
 }
 

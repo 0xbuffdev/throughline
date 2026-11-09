@@ -170,12 +170,8 @@ describe("remarkThroughline validation", () => {
 		).toEqual([]);
 	});
 
-	it("rejects invalid options instead of silently enabling MDX", () => {
-		expect(() => remarkThroughline({ mode: "mdx" } as never)).toThrow(
-			/only/,
-		);
-		expect(() => remarkThroughline({ other: true } as never)).toThrow(
-			/only/,
-		);
+	it("rejects unsupported options rather than silently changing modes", () => {
+		expect(() => remarkThroughline({ mode: "js" } as never)).toThrow(/mode/);
+		expect(() => remarkThroughline({ other: true } as never)).toThrow(/mode/);
 	});
 });
