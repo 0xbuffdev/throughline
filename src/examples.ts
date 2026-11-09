@@ -58,6 +58,26 @@ export const EXAMPLES = [
 		].join("\n"),
 	},
 	{
+		id: "references",
+		title: "Shared references",
+		description:
+			"Copy a reference, mutate the shared object, then move one pointer.",
+		source: [
+			"```thl bindings",
+			"let list = [1, 2]",
+			"let alias = list",
+			"alias.push(3)",
+			"alias = [7]",
+			"```",
+		].join("\n"),
+	},
+	{
+		id: "matrix",
+		title: "Matrix multiplication",
+		description: "Follow one row and one column to each output cell.",
+		source: "```thl matrix\nA = [[1,2],[3,4]]\nB = [[5,6],[7,8]]\n```",
+	},
+	{
 		id: "distributed-checkout",
 		title: "Distributed checkout recovery",
 		description:
@@ -147,25 +167,5 @@ export const EXAMPLES = [
 			'  note "The customer can now see a confirmed order. The retry recovered the missing acknowledgement without a second charge."',
 			'```',
 		].join("\n"),
-	},
-	{
-		id: "references",
-		title: "Shared references",
-		description:
-			"Copy a reference, mutate the shared object, then move one pointer.",
-		source: [
-			"```thl bindings",
-			"let list = [1, 2]",
-			"let alias = list",
-			"alias.push(3)",
-			"alias = [7]",
-			"```",
-		].join("\n"),
-	},
-	{
-		id: "matrix",
-		title: "Matrix multiplication",
-		description: "Follow one row and one column to each output cell.",
-		source: "```thl matrix\nA = [[1,2],[3,4]]\nB = [[5,6],[7,8]]\n```",
 	},
 ] as const;
