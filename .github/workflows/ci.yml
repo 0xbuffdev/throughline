@@ -55,6 +55,8 @@ jobs:
         run: pnpm audit:pack
       - name: Validate packed Vite browser hydration
         run: pnpm audit:browser
+      - name: Capture deterministic consumer locks for review
+        run: node scripts/fixtures/update-integration-locks.mjs --emit
       - name: Validate framework integration consumers
         run: pnpm audit:frameworks
       - name: Validate Markdown host consumers
