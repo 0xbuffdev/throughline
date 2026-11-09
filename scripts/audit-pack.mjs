@@ -184,14 +184,14 @@ try {
 		'assert.equal(JSON.stringify(ast), before);',
 		'assert.match(String(await proc.process(md)), /~~~js/);',
 		'await assert.rejects(() => proc.process({ path: "broken.md", value: "# Heading\\n\\n~~~thl flow\\nnode x \\\"X\\\" = 1\\ninvalid\\n~~~" }), (error) => { assert.equal(error.line, 5); assert.equal(error.file, "broken.md"); return true; });',
-	].join("\\n");
+	].join("\n");
 	run("node", ["--input-type=module", "-e", remark], consumer);
 	writeFileSync(join(consumer, "remark-typecheck.ts"), [
 		'import { unified } from "unified";',
 		'import remarkParse from "remark-parse";',
 		'import { remarkThroughline } from "@0xbuff/throughline/remark";',
 		'unified().use(remarkParse).use(remarkThroughline);',
-	].join("\\n"));
+	].join("\n"));
 	run("node", ["node_modules/typescript/bin/tsc", "--strict", "--noEmit", "--skipLibCheck", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--target", "ES2022", "remark-typecheck.ts"], consumer);
 	assert(!existsSync(join(consumer, "node_modules", "react")), "Remark imported React");
 
