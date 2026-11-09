@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { bundleMDX } from "mdx-bundler";
-import { getMDXComponent } from "mdx-bundler/client";
+import { getMDXComponent } from "mdx-bundler/client/index.js";
 import { remarkThroughline } from "@0xbuff/throughline/remark";
 import { ThroughlineEmbed } from "@0xbuff/throughline/react";
 
