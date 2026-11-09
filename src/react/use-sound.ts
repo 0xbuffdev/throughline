@@ -42,14 +42,24 @@ export function useSound(
 			);
 			oscillator.connect(gain);
 			gain.connect(audio.destination);
-			oscillator.onended = () => {
+			let released = false;
+			const release = () => {
+				if (released) return;
+				released = true;
 				oscillator.disconnect();
 				gain.disconnect();
 			};
+			oscillator.onended = release;
 			oscillator.start();
 			oscillator.stop(now + event.durationMs / 1000 + 0.02);
 			return () => {
-				oscillator.stop();
+				// A scheduled voice may already have ended when playback changes.
+				try {
+					oscillator.stop();
+				} catch {
+					// Stopping an already-ended oscillator must not break cleanup.
+				}
+				release();
 			};
 		} catch {
 			// Audio is optional; unavailable hardware or a consumer callback cannot stop playback.
