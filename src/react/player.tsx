@@ -35,33 +35,54 @@ export function ThroughlinePlayer({
 	const [sound, setSound] = useState(sonification?.enabled ?? false);
 	const [fullscreen, setFullscreen] = useState(false);
 	const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
+	const [fullscreenError, setFullscreenError] = useState<string | null>(null);
 	const layout = useMemo(() => composeTrace(trace, width), [trace, width]);
 	const captionId = useId();
+	const keyboardHelpId = useId();
 	const frame = trace.frames[state.step] ?? trace.frames[0];
 
 	useEffect(() => {
 		const syncFullscreen = () => {
-			setFullscreen(document.fullscreenElement === ref.current);
+			const active = document.fullscreenElement;
+			setFullscreen(active === ref.current);
 			setFullscreenAvailable(
 				Boolean(
 					document.fullscreenEnabled &&
 						ref.current?.requestFullscreen &&
-						document.exitFullscreen,
+						document.exitFullscreen &&
+						(!active || active === ref.current),
 				),
 			);
+			if (active === ref.current) setFullscreenError(null);
 		};
+		const onFullscreenError = () =>
+			setFullscreenError("Fullscreen is unavailable in this browser or embedded view.");
 		syncFullscreen();
 		document.addEventListener("fullscreenchange", syncFullscreen);
-		return () => document.removeEventListener("fullscreenchange", syncFullscreen);
+		document.addEventListener("fullscreenerror", onFullscreenError);
+		return () => {
+			document.removeEventListener("fullscreenchange", syncFullscreen);
+			document.removeEventListener("fullscreenerror", onFullscreenError);
+		};
 	}, []);
 
-	const toggleFullscreen = () => {
+	const toggleFullscreen = async () => {
 		const element = ref.current;
-		if (!element || !document.fullscreenEnabled) return;
-		if (document.fullscreenElement === element) {
-			void document.exitFullscreen().catch(() => {});
-		} else if (!document.fullscreenElement) {
-			void element.requestFullscreen().catch(() => {});
+		if (
+			!element ||
+			!document.fullscreenEnabled ||
+			!element.requestFullscreen ||
+			!document.exitFullscreen
+		) return;
+		setFullscreenError(null);
+		try {
+			if (document.fullscreenElement === element) {
+				await document.exitFullscreen();
+			} else if (!document.fullscreenElement) {
+				await element.requestFullscreen();
+			}
+		} catch {
+			setFullscreenError("Fullscreen is unavailable in this browser or embedded view.");
 		}
 	};
 
@@ -82,13 +103,23 @@ export function ThroughlinePlayer({
 			data-theme={theme}
 			role="group"
 			aria-label="Visualization player"
+			aria-describedby={keyboardHelpId}
+			aria-keyshortcuts="ArrowLeft ArrowRight Home End Space"
 			// biome-ignore lint/a11y/noNoninteractiveTabindex: the group exposes documented Arrow/Home/End/Space shortcuts.
 			tabIndex={0}
 			onKeyDown={onKeyDown}
 		>
-			<p role="status" className="thl-sr-only">
+			<p id={keyboardHelpId} className="thl-sr-only">
+				Focus this player to use Left and Right arrows to step, Home and End to seek, and Space to play or pause. Controls also work independently.
+			</p>
+			<p role="status" aria-atomic="true" className="thl-sr-only">
 				{summary}
 			</p>
+			{fullscreenError && (
+				<p role="alert" className="thl-sr-only">
+					{fullscreenError}
+				</p>
+			)}
 			{title && <h2 className="thl-title">{title}</h2>}
 			{/* This measured stage must exist even for empty traces so ResizeObserver
 			    stays connected through empty/populated trace replacements. */}
@@ -125,7 +156,7 @@ export function ThroughlinePlayer({
 						dispatch={dispatch}
 						sound={
 							sonification
-								? { enabled: sound, toggle: () => setSound(!sound) }
+								? { enabled: sound, toggle: () => setSound((enabled) => !enabled) }
 								: undefined
 						}
 						fullscreen={{
