@@ -118,8 +118,8 @@ describe("remarkThroughline validation", () => {
 			/Duplicate entity/,
 		],
 		[
-			"unknown relation",
-			'node a "A" = 1\nstep "Send"\nsend missing',
+			"relation to unknown entity",
+			'node a "A" = 1\nlink outgoing a -> missing',
 			/relation/i,
 		],
 	] as const)(
