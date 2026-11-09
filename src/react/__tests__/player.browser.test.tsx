@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
@@ -238,4 +238,179 @@ it("renders only the current tree and commit plan after reconciliation commits",
 			(title) => title.textContent?.split(":")[0],
 		),
 	).toEqual(["current → a", "current → committedC"]);
+});
+
+it("keeps the reference player hierarchy, optional title, and one caption step count", async () => {
+	const trace = compile(EXAMPLES[0].source);
+	const screen = await render(
+		<ThroughlinePlayer
+			trace={trace}
+			title="React Reconciliation"
+			theme="light"
+		/>,
+	);
+	const player = document.querySelector(".thl") as HTMLElement;
+	const heading = player.querySelector(".thl-title") as HTMLElement;
+	const stage = player.querySelector(".thl-stage") as HTMLElement;
+	const caption = player.querySelector(".thl-caption") as HTMLElement;
+	const count = player.querySelector(".thl-step-count") as HTMLElement;
+	const controls = player.querySelector(".thl-controls") as HTMLElement;
+
+	expect(heading.textContent).toBe("React Reconciliation");
+	expect(heading.getBoundingClientRect().top).toBeLessThan(
+		stage.getBoundingClientRect().top,
+	);
+	expect(stage.getBoundingClientRect().top).toBeLessThan(
+		caption.getBoundingClientRect().top,
+	);
+	expect(caption.getBoundingClientRect().top).toBeLessThan(
+		controls.getBoundingClientRect().top,
+	);
+	expect(count.textContent).toBe(`Step 1 of ${trace.frames.length}`);
+	expect(count.getBoundingClientRect().right).toBeGreaterThan(
+		caption.querySelector(".thl-caption-content")!.getBoundingClientRect().right,
+	);
+	expect(getComputedStyle(player).borderTopWidth).toBe("0px");
+	expect(getComputedStyle(caption).borderTopWidth).toBe("0px");
+	expect(getComputedStyle(player).borderTopLeftRadius).toBe("5.2px");
+	expect(player.querySelector(".thl-count")).toBeNull();
+	expect(controls.textContent).not.toMatch(/\\d+:\\d{2}/);
+
+	await screen.rerender(<ThroughlinePlayer trace={trace} theme="light" />);
+	expect(player.querySelector(".thl-title")).toBeNull();
+	await expect
+		.element(screen.getByRole("button", { name: "Maximize player" }))
+		.toBeInTheDocument();
+});
+
+it("isolates neutral light/dark/auto tokens and permits host overrides", async () => {
+	const trace = compile(EXAMPLES[0].source);
+	const screen = await render(<ThroughlinePlayer trace={trace} theme="light" />);
+	const player = document.querySelector(".thl") as HTMLElement;
+	const light = getComputedStyle(player).backgroundColor;
+	expect(getComputedStyle(player).colorScheme).toBe("light");
+	await screen.rerender(<ThroughlinePlayer trace={trace} theme="dark" />);
+	const dark = getComputedStyle(player).backgroundColor;
+	expect(dark).not.toBe(light);
+	expect(getComputedStyle(player).colorScheme).toBe("dark");
+	await screen.rerender(<ThroughlinePlayer trace={trace} theme="auto" />);
+	expect(getComputedStyle(player).colorScheme).toBe("light dark");
+
+	const style = document.createElement("style");
+	style.textContent = ".thl.thl-custom-theme { --thl-bg: rgb(248, 247, 246); }";
+	document.head.append(style);
+	try {
+		await screen.rerender(
+			<ThroughlinePlayer trace={trace} theme="light" className="thl-custom-theme" />,
+		);
+		expect(getComputedStyle(player).backgroundColor).toBe(
+			"rgb(248, 247, 246)",
+		);
+		expect(getComputedStyle(document.body).backgroundColor).not.toBe(
+			"rgb(248, 247, 246)",
+		);
+	} finally {
+		style.remove();
+	}
+});
+
+it("enters and exits fullscreen with the real browser event contract", async () => {
+	const trace = compile(EXAMPLES[0].source);
+	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	const player = document.querySelector(".thl") as HTMLElement;
+	const keys = ["fullscreenEnabled", "fullscreenElement", "exitFullscreen"] as const;
+	const saved = keys.map((key) => [key, Object.getOwnPropertyDescriptor(document, key)] as const);
+	const previousRequest = Object.getOwnPropertyDescriptor(player, "requestFullscreen");
+	let active: Element | null = null;
+	const request = vi.fn(async () => {
+		active = player;
+		document.dispatchEvent(new Event("fullscreenchange"));
+	});
+	const exit = vi.fn(async () => {
+		active = null;
+		document.dispatchEvent(new Event("fullscreenchange"));
+	});
+	Object.defineProperty(document, "fullscreenEnabled", { configurable: true, value: true });
+	Object.defineProperty(document, "fullscreenElement", {
+		configurable: true,
+		get: () => active,
+	});
+	Object.defineProperty(document, "exitFullscreen", { configurable: true, value: exit });
+	Object.defineProperty(player, "requestFullscreen", { configurable: true, value: request });
+
+	try {
+		document.dispatchEvent(new Event("fullscreenchange"));
+		const maximize = screen.getByRole("button", { name: "Maximize player" });
+		await expect.element(maximize).toBeEnabled();
+		await maximize.click();
+		expect(request).toHaveBeenCalledOnce();
+		await expect
+			.element(screen.getByRole("button", { name: "Minimize player" }))
+			.toBeEnabled();
+		await screen.getByRole("button", { name: "Minimize player" }).click();
+		expect(exit).toHaveBeenCalledOnce();
+		await expect
+			.element(screen.getByRole("button", { name: "Maximize player" }))
+			.toBeEnabled();
+
+		active = player;
+		document.dispatchEvent(new Event("fullscreenchange"));
+		active = null;
+		document.dispatchEvent(new Event("fullscreenchange"));
+		await expect
+			.element(screen.getByRole("button", { name: "Maximize player" }))
+			.toBeEnabled();
+	} finally {
+		for (const [key, descriptor] of saved) {
+			if (descriptor) Object.defineProperty(document, key, descriptor);
+			else Reflect.deleteProperty(document, key);
+		}
+		if (previousRequest)
+			Object.defineProperty(player, "requestFullscreen", previousRequest);
+		else Reflect.deleteProperty(player, "requestFullscreen");
+	}
+});
+
+it("disables fullscreen controls where the host forbids the API", async () => {
+	const trace = compile(EXAMPLES[0].source);
+	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	const original = Object.getOwnPropertyDescriptor(document, "fullscreenEnabled");
+	try {
+		Object.defineProperty(document, "fullscreenEnabled", {
+			configurable: true,
+			value: false,
+		});
+		document.dispatchEvent(new Event("fullscreenchange"));
+		await expect
+			.element(screen.getByRole("button", { name: "Maximize player" }))
+			.toBeDisabled();
+		await expect
+			.element(screen.getByRole("button", { name: "Sonify trace" }))
+			.not.toBeInTheDocument();
+	} finally {
+		if (original) Object.defineProperty(document, "fullscreenEnabled", original);
+		else Reflect.deleteProperty(document, "fullscreenEnabled");
+	}
+});
+
+it("keeps sound controllers alongside fullscreen at narrow widths", async () => {
+	await page.viewport(375, 900);
+	const trace = compile(EXAMPLES[0].source);
+	const screen = await render(
+		<ThroughlinePlayer trace={trace} sonification={{ onTone: vi.fn() }} />,
+	);
+	const player = document.querySelector(".thl") as HTMLElement;
+	const sound = screen.getByRole("button", { name: "Sonify trace" });
+	await expect.element(sound).toHaveAttribute("aria-pressed", "false");
+	await sound.click();
+	await expect.element(sound).toHaveAttribute("aria-pressed", "true");
+	expect(player.scrollWidth).toBeLessThanOrEqual(player.clientWidth);
+	expect(
+		(player.querySelector(".thl-controls") as HTMLElement).scrollWidth,
+	).toBeLessThanOrEqual(
+		(player.querySelector(".thl-controls") as HTMLElement).clientWidth,
+	);
+	await expect
+		.element(screen.getByRole("button", { name: "Maximize player" }))
+		.toBeInTheDocument();
 });
