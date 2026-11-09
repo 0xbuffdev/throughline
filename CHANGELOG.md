@@ -7,7 +7,7 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ### Tested
 
-- Add packed package integration fixtures for Fumadocs Unified, Next.js App Router and Astro React islands, with pinned host versions and a release-gated integration guide.
+- Add packed package integration fixtures for Fumadocs Unified, Next.js App Router, Astro React islands, react-markdown, mdx-bundler and markdown-to-jsx, with pinned host versions and a release-gated integration guide.
 
 ### Added
 
