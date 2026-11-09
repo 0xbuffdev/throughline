@@ -44,7 +44,7 @@ it("resets safely when replacing a trace with fewer frames", async () => {
 		.element(screen.getByRole("status"))
 		.toHaveTextContent("Step 1 of 1");
 	await expect
-		.element(screen.getByRole("button", { name: "Play" }))
+		.element(screen.getByRole("button", { name: "Play", exact: true }))
 		.toBeDisabled();
 	await screen.rerender(
 		<ThroughlinePlayer trace={{ version: 1, frames: [] }} />,
@@ -142,7 +142,7 @@ it("keeps keyboard stepping on the player surface and audio explicitly optional"
 	await expect
 		.element(screen.getByRole("status"))
 		.toHaveTextContent("Step 3 of 3");
-	await screen.getByRole("button", { name: "Play" }).click();
+	await screen.getByRole("button", { name: "Play", exact: true }).click();
 	await expect
 		.element(screen.getByRole("status"))
 		.toHaveTextContent("Step 1 of 3");
