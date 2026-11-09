@@ -123,7 +123,7 @@ try {
 	];
 	run(
 		"npm",
-		["install", ...flags, "--omit=peer", tarball, "typescript@^5.9.3"],
+		["install", ...flags, "--omit=peer", tarball, "typescript@5.9.3"],
 		consumer,
 	);
 	assert(
@@ -222,12 +222,14 @@ try {
 	assert(!existsSync(join(consumer, "node_modules", "react")), "Remark imported React");
 
 	// Node-only verification is complete before installing the optional peer.
+	// Pin direct fixture dependencies to the versions in pnpm-lock.yaml;
+	// independent consumer regressions must be reproducible across CI runs.
 	run(
 		"npm",
 		[
 			"install", ...flags, "--no-save",
-			"react@^19", "react-dom@^19", "@types/react@^19",
-			"@types/react-dom@^19", "typescript@^5.9.3", "@mdx-js/mdx@3.1.1",
+			"react@19.3.1", "react-dom@19.3.1", "@types/react@19.3.0",
+			"@types/react-dom@19.3.0", "typescript@5.9.3", "@mdx-js/mdx@3.1.1",
 		],
 		consumer,
 	);
