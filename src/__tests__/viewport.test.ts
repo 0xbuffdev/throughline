@@ -59,9 +59,30 @@ describe("pure guided viewport math (TL-I13)", () => {
 		const extreme = panCamera(layout, camera, -1e8, 1e8);
 		expect(Number.isFinite(extreme.centerX)).toBe(true);
 		expect(Number.isFinite(extreme.centerY)).toBe(true);
-		expect(extreme.centerX).toBeLessThan(layout.width);
-		expect(extreme.centerY).toBeGreaterThan(0);
+		expect(extreme.centerX).toBe(layout.width);
+		expect(extreme.centerY).toBe(0);
 		expect(layout).toEqual(original);
+	});
+
+	it("centers entities at every extreme without pushing the whole world offscreen", () => {
+		const before = structuredClone(layout);
+		const edges = [
+			{ x: 0, y: 0, w: 10, h: 10 },
+			{ x: layout.width - 10, y: 0, w: 10, h: 10 },
+			{ x: 0, y: layout.height - 10, w: 10, h: 10 },
+			{ x: layout.width - 10, y: layout.height - 10, w: 10, h: 10 },
+		];
+		for (const node of edges) {
+			const focused = focusCamera(layout, fitCamera(layout), node);
+			const [left, top, width, height] = box(focused);
+			expect(left + width / 2).toBeCloseTo(node.x + node.w / 2);
+			expect(top + height / 2).toBeCloseTo(node.y + node.h / 2);
+			expect(focused.centerX).toBeGreaterThanOrEqual(0);
+			expect(focused.centerX).toBeLessThanOrEqual(layout.width);
+			expect(focused.centerY).toBeGreaterThanOrEqual(0);
+			expect(focused.centerY).toBeLessThanOrEqual(layout.height);
+		}
+		expect(layout).toEqual(before);
 	});
 
 	it("centers visible entities and leaves viewport decisions separate from seek", () => {
