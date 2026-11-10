@@ -10,6 +10,7 @@ import { NodeCard, truncate } from "./node-card.js";
 interface SceneLinkProps {
 	sourceRelationIds: readonly string[];
 	aggregated?: boolean;
+	activeSourceRelationIds?: readonly string[];
 	relation: Relation;
 	edge: Edge;
 	frame: Frame;
@@ -18,6 +19,7 @@ interface SceneLinkProps {
 function SceneLink({
 	sourceRelationIds,
 	aggregated,
+	activeSourceRelationIds,
 	relation,
 	edge,
 	frame,
@@ -25,10 +27,10 @@ function SceneLink({
 }: SceneLinkProps): React.JSX.Element {
 	const label = relation.label;
 	return (
-		<g className={cn("thl-link", { "thl-transferred": transferred })}>
-			<title>{aggregated ? `${sourceRelationIds.length} authored connection(s): ${sourceRelationIds.join(", ")}. Transfer annotations do not write destination state.` : `${relation.from} → ${relation.to}${relation.label ? `: ${relation.label}` : ""}`}</title>
+		<g className={cn("thl-link", { "thl-transferred": transferred && !aggregated, "thl-aggregate-active": aggregated && transferred })}>
+			<title>{aggregated ? `${sourceRelationIds.length} authored connection(s) (${relation.from} → ${relation.to}): ${sourceRelationIds.join(", ")}. Sent in this step: ${activeSourceRelationIds?.join(", ") || "none"}. A send never implies persisted destination state.` : `${relation.from} → ${relation.to}${relation.label ? `: ${relation.label}` : ""}`}</title>
 			<path d={edge.d} className="thl-edge" />
-			{transferred && (
+			{transferred && !aggregated && (
 				<path
 					key={frame.index}
 					d={edge.d}
@@ -105,12 +107,13 @@ export function TraceScene({
 					</g>
 				) : null;
 			})}
-			{scene.edges.map(({ id, relation, transferred, aggregated, sourceRelationIds }) =>
+			{scene.edges.map(({ id, relation, transferred, aggregated, sourceRelationIds, activeSourceRelationIds }) =>
 				geometry.edges[id] ? (
 					<SceneLink
 						key={id}
 						sourceRelationIds={sourceRelationIds}
 						aggregated={aggregated}
+						activeSourceRelationIds={activeSourceRelationIds}
 						relation={relation}
 						edge={geometry.edges[id]}
 						frame={frame}
