@@ -77,7 +77,7 @@ export function projectHierarchy(
 	}
 	const retained = new Set(nodes.map((node) => node.id));
 	const edges: ProjectedEdge[] = [];
-	const aggregates = new Map<string, { from: string; to: string; ids: string[]; transferred: boolean; labels: string[] }>();
+	const aggregates = new Map<string, { from: string; to: string; ids: string[]; activeIds: string[]; labels: string[] }>();
 	for (const edge of base.edges) {
 		const from = remapped.get(edge.relation.from) ?? edge.relation.from;
 		const to = remapped.get(edge.relation.to) ?? edge.relation.to;
@@ -90,12 +90,12 @@ export function projectHierarchy(
 		const key = JSON.stringify([from, to]);
 		let group = aggregates.get(key);
 		if (!group) {
-			group = { from, to, ids: [], transferred: false, labels: [] };
+			group = { from, to, ids: [], activeIds: [], labels: [] };
 			aggregates.set(key, group);
 		}
 		group.ids.push(...edge.sourceRelationIds);
 		if (edge.relation.label) group.labels.push(edge.relation.label);
-		group.transferred ||= edge.transferred;
+		if (edge.transferred) group.activeIds.push(...edge.sourceRelationIds);
 	}
 	for (const [key, aggregate] of aggregates) {
 		const id = `aggregate:${key}`;
@@ -109,7 +109,8 @@ export function projectHierarchy(
 					? aggregate.labels[0] ?? "1 connection"
 					: `${aggregate.ids.length} connections`,
 			}),
-			transferred: aggregate.transferred,
+			transferred: aggregate.activeIds.length > 0,
+			activeSourceRelationIds: Object.freeze([...aggregate.activeIds]),
 		}));
 	}
 	const projectedGroups: ProjectedGroup[] = [];
