@@ -243,7 +243,7 @@ export function ViewportScene({
 				/>
 			</svg>
 			{selected && (
-				<p className="thl-entity-status" role="status">
+				<p className="thl-entity-status" aria-live="polite">
 					Selected: {selected.label} ({selected.id}) — {format(selected.value)}
 				</p>
 			)}
