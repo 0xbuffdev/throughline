@@ -88,7 +88,9 @@ export function ViewportScene({
 	const activeId = frame?.state.active
 		.map(parseTarget)
 		.map((target) => target?.id)
-		.find((id): id is string => Boolean(id));
+		.find((id): id is string => Boolean(
+			id && projected?.nodes.some((node) => node.id === id || node.sourceEntityIds?.includes(id))
+		));
 	const activeNode = projected?.nodes.find((node) =>
 		node.id === activeId || (activeId && node.sourceEntityIds?.includes(activeId))
 	);
@@ -133,7 +135,10 @@ export function ViewportScene({
 		setDrilledGroup(id);
 		setSelectedId(null);
 		if (!id) { manual(fitCamera(layout)); return; }
-		const box = layout.groups.find((candidate) => (candidate.id ?? candidate.name) === id);
+		const name = groupById.get(id)?.name;
+		const box = layout.groups.find((candidate) =>
+			(candidate.id ?? candidate.name) === id || candidate.name === name
+		);
 		if (box) manual(focusCamera(layout, effectiveRef.current, box));
 	};
 	const toggleCollapse = (id: string) => {
