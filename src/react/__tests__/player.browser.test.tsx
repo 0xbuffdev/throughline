@@ -6,7 +6,6 @@ import { EXAMPLES } from "../../examples.js";
 import { ThroughlinePlayer } from "../index.js";
 import "../../styles/throughline.css";
 
-
 it("keeps authored tree and column lane metadata through the React projection", async () => {
 	const trace = compile([
 		"```thl flow",
@@ -31,7 +30,7 @@ it("keeps authored tree and column lane metadata through the React projection", 
 	]);
 	const y = (id: string) => {
 		const transform = document.querySelector(`[data-node="${id}"]`)?.getAttribute("transform");
-		return Number(transform?.match(/translate\\([^,]+,([^)]*)\\)/)?.[1]);
+		return Number(transform?.match(/translate\([^,]+,([^)]*)\)/)?.[1]);
 	};
 	expect(y("child")).toBeGreaterThan(y("root"));
 	expect(y("bottom")).toBeGreaterThan(y("top"));

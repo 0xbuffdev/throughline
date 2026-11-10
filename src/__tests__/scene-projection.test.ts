@@ -131,12 +131,12 @@ describe("pure scene projection (TL-I12)", () => {
 		expect(result.groups.map((group) => group.name)).toEqual(["Second"]);
 		expect(result.nodes[0].focused).toBe(true);
 		expect(result.transfers).toEqual([]);
+		// A hidden-only selection must show the authored-visible overview.
 		expect(projectScene(trace.frames[0].state, trace.groups, {
 			mode: "focus",
 			selectedIds: ["hidden"],
-		}).nodes).toEqual([]);
+		}).nodes.map((node) => node.id)).toEqual(["a", "b", "c"]);
 	});
-
 
 	it("falls back to overview when all focus targets are hidden or stale", () => {
 		const trace = compile([
