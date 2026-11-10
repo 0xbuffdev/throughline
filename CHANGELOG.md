@@ -5,6 +5,15 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Fixed
+
+- Correct two-finger pinch translation when zoom and midpoint movement occur
+  together; focus now centers edge-positioned entities accurately.
+- Bound the physical SVG height for dense, narrow diagrams while preserving
+  fit-to-view aspect ratio. Let page scrolling continue at zoom limits and
+  preserve native Ctrl/Meta+wheel browser zoom.
+- Add unit and Chromium regressions for each TL-I13 review finding.
+
 ### Added
 
 - TL-I13 guided viewport: bounded pan, zoom and fit-to-view with wheel, keyboard
