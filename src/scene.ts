@@ -34,6 +34,8 @@ export type ProjectedEdge = {
 	/** Detached, frozen view of this snapshot relation. */
 	relation: Readonly<Relation>;
 	transferred: boolean;
+	/** True authored relation IDs that transferred in this frame, never a new event. */
+	activeSourceRelationIds?: readonly string[];
 	/** Visual aggregate; sourceRelationIds remain the only true relation identities. */
 	aggregated?: boolean;
 };
