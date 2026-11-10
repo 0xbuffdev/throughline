@@ -161,10 +161,7 @@ export function projectLayout(layout: Layout, scene: ProjectedScene): Layout {
 		scene.nodes.flatMap((node) => {
 			if (node.summaryGroupId) {
 				const name = scene.groups.find((item) => item.id === node.summaryGroupId)?.name;
-				const group = layout.groups.find((candidate) =>
-					(candidate.id ?? candidate.name) === node.summaryGroupId ||
-					candidate.name === name
-				);
+				const group = layout.groups.find((candidate) => candidate.name === name);
 				if (!group) return [];
 				const w = Math.min(184, Math.max(96, group.w - 24));
 				const h = 66;
