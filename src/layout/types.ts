@@ -7,7 +7,7 @@ export type Layout = {
 	width: number;
 	height: number;
 	viewBox: string;
-	groups: { name: string; x: number; y: number; w: number; h: number }[];
+	groups: { name: string; id?: string; parentId?: string; x: number; y: number; w: number; h: number }[];
 	nodes: Record<string, Box>;
 	edges: Record<string, Edge>;
 };
