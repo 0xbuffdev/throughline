@@ -90,6 +90,10 @@ describe("TL-I14 hierarchical group compatibility", () => {
 
 		const transfer = projectScene(trace.frames[1].state, trace.groups, opts);
 		expect(transfer.edges.find((edge) => edge.sourceRelationIds.includes("ad"))?.transferred).toBe(true);
+		expect(transfer.edges.find((edge) => edge.sourceRelationIds.includes("ad"))?.activeSourceRelationIds)
+			.toEqual(["ad"]);
+		expect(transfer.edges.find((edge) => edge.sourceRelationIds.includes("ac"))?.activeSourceRelationIds)
+			.toEqual([]);
 		expect(transfer.transfers).toEqual([{
 			sourceRelationIds: ["ad"], from: "a", to: "d",
 			value: { payload: "sent" }, visible: true,
