@@ -40,6 +40,10 @@ describe("TL-I14 hierarchical group compatibility", () => {
 			{ id: "system", name: "System", layout: "column" },
 			{ id: "external", name: "External", layout: "row" },
 		]);
+		const projected = projectScene(trace.frames[0].state, trace.groups);
+		const groupOrder = projected.groups.map((group) => group.id);
+		expect(groupOrder.indexOf("system")).toBeLessThan(groupOrder.indexOf("backend"));
+		expect(groupOrder.indexOf("system")).toBeLessThan(groupOrder.indexOf("cache"));
 		const old = compile('```thl flow\ngroup "A" as tree\nnode a "A" in "A" = 0\n```');
 		expect(old.groups).toEqual([{ name: "A", layout: "tree" }]);
 		expect(old.frames[0].state.entities[0].lane).toBe("A");
