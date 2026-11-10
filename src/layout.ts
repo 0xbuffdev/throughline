@@ -159,18 +159,32 @@ export function composeTrace(trace: Trace, availableWidth = 720): Layout {
 export function projectLayout(layout: Layout, scene: ProjectedScene): Layout {
 	const nodes: Layout["nodes"] = Object.fromEntries(
 		scene.nodes.flatMap((node) => {
+			if (node.summaryGroupId) {
+				const group = layout.groups.find((candidate) =>
+					(candidate.id ?? candidate.name) === node.summaryGroupId
+				);
+				if (!group) return [];
+				const w = Math.min(184, Math.max(96, group.w - 24));
+				const h = 66;
+				return [[node.id, {
+					x: group.x + (group.w - w) / 2,
+					y: group.y + (group.h - h) / 2,
+					w, h,
+				}]];
+			}
 			const box = layout.nodes[node.sourceId];
 			return box ? [[node.id, { ...box }]] : [];
 		}),
 	);
+	const routed = routeEdges(
+		scene.edges.filter((edge) => edge.aggregated).map((edge) => edge.relation),
+		nodes,
+	);
 	const edges: Layout["edges"] = Object.fromEntries(
 		scene.edges.flatMap((link) => {
-			const edge = layout.edges[link.id];
-			if (
-				!edge ||
-				!nodes[link.relation.from] ||
-				!nodes[link.relation.to]
-			) return [];
+			const edge = link.aggregated ? routed[link.id] : layout.edges[link.id];
+			if (!edge || !nodes[link.relation.from] || !nodes[link.relation.to])
+				return [];
 			return [[link.id, {
 				...edge,
 				from: [...edge.from],
@@ -182,7 +196,9 @@ export function projectLayout(layout: Layout, scene: ProjectedScene): Layout {
 	const names = new Set(scene.groups.map((group) => group.name));
 	return {
 		...layout,
-		groups: layout.groups.filter((group) => names.has(group.name)).map((group) => ({ ...group })),
+		groups: layout.groups
+			.filter((group) => names.has(group.name))
+			.map((group) => ({ ...group })),
 		nodes,
 		edges,
 	};
