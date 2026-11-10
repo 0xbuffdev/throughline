@@ -110,11 +110,15 @@ export function ViewportScene({
 		const svg = svgRef.current;
 		if (!svg || !frame) return;
 		const onWheel = (event: WheelEvent) => {
-			event.preventDefault();
+			// Browser-level zoom and scrolling at the zoom limits must remain native.
+			if (event.ctrlKey || event.metaKey || !event.deltaY) return;
 			const anchor = scenePoint(svg, event.clientX, event.clientY);
 			if (!anchor) return;
 			const factor = Math.exp(-Math.max(-100, Math.min(100, event.deltaY)) * 0.002);
-			setCamera(zoomCamera(layout, effectiveRef.current, factor, anchor));
+			const next = zoomCamera(layout, effectiveRef.current, factor, anchor);
+			if (next.zoom === effectiveRef.current.zoom) return;
+			event.preventDefault();
+			setCamera(next);
 			setFollowActive(false);
 		};
 		svg.addEventListener("wheel", onWheel, { passive: false });
@@ -160,7 +164,10 @@ export function ViewportScene({
 			const factor = distance(now[0], now[1]) / Math.max(1, distance(start[0], start[1]));
 			const zoomed = zoomCamera(layout, base.camera, factor, anchored);
 			const delta = worldDelta(currentMid.x - initialMid.x, currentMid.y - initialMid.y);
-			manual(panCamera(layout, zoomed, delta.x, delta.y));
+			// Midpoint motion is in screen pixels: after zooming, each pixel
+			// covers fewer world units. Rebase the initial inverse accordingly.
+			const scale = base.camera.zoom / zoomed.zoom;
+			manual(panCamera(layout, zoomed, delta.x * scale, delta.y * scale));
 		} else {
 			const delta = worldDelta(dragX, dragY);
 			manual(panCamera(layout, base.camera, delta.x, delta.y));
@@ -217,7 +224,8 @@ export function ViewportScene({
 			<svg
 				ref={svgRef}
 				width="100%"
-				height={layout.height}
+				height="100%"
+				preserveAspectRatio="xMidYMid meet"
 				viewBox={cameraViewBox(layout, effective)}
 				role="img"
 				aria-label={summary}
