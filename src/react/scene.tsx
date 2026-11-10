@@ -121,7 +121,7 @@ export function TraceScene({
 					/>
 				) : null,
 			)}
-			{scene.nodes.map(({ id, entity, summaryGroupId, sourceEntityIds }) => geometry.nodes[id] ? (
+			{scene.nodes.map(({ id, entity, summaryGroupId, sourceEntityIds, focused, changed }) => geometry.nodes[id] ? (
 				summaryGroupId ? (
 					<g
 						key={id}
@@ -129,6 +129,7 @@ export function TraceScene({
 						role="button"
 						tabIndex={0}
 						aria-label={`Expand group ${entity.label}`}
+						aria-describedby={focused || changed ? `thl-summary-state-${summaryGroupId}` : undefined}
 						aria-expanded="false"
 						transform={`translate(${geometry.nodes[id].x},${geometry.nodes[id].y})`}
 						onClick={() => onExpandGroup?.(summaryGroupId)}
@@ -140,10 +141,25 @@ export function TraceScene({
 							}
 						}}
 					>
-						<title>{`${entity.label}: ${sourceEntityIds?.length ?? 0} authored-visible entities (collapsed)`}</title>
-						<rect width={geometry.nodes[id].w} height={geometry.nodes[id].h} rx={8} className="thl-summary-node" />
-						<text x={10} y={24} className="thl-node-label">{truncate(entity.label, Math.floor((geometry.nodes[id].w - 20) / 7))}</text>
-						<text x={10} y={44} className="thl-summary-count">{sourceEntityIds?.length ?? 0} visible entities</text>
+						<title>{`${entity.label}: ${sourceEntityIds?.length ?? 0} authored-visible entities (collapsed).${changed ? " State changed this step." : ""}${focused ? " Contains authored active focus." : ""}`}</title>
+						<rect
+							width={geometry.nodes[id].w}
+							height={geometry.nodes[id].h}
+							rx={8}
+							className={cn("thl-summary-node", { "thl-focused": focused, "thl-changed": changed })}
+						/>
+						<text x={10} y={20} className="thl-node-label">{truncate(entity.label, Math.floor((geometry.nodes[id].w - 20) / 7))}</text>
+						<text x={10} y={37} className="thl-summary-count">{sourceEntityIds?.length ?? 0} visible entities</text>
+						{(focused || changed) && (
+							<text
+								id={`thl-summary-state-${summaryGroupId}`}
+								x={10}
+								y={56}
+								className={cn("thl-summary-state", { "thl-changed": changed })}
+							>
+								{changed ? "Changed" : "Focused"}{focused && changed ? " · Active" : ""}
+							</text>
+						)}
 					</g>
 				) :
 				<NodeCard
