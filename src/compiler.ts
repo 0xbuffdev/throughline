@@ -68,25 +68,58 @@ export function validateProgram(input: unknown): asserts input is Program {
 	createBudget("Program", COMPILATION_LIMITS.programUnits)(input);
 	const diagnostics: Diagnostic[] = [];
 	if (input.groups !== undefined) {
-		if (
-			!Array.isArray(input.groups) ||
-			input.groups.length > 200 ||
-			input.groups.some(
-				(group) =>
+		if (!Array.isArray(input.groups) || input.groups.length > COMPILATION_LIMITS.entities) {
+			diagnostics.push({ message: "Groups must be an array of at most 200 entries." });
+		} else {
+			const names = new Set<string>();
+			const keys = new Set<string>();
+			const explicit = new Map<string, { name: string; id?: string; parentId?: string }>();
+			let valid = true;
+			for (const group of input.groups) {
+				if (
 					!record(group) ||
 					typeof group.name !== "string" ||
-					!(GROUP_LAYOUTS as readonly unknown[]).includes(group.layout),
-			)
-		)
-			diagnostics.push({
-				message:
-					"Groups require a name and a row, column, or tree layout (at most 200).",
-			});
-		else if (
-			new Set(input.groups.map((group) => group.name)).size !==
-			input.groups.length
-		)
-			diagnostics.push({ message: "Duplicate group name." });
+					!(GROUP_LAYOUTS as readonly unknown[]).includes(group.layout) ||
+					(group.id !== undefined && !identifier(group.id)) ||
+					(group.parentId !== undefined && !identifier(group.parentId)) ||
+					(group.parentId !== undefined && group.id === undefined)
+				) {
+					diagnostics.push({ message: "Each group needs a name, row/column/tree layout, and valid optional id/parentId (nested groups require an id)." });
+					valid = false;
+					continue;
+				}
+				if (names.has(group.name)) diagnostics.push({ message: `Duplicate group name “${group.name}”.` });
+				names.add(group.name);
+				const key = group.id ?? group.name;
+				if (keys.has(key)) diagnostics.push({ message: `Duplicate group identity “${key}”.` });
+				keys.add(key);
+				if (group.id !== undefined) explicit.set(group.id, group as { name: string; id?: string; parentId?: string });
+			}
+			if (valid) {
+				for (const group of input.groups as { name: string; id?: string; parentId?: string }[]) {
+					if (!group.parentId) continue;
+					if (!explicit.has(group.parentId)) {
+						diagnostics.push({ message: `Group “${group.name}” references unknown explicit parent “${group.parentId}”.` });
+						continue;
+					}
+					const seen = new Set<string>();
+					let current: typeof group | undefined = group;
+					while (current) {
+						const key = current.id ?? current.name;
+						if (seen.has(key)) {
+							diagnostics.push({ message: `Group hierarchy cycle involving “${group.name}”.` });
+							break;
+						}
+						seen.add(key);
+						if (seen.size > 32) {
+							diagnostics.push({ message: "Group hierarchy exceeds 32 levels." });
+							break;
+						}
+						current = current.parentId ? explicit.get(current.parentId) : undefined;
+					}
+				}
+			}
+		}
 	}
 	const entities = new Set<string>();
 	const relations = new Set<string>();
