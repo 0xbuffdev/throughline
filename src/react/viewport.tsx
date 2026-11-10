@@ -141,9 +141,7 @@ export function ViewportScene({
 		setSelectedId(null);
 		if (!id) { manual(fitCamera(layout)); return; }
 		const name = groupById.get(id)?.name;
-		const box = layout.groups.find((candidate) =>
-			(candidate.id ?? candidate.name) === id || candidate.name === name
-		);
+		const box = layout.groups.find((candidate) => candidate.name === name);
 		if (box) manual(focusCamera(layout, effectiveRef.current, box));
 	};
 	const toggleCollapse = (id: string) => {
