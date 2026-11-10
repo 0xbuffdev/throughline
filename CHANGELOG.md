@@ -5,6 +5,18 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Added (TL-I14, compatibility proposal pending)
+
+- Optional hierarchical group IDs, explicit parent references and validated `group "Name" id foo [under parent] as row|column|tree` syntax; legacy flat groups are unchanged.
+- Read-only collapsed summaries, exact provenance of aggregated cross-boundary links, nested deterministic layouts, drill-down/breadcrumb controls and regression coverage.
+
+### Compatibility
+
+- Program and trace schemas remain version 1; old compilers reject the new opt-in syntax, and old players may show hierarchical traces as flat groups.
+- Merge of the source changes is blocked on approval of the separate group-model compatibility ADR in `context`.
+
+
+
 ### Fixed
 
 - Correct two-finger pinch translation when zoom and midpoint movement occur
