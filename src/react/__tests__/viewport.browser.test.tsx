@@ -62,9 +62,9 @@ it("supports keyboard pan and zoom on the scene while the player still owns step
 it("selects and inspects entities, respecting authored visibility and replacing traces", async () => {
 	const trace = compile(source);
 	const screen = await render(<ThroughlinePlayer trace={trace} />);
-	await screen.getByRole("button", { name: "Select Beta" }).click();
+	await userEvent.selectOptions(screen.getByRole("combobox", { name: "Select entity" }).element(), "b");
 	await expect.element(screen.getByText(/Selected: Beta/)).toBeVisible();
-	await expect.element(screen.getByRole("button", { name: "Select Beta" })).toHaveAttribute("aria-pressed", "true");
+	expect(document.querySelector('[data-node="b"] .thl-selected')).not.toBeNull();
 	await screen.getByRole("button", { name: "Zoom in" }).click();
 	await screen.rerender(<ThroughlinePlayer trace={compile(source)} />);
 	await expect.element(screen.getByText(/Selected: Beta/)).not.toBeInTheDocument();
