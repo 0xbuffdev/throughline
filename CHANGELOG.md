@@ -5,6 +5,21 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Added (TL-I15)
+
+- React-only guided chapters and authored causal explanations with explicit,
+  validated compiled-event provenance and accessible text parity.
+- Independent scenario selector and deterministic checkout success, terminal
+  failure and timeout/retry/recovery fixtures.
+- Unit and Chromium regressions for evidence, chapter seeking, isolated
+  scenario switching and safe/narrow-screen guidance rendering.
+
+### Compatibility
+
+- Only additive optional React props/exports, no version-1 schema, grammar
+  or legacy player-default changes.
+
+
 ### Fixed (TL-I14 review follow-up)
 
 - Give undeclared lanes separate internal identities even when their names equal an explicit group ID; resolve geometry by lane name, not an ambiguous ID fallback.

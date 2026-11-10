@@ -6,6 +6,7 @@ import { composeTrace } from "../layout.js";
 import type { Trace } from "../model.js";
 import type { SonificationOptions } from "../sonify.js";
 import { PlayerCaption } from "./caption.js";
+import { validateGuidance, type ThroughlineGuidance } from "./guidance.js";
 import { PlayerControls } from "./controls.js";
 import { ViewportScene } from "./viewport.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
@@ -19,6 +20,8 @@ export interface ThroughlinePlayerProps {
 	theme?: "light" | "dark" | "auto";
 	/** Omit to remove audio controls entirely. */
 	sonification?: SonificationOptions;
+	/** Optional, explicitly authored, trace-scoped chapters and causal evidence. */
+	guidance?: ThroughlineGuidance;
 }
 
 export function ThroughlinePlayer({
@@ -27,6 +30,7 @@ export function ThroughlinePlayer({
 	className,
 	theme = "auto",
 	sonification,
+	guidance,
 }: ThroughlinePlayerProps): React.JSX.Element {
 	const ref = useRef<HTMLDivElement>(null);
 	const sceneRef = useRef<HTMLDivElement>(null);
@@ -89,8 +93,15 @@ export function ThroughlinePlayer({
 	};
 
 	useSound(trace, state.step, !!sonification && sound, sonification);
+	if (guidance) validateGuidance(trace, guidance);
+	const chapter = guidance?.chapters?.find((item) => frame && frame.index >= item.start && frame.index <= item.end);
+	const causal = guidance?.causalLinks?.filter((item) => item.step === frame?.index) ?? [];
 	const summary = frame
-		? describeFrame(frame, trace.frames.length)
+		? [
+				describeFrame(frame, trace.frames.length),
+				chapter && "Chapter: " + chapter.title + ".",
+				...causal.map((item) => "Authored explanation: " + item.title + "."),
+			].filter(Boolean).join(" ")
 		: "No steps to display.";
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: one focusable group owns scene stepping without changing native control keys.
@@ -134,6 +145,9 @@ export function ThroughlinePlayer({
 				<>
 					<PlayerCaption
 						frame={frame}
+						trace={trace}
+						guidance={guidance}
+						onSeek={(step) => dispatch({ type: "step", to: step })}
 						id={captionId}
 						total={trace.frames.length}
 					/>

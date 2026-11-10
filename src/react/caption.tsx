@@ -1,15 +1,22 @@
 import type * as React from "react";
 import { format } from "../layout/measure.js";
-import type { Frame } from "../model.js";
+import type { Frame, Trace } from "../model.js";
+import { PlayerGuidance, type ThroughlineGuidance } from "./guidance.js";
 import { StateInspector } from "./inspector.js";
 
 interface PlayerCaptionProps {
 	frame: Frame;
+	trace: Trace;
+	guidance?: ThroughlineGuidance;
+	onSeek: (step: number) => void;
 	id: string;
 	total: number;
 }
 export function PlayerCaption({
 	frame,
+	trace,
+	guidance,
+	onSeek,
 	id,
 	total,
 }: PlayerCaptionProps): React.JSX.Element {
@@ -38,6 +45,7 @@ export function PlayerCaption({
 						})}
 					</ul>
 				)}
+				{guidance && <PlayerGuidance trace={trace} frame={frame} guidance={guidance} onSeek={onSeek} />}
 				<StateInspector frame={frame} />
 			</div>
 			<span className="thl-step-count">

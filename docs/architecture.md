@@ -60,6 +60,23 @@ uses this internal boundary without adding a package export, trace schema,
 viewport control, or public selection API. Pan/zoom, automatic camera
 following and user-driven collapse are not part of TL-I12.
 
+## Authored guidance and separate alternatives (TL-I15)
+
+The React-only `ThroughlineGuidance` presentation contract is not serialized
+into a trace or used by the compiler. Validation checks bounded chapter ranges,
+real frame-event references and at least one authored state-changing event for
+each causal explanation. Causal prose remains author-supplied and is not
+deduced from temporal adjacency or `send` transfers. Current chapter and
+explanation titles are included in the screen-reader status, with all details
+and evidence in structured caption text.
+
+`ThroughlineScenarios` takes independent compiled traces with stable IDs
+and remounts the selected player on option changes. Timeline, camera,
+selection, chapter context, audio and inspector presentation reset without
+mutating any frame; there is no native branching graph. Root and Remark
+imports remain React-free; this API is optional and only on `./react`.
+No `Program` or `Trace` fields, grammar or domain behaviors change.
+
 ## Public module boundaries
 
 | Module | Responsibility | React required? |
