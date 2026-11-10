@@ -5,6 +5,12 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Fixed (TL-I14 review follow-up)
+
+- Give undeclared lanes separate internal identities even when their names equal an explicit group ID; resolve geometry by lane name, not an ambiguous ID fallback.
+- Highlight a collapsed boundary when a real constituent relation sends, without animating the entire aggregate or implying a destination write.
+- Show and announce authored focus and changed state inside collapsed summaries; compile the actual published hierarchy fence as a regression fixture.
+
 ### Added (TL-I14, compatibility proposal pending)
 
 - Optional hierarchical group IDs, explicit parent references and validated `group "Name" id foo [under parent] as row|column|tree` syntax; legacy flat groups are unchanged.
