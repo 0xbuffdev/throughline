@@ -107,6 +107,7 @@ export function nestLayout(base: Layout, trace: Trace): Layout {
 				rowHeight = 0;
 			}
 			move(placed, x, y, result);
+			result.w = Math.max(result.w, x + placed.w + PAD);
 			x += placed.w + GAP;
 			rowHeight = Math.max(rowHeight, placed.h);
 		}
@@ -115,10 +116,17 @@ export function nestLayout(base: Layout, trace: Trace): Layout {
 		return base;
 	}
 	result.h = Math.max(100, y + rowHeight + PAD);
+	// Some vertically nested groups legitimately exceed the host width.
+	// Expand the SVG world, never clip descendant summaries or link endpoints.
+	result.w = Math.max(
+		result.w,
+		...Object.values(result.nodes).map((box) => box.x + box.w + PAD),
+		...result.groups.map((box) => box.x + box.w + PAD),
+	);
 	return {
-		width: base.width,
+		width: result.w,
 		height: result.h,
-		viewBox: `0 0 ${base.width} ${result.h}`,
+		viewBox: `0 0 ${result.w} ${result.h}`,
 		groups: result.groups,
 		nodes: result.nodes,
 		edges: routeEdges(trace.frames[0]?.state.relations ?? [], result.nodes),
