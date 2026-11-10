@@ -178,6 +178,43 @@ so zoom or select a node for detail. Navigation keeps the camera center within
 the world bounds, which allows actual centering of edge nodes while retaining
 some of the scene on screen.
 
+## Hierarchical groups and drill-down (TL-I14)
+
+Legacy `group "Name" as tree` and `node a "A" in "Name" = 0` remain
+supported. For opt-in nested groups, give each participating group a stable ID,
+refer to a parent by ID, and keep node membership in one immediate named lane:
+
+~~~thl flow
+group "Worker" id worker under system as row
+group "System" id system as column
+group "Outside" id outside as row
+node job "Job" in "Worker" = "ready"
+node external "API" in "Outside" = "waiting"
+link request job -> external "request"
+step "Send"
+  send request = "hello"
+~~~
+
+The group toolbar can drill into a group, collapse it into a summary, expand it,
+and return through the breadcrumb trail to overview. Collapsing never changes
+authored `hide`/`show`, entity values, trace frames or event history.
+The summary counts only authored-visible entities. Boundary links retain all
+source relation IDs in accessible SVG tooltips and transfer annotations.
+An active aggregate edge uses a **static highlight** for one or more actual
+`send` events; it does not imply all constituent relations sent or that the
+destination stored anything. A collapsed summary highlights authored focus
+and changed state in that step, without exposing system-hidden entities. The state
+inspector still shows real authored values.
+
+Group IDs and parent IDs are an additive opt-in version-1 trace extension,
+with no new package import path. Old `thl` sources need no migration. Older
+Throughline compilers cannot parse `id`/`under` grammar, and older players
+receiving a new compiled trace may display it as flat lanes without collapse.
+Only author hierarchical source when its consumer uses a compatible compiler.
+Static layout uses the existing deterministic engine and does not add an
+external graph-layout dependency. On replacing the `trace` object, collapse
+and breadcrumb choices reset alongside selection, camera and playback.
+
 ## Supported domains
 
 | Domain | What it explains | Authoring model |

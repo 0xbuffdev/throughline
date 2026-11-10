@@ -1,3 +1,4 @@
+import { projectHierarchy } from "./scene/hierarchy.js";
 import type { Entity, GroupLayout, Relation, SceneGroup, Snapshot, Value } from "./model.js";
 import { parseTarget } from "./path.js";
 
@@ -9,6 +10,8 @@ export type ProjectionOptions = {
 	selectedIds?: readonly string[];
 	focusIds?: readonly string[];
 	mode?: "overview" | "focus";
+	/** Reader-only collapsed group identities; never authored state. */
+	collapsedGroupIds?: readonly string[];
 };
 
 export type ProjectedNode = {
@@ -19,6 +22,9 @@ export type ProjectedNode = {
 	selected: boolean;
 	focused: boolean;
 	changed: boolean;
+	/** Set only for synthetic collapsed summaries, never authored entities. */
+	summaryGroupId?: string;
+	sourceEntityIds?: readonly string[];
 };
 
 export type ProjectedEdge = {
@@ -28,6 +34,10 @@ export type ProjectedEdge = {
 	/** Detached, frozen view of this snapshot relation. */
 	relation: Readonly<Relation>;
 	transferred: boolean;
+	/** True authored relation IDs that transferred in this frame, never a new event. */
+	activeSourceRelationIds?: readonly string[];
+	/** Visual aggregate; sourceRelationIds remain the only true relation identities. */
+	aggregated?: boolean;
 };
 
 export type ProjectedGroup = {
@@ -35,6 +45,8 @@ export type ProjectedGroup = {
 	name: string;
 	layout: GroupLayout;
 	sourceEntityIds: readonly string[];
+	parentId?: string;
+	collapsed?: boolean;
 };
 
 export type ProjectedTransfer = {
@@ -187,7 +199,10 @@ export function projectScene(
 			});
 		}),
 	);
-	return Object.freeze({ nodes, edges, groups: projectedGroups, transfers });
+	const base: ProjectedScene = Object.freeze({ nodes, edges, groups: projectedGroups, transfers });
+	return groups.some((group) => group.id !== undefined || group.parentId !== undefined) || options.collapsedGroupIds?.length
+		? projectHierarchy(base, groups, options)
+		: base;
 }
 
 /** Legacy internal visibility view, equivalent to the unfiltered projection. */

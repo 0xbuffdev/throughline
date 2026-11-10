@@ -41,18 +41,25 @@ export function parseProgram(ast: ThlBlock): Program {
 				? parsed
 				: fail("Expected a quoted label.");
 		};
-		const group = text.match(/^group\s+("(?:[^"\\]|\\.)*")\s+as\s+([a-z]+)$/);
+		const group = text.match(
+			/^group\s+("(?:[^"\\]|\\.)*")(?:\s+id\s+([A-Za-z][\w-]*))?(?:\s+under\s+([A-Za-z][\w-]*))?\s+as\s+([a-z]+)$/,
+		);
 		if (group) {
 			if (beat) fail("Declare groups before the first step.");
-			if (!(GROUP_LAYOUTS as readonly string[]).includes(group[2]))
+			if (!(GROUP_LAYOUTS as readonly string[]).includes(group[4]))
 				fail(
-					`Unknown group layout “${group[2]}”. Use ${GROUP_LAYOUTS.join(", ")}.`,
+					`Unknown group layout “${group[4]}”. Use ${GROUP_LAYOUTS.join(", ")}.`,
 				);
 			const name = quoted(group[1]);
 			program.groups ??= [];
 			if (program.groups.some((candidate) => candidate.name === name))
 				fail(`Duplicate group “${name}”.`);
-			program.groups.push({ name, layout: group[2] as GroupLayout });
+			program.groups.push({
+				name,
+				layout: group[4] as GroupLayout,
+				...(group[2] ? { id: group[2] } : {}),
+				...(group[3] ? { parentId: group[3] } : {}),
+			});
 			return;
 		}
 		const node = text.match(

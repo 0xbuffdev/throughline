@@ -44,7 +44,15 @@ export type Event = (
 export type Beat = { label: string; events: Event[]; source?: SourceLocation };
 export const GROUP_LAYOUTS = ["row", "column", "tree"] as const;
 export type GroupLayout = (typeof GROUP_LAYOUTS)[number];
-export type SceneGroup = { name: string; layout: GroupLayout };
+/** Optional hierarchy metadata; flat name-based lanes remain valid. */
+export type SceneGroup = {
+	name: string;
+	layout: GroupLayout;
+	/** Stable identity for nested groups. Required when used as a parent or child. */
+	id?: string;
+	/** References an explicitly identified SceneGroup, never an entity. */
+	parentId?: string;
+};
 export type Program = {
 	version: 1;
 	entities: Entity[];

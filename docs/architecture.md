@@ -95,6 +95,29 @@ The root compiler does not fetch remote data or use runtime application
 services. External consumers import only the declared public exports;
 deep imports are deliberately unsupported.
 
+## Group hierarchy and projection (TL-I14)
+
+Optional `SceneGroup.id`/`parentId` metadata forms a static tree of uniquely
+identified groups. The authoring parser validates the graph before compilation,
+including forward-declared parents, duplicate identities, unknown parents and
+cycles. The historic flat layout remains unchanged when no parent references
+exist; nested traces re-pack their deterministic trace-wide node boxes into
+parent groups using the existing edge router.
+
+Collapse is presentation-only state in the React viewport and a pure option
+in `projectScene`. The projection maps only authored-visible descendants to
+a synthetic summary (which is not a real entity), deduplicates directed boundary
+links while retaining each real relation ID, and leaves `send` annotations
+separate from persistent `set` events. Original snapshots and values are
+neither frozen nor mutated by the projection. Group drill-down changes only
+camera and presentation state; replacing a trace resets group preferences.
+
+Hierarchy is an **additive** version-1 metadata extension, not a new domain or
+public entry point. Older readers can flatten optional metadata but cannot
+perform hierarchical collapse; old authoring parsers reject the new grammar.
+The explicit compatibility strategy remains subject to the separate TL-I14
+context ADR review prior to a source merge or release.
+
 ## Trace format and compatibility
 
 `Program.version` and `Trace.version` are both `1`, not the npm package

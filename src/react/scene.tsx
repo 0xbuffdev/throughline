@@ -8,12 +8,18 @@ import { projectScene } from "../scene.js";
 import { NodeCard, truncate } from "./node-card.js";
 
 interface SceneLinkProps {
+	sourceRelationIds: readonly string[];
+	aggregated?: boolean;
+	activeSourceRelationIds?: readonly string[];
 	relation: Relation;
 	edge: Edge;
 	frame: Frame;
 	transferred: boolean;
 }
 function SceneLink({
+	sourceRelationIds,
+	aggregated,
+	activeSourceRelationIds,
 	relation,
 	edge,
 	frame,
@@ -21,10 +27,10 @@ function SceneLink({
 }: SceneLinkProps): React.JSX.Element {
 	const label = relation.label;
 	return (
-		<g className={cn("thl-link", { "thl-transferred": transferred })}>
-			<title>{`${relation.from} → ${relation.to}${relation.label ? `: ${relation.label}` : ""}`}</title>
+		<g className={cn("thl-link", { "thl-transferred": transferred && !aggregated, "thl-aggregate-active": aggregated && transferred })}>
+			<title>{aggregated ? `${sourceRelationIds.length} authored connection(s) (${relation.from} → ${relation.to}): ${sourceRelationIds.join(", ")}. Sent in this step: ${activeSourceRelationIds?.join(", ") || "none"}. A send never implies persisted destination state.` : `${relation.from} → ${relation.to}${relation.label ? `: ${relation.label}` : ""}`}</title>
 			<path d={edge.d} className="thl-edge" />
-			{transferred && (
+			{transferred && !aggregated && (
 				<path
 					key={frame.index}
 					d={edge.d}
@@ -57,6 +63,8 @@ interface TraceSceneProps {
 	layout: Layout;
 	groups?: readonly SceneGroup[];
 	selectedId?: string;
+	collapsedGroupIds?: readonly string[];
+	onExpandGroup?: (id: string) => void;
 	onSelect?: (id: string) => void;
 }
 export function TraceScene({
@@ -65,10 +73,13 @@ export function TraceScene({
 	layout,
 	groups,
 	selectedId,
+	collapsedGroupIds,
+	onExpandGroup,
 	onSelect,
 }: TraceSceneProps): React.JSX.Element {
 	const scene = projectScene(frame.state, groups, {
 		selectedIds: selectedId ? [selectedId] : [],
+		collapsedGroupIds,
 	});
 	const geometry = projectLayout(layout, scene);
 	const before = new Map(
@@ -81,7 +92,7 @@ export function TraceScene({
 			{scene.groups.map((group) => {
 				const box = geometry.groups.find((candidate) => candidate.name === group.name);
 				return box ? (
-					<g key={group.id} data-layout={group.layout}>
+					<g key={group.id} data-layout={group.layout} data-group={group.id} data-collapsed={group.collapsed || undefined}>
 						<rect
 							x={box.x}
 							y={box.y}
@@ -96,10 +107,13 @@ export function TraceScene({
 					</g>
 				) : null;
 			})}
-			{scene.edges.map(({ id, relation, transferred }) =>
+			{scene.edges.map(({ id, relation, transferred, aggregated, sourceRelationIds, activeSourceRelationIds }) =>
 				geometry.edges[id] ? (
 					<SceneLink
 						key={id}
+						sourceRelationIds={sourceRelationIds}
+						aggregated={aggregated}
+						activeSourceRelationIds={activeSourceRelationIds}
 						relation={relation}
 						edge={geometry.edges[id]}
 						frame={frame}
@@ -107,7 +121,47 @@ export function TraceScene({
 					/>
 				) : null,
 			)}
-			{scene.nodes.map(({ id, entity }) => geometry.nodes[id] ? (
+			{scene.nodes.map(({ id, entity, summaryGroupId, sourceEntityIds, focused, changed }) => geometry.nodes[id] ? (
+				summaryGroupId ? (
+					<g
+						key={id}
+						data-group-summary={summaryGroupId}
+						role="button"
+						tabIndex={0}
+						aria-label={`Expand group ${entity.label}`}
+						aria-describedby={focused || changed ? `thl-summary-state-${summaryGroupId}` : undefined}
+						aria-expanded="false"
+						transform={`translate(${geometry.nodes[id].x},${geometry.nodes[id].y})`}
+						onClick={() => onExpandGroup?.(summaryGroupId)}
+						onKeyDown={(event) => {
+							if (event.key === "Enter" || event.key === " ") {
+								event.preventDefault();
+								event.stopPropagation();
+								onExpandGroup?.(summaryGroupId);
+							}
+						}}
+					>
+						<title>{`${entity.label}: ${sourceEntityIds?.length ?? 0} authored-visible entities (collapsed).${changed ? " State changed this step." : ""}${focused ? " Contains authored active focus." : ""}`}</title>
+						<rect
+							width={geometry.nodes[id].w}
+							height={geometry.nodes[id].h}
+							rx={8}
+							className={cn("thl-summary-node", { "thl-focused": focused, "thl-changed": changed })}
+						/>
+						<text x={10} y={20} className="thl-node-label">{truncate(entity.label, Math.floor((geometry.nodes[id].w - 20) / 7))}</text>
+						<text x={10} y={37} className="thl-summary-count">{sourceEntityIds?.length ?? 0} visible entities</text>
+						{(focused || changed) && (
+							<text
+								id={`thl-summary-state-${summaryGroupId}`}
+								x={10}
+								y={56}
+								className={cn("thl-summary-state", { "thl-changed": changed })}
+							>
+								{changed ? "Changed" : "Focused"}{focused && changed ? " · Active" : ""}
+							</text>
+						)}
+					</g>
+				) :
 				<NodeCard
 					key={id}
 					entity={entity}

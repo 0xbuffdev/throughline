@@ -21,7 +21,7 @@ export type StepApi = {
 };
 
 export type Tracer = {
-	group(name: string, layout: GroupLayout): Tracer;
+	group(name: string, layout: GroupLayout, options?: { id?: string; parentId?: string }): Tracer;
 	node(
 		id: string,
 		label: string,
@@ -73,14 +73,14 @@ export function tracer(): Tracer {
 	};
 
 	const api: Tracer = {
-		group(name, layout) {
+		group(name, layout, options = {}) {
 			assertIdle();
 			checkCount(
 				"groups",
 				(program.groups?.length ?? 0) + 1,
 				COMPILATION_LIMITS.entities,
 			);
-			const group = { name, layout };
+			const group = { name, layout, ...options };
 			account(group);
 			program.groups ??= [];
 			program.groups.push(group);
