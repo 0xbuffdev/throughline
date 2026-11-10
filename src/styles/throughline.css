@@ -157,6 +157,21 @@
 	stroke-dasharray: 4 3;
 }
 .thl-summary-count { fill: var(--thl-muted); font-size: 12px; }
+.thl-summary-node.thl-focused {
+	fill: var(--thl-focus-bg);
+	stroke: var(--thl-focus);
+	stroke-width: 2.5px;
+}
+.thl-summary-node.thl-changed {
+	fill: var(--thl-change-bg);
+	stroke: var(--thl-change);
+	stroke-width: 2.5px;
+}
+.thl-summary-state {
+	fill: var(--thl-focus);
+	font: 600 11px ui-sans-serif, system-ui, sans-serif;
+}
+.thl-summary-state.thl-changed { fill: var(--thl-change); }
 .thl-scene [data-group-summary] { cursor: pointer; outline-offset: 3px; }
 .thl-scene [data-group-summary]:focus-visible .thl-summary-node { stroke-width: 3px; }
 .thl-node {
@@ -207,6 +222,14 @@
 }
 .thl-transferred .thl-edge { stroke: var(--thl-focus); }
 .thl-transferred polygon, .thl-transferred text { fill: var(--thl-focus); }
+/* A collapsed boundary may summarize multiple relations: emphasize that at
+   least one *real* relation sent, without animating every aggregate member. */
+.thl-aggregate-active .thl-edge {
+	stroke: var(--thl-focus);
+	stroke-width: 2.5;
+	stroke-dasharray: 5 3;
+}
+.thl-aggregate-active polygon, .thl-aggregate-active text { fill: var(--thl-focus); }
 .thl-flow {
 	stroke: var(--thl-focus);
 	stroke-width: 2.5;
