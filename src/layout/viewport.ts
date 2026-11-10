@@ -18,24 +18,24 @@ export function fitCamera(layout: Layout): Camera {
 	return { zoom: 1, centerX: layout.width / 2, centerY: layout.height / 2 };
 }
 
-/** Allow a small margin for manual drag while preventing an entirely empty view. */
+/**
+ * Keep the center inside the scene's world bounds. Even at an extreme,
+ * at least half of the viewport overlaps the world. This intentionally
+ * permits centering entities near every edge at overview zoom.
+ */
 export function constrainCamera(layout: Layout, camera: Camera): Camera {
 	const zoom = clamp(Number.isFinite(camera.zoom) ? camera.zoom : 1, MIN_ZOOM, MAX_ZOOM);
-	const width = layout.width / zoom;
-	const height = layout.height / zoom;
-	const marginX = width * 0.15;
-	const marginY = height * 0.15;
 	return {
 		zoom,
 		centerX: clamp(
 			Number.isFinite(camera.centerX) ? camera.centerX : layout.width / 2,
-			width / 2 - marginX,
-			layout.width - width / 2 + marginX,
+			0,
+			layout.width,
 		),
 		centerY: clamp(
 			Number.isFinite(camera.centerY) ? camera.centerY : layout.height / 2,
-			height / 2 - marginY,
-			layout.height - height / 2 + marginY,
+			0,
+			layout.height,
 		),
 	};
 }
