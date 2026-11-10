@@ -33,11 +33,11 @@ export function nestLayout(base: Layout, trace: Trace): Layout {
 			infos.push({ id: group.name, name: group.name });
 	}
 	const byId = new Map(infos.map((group) => [group.id, group]));
-	if (byId.size !== infos.length) return base;
+	if (byId.size !== infos.length) throw new Error("Invalid group hierarchy: duplicate identity.");
 	const children = new Map<string, GroupInfo[]>();
 	for (const group of infos) {
 		if (!group.parentId) continue;
-		if (!byId.has(group.parentId)) return base;
+		if (!byId.has(group.parentId)) throw new Error(`Invalid group hierarchy: unknown parent “${group.parentId}”.`);
 		const list = children.get(group.parentId) ?? [];
 		list.push(group);
 		children.set(group.parentId, list);
@@ -98,8 +98,7 @@ export function nestLayout(base: Layout, trace: Trace): Layout {
 	};
 	const result: Placed = { w: base.width, h: 100, nodes: {}, groups: [] };
 	let x = PAD, y = PAD, rowHeight = 0;
-	try {
-		for (const group of infos.filter((item) => !item.parentId)) {
+	for (const group of infos.filter((item) => !item.parentId)) {
 			const placed = visit(group, 0, new Set());
 			if (x > PAD && x + placed.w + PAD > base.width) {
 				x = PAD;
@@ -111,10 +110,6 @@ export function nestLayout(base: Layout, trace: Trace): Layout {
 			x += placed.w + GAP;
 			rowHeight = Math.max(rowHeight, placed.h);
 		}
-	} catch {
-		// Hand-built traces that bypass the compiler must not recurse forever.
-		return base;
-	}
 	result.h = Math.max(100, y + rowHeight + PAD);
 	// Some vertically nested groups legitimately exceed the host width.
 	// Expand the SVG world, never clip descendant summaries or link endpoints.
