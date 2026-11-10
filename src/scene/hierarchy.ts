@@ -140,7 +140,7 @@ export function projectHierarchy(
 		}));
 	}
 	for (const group of base.groups) {
-		if (!byName.has(group.name)) projectedGroups.push(group);
+		if (!byName.has(group.name)) projectedGroups.push(Object.freeze({ ...group, id: `lane:${group.name}` }));
 	}
 	// Parent backgrounds must render before their children regardless of
 	// source declaration order (forward parent references are permitted).
