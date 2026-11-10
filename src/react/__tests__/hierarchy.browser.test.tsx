@@ -33,6 +33,8 @@ it("collapses, expands, drills and navigates breadcrumb hierarchy without changi
 	await expect.poll(() => document.querySelectorAll('[data-group-summary="inner"]').length).toBe(1);
 	expect(document.querySelector('[data-node="a"]')).toBeNull();
 	expect(document.querySelector('[data-node="b"]')).toBeNull();
+	await screen.getByText("Inspect state").click();
+	expect(document.querySelector(".thl-inspector")?.textContent).toContain("Beta");
 	const tooltip = [...document.querySelectorAll(".thl-link title")]
 		.map((element) => element.textContent ?? "");
 	expect(tooltip.some((label) => label.includes("ac") && label.includes("bc"))).toBe(true);
@@ -66,4 +68,16 @@ it("supports keyboard summary expansion, respects hidden nodes, and resets hiera
 	await expect.element(screen.getByRole("combobox", { name: "Drill into group" })).toHaveValue("");
 	const player = document.querySelector<HTMLElement>(".thl")!;
 	expect(player.scrollWidth).toBeLessThanOrEqual(player.clientWidth);
+});
+
+it("does not add hierarchy chrome to legacy flat-lane players", async () => {
+	const flat = compile([
+		"```thl flow",
+		'group "Memory" as tree',
+		'node data "Data" in "Memory" = 1',
+		"```",
+	].join("\n"));
+	await render(<ThroughlinePlayer trace={flat} />);
+	expect(document.querySelector(".thl-group-controls")).toBeNull();
+	expect(document.querySelector('[data-node="data"]')).not.toBeNull();
 });
