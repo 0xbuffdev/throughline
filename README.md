@@ -184,8 +184,7 @@ Legacy `group "Name" as tree` and `node a "A" in "Name" = 0` remain
 supported. For opt-in nested groups, give each participating group a stable ID,
 refer to a parent by ID, and keep node membership in one immediate named lane:
 
-~~~thl
-thl flow
+~~~thl flow
 group "Worker" id worker under system as row
 group "System" id system as column
 group "Outside" id outside as row
@@ -200,8 +199,11 @@ The group toolbar can drill into a group, collapse it into a summary, expand it,
 and return through the breadcrumb trail to overview. Collapsing never changes
 authored `hide`/`show`, entity values, trace frames or event history.
 The summary counts only authored-visible entities. Boundary links retain all
-source relation IDs in accessible SVG tooltips and transfer annotations; an
-animated edge means a **send**, not a destination-state write. The state
+source relation IDs in accessible SVG tooltips and transfer annotations.
+An active aggregate edge uses a **static highlight** for one or more actual
+`send` events; it does not imply all constituent relations sent or that the
+destination stored anything. A collapsed summary highlights authored focus
+and changed state in that step, without exposing system-hidden entities. The state
 inspector still shows real authored values.
 
 Group IDs and parent IDs are an additive opt-in version-1 trace extension,
