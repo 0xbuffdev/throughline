@@ -15,6 +15,8 @@ interface NodeCardProps {
 	box: Box;
 	focus: Path[];
 	changed: Path[];
+	selected?: boolean;
+	onSelect?: () => void;
 }
 
 export function NodeCard({
@@ -23,16 +25,33 @@ export function NodeCard({
 	box,
 	focus,
 	changed,
+	selected = false,
+	onSelect,
 }: NodeCardProps): React.JSX.Element {
 	const value = presentValue(entity, box.w, focus);
 	return (
-		<g transform={`translate(${box.x},${box.y})`} data-node={entity.id}>
+		<g
+			transform={`translate(${box.x},${box.y})`}
+			data-node={entity.id}
+			role="button"
+			tabIndex={0}
+			aria-label={`Select ${entity.label}`}
+			aria-pressed={selected}
+			onClick={onSelect}
+			onKeyDown={(event) => {
+				if (event.key === "Enter" || event.key === " ") {
+					event.preventDefault();
+					event.stopPropagation();
+					onSelect?.();
+				}
+			}}
+		>
 			<title>{`${entity.label}: ${format(entity.value)}${focus.length ? " (focus)" : ""}`}</title>
 			<rect
 				width={box.w}
 				height={box.h}
 				rx={8}
-				className={cn("thl-node", { "thl-focused": focus.length > 0 })}
+				className={cn("thl-node", { "thl-focused": focus.length > 0, "thl-selected": selected })}
 			/>
 			<text x={10} y={19} className="thl-node-label">
 				{truncate(entity.label, Math.floor((box.w - 20) / 7))}
