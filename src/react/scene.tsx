@@ -2,7 +2,7 @@ import { cn } from "cn";
 import type * as React from "react";
 import type { Edge, Layout } from "../layout/types.js";
 import { projectLayout } from "../layout.js";
-import type { Frame, Relation } from "../model.js";
+import type { Frame, Relation, SceneGroup } from "../model.js";
 import { parseTarget } from "../path.js";
 import { projectScene } from "../scene.js";
 import { NodeCard, truncate } from "./node-card.js";
@@ -55,13 +55,15 @@ interface TraceSceneProps {
 	frame: Frame;
 	previous?: Frame;
 	layout: Layout;
+	groups?: readonly SceneGroup[];
 }
 export function TraceScene({
 	frame,
 	previous,
 	layout,
+	groups,
 }: TraceSceneProps): React.JSX.Element {
-	const scene = projectScene(frame.state);
+	const scene = projectScene(frame.state, groups);
 	const geometry = projectLayout(layout, scene);
 	const before = new Map(
 		previous?.state.entities.map((entity) => [entity.id, entity.value]),
@@ -70,27 +72,24 @@ export function TraceScene({
 	const changes = frame.state.changed.map(parseTarget);
 	return (
 		<>
-			{geometry.groups
-				.filter((group) =>
-					scene.nodes.some(
-						(node) => (node.entity.lane ?? "State") === group.name,
-					),
-				)
-				.map((group) => (
-					<g key={group.name}>
+			{scene.groups.map((group) => {
+				const box = geometry.groups.find((candidate) => candidate.name === group.name);
+				return box ? (
+					<g key={group.id} data-layout={group.layout}>
 						<rect
-							x={group.x}
-							y={group.y}
-							width={group.w}
-							height={group.h}
+							x={box.x}
+							y={box.y}
+							width={box.w}
+							height={box.h}
 							rx={12}
 							className="thl-group"
 						/>
-						<text x={group.x + 12} y={group.y + 20} className="thl-group-label">
-							{truncate(group.name, Math.floor((group.w - 24) / 7))}
+						<text x={box.x + 12} y={box.y + 20} className="thl-group-label">
+							{truncate(group.name, Math.floor((box.w - 24) / 7))}
 						</text>
 					</g>
-				))}
+				) : null;
+			})}
 			{scene.edges.map(({ id, relation, transferred }) =>
 				geometry.edges[id] ? (
 					<SceneLink

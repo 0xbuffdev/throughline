@@ -6,6 +6,38 @@ import { EXAMPLES } from "../../examples.js";
 import { ThroughlinePlayer } from "../index.js";
 import "../../styles/throughline.css";
 
+
+it("keeps authored tree and column lane metadata through the React projection", async () => {
+	const trace = compile([
+		"```thl flow",
+		'group "Tree" as tree',
+		'group "Column" as column',
+		'node root "Root" in "Tree" = 0',
+		'node child "Child" in "Tree" = 1',
+		'node top "Top" in "Column" = 2',
+		'node bottom "Bottom" in "Column" = 3',
+		'link branch root -> child',
+		"```",
+	].join("\n"));
+	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	const lanes = () =>
+		[...document.querySelectorAll(".thl-scene g[data-layout]")].map((group) => ({
+			name: group.querySelector(".thl-group-label")?.textContent,
+			layout: group.getAttribute("data-layout"),
+		}));
+	expect(lanes()).toEqual([
+		{ name: "Tree", layout: "tree" },
+		{ name: "Column", layout: "column" },
+	]);
+	const y = (id: string) => {
+		const transform = document.querySelector(`[data-node="${id}"]`)?.getAttribute("transform");
+		return Number(transform?.match(/translate\\([^,]+,([^)]*)\\)/)?.[1]);
+	};
+	expect(y("child")).toBeGreaterThan(y("root"));
+	expect(y("bottom")).toBeGreaterThan(y("top"));
+	await expect.element(screen.getByRole("img")).toBeVisible();
+});
+
 it("steps references truthfully and announces the current state", async () => {
 	const trace = compile(
 		"```thl bindings\nlet a = [1,2]\nlet b = a\nb = [7]\n```",

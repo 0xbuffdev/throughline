@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { compile } from "../domains/registry.js";
 import { EXAMPLES } from "../examples.js";
 import { projectLayout, composeTrace } from "../layout.js";
-import { projectScene, visibleScene } from "../scene.js";
+import { projectScene } from "../scene.js";
 
 const source = `\`\`\`thl flow
 group "First" as tree
@@ -29,11 +29,19 @@ describe("pure scene projection (TL-I12)", () => {
 		const trace = compile(source);
 		for (const frame of trace.frames) {
 			const projection = projectScene(frame.state, trace.groups);
-			const visible = visibleScene(frame.state);
-			expect(projection.nodes.map((node) => node.entity)).toEqual(visible.entities);
-			expect(projection.edges.map((edge) => edge.relation)).toEqual(visible.relations);
+			// Independent oracle: authored visibility, not another projection helper.
+			const expectedEntities = frame.state.entities.filter((entity) => !entity.hidden);
+			const expectedIds = new Set(expectedEntities.map((entity) => entity.id));
+			const expectedRelations = frame.state.relations.filter(
+				(relation) =>
+					!relation.hidden &&
+					expectedIds.has(relation.from) &&
+					expectedIds.has(relation.to),
+			);
+			expect(projection.nodes.map((node) => node.entity)).toEqual(expectedEntities);
+			expect(projection.edges.map((edge) => edge.relation)).toEqual(expectedRelations);
 			expect(projection.nodes.map((node) => node.sourceId)).toEqual(
-				visible.entities.map((entity) => entity.id),
+				expectedEntities.map((entity) => entity.id),
 			);
 			for (const edge of projection.edges)
 				expect(edge.sourceRelationIds).toEqual([edge.relation.id]);
@@ -127,6 +135,92 @@ describe("pure scene projection (TL-I12)", () => {
 			mode: "focus",
 			selectedIds: ["hidden"],
 		}).nodes).toEqual([]);
+	});
+
+
+	it("falls back to overview when all focus targets are hidden or stale", () => {
+		const trace = compile([
+			"```thl flow",
+			'node hidden "Hidden" hidden = 0',
+			'node visible "Visible" = 1',
+			'step "Write hidden"',
+			'  set hidden = 2',
+			"```",
+		].join("\n"));
+		const initial = trace.frames[0].state;
+		const hiddenWrite = trace.frames[1].state;
+		expect(hiddenWrite.active).toEqual(["hidden"]);
+		for (const state of [initial, hiddenWrite]) {
+			const options = [
+				{ mode: "focus" as const, selectedIds: ["missing"] },
+				{ mode: "focus" as const, focusIds: ["hidden"] },
+				{ mode: "focus" as const, selectedIds: ["missing", "hidden"] },
+				{ mode: "focus" as const },
+			];
+			for (const option of options) {
+				const projection = projectScene(state, trace.groups, option);
+				expect(projection.nodes.map((node) => node.id)).toEqual(["visible"]);
+				expect(projection.groups[0]?.sourceEntityIds).toEqual(["visible"]);
+			}
+		}
+
+		const transition = compile([
+			"```thl flow",
+			'node visible "Visible" = 0',
+			'node other "Other" = 1',
+			'step "Hide selected"',
+			'  hide node visible',
+			'  set visible = 3',
+			"```",
+		].join("\n"));
+		const gone = transition.frames[1].state;
+		expect(gone.entities.find((entity) => entity.id === "visible")?.hidden).toBe(true);
+		expect(projectScene(gone, transition.groups, {
+			mode: "focus",
+			selectedIds: ["visible"],
+		}).nodes.map((node) => node.id)).toEqual(["other"]);
+		expect(projectScene(gone, transition.groups, {
+			mode: "focus",
+			selectedIds: ["visible", "other"],
+		}).nodes.map((node) => node.id)).toEqual(["other"]);
+	});
+
+	it("detaches and freezes projection data without freezing compiled snapshots", () => {
+		const trace = compile([
+			"```thl flow",
+			'node a "A" = {"nested":{"items":[1,2]}}',
+			'node b "B" = [3,4]',
+			'link transfer a -> b "author-defined"',
+			'step "Move an annotation"',
+			'  send transfer = {"payload":[5,6]}',
+			"```",
+		].join("\n"));
+		const before = structuredClone(trace);
+		const state = trace.frames[1].state;
+		const scene = projectScene(state);
+		const first = scene.nodes.find((node) => node.id === "a")!;
+		const edge = scene.edges[0];
+		const value = scene.transfers[0].value;
+		const nested = first.entity.value as { nested: { items: number[] } };
+		expect(first.entity).not.toBe(state.entities[0]);
+		expect(edge.relation).not.toBe(state.relations[0]);
+		expect(value).not.toBe(state.transfers[0].value);
+		expect(Object.isFrozen(scene)).toBe(true);
+		expect(Object.isFrozen(first.entity)).toBe(true);
+		expect(Object.isFrozen(nested.nested.items)).toBe(true);
+		expect(Object.isFrozen(value)).toBe(true);
+		expect(() => { nested.nested.items[0] = 999; }).toThrow();
+		expect(() => { (edge.relation as { label?: string }).label = "tampered"; }).toThrow();
+		expect(() => {
+			(value as { payload: number[] }).payload.push(7);
+		}).toThrow();
+		expect(() => {
+			(first.entity as { value: unknown }).value = 99;
+		}).toThrow();
+		expect(trace).toEqual(before);
+		expect(Object.isFrozen(state.entities[0])).toBe(false);
+		expect(Object.isFrozen(state.transfers[0].value)).toBe(false);
+		expect(projectScene(state)).toEqual(scene);
 	});
 
 	it("keeps fallback geometry stable with cycles, self loops, and hidden endpoints", () => {

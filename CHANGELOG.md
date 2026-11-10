@@ -9,7 +9,9 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 - Introduce a React-independent, view-only scene projection with stable node,
   edge and transfer provenance, selection/focus filtering, and deterministic
-  fallback layout clipping. Existing playback and trace schemas are unchanged.
+  fallback layout clipping. Hidden/stale focus targets retain overview,
+  projection-owned data is detached and frozen, and React preserves authored
+  group layout preferences. Existing playback and trace schemas are unchanged.
 
 ### Tested
 

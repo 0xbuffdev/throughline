@@ -39,11 +39,19 @@ edge and transfer retains its authored relation ID. A `send` remains a transfer
 annotation, not evidence that the destination persisted the value.
 
 Focus mode selects explicitly chosen or focused entities, authored active
-targets, and endpoints of currently visible transfers; absent focus targets
-fall back to overview. Authored `hide`/`show` always takes precedence over
-presentation preferences, and hidden endpoints suppress their links. Neither
-projection nor selection changes any compiled frame. Scene group descriptors
-reflect existing lanes only—hierarchy and collapse are separate future work.
+targets, and endpoints of currently visible transfers. When every target is
+hidden or stale, the projection falls back to overview rather than blanking
+visible system state. Authored `hide`/`show` always takes precedence over
+presentation preferences, and hidden endpoints suppress their links.
+
+View entities, relations, transfer payloads, groups, and descriptor arrays
+are detached from compiled snapshot objects and frozen, including nested JSON
+values. Projection copies only entities included in the view plus transfer
+annotations—not the trace history—and relies on compiler-enforced JSON
+depth/work budgets. The original snapshot remains mutable by neither
+projection nor selection, and may be shared across compiled frames. The
+React scene receives authored group layout preferences, preserving existing
+`tree` and `column` lane semantics; hierarchy and collapse are future work.
 
 `projectLayout` filters the existing deterministic trace-wide fallback
 geometry by a projection, retaining the stable positions, viewBox, directions,
