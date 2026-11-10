@@ -107,7 +107,7 @@ export function ThroughlinePlayer({
 			onKeyDown={onKeyDown}
 		>
 			<p id={keyboardHelpId} className="thl-sr-only">
-				Focus this player to use Left and Right arrows to step, Home and End to seek, and Space to play or pause. Controls also work independently.
+				Focus this player to use Left and Right arrows to step, Home and End to seek, and Space to play or pause. Focus the diagram to pan with arrow keys, zoom with plus or minus, fit with zero, and select entities from the navigation menu. Controls also work independently.
 			</p>
 			<p role="status" aria-atomic="true" className="thl-sr-only">
 				{summary}
