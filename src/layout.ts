@@ -1,3 +1,4 @@
+import { nestLayout } from "./layout/hierarchy.js";
 import { routeEdges } from "./layout/edges.js";
 import { assignRanks } from "./layout/ranks.js";
 import type { Box, Layout } from "./layout/types.js";
@@ -140,14 +141,14 @@ export function composeTrace(trace: Trace, availableWidth = 720): Layout {
 		}
 	}
 	const height = Math.max(100, y + rowHeight + PAD);
-	return {
+	return nestLayout({
 		width,
 		height,
 		viewBox: `0 0 ${width} ${height}`,
 		groups: groups.map(({ nodes: _, ...group }) => group),
 		nodes,
 		edges: routeEdges(relations, nodes),
-	};
+	}, trace);
 }
 
 /**
