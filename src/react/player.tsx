@@ -135,6 +135,7 @@ export function ThroughlinePlayer({
 							frame={frame}
 							previous={trace.frames[state.step - 1]}
 							layout={layout}
+							groups={trace.groups}
 						/>
 					</svg>
 				) : (

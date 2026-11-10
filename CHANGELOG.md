@@ -5,6 +5,14 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Changed
+
+- Introduce a React-independent, view-only scene projection with stable node,
+  edge and transfer provenance, selection/focus filtering, and deterministic
+  fallback layout clipping. Hidden/stale focus targets retain overview,
+  projection-owned data is detached and frozen, and React preserves authored
+  group layout preferences. Existing playback and trace schemas are unchanged.
+
 ### Tested
 
 - Add packed package integration fixtures for Fumadocs Unified, Next.js App Router, Astro React islands, react-markdown, mdx-bundler and markdown-to-jsx, with frozen npm consumer locks, browser hydration/interaction checks, unchanged-document regressions, and a release-gated integration guide.

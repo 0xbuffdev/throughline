@@ -4,6 +4,7 @@ import type { Box, Layout } from "./layout/types.js";
 import { presentValue } from "./layout/value.js";
 import type { Entity, GroupLayout, Relation, Trace } from "./model.js";
 import { parseTarget } from "./path.js";
+import type { ProjectedScene } from "./scene.js";
 
 export { effectiveView, format } from "./layout/measure.js";
 export type { Box, Edge, Layout, Pt } from "./layout/types.js";
@@ -146,5 +147,42 @@ export function composeTrace(trace: Trace, availableWidth = 720): Layout {
 		groups: groups.map(({ nodes: _, ...group }) => group),
 		nodes,
 		edges: routeEdges(relations, nodes),
+	};
+}
+
+/**
+ * Clip stable trace-wide fallback geometry to the projected scene. The
+ * underlying positions and viewport are intentionally unchanged by focus,
+ * selection, authored visibility, or seeking between frames.
+ */
+export function projectLayout(layout: Layout, scene: ProjectedScene): Layout {
+	const nodes: Layout["nodes"] = Object.fromEntries(
+		scene.nodes.flatMap((node) => {
+			const box = layout.nodes[node.sourceId];
+			return box ? [[node.id, { ...box }]] : [];
+		}),
+	);
+	const edges: Layout["edges"] = Object.fromEntries(
+		scene.edges.flatMap((link) => {
+			const edge = layout.edges[link.id];
+			if (
+				!edge ||
+				!nodes[link.relation.from] ||
+				!nodes[link.relation.to]
+			) return [];
+			return [[link.id, {
+				...edge,
+				from: [...edge.from],
+				to: [...edge.to],
+				label: [...edge.label],
+			}]];
+		}),
+	);
+	const names = new Set(scene.groups.map((group) => group.name));
+	return {
+		...layout,
+		groups: layout.groups.filter((group) => names.has(group.name)).map((group) => ({ ...group })),
+		nodes,
+		edges,
 	};
 }
