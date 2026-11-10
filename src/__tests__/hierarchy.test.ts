@@ -146,6 +146,57 @@ describe("TL-I14 hierarchical group compatibility", () => {
 		expect(afterHide.edges.some((edge) => edge.sourceRelationIds.includes("bd"))).toBe(false);
 	});
 
+	it("namespaces undeclared lanes even when their names collide with authored group IDs", () => {
+		const nested = compile([
+			"```thl flow",
+			'group "Container" id state as row',
+			'group "Child" id child under state as row',
+			'node container "Container" in "Container" = 0',
+			'node child "Child" in "Child" = 1',
+			'node implicit "Implicit" in "state" = 2',
+			"```",
+		].join("\n"));
+		const before = structuredClone(nested);
+		const layout = composeTrace(nested, 375);
+		const scene = projectScene(nested.frames[0].state, nested.groups);
+		expect(scene.groups.map((group) => group.id)).toContain("lane:state");
+		expect(scene.groups.map((group) => group.id)).toContain("state");
+		expect(new Set(scene.groups.map((group) => group.id)).size).toBe(scene.groups.length);
+		expect(layout.groups.find((group) => group.name === "state")?.id).toBe("lane:state");
+		expect(layout.groups.find((group) => group.name === "Container")?.id).toBe("state");
+		expect(layout.nodes.implicit).toBeDefined();
+		const collapsed = projectScene(nested.frames[0].state, nested.groups, {
+			collapsedGroupIds: ["state"],
+		});
+		expect(collapsed.nodes.map((node) => node.id)).toContain("implicit");
+		expect(collapsed.nodes.find((node) => node.summaryGroupId === "state")?.sourceEntityIds)
+			.toEqual(["container", "child"]);
+		const projected = projectLayout(layout, collapsed);
+		expect(projected.nodes["group:state"]).toBeDefined();
+		expect(projected.nodes.implicit).toEqual(layout.nodes.implicit);
+		expect(nested).toEqual(before);
+
+		// Flat explicit-ID traces must likewise distinguish the two lanes.
+		const flat = compile([
+			"```thl flow",
+			'group "Container" id state as row',
+			'node container "Container" in "Container" = 0',
+			'node implicit "Implicit" in "state" = 1',
+			"```",
+		].join("\n"));
+		const flatScene = projectScene(flat.frames[0].state, flat.groups);
+		expect(flatScene.groups.map((group) => group.id)).toEqual(["state", "lane:state"]);
+		const flatLayout = composeTrace(flat);
+		const flatProjected = projectLayout(flatLayout, projectScene(flat.frames[0].state, flat.groups, {
+			collapsedGroupIds: ["state"],
+		}));
+		const summary = flatProjected.nodes["group:state"];
+		const container = flatLayout.groups.find((group) => group.name === "Container")!;
+		expect(summary.x).toBeGreaterThanOrEqual(container.x);
+		expect(summary.x + summary.w).toBeLessThanOrEqual(container.x + container.w);
+		expect(flatProjected.nodes.implicit).toEqual(flatLayout.nodes.implicit);
+	});
+
 	it("packs nested geometry stably and routes all aggregate boundaries", () => {
 		const trace = compile(source);
 		const base = composeTrace(trace, 375);
