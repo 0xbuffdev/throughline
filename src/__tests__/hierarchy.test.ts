@@ -45,6 +45,23 @@ describe("TL-I14 hierarchical group compatibility", () => {
 		expect(old.frames[0].state.entities[0].lane).toBe("A");
 	});
 
+	it("supports a stable ID on a flat group without changing its layout contract", () => {
+		const trace = compile([
+			"```thl flow",
+			'group "Solo" id solo as column',
+			'node node "Node" in "Solo" = 42',
+			"```",
+		].join("\n"));
+		const scene = projectScene(trace.frames[0].state, trace.groups);
+		expect(scene.groups.map((group) => group.id)).toEqual(["solo"]);
+		expect(scene.nodes.map((node) => node.id)).toEqual(["node"]);
+		const collapsed = projectScene(trace.frames[0].state, trace.groups, {
+			collapsedGroupIds: ["solo"],
+		});
+		expect(collapsed.nodes.map((node) => node.id)).toEqual(["group:solo"]);
+		expect(projectLayout(composeTrace(trace), collapsed).nodes["group:solo"]).toBeDefined();
+	});
+
 	it("rejects bad identities, parents, cycles and non-typed metadata", () => {
 		const invalid = [
 			[['group "A" id a under unknown as row'], /unknown explicit parent/],
