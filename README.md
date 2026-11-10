@@ -146,6 +146,30 @@ A refused fullscreen request is
 announced to assistive technology; playback remains available in-page.
 Browser support and host policies determine whether fullscreen can start.
 
+## Guided viewport navigation
+
+The React player opens with a fit-to-view overview. A toolbar above the diagram
+provides Zoom in, Zoom out (1× to 4×), Fit to view, a native Select entity menu,
+and an explicit Follow active entity toggle. Selecting an entity in the diagram
+or menu centers it and exposes its value as text; this never changes the trace.
+
+- Mouse: drag to pan; wheel over the SVG to zoom about the pointer.
+- Touch: one-finger drag to pan, two-finger pinch to zoom, or use the toolbar.
+- Keyboard: focus the diagram, use arrow keys to pan, + and - to zoom, and 0
+  to fit. The native entity menu provides keyboard and screen-reader selection.
+  Focus the overall Visualization player for playback shortcuts instead.
+
+Follow-active starts off. When enabled, it centers the first currently visible
+authored active entity without synthesizing activity. Manual pan, zoom, fit or
+selection always disables following until explicitly re-enabled. Seeking
+and autoplay do not erase manual camera choices. Replacing the trace with a
+different object returns the camera to overview, clears selection and disables
+following alongside the existing playback reset. Resizing the host can change
+layout geometry, but cannot mutate frames. Hidden entities remain unselectable.
+
+The viewport operates only on SVG viewBox presentation state, without a new
+trace schema, group hierarchy or inferred events. Camera movement is bounded
+to keep the visualization partly in view.
 ## Supported domains
 
 | Domain | What it explains | Authoring model |
