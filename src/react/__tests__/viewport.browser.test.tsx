@@ -25,6 +25,9 @@ const view = (): number[] =>
 it("keeps overview until following is enabled and gives manual actions precedence", async () => {
 	const trace = compile(source);
 	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	// The initial 720px SSR fallback becomes the measured host width when
+	// ResizeObserver fires; only compare camera behavior after that settles.
+	await expect.poll(() => view()[2]).toBeLessThan(720);
 	const original = view();
 	const follow = screen.getByRole("button", { name: "Follow active entity" });
 	await screen.getByRole("button", { name: "Step forward" }).click();
