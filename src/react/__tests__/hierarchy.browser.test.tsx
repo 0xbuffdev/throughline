@@ -1,0 +1,69 @@
+import { expect, it } from "vitest";
+import { page, userEvent } from "vitest/browser";
+import { render } from "vitest-browser-react";
+import { compile } from "../../domains/registry.js";
+import { ThroughlinePlayer } from "../index.js";
+import "../../styles/throughline.css";
+
+const source = [
+	"```thl flow",
+	'group "Inner" id inner under outer as row',
+	'group "Outer" id outer as column',
+	'group "Remote" id remote as row',
+	'node a "Alpha" in "Inner" = 1',
+	'node b "Beta" in "Inner" = 2',
+	'node c "Remote" in "Remote" = 3',
+	'link ac a -> c',
+	'link bc b -> c',
+	'step "Send"',
+	'  send ac = "message sent"',
+	'step "Hide"',
+	'  hide node b',
+	"```",
+].join("\n");
+
+it("collapses, expands, drills and navigates breadcrumb hierarchy without changing frames", async () => {
+	const trace = compile(source);
+	const original = structuredClone(trace);
+	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	const drill = screen.getByRole("combobox", { name: "Drill into group" });
+	await userEvent.selectOptions(drill.element(), "inner");
+	await expect.element(screen.getByRole("button", { name: "Collapse group Inner" })).toBeEnabled();
+	await screen.getByRole("button", { name: "Collapse group Inner" }).click();
+	await expect.poll(() => document.querySelectorAll('[data-group-summary="inner"]').length).toBe(1);
+	expect(document.querySelector('[data-node="a"]')).toBeNull();
+	expect(document.querySelector('[data-node="b"]')).toBeNull();
+	const tooltip = [...document.querySelectorAll(".thl-link title")]
+		.map((element) => element.textContent ?? "");
+	expect(tooltip.some((label) => label.includes("ac") && label.includes("bc"))).toBe(true);
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 3");
+	expect(document.querySelector('[data-group-summary="inner"]')).not.toBeNull();
+	await screen.getByRole("button", { name: "Expand group Inner" }).first().click();
+	await expect.poll(() => document.querySelectorAll('[data-node="a"]').length).toBe(1);
+	await userEvent.selectOptions(screen.getByRole("combobox", { name: "Select entity" }).element(), "a");
+	await expect.element(screen.getByText(/Selected: Alpha/)).toBeVisible();
+	await screen.getByRole("button", { name: "Return to group overview" }).click();
+	expect(trace).toEqual(original);
+});
+
+it("supports keyboard summary expansion, respects hidden nodes, and resets hierarchy on trace replacement", async () => {
+	await page.viewport(375, 850);
+	const trace = compile(source);
+	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	await userEvent.selectOptions(screen.getByRole("combobox", { name: "Drill into group" }).element(), "outer");
+	await screen.getByRole("button", { name: "Collapse group Outer" }).click();
+	const summary = document.querySelector<SVGGElement>('[data-group-summary="outer"]')!;
+	expect(summary).not.toBeNull();
+	summary.focus();
+	await userEvent.keyboard("{Enter}");
+	await expect.poll(() => document.querySelectorAll('[data-node="a"]').length).toBe(1);
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	expect(document.querySelector('[data-node="b"]')).toBeNull();
+	await screen.rerender(<ThroughlinePlayer trace={compile(source)} />);
+	await expect.poll(() => document.querySelectorAll('[data-group-summary]').length).toBe(0);
+	await expect.element(screen.getByRole("combobox", { name: "Drill into group" })).toHaveValue("");
+	const player = document.querySelector<HTMLElement>(".thl")!;
+	expect(player.scrollWidth).toBeLessThanOrEqual(player.clientWidth);
+});
