@@ -38,7 +38,17 @@ it("collapses, expands, drills and navigates breadcrumb hierarchy without changi
 	const tooltip = [...document.querySelectorAll(".thl-link title")]
 		.map((element) => element.textContent ?? "");
 	expect(tooltip.some((label) => label.includes("ac") && label.includes("bc"))).toBe(true);
+	const beforeStroke = getComputedStyle(document.querySelector(".thl-link .thl-edge")!).stroke;
 	await screen.getByRole("button", { name: "Step forward" }).click();
+	const activeLink = document.querySelector<SVGGElement>(".thl-link.thl-aggregate-active")!;
+	expect(activeLink).not.toBeNull();
+	expect(activeLink.querySelector("title")?.textContent).toContain("Sent in this step: ac.");
+	expect(activeLink.querySelector("title")?.textContent).toContain("ac, bc");
+	const activePath = activeLink.querySelector<SVGPathElement>(".thl-edge")!;
+	expect(getComputedStyle(activePath).stroke).not.toBe(beforeStroke);
+	expect(getComputedStyle(activePath).strokeDasharray).not.toBe("none");
+	expect(getComputedStyle(activePath).animationName).toBe("none");
+	expect(activeLink.querySelector(".thl-flow")).toBeNull();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 3");
 	expect(document.querySelector('[data-group-summary="inner"]')).not.toBeNull();
 	await screen.getByRole("button", { name: "Expand group Inner" }).first().click();
@@ -80,4 +90,40 @@ it("does not add hierarchy chrome to legacy flat-lane players", async () => {
 	await render(<ThroughlinePlayer trace={flat} />);
 	expect(document.querySelector(".thl-group-controls")).toBeNull();
 	expect(document.querySelector('[data-node="data"]')).not.toBeNull();
+});
+
+it("exposes authored focus and writes while descendants remain collapsed", async () => {
+	const trace = compile([
+		"```thl flow",
+		'group "Inner" id inner under outer as row',
+		'group "Outer" id outer as column',
+		'node a "Alpha" in "Inner" = 1',
+		'step "Focus"',
+		'  focus a',
+		'step "Write"',
+		'  set a = 2',
+		"```",
+	].join("\n"));
+	const original = structuredClone(trace);
+	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	await userEvent.selectOptions(screen.getByRole("combobox", { name: "Drill into group" }).element(), "inner");
+	await screen.getByRole("button", { name: "Collapse group Inner" }).click();
+	const group = () => document.querySelector<SVGGElement>('[data-group-summary="inner"]')!;
+	await expect.poll(() => group()).not.toBeNull();
+	expect(group().querySelector(".thl-summary-state")).toBeNull();
+
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	await expect.poll(() => group().querySelector(".thl-summary-state")?.textContent).toBe("Focused");
+	expect(group().querySelector(".thl-summary-node.thl-focused")).not.toBeNull();
+	expect(group().querySelector(".thl-summary-node.thl-changed")).toBeNull();
+	expect(group().getAttribute("aria-describedby")).toBe("thl-summary-state-inner");
+	expect(group().querySelector("title")?.textContent).toContain("Contains authored active focus.");
+	expect(document.querySelector('[data-node="a"]')).toBeNull();
+
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	await expect.poll(() => group().querySelector(".thl-summary-state")?.textContent).toBe("Changed · Active");
+	expect(group().querySelector(".thl-summary-node.thl-changed")).not.toBeNull();
+	expect(group().querySelector("title")?.textContent).toContain("State changed this step.");
+	expect(trace.frames[2].state.entities.find((entity) => entity.id === "a")?.value).toBe(2);
+	expect(trace).toEqual(original);
 });
