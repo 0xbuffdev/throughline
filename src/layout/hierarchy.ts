@@ -30,7 +30,7 @@ export function nestLayout(base: Layout, trace: Trace): Layout {
 	const declared = new Set(infos.map((group) => group.name));
 	for (const group of base.groups) {
 		if (!declared.has(group.name))
-			infos.push({ id: group.name, name: group.name });
+			infos.push({ id: `lane:${group.name}`, name: group.name });
 	}
 	const byId = new Map(infos.map((group) => [group.id, group]));
 	if (byId.size !== infos.length) throw new Error("Invalid group hierarchy: duplicate identity.");
