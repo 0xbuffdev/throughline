@@ -142,6 +142,20 @@ export function projectHierarchy(
 	for (const group of base.groups) {
 		if (!byName.has(group.name)) projectedGroups.push(group);
 	}
+	// Parent backgrounds must render before their children regardless of
+	// source declaration order (forward parent references are permitted).
+	const depth = (id: string): number => {
+		const seen = new Set<string>();
+		let current = byId.get(id);
+		let level = 0;
+		while (current?.parentId && !seen.has(current.parentId)) {
+			seen.add(current.parentId);
+			level++;
+			current = byId.get(current.parentId);
+		}
+		return level;
+	};
+	projectedGroups.sort((left, right) => depth(left.id) - depth(right.id));
 	const renderedIds = new Set(edges.flatMap((edge) => edge.sourceRelationIds));
 	const transfers = base.transfers.map((transfer) =>
 		Object.freeze({
