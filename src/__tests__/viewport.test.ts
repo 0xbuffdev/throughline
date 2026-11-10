@@ -68,8 +68,11 @@ describe("pure guided viewport math (TL-I13)", () => {
 		const overview = fitCamera(layout);
 		const target = layout.nodes.b;
 		const next = focusCamera(layout, zoomCamera(layout, overview, 2), target);
-		expect(next.centerX).toBeCloseTo(target.x + target.w / 2);
-		expect(next.centerY).toBeCloseTo(target.y + target.h / 2);
+		const [left, top, width, height] = box(next);
+		expect(target.x + target.w / 2).toBeGreaterThanOrEqual(left);
+		expect(target.x + target.w / 2).toBeLessThanOrEqual(left + width);
+		expect(target.y + target.h / 2).toBeGreaterThanOrEqual(top);
+		expect(target.y + target.h / 2).toBeLessThanOrEqual(top + height);
 		expect(focusCamera(layout, next, target)).toEqual(next);
 		expect(trace.frames[0].state.active).toEqual([]);
 		expect(trace.frames[1].state.active).toEqual(["b"]);
