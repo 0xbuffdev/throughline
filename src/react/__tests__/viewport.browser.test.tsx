@@ -46,6 +46,7 @@ it("keeps overview until following is enabled and gives manual actions precedenc
 it("supports keyboard pan and zoom on the scene while the player still owns stepping", async () => {
 	const screen = await render(<ThroughlinePlayer trace={compile(source)} />);
 	const svg = document.querySelector<SVGSVGElement>(".thl-scene")!;
+	await expect.poll(() => view()[2]).toBeLessThan(720);
 	const initial = view();
 	svg.focus();
 	await userEvent.keyboard("+");
@@ -79,6 +80,7 @@ it("accepts touch drag and pinch without moving the camera again on seek", async
 	await page.viewport(375, 850);
 	const screen = await render(<ThroughlinePlayer trace={compile(source)} />);
 	const svg = document.querySelector<SVGSVGElement>(".thl-scene")!;
+	await expect.poll(() => view()[2]).toBeLessThan(720);
 	const rect = svg.getBoundingClientRect();
 	const x = rect.left + rect.width / 2;
 	const y = rect.top + rect.height / 2;
@@ -91,14 +93,14 @@ it("accepts touch drag and pinch without moving the camera again on seek", async
 	fire("pointerdown", 91, 0, 0);
 	fire("pointermove", 91, 35, 15);
 	fire("pointerup", 91, 35, 15);
-	expect(view()).not.toEqual(overview);
+	await expect.poll(view).not.toEqual(overview);
 	fire("pointerdown", 91, -30, 0);
 	fire("pointerdown", 92, 30, 0);
 	fire("pointermove", 91, -55, 0);
 	fire("pointermove", 92, 55, 0);
 	fire("pointerup", 92, 55, 0);
 	fire("pointerup", 91, -55, 0);
-	expect(view()[2]).toBeLessThan(overview[2]);
+	await expect.poll(() => view()[2]).toBeLessThan(overview[2]);
 	const after = view();
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(view()).toEqual(after);
