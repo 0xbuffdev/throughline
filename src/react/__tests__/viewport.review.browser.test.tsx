@@ -80,6 +80,7 @@ it("pinches while translating the two-finger midpoint without anchor drift", asy
   await expect.poll(() => view()[2]).toBeLessThan(720);
   const rect = svg().getBoundingClientRect();
   const start = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  const initialWorldWidth = view()[2];
   const inverse = svg().getScreenCTM()!.inverse();
   const worldAnchor = new DOMPoint(start.x, start.y).matrixTransform(inverse);
   const fire = (type: string, id: number, dx: number) =>
@@ -92,7 +93,7 @@ it("pinches while translating the two-finger midpoint without anchor drift", asy
   fire("pointerdown", 92, 50);
   fire("pointermove", 91, -25);
   fire("pointermove", 92, 125);
-  await expect.poll(() => view()[2]).toBeLessThan(rect.width);
+  await expect.poll(() => view()[2]).toBeLessThan(initialWorldWidth);
   const shifted = new DOMPoint(worldAnchor.x, worldAnchor.y).matrixTransform(svg().getScreenCTM()!);
   expect(shifted.x - start.x).toBeGreaterThan(48);
   expect(shifted.x - start.x).toBeLessThan(52);
