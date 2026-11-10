@@ -24,7 +24,7 @@ documented in `catalog.md`; they compile to this same grammar.
 
 | Statement | Syntax | Notes |
 | --- | --- | --- |
-| `group` | `group "<name>" as <row|column|tree>` | Arranges nodes sharing this group name; omitted groups use `row`. |
+| `group` | `group "<name>" [id <group-id> [under <parent-id>]] as <row\|column\|tree>` | Optional explicit identity/parent forms a static hierarchy; existing flat groups are unchanged. |
 | `node` | `node <id> "<label>" [in "<lane>"] [as <view>] [hidden] [= <json>]` | Declares an entity. Missing value defaults to `null`. |
 | `link` | `link <id> <from> -> <to> ["<label>"] [hidden]` | Declares a directed edge between two node ids. |
 | `step` | `step "<label>"` | Opens a beat. Every `set`/`focus`/`send`/`note` after it belongs to it until the next `step`. |
@@ -33,6 +33,16 @@ documented in `catalog.md`; they compile to this same grammar.
 | `send` | `send <relation> [= <json>]` | Highlights a directed transfer along a link; payload appears in the caption. Value optional. |
 | `note` | `note "<text>"` | Caption for this beat. |
 | `show` / `hide` | `show node <id>` / `hide link <id>` | Changes persistent visibility; either verb accepts `node` or `link`. |
+
+A hierarchical group may use `group "Backend" id backend under system as tree`,
+with a parent declared later as `group "System" id system as column`.
+The `id` is a stable ASCII identifier; `under` requires `id` and names
+an explicitly identified parent group, not a node. Each name and ID must be
+unique; missing parents, parent cycles and depth beyond 32 are rejected. Nodes
+continue to use `in "Display name"` for their **single immediate group**.
+Ancestors contain their descendants by reference only. No group declarations
+are required for implicit legacy lanes. Nesting is metadata, not authored
+visibility or a step event.
 
 Groups, nodes, and links must come before the first `step`. Events before any
 `step` fail the build.
