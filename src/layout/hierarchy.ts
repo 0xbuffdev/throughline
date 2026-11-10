@@ -34,6 +34,8 @@ export function nestLayout(base: Layout, trace: Trace): Layout {
 	}
 	const byId = new Map(infos.map((group) => [group.id, group]));
 	if (byId.size !== infos.length) throw new Error("Invalid group hierarchy: duplicate identity.");
+	if (new Set(infos.map((group) => group.name)).size !== infos.length)
+		throw new Error("Invalid group hierarchy: duplicate group name.");
 	const children = new Map<string, GroupInfo[]>();
 	for (const group of infos) {
 		if (!group.parentId) continue;
@@ -110,6 +112,8 @@ export function nestLayout(base: Layout, trace: Trace): Layout {
 			x += placed.w + GAP;
 			rowHeight = Math.max(rowHeight, placed.h);
 		}
+	if (result.groups.length !== infos.length)
+		throw new Error("Invalid group hierarchy: disconnected cycle or invalid nesting.");
 	result.h = Math.max(100, y + rowHeight + PAD);
 	// Some vertically nested groups legitimately exceed the host width.
 	// Expand the SVG world, never clip descendant summaries or link endpoints.
