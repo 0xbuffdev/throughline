@@ -15,6 +15,8 @@ import {
 	type Point,
 } from "../layout/viewport.js";
 import type { Frame, Trace } from "../model.js";
+import { projectLayout } from "../layout.js";
+import { projectScene } from "../scene.js";
 import { parseTarget } from "../path.js";
 import { TraceScene } from "./scene.js";
 
@@ -59,12 +61,15 @@ export function ViewportScene({
 	const svgRef = useRef<SVGSVGElement>(null);
 	const pointers = useRef(new Map<number, Point>());
 	const pointerNodes = useRef(new Map<number, string | null>());
+	const pointerGroups = useRef(new Map<number, string | null>());
 	const gesture = useRef<Gesture | null>(null);
 	const dragged = useRef(false);
 	const [identity, setIdentity] = useState(trace);
 	const [camera, setCamera] = useState<Camera | null>(null);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [followActive, setFollowActive] = useState(false);
+	const [collapsedGroups, setCollapsedGroups] = useState<readonly string[]>([]);
+	const [drilledGroup, setDrilledGroup] = useState<string | null>(null);
 
 	// Same trace identity contract as usePlayer: reset before children render.
 	if (identity !== trace) {
@@ -72,17 +77,25 @@ export function ViewportScene({
 		setCamera(null);
 		setSelectedId(null);
 		setFollowActive(false);
+		setCollapsedGroups([]);
+		setDrilledGroup(null);
 	}
 
-	const visible = frame?.state.entities.filter((entity) => !entity.hidden) ?? [];
+	const projected = frame ? projectScene(frame.state, trace.groups, { collapsedGroupIds: collapsedGroups }) : null;
+	const projectedLayout = projected ? projectLayout(layout, projected) : layout;
+	const visible = projected?.nodes.filter((node) => !node.summaryGroupId).map((node) => node.entity) ?? [];
 	const selected = visible.find((entity) => entity.id === selectedId);
 	const activeId = frame?.state.active
 		.map(parseTarget)
 		.map((target) => target?.id)
-		.find((id) => id && visible.some((entity) => entity.id === id) && layout.nodes[id]);
+		.find((id): id is string => Boolean(id));
+	const activeNode = projected?.nodes.find((node) =>
+		node.id === activeId || (activeId && node.sourceEntityIds?.includes(activeId))
+	);
+	const activeBox = activeNode ? projectedLayout.nodes[activeNode.id] : undefined;
 	const overview = constrainCamera(layout, camera ?? fitCamera(layout));
-	const effective = followActive && activeId
-		? focusCamera(layout, overview, layout.nodes[activeId])
+	const effective = followActive && activeBox
+		? focusCamera(layout, overview, activeBox)
 		: overview;
 	const effectiveRef = useRef(effective);
 	effectiveRef.current = effective;
@@ -103,6 +116,36 @@ export function ViewportScene({
 		} else {
 			setFollowActive(true);
 		}
+	};
+
+	const groupById = new Map((trace.groups ?? []).map((group) => [group.id ?? group.name, group]));
+	const availableGroups = projected?.groups.filter((group) => groupById.has(group.id)) ?? [];
+	const crumbs: { id: string; name: string }[] = [];
+	let currentGroup = drilledGroup ? groupById.get(drilledGroup) : undefined;
+	const crumbKeys = new Set<string>();
+	while (currentGroup && !crumbKeys.has(currentGroup.id ?? currentGroup.name)) {
+		const id = currentGroup.id ?? currentGroup.name;
+		crumbKeys.add(id);
+		crumbs.unshift({ id, name: currentGroup.name });
+		currentGroup = currentGroup.parentId ? groupById.get(currentGroup.parentId) : undefined;
+	}
+	const focusGroup = (id: string | null) => {
+		setDrilledGroup(id);
+		setSelectedId(null);
+		if (!id) { manual(fitCamera(layout)); return; }
+		const box = layout.groups.find((candidate) => (candidate.id ?? candidate.name) === id);
+		if (box) manual(focusCamera(layout, effectiveRef.current, box));
+	};
+	const toggleCollapse = (id: string) => {
+		setCollapsedGroups((current) =>
+			current.includes(id) ? current.filter((group) => group !== id) : [...current, id]
+		);
+		setSelectedId(null);
+		setFollowActive(false);
+	};
+	const expandGroup = (id: string) => {
+		setCollapsedGroups((current) => current.filter((group) => group !== id));
+		focusGroup(id);
 	};
 
 	// Wheel must be non-passive so diagram zoom does not also scroll the page.
@@ -137,6 +180,7 @@ export function ViewportScene({
 		pointers.current.set(event.pointerId, point(event));
 		const target = event.target as Element;
 		pointerNodes.current.set(event.pointerId, target.closest("[data-node]")?.getAttribute("data-node") ?? null);
+		pointerGroups.current.set(event.pointerId, target.closest("[data-group-summary]")?.getAttribute("data-group-summary") ?? null);
 		beginGesture(event.currentTarget);
 		if (typeof event.currentTarget.setPointerCapture === "function") {
 			try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* pointer already ended */ }
@@ -175,10 +219,13 @@ export function ViewportScene({
 	};
 	const endPointer = (event: React.PointerEvent<SVGSVGElement>, cancelled: boolean) => {
 		const node = pointerNodes.current.get(event.pointerId);
+		const group = pointerGroups.current.get(event.pointerId);
 		const wasSinglePointer = pointers.current.size === 1;
 		pointers.current.delete(event.pointerId);
 		pointerNodes.current.delete(event.pointerId);
+		pointerGroups.current.delete(event.pointerId);
 		if (!cancelled && wasSinglePointer && !dragged.current && node) selectEntity(node);
+		if (!cancelled && wasSinglePointer && !dragged.current && group) expandGroup(group);
 		if (pointers.current.size) beginGesture(event.currentTarget);
 		else gesture.current = null;
 		if (event.currentTarget.hasPointerCapture?.(event.pointerId))
@@ -221,6 +268,34 @@ export function ViewportScene({
 				<button type="button" aria-label="Fit to view" onClick={fit}>Fit</button>
 				<button type="button" aria-label="Follow active entity" aria-pressed={followActive} onClick={toggleFollow}>Follow</button>
 			</div>
+			{availableGroups.length > 0 && (
+				<nav className="thl-group-controls" aria-label="Group hierarchy">
+					<button type="button" onClick={() => focusGroup(null)} aria-label="Return to group overview">Overview</button>
+					{crumbs.map((group) => (
+						<span key={group.id} className="thl-breadcrumb">
+							<span aria-hidden="true">/</span>
+							<button type="button" onClick={() => focusGroup(group.id)}>{group.name}</button>
+						</span>
+					))}
+					<select
+						aria-label="Drill into group"
+						value={drilledGroup ?? ""}
+						onChange={(event) => focusGroup(event.target.value || null)}
+					>
+						<option value="">Choose group</option>
+						{availableGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+					</select>
+					<button
+						type="button"
+						disabled={!drilledGroup}
+						aria-label={drilledGroup && collapsedGroups.includes(drilledGroup) ? `Expand group ${groupById.get(drilledGroup)?.name}` : `Collapse group ${groupById.get(drilledGroup ?? "")?.name ?? ""}`}
+						aria-expanded={drilledGroup ? !collapsedGroups.includes(drilledGroup) : undefined}
+						onClick={() => { if (drilledGroup) toggleCollapse(drilledGroup); }}
+					>
+						{drilledGroup && collapsedGroups.includes(drilledGroup) ? "Expand" : "Collapse"}
+					</button>
+				</nav>
+			)}
 			<svg
 				ref={svgRef}
 				width="100%"
@@ -246,6 +321,8 @@ export function ViewportScene({
 					previous={previous}
 					layout={layout}
 					groups={trace.groups}
+					collapsedGroupIds={collapsedGroups}
+					onExpandGroup={expandGroup}
 					selectedId={selected?.id}
 					onSelect={selectEntity}
 				/>
