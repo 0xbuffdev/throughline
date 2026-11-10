@@ -104,6 +104,9 @@
 .thl-scene {
 	display: block;
 	flex: 0 0 auto;
+	width: 100%;
+	/* Physical viewport height is independent of even very tall trace layouts. */
+	height: clamp(16rem, 52vh, 32rem);
 	max-width: 100%;
 	touch-action: none;
 	cursor: grab;
