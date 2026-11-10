@@ -200,7 +200,7 @@ export function projectScene(
 		}),
 	);
 	const base: ProjectedScene = Object.freeze({ nodes, edges, groups: projectedGroups, transfers });
-	return groups.some((group) => group.parentId) || options.collapsedGroupIds?.length
+	return groups.some((group) => group.id !== undefined || group.parentId !== undefined) || options.collapsedGroupIds?.length
 		? projectHierarchy(base, groups, options)
 		: base;
 }
