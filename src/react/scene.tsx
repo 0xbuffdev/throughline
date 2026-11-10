@@ -90,7 +90,7 @@ export function TraceScene({
 	return (
 		<>
 			{scene.groups.map((group) => {
-				const box = geometry.groups.find((candidate) => (candidate.id ?? candidate.name) === group.id || candidate.name === group.name);
+				const box = geometry.groups.find((candidate) => candidate.name === group.name);
 				return box ? (
 					<g key={group.id} data-layout={group.layout} data-group={group.id} data-collapsed={group.collapsed || undefined}>
 						<rect
