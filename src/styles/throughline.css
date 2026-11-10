@@ -273,7 +273,7 @@
 	min-width: 0;
 }
 .thl-chapter-nav label, .thl-scenario-picker label { font-weight: 600; }
-.thl-chapter-nav select, .thl-scenario-picker select {
+.thl-chapter-nav select, .thl-chapter-nav button, .thl-scenario-picker select {
 	appearance: auto;
 	min-height: 2.75rem;
 	min-width: 0;
@@ -285,6 +285,8 @@
 	color: inherit;
 	font: inherit;
 }
+.thl-chapter-nav button { cursor: pointer; }
+.thl-chapter-nav button:hover { background: var(--thl-control-hover); }
 .thl-chapter p, .thl-causal-evidence { color: var(--thl-muted); }
 .thl-causal-link {
 	display: grid;

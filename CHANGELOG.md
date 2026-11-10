@@ -14,6 +14,13 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 - Unit and Chromium regressions for evidence, chapter seeking, isolated
   scenario switching and safe/narrow-screen guidance rendering.
 
+### Fixed (TL-I15 review follow-up)
+
+- Provide a dedicated Restart chapter button to seek to the current chapter\'s
+  first frame even when its option is already selected.
+- Reconcile removed scenario IDs to the fallback instead of silently selecting
+  a previously removed option on reinsertion; test empty/populated transitions.
+
 ### Compatibility
 
 - Only additive optional React props/exports, no version-1 schema, grammar

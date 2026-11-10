@@ -100,3 +100,72 @@ it("keeps authored text as text and fits the chapter/scenario controls on mobile
 	const wrapper = document.querySelector(".thl-scenarios") as HTMLElement;
 	expect(wrapper.scrollWidth).toBeLessThanOrEqual(wrapper.clientWidth);
 });
+
+
+it("restarts an already-selected chapter and pauses playback", async () => {
+	const trace = compile(CHECKOUT_SCENARIOS[2].source);
+	const screen = await render(<ThroughlinePlayer trace={trace} guidance={CHECKOUT_GUIDANCE} />);
+	const timeline = screen.getByRole("slider", { name: "Timeline" });
+	const chapter = screen.getByRole("combobox", { name: "Chapter" });
+
+	await timeline.fill("3");
+	await expect.element(chapter).toHaveValue("request");
+	await expect.element(timeline).toHaveAttribute("aria-valuetext", "Step 4 of 17");
+	await screen.getByRole("button", { name: "Play", exact: true }).click();
+	await expect.element(screen.getByRole("button", { name: "Pause" })).toBeEnabled();
+
+	await screen.getByRole("button", { name: "Restart chapter" }).click();
+	await expect.element(timeline).toHaveAttribute("aria-valuetext", "Step 1 of 17");
+	await expect.element(chapter).toHaveValue("request");
+	await expect.element(screen.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
+});
+
+it("reconciles a removed scenario without restoring it when reinserted", async () => {
+	const screen = await render(<ThroughlineScenarios scenarios={scenarios.slice(0, 2)} />);
+	const picker = screen.getByRole("combobox", { name: "Scenario" });
+	await picker.selectOptions("terminal-failure");
+	await screen.getByRole("slider", { name: "Timeline" }).fill("5");
+	await expect.element(picker).toHaveValue("terminal-failure");
+
+	await screen.rerender(<ThroughlineScenarios scenarios={scenarios.slice(0, 1)} />);
+	await expect.element(picker).toHaveValue("success");
+	await expect.element(screen.getByRole("slider", { name: "Timeline" }))
+		.toHaveAttribute("aria-valuetext", "Step 1 of 6");
+
+	await screen.rerender(<ThroughlineScenarios scenarios={scenarios.slice(0, 2)} />);
+	await expect.element(picker).toHaveValue("success");
+	await screen.getByRole("slider", { name: "Timeline" }).fill("3");
+	await screen.rerender(<ThroughlineScenarios scenarios={[...scenarios.slice(0, 2)]} />);
+	await expect.element(picker).toHaveValue("success");
+	await expect.element(screen.getByRole("slider", { name: "Timeline" }))
+		.toHaveAttribute("aria-valuetext", "Step 4 of 6");
+
+	await screen.rerender(<ThroughlineScenarios scenarios={[]} />);
+	await expect.element(screen.getByText("No scenarios available.")).toBeInTheDocument();
+	await screen.rerender(<ThroughlineScenarios scenarios={scenarios.slice(1, 2)} />);
+	await expect.element(screen.getByRole("combobox", { name: "Scenario" }))
+		.toHaveValue("terminal-failure");
+	await expect.element(screen.getByRole("slider", { name: "Timeline" }))
+		.toHaveAttribute("aria-valuetext", "Step 1 of 6");
+	await screen.rerender(<ThroughlineScenarios scenarios={scenarios.slice(0, 2)} />);
+	await expect.element(screen.getByRole("combobox", { name: "Scenario" }))
+		.toHaveValue("terminal-failure");
+});
+
+it("treats initialScenarioId as an initial-only selection when the host later removes it", async () => {
+	const screen = await render(
+		<ThroughlineScenarios scenarios={scenarios.slice(0, 2)} initialScenarioId="terminal-failure" />,
+	);
+	await expect.element(screen.getByRole("combobox", { name: "Scenario" }))
+		.toHaveValue("terminal-failure");
+	await screen.rerender(
+		<ThroughlineScenarios scenarios={scenarios.slice(0, 1)} initialScenarioId="terminal-failure" />,
+	);
+	await expect.element(screen.getByRole("combobox", { name: "Scenario" }))
+		.toHaveValue("success");
+	await screen.rerender(
+		<ThroughlineScenarios scenarios={scenarios.slice(0, 2)} initialScenarioId="terminal-failure" />,
+	);
+	await expect.element(screen.getByRole("combobox", { name: "Scenario" }))
+		.toHaveValue("success");
+});

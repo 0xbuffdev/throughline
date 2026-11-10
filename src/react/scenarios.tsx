@@ -29,7 +29,12 @@ export function ThroughlineScenarios({
 	...playerProps
 }: ThroughlineScenariosProps): React.JSX.Element {
 	const selectId = useId();
-	const [selectedId, setSelectedId] = useState(initialScenarioId ?? scenarios[0]?.id ?? "");
+	const [selectedId, setSelectedId] = useState(() => {
+		if (initialScenarioId !== undefined && !scenarios.some((item) => item.id === initialScenarioId)) {
+			throw new Error("The initial scenario ID does not exist.");
+		}
+		return initialScenarioId ?? scenarios[0]?.id ?? "";
+	});
 	const ids = new Set<string>();
 	for (const scenario of scenarios) {
 		if (!scenario.id || ids.has(scenario.id)) {
@@ -40,10 +45,12 @@ export function ThroughlineScenarios({
 		}
 		ids.add(scenario.id);
 	}
-	if (initialScenarioId !== undefined && !ids.has(initialScenarioId)) {
-		throw new Error("The initial scenario ID does not exist.");
-	}
 	const current = scenarios.find((scenario) => scenario.id === selectedId) ?? scenarios[0];
+	// Reconcile before rendering the child player. An option removed by the host
+	// must not silently regain selection if it is reintroduced later.
+	if (selectedId !== (current?.id ?? "")) {
+		setSelectedId(current?.id ?? "");
+	}
 	return (
 		<div className="thl-scenarios" role="group" aria-label="Scenario comparison">
 			{current ? (

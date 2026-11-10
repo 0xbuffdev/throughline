@@ -303,7 +303,9 @@ this plugin does not make arbitrary MDX content safe to execute.
 
 Guidance is **optional, host-authored presentation data**, not compiled trace
 metadata. Chapters identify inclusive, zero-based frame ranges. Selecting a
-chapter seeks to its first frame and pauses playback. Causal explanations
+chapter seeks to its first frame and pauses playback. The **Restart chapter**
+button returns to the beginning of the current chapter (including while
+playing). Causal explanations
 show the author's **Trigger**, **Observed event**, **State change**,
 **Consequence**, and references to real compiled events. Chronology alone
 never establishes causation.
@@ -334,6 +336,10 @@ Each scenario has a unique nonempty ID, title and compiled trace. The optional
 remounts its player, resetting step, playback, speed, camera, selection and
 sound voice, without changing any snapshot. Ordinary rerenders of the same
 option preserve state. Replacing a trace object uses the existing reset.
+If the host removes the selected scenario, selection moves to the first
+available outcome and stays there even if the removed option returns later;
+an empty list clears selection and a subsequently populated list selects its
+first option. `initialScenarioId` is only used on initial mount.
 An empty scenario list shows a text empty state. A single player or
 `ThroughlineEmbed` can also accept the `guidance` prop.
 

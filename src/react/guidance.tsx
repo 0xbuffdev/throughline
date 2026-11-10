@@ -143,6 +143,11 @@ export function PlayerGuidance({
 							<option key={item.id} value={item.id}>{item.title}</option>
 						))}
 					</select>
+					{chapter && (
+						<button type="button" onClick={() => onSeek(chapter.start)}>
+							Restart chapter
+						</button>
+					)}
 				</div>
 			)}
 			{chapter && (
