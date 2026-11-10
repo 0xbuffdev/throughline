@@ -153,7 +153,9 @@ provides Zoom in, Zoom out (1× to 4×), Fit to view, a native Select entity men
 and an explicit Follow active entity toggle. Selecting an entity in the diagram
 or menu centers it and exposes its value as text; this never changes the trace.
 
-- Mouse: drag to pan; wheel over the SVG to zoom about the pointer.
+- Mouse: drag to pan; wheel over the SVG to zoom about the pointer. Wheel
+  scrolling remains native at the zoom bounds and Ctrl/Meta+wheel is reserved
+  for browser-level zoom.
 - Touch: one-finger drag to pan, two-finger pinch to zoom, or use the toolbar.
 - Keyboard: focus the diagram, use arrow keys to pan, + and - to zoom, and 0
   to fit. The native entity menu provides keyboard and screen-reader selection.
@@ -168,8 +170,14 @@ following alongside the existing playback reset. Resizing the host can change
 layout geometry, but cannot mutate frames. Hidden entities remain unselectable.
 
 The viewport operates only on SVG viewBox presentation state, without a new
-trace schema, group hierarchy or inferred events. Camera movement is bounded
-to keep the visualization partly in view.
+trace schema, group hierarchy or inferred events. Its physical SVG height is
+bounded independently of the graph's world height (between 16rem and 32rem,
+responsive to the browser viewport). Fit-to-view preserves the entire graph's
+aspect ratio within this viewport; dense traces may initially appear small,
+so zoom or select a node for detail. Navigation keeps the camera center within
+the world bounds, which allows actual centering of edge nodes while retaining
+some of the scene on screen.
+
 ## Supported domains
 
 | Domain | What it explains | Authoring model |
