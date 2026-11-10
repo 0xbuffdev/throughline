@@ -146,6 +146,38 @@ A refused fullscreen request is
 announced to assistive technology; playback remains available in-page.
 Browser support and host policies determine whether fullscreen can start.
 
+## Guided viewport navigation
+
+The React player opens with a fit-to-view overview. A toolbar above the diagram
+provides Zoom in, Zoom out (1× to 4×), Fit to view, a native Select entity menu,
+and an explicit Follow active entity toggle. Selecting an entity in the diagram
+or menu centers it and exposes its value as text; this never changes the trace.
+
+- Mouse: drag to pan; wheel over the SVG to zoom about the pointer. Wheel
+  scrolling remains native at the zoom bounds and Ctrl/Meta+wheel is reserved
+  for browser-level zoom.
+- Touch: one-finger drag to pan, two-finger pinch to zoom, or use the toolbar.
+- Keyboard: focus the diagram, use arrow keys to pan, + and - to zoom, and 0
+  to fit. The native entity menu provides keyboard and screen-reader selection.
+  Focus the overall Visualization player for playback shortcuts instead.
+
+Follow-active starts off. When enabled, it centers the first currently visible
+authored active entity without synthesizing activity. Manual pan, zoom, fit or
+selection always disables following until explicitly re-enabled. Seeking
+and autoplay do not erase manual camera choices. Replacing the trace with a
+different object returns the camera to overview, clears selection and disables
+following alongside the existing playback reset. Resizing the host can change
+layout geometry, but cannot mutate frames. Hidden entities remain unselectable.
+
+The viewport operates only on SVG viewBox presentation state, without a new
+trace schema, group hierarchy or inferred events. Its physical SVG height is
+bounded independently of the graph's world height (between 16rem and 32rem,
+responsive to the browser viewport). Fit-to-view preserves the entire graph's
+aspect ratio within this viewport; dense traces may initially appear small,
+so zoom or select a node for detail. Navigation keeps the camera center within
+the world bounds, which allows actual centering of edge nodes while retaining
+some of the scene on screen.
+
 ## Supported domains
 
 | Domain | What it explains | Authoring model |

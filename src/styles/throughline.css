@@ -55,6 +55,8 @@
 }
 .thl-stage {
 	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
 	flex: 1 0 auto;
 	align-items: center;
 	justify-content: center;
@@ -62,10 +64,52 @@
 	min-height: clamp(16rem, 42cqi, 32rem);
 	padding: clamp(0.75rem, 2cqi, 1.5rem);
 }
+.thl-viewport-tools {
+	display: flex;
+	flex: none;
+	flex-wrap: wrap;
+	align-self: stretch;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.375rem;
+}
+.thl-viewport-tools button, .thl-viewport-tools select {
+	appearance: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 2.75rem;
+	min-width: 2.75rem;
+	padding: 0.375rem 0.625rem;
+	border: 1px solid var(--thl-line);
+	border-radius: var(--thl-radius);
+	background: var(--thl-control-bg);
+	color: var(--thl-text);
+	font: inherit;
+	font-size: 0.8125rem;
+	cursor: pointer;
+}
+.thl-viewport-tools select { max-width: min(100%, 13rem); min-width: 0; }
+.thl-viewport-tools button:hover:not(:disabled),
+.thl-viewport-tools select:hover { background: var(--thl-control-hover); }
+.thl-viewport-tools button[aria-pressed="true"] { background: var(--thl-focus-bg); }
+.thl-viewport-tools button:disabled { opacity: 0.42; cursor: default; }
+.thl-entity-status {
+	align-self: stretch;
+	color: var(--thl-muted);
+	font-size: 0.8125rem;
+	padding-inline: 0.25rem;
+	overflow-wrap: anywhere;
+}
 .thl-scene {
 	display: block;
 	flex: 0 0 auto;
+	width: 100%;
+	/* Physical viewport height is independent of even very tall trace layouts. */
+	height: clamp(16rem, 52vh, 32rem);
 	max-width: 100%;
+	touch-action: none;
+	cursor: grab;
 	font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 .thl-group {
@@ -81,6 +125,16 @@
 	fill: var(--thl-surface);
 	stroke: var(--thl-line);
 	stroke-width: var(--thl-node-border-width);
+}
+.thl-node.thl-selected {
+	stroke: var(--thl-focus);
+	stroke-width: var(--thl-node-border-width);
+	stroke-dasharray: 5 3;
+}
+.thl-scene [data-node] { cursor: pointer; outline-offset: 3px; }
+.thl-scene [data-node]:focus-visible .thl-node {
+	stroke: var(--thl-focus);
+	stroke-width: 3px;
 }
 .thl-node.thl-focused {
 	stroke: var(--thl-focus);

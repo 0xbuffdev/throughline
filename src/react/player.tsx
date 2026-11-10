@@ -7,7 +7,7 @@ import type { Trace } from "../model.js";
 import type { SonificationOptions } from "../sonify.js";
 import { PlayerCaption } from "./caption.js";
 import { PlayerControls } from "./controls.js";
-import { TraceScene } from "./scene.js";
+import { ViewportScene } from "./viewport.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
 import { useSound } from "./use-sound.js";
 
@@ -107,7 +107,7 @@ export function ThroughlinePlayer({
 			onKeyDown={onKeyDown}
 		>
 			<p id={keyboardHelpId} className="thl-sr-only">
-				Focus this player to use Left and Right arrows to step, Home and End to seek, and Space to play or pause. Controls also work independently.
+				Focus this player to use Left and Right arrows to step, Home and End to seek, and Space to play or pause. Focus the diagram to pan with arrow keys, zoom with plus or minus, fit with zero, and select entities from the navigation menu. Controls also work independently.
 			</p>
 			<p role="status" aria-atomic="true" className="thl-sr-only">
 				{summary}
@@ -121,26 +121,14 @@ export function ThroughlinePlayer({
 			{/* This measured stage must exist even for empty traces so ResizeObserver
 			    stays connected through empty/populated trace replacements. */}
 			<div className="thl-stage" ref={sceneRef}>
-				{frame ? (
-					<svg
-						width="100%"
-						height={layout.height}
-						viewBox={layout.viewBox}
-						role="img"
-						aria-label={summary}
-						aria-describedby={captionId}
-						className="thl-scene"
-					>
-						<TraceScene
-							frame={frame}
-							previous={trace.frames[state.step - 1]}
-							layout={layout}
-							groups={trace.groups}
-						/>
-					</svg>
-				) : (
-					<p className="thl-empty">No steps to display.</p>
-				)}
+				<ViewportScene
+					trace={trace}
+					frame={frame}
+					previous={trace.frames[state.step - 1]}
+					layout={layout}
+					summary={summary}
+					captionId={captionId}
+				/>
 			</div>
 			{frame && (
 				<>

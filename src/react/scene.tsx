@@ -56,14 +56,20 @@ interface TraceSceneProps {
 	previous?: Frame;
 	layout: Layout;
 	groups?: readonly SceneGroup[];
+	selectedId?: string;
+	onSelect?: (id: string) => void;
 }
 export function TraceScene({
 	frame,
 	previous,
 	layout,
 	groups,
+	selectedId,
+	onSelect,
 }: TraceSceneProps): React.JSX.Element {
-	const scene = projectScene(frame.state, groups);
+	const scene = projectScene(frame.state, groups, {
+		selectedIds: selectedId ? [selectedId] : [],
+	});
 	const geometry = projectLayout(layout, scene);
 	const before = new Map(
 		previous?.state.entities.map((entity) => [entity.id, entity.value]),
@@ -110,6 +116,8 @@ export function TraceScene({
 					focus={targets.flatMap((target) =>
 						target?.id === entity.id ? [target.path] : [],
 					)}
+					selected={id === selectedId}
+					onSelect={() => onSelect?.(id)}
 					changed={changes.flatMap((target) =>
 						target?.id === entity.id ? [target.path] : [],
 					)}
