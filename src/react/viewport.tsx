@@ -121,7 +121,12 @@ export function ViewportScene({
 	};
 
 	const groupById = new Map((trace.groups ?? []).map((group) => [group.id ?? group.name, group]));
-	const availableGroups = projected?.groups.filter((group) => groupById.has(group.id)) ?? [];
+	// The original minimal flat-lane player remains unchanged by default.
+	// Explicit group identity opts into hierarchy navigation controls.
+	const hierarchyEnabled = trace.groups?.some((group) => group.id !== undefined || group.parentId !== undefined) ?? false;
+	const availableGroups = hierarchyEnabled
+		? projected?.groups.filter((group) => groupById.has(group.id)) ?? []
+		: [];
 	const crumbs: { id: string; name: string }[] = [];
 	let currentGroup = drilledGroup ? groupById.get(drilledGroup) : undefined;
 	const crumbKeys = new Set<string>();
