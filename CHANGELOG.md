@@ -5,6 +5,13 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Added
+
+- TL-I13 guided viewport: bounded pan, zoom and fit-to-view with wheel, keyboard
+  and touch gestures, selected-entity inspection and explicit follow-active mode.
+- Manual camera precedence, trace replacement reset and corresponding unit and
+  browser regressions without changing the version-1 trace schema.
+
 ### Changed
 
 - Introduce a React-independent, view-only scene projection with stable node,
