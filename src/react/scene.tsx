@@ -1,30 +1,30 @@
 import { cn } from "cn";
 import type * as React from "react";
 import type { Edge, Layout } from "../layout/types.js";
+import { projectLayout } from "../layout.js";
 import type { Frame, Relation } from "../model.js";
 import { parseTarget } from "../path.js";
-import { visibleScene } from "../scene.js";
+import { projectScene } from "../scene.js";
 import { NodeCard, truncate } from "./node-card.js";
 
 interface SceneLinkProps {
 	relation: Relation;
 	edge: Edge;
 	frame: Frame;
+	transferred: boolean;
 }
 function SceneLink({
 	relation,
 	edge,
 	frame,
+	transferred,
 }: SceneLinkProps): React.JSX.Element {
-	const transfer = frame.state.transfers.find(
-		(item) => item.relation === relation.id,
-	);
 	const label = relation.label;
 	return (
-		<g className={cn("thl-link", { "thl-transferred": !!transfer })}>
+		<g className={cn("thl-link", { "thl-transferred": transferred })}>
 			<title>{`${relation.from} → ${relation.to}${relation.label ? `: ${relation.label}` : ""}`}</title>
 			<path d={edge.d} className="thl-edge" />
-			{transfer && (
+			{transferred && (
 				<path
 					key={frame.index}
 					d={edge.d}
@@ -61,7 +61,8 @@ export function TraceScene({
 	previous,
 	layout,
 }: TraceSceneProps): React.JSX.Element {
-	const scene = visibleScene(frame.state);
+	const scene = projectScene(frame.state);
+	const geometry = projectLayout(layout, scene);
 	const before = new Map(
 		previous?.state.entities.map((entity) => [entity.id, entity.value]),
 	);
@@ -69,10 +70,10 @@ export function TraceScene({
 	const changes = frame.state.changed.map(parseTarget);
 	return (
 		<>
-			{layout.groups
+			{geometry.groups
 				.filter((group) =>
-					scene.entities.some(
-						(entity) => (entity.lane ?? "State") === group.name,
+					scene.nodes.some(
+						(node) => (node.entity.lane ?? "State") === group.name,
 					),
 				)
 				.map((group) => (
@@ -90,20 +91,23 @@ export function TraceScene({
 						</text>
 					</g>
 				))}
-			{scene.relations.map((relation) => (
-				<SceneLink
-					key={relation.id}
-					relation={relation}
-					edge={layout.edges[relation.id]}
-					frame={frame}
-				/>
-			))}
-			{scene.entities.map((entity) => (
+			{scene.edges.map(({ id, relation, transferred }) =>
+				geometry.edges[id] ? (
+					<SceneLink
+						key={id}
+						relation={relation}
+						edge={geometry.edges[id]}
+						frame={frame}
+						transferred={transferred}
+					/>
+				) : null,
+			)}
+			{scene.nodes.map(({ id, entity }) => geometry.nodes[id] ? (
 				<NodeCard
-					key={entity.id}
+					key={id}
 					entity={entity}
-					previous={before.get(entity.id)}
-					box={layout.nodes[entity.id]}
+					previous={before.get(id)}
+					box={geometry.nodes[id]}
 					focus={targets.flatMap((target) =>
 						target?.id === entity.id ? [target.path] : [],
 					)}
@@ -111,8 +115,8 @@ export function TraceScene({
 						target?.id === entity.id ? [target.path] : [],
 					)}
 				/>
-			))}
-			{!scene.entities.length && (
+			) : null)}
+			{!scene.nodes.length && (
 				<text
 					x={layout.width / 2}
 					y={50}

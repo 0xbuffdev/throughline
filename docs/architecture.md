@@ -29,6 +29,29 @@ build pipelines or other offline ESM environments without React or a DOM.
    form the presentation shell. Browser fullscreen enters and exits for
    this player element when supported; seeking never invents timing.
 
+## Pure scene projection (TL-I12)
+
+The internal `projectScene(snapshot, groups, preferences)` function separates
+**compiled system state** from **presentation state**. Its overview projects all
+authored-visible entities and links, with deterministic node, edge and flat
+lane-group descriptors. Every node retains its original entity ID; every
+edge and transfer retains its authored relation ID. A `send` remains a transfer
+annotation, not evidence that the destination persisted the value.
+
+Focus mode selects explicitly chosen or focused entities, authored active
+targets, and endpoints of currently visible transfers; absent focus targets
+fall back to overview. Authored `hide`/`show` always takes precedence over
+presentation preferences, and hidden endpoints suppress their links. Neither
+projection nor selection changes any compiled frame. Scene group descriptors
+reflect existing lanes only—hierarchy and collapse are separate future work.
+
+`projectLayout` filters the existing deterministic trace-wide fallback
+geometry by a projection, retaining the stable positions, viewBox, directions,
+cycles and self-loops across arbitrary seeking and selection. The React scene
+uses this internal boundary without adding a package export, trace schema,
+viewport control, or public selection API. Pan/zoom, automatic camera
+following and user-driven collapse are not part of TL-I12.
+
 ## Public module boundaries
 
 | Module | Responsibility | React required? |
