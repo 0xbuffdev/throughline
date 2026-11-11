@@ -19,16 +19,17 @@ it("uses compact borderless icon actions, square nodes and a bottom-only control
 	const playback = player.querySelector(".thl-controls")!;
 	const chapter = screen.getByRole("combobox", { name: "Chapter" }).element();
 
-	expect(isBelow(caption, bottom)).toBe(true);
-	expect(isBelow(caption, chapter)).toBe(true);
-	expect(isBelow(navigation, playback)).toBe(true);
+	expect(isBelow(bottom, caption)).toBe(true);
+	expect(bottom.contains(chapter)).toBe(true);
+	expect(bottom.contains(navigation)).toBe(true);
+	expect(bottom.contains(playback)).toBe(true);
 	expect(getComputedStyle(player).paddingTop).toBe("24px");
 	expect(getComputedStyle(player).borderTopLeftRadius).toBe("2px");
 	expect(getComputedStyle(player.querySelector(".thl-viewport-tools button")!).borderTopWidth).toBe("0px");
 	expect(getComputedStyle(screen.getByRole("button", { name: "Play", exact: true }).element()).borderTopWidth).toBe("0px");
 	expect(getComputedStyle(screen.getByRole("combobox", { name: "Select entity" }).element()).borderTopLeftRadius).toBe("2px");
 	expect(screen.getByRole("button", { name: "Zoom in" }).element().querySelector("svg")).not.toBeNull();
-	expect(Number.parseFloat(getComputedStyle(screen.getByRole("button", { name: "Zoom in" }).element()).minWidth)).toBeGreaterThanOrEqual(40);
+	expect(screen.getByRole("button", { name: "Zoom in" }).element().getBoundingClientRect().width).toBeGreaterThanOrEqual(34);
 	for (const selector of [".thl-node", ".thl-group", ".thl-cell rect"]) {
 		const node = player.querySelector<SVGRectElement>(selector)!;
 		expect(node.getAttribute("rx"), selector).toBe("2");

@@ -60,6 +60,20 @@ uses this internal boundary without adding a package export, trace schema,
 viewport control, or public selection API. Pan/zoom, automatic camera
 following and user-driven collapse are not part of TL-I12.
 
+## Footer layout and bounded explanations
+
+The React player composes its navigation, chapter selection, timeline,
+and transport in one bottom bar adjacent to the diagram. Container
+queries use the player container's width, not global browser size,
+to split this bar into predictable rows at narrow widths; visual icon
+sizes do not reduce keyboard and touch target areas. The authored
+caption is a native details disclosure *after* the transport bar.
+Collapsed by default, its summary remains visible with the step
+title, note preview and count; the full explanation, evidence and
+inspector are reachable without moving the controls. The expanded
+body is bounded and independently scrollable, and the SVG references
+its caption summary for descriptive accessibility.
+
 ## Accumulated authored playback progress
 
 The internal React-only `traceProgress(trace, step)` selector scans compiled

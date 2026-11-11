@@ -199,6 +199,25 @@ source with `compile`.
 The hardening test and release-evidence scope are documented in
 [release-hardening](docs/release-hardening.md).
 
+## Responsive controls and step detail
+
+The React player keeps the navigation and transport immediately beneath
+the diagram in one aligned toolbar on wide layouts. Container queries
+reflow the toolbar into two rows at intermediate widths and compact
+touch-sized controls at mobile widths. Desktop icons render at 14px,
+while the icon-button hit area stays 34px, increasing to 40px on
+mobile. Native selects use 0.125rem corners and 0.5rem padding.
+
+The authored caption now follows the toolbar as a native **Details**
+disclosure. Its closed header shows the step title, a single-line
+preview of the note, and the step counter. Open Details to read the
+complete note, transfers, optional causal evidence, and the state
+inspector. The detailed content has its own bounded scroll area so
+long author-provided explanations cannot push the controls away
+from the diagram. The screen-reader step announcement remains active
+regardless of whether the disclosure is expanded. Details remain open
+between steps until closed, without changing playback state.
+
 ## Persistent workflow progress
 
 The React player retains a cumulative trail through the **selected** step.

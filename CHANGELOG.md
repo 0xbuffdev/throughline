@@ -5,6 +5,13 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Changed (responsive player controls)
+
+- Place chapter and diagram navigation beside transport controls in one compact adaptive footer, with 14px visible icons, slimmer native inputs and 40px mobile hit targets.
+- Move variable-length captions below the footer as accessible step disclosures, retaining a one-line preview and a bounded independently scrollable detailed explanation.
+- Keep the diagram and playback controls stationary as authored notes and evidence change between steps.
+
+
 ### Improved (workflow playback visual review)
 
 - Retain authored node and connector activity across later steps; seeking

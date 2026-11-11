@@ -127,6 +127,7 @@ it("exposes full values for inspection and keeps ordinary numbers readable", asy
 	expect(
 		document.querySelector('[data-node="a"] .thl-cell text')?.textContent,
 	).toBe("14");
+	await screen.getByText("Details", { exact: true }).click();
 	await screen.getByText("Inspect state").click();
 	await expect
 		.element(
@@ -294,14 +295,14 @@ it("keeps the reference player hierarchy, optional title, and one caption step c
 	expect(stage.getBoundingClientRect().top).toBeLessThan(
 		caption.getBoundingClientRect().top,
 	);
-	expect(caption.getBoundingClientRect().top).toBeLessThan(
-		controls.getBoundingClientRect().top,
+	expect(controls.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+		caption.getBoundingClientRect().top,
 	);
 	expect(count.textContent).toBe(`Step 1 of ${trace.frames.length}`);
-	// The count occupies the trailing edge even when narrow containers
-	// stack it under the caption rather than reserving an empty column.
-	expect(Math.abs(count.getBoundingClientRect().right - caption.getBoundingClientRect().right)).toBeLessThan(1);
-	expect(count.getBoundingClientRect().top).toBeGreaterThanOrEqual(caption.querySelector(".thl-caption-content")!.getBoundingClientRect().top);
+	// The step count stays in the compact disclosure heading, after controls.
+	expect(count.getBoundingClientRect().right).toBeLessThanOrEqual(caption.getBoundingClientRect().right + 1);
+	expect(count.getBoundingClientRect().top).toBeGreaterThanOrEqual(caption.getBoundingClientRect().top);
+	expect((caption as HTMLDetailsElement).open).toBe(false);
 	expect(getComputedStyle(player).borderTopWidth).toBe("0px");
 	expect(getComputedStyle(caption).borderTopWidth).toBe("0px");
 	expect(getComputedStyle(player).borderTopLeftRadius).toBe("2px");
