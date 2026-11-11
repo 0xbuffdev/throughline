@@ -175,7 +175,7 @@ try {
 		reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
 	}));
 	assert.equal(visual.overflow, false, "Player overflows at phone width");
-	assert.equal(visual.radiusToken, "0.325rem", "Package CSS tokens did not load");
+	assert.equal(visual.radiusToken, "0.125rem", "Packed player must preserve compact corner-radius tokens");
 	assert.equal(visual.border, "0px", "The player must not have an outer border");
 	assert.equal(visual.captionBorder, "0px", "The caption must remain borderless");
 	assert.equal(visual.controls, "grid", "Package control-bar styles did not load");
