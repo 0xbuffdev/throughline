@@ -134,10 +134,14 @@ accepts an optional `title` (omitted when absent), and `light`, `dark` or
 `auto` themes. The borderless, pale-light/charcoal-dark shell centers the
 visualization above a caption with an exact `Step N of M` indicator and a
 bottom control bar. Playback is **step-based**: there is no invented media
-time. The optional state inspector remains in the caption.
+time. The optional state inspector and authored causal explanations remain in the caption; chapter navigation and all player navigation/transport controls sit below it.
 
-The shell's default `--thl-radius` is `0.325rem` and node outline width is
-`--thl-node-border-width: 0.125rem`. Host overrides are scoped to the
+The shell, group boxes, nodes, cells and form inputs use a compact default
+`--thl-radius: 0.125rem` (2px at a 16px root font size), with 0.5rem inner
+spacing and 1.5rem player padding. Node strokes default to
+`--thl-node-border-width: 1.25px`. Icon-only buttons have no visible boxes,
+but retain at least 2.5rem interactive targets and visible keyboard focus.
+ Host overrides are scoped to the
 player; for example, with `className="my-trace"` and a stylesheet loaded
 after the package CSS:
 
@@ -197,7 +201,7 @@ The hardening test and release-evidence scope are documented in
 
 ## Guided viewport navigation
 
-The React player opens with a fit-to-view overview. A toolbar above the diagram
+The React player opens with a fit-to-view overview. The compact bottom toolbar
 provides Zoom in, Zoom out (1× to 4×), Fit to view, a native Select entity menu,
 and an explicit Follow active entity toggle. Selecting an entity in the diagram
 or menu centers it and exposes its value as text; this never changes the trace.
@@ -219,11 +223,12 @@ following alongside the existing playback reset. Resizing the host can change
 layout geometry, but cannot mutate frames. Hidden entities remain unselectable.
 
 The viewport operates only on SVG viewBox presentation state, without a new
-trace schema, group hierarchy or inferred events. Its physical SVG height is
-bounded independently of the graph's world height (between 16rem and 32rem,
-responsive to the browser viewport). Fit-to-view preserves the entire graph's
-aspect ratio within this viewport; dense traces may initially appear small,
-so zoom or select a node for detail. Navigation keeps the camera center within
+trace schema, group hierarchy or inferred events. Its physical SVG height
+follows the stable trace-wide layout's aspect ratio so sparse scenes do not
+reserve a tall blank viewport. Very dense scenes are capped at 960px; Fit
+to view still preserves the complete graph's aspect ratio, and zoom, pan
+and selection expose smaller mobile details. The height responds smoothly
+to container changes except when reduced motion is requested. Navigation keeps the camera center within
 the world bounds, which allows actual centering of edge nodes while retaining
 some of the scene on screen.
 

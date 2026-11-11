@@ -5,6 +5,15 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Changed (pre-release visual review)
+
+- Add a source-backed Vite preview for browser inspection before publishing or deploying.
+- Compact group/node/cell geometry, reduce panel whitespace, set 2px corners and 1.5rem player padding, and replace boxed icon actions with accessible borderless hit targets.
+- Move chapter, viewport and hierarchy navigation below the caption into a common footer with playback controls; keep the authored narrative in the caption.
+- Size the SVG stage from stable layout content rather than a 52vh placeholder; cap only dense content and retain mobile fit/zoom semantics.
+- Place visible relation labels away from node values and competing labels; when space is insufficient, keep the full relation in its SVG title rather than drawing over nodes.
+
+
 ### Hardened (TL-I16 candidate)
 
 - Reject unsupported trace versions and missing frame arrays at the React reader boundary; this is not full validation of untrusted serialized state.
