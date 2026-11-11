@@ -15,6 +15,8 @@
 	--thl-track: light-dark(oklch(0.85 0 0), oklch(0.36 0 0));
 	--thl-radius: 0.125rem;
 	--thl-node-border-width: 1.25px;
+	--thl-trail: light-dark(oklch(0.49 0.12 225), oklch(0.76 0.11 220));
+	--thl-trail-bg: light-dark(oklch(0.955 0.018 225), oklch(0.24 0.027 220));
 	color-scheme: light dark;
 	box-sizing: border-box;
 	container-type: inline-size;
@@ -194,6 +196,11 @@
 	stroke-dasharray: 4 3;
 }
 .thl-summary-count { fill: var(--thl-muted); font-size: 12px; }
+.thl-summary-node.thl-visited {
+	fill: var(--thl-trail-bg);
+	stroke: var(--thl-trail);
+	stroke-width: 2px;
+}
 .thl-summary-node.thl-focused {
 	fill: var(--thl-focus-bg);
 	stroke: var(--thl-focus);
@@ -216,6 +223,11 @@
 	stroke: var(--thl-line);
 	stroke-width: var(--thl-node-border-width);
 }
+.thl-node.thl-visited {
+	fill: var(--thl-trail-bg);
+	stroke: var(--thl-trail);
+	stroke-width: 1.75px;
+}
 .thl-node.thl-selected {
 	stroke: var(--thl-focus);
 	stroke-width: var(--thl-node-border-width);
@@ -228,7 +240,7 @@
 }
 .thl-node.thl-focused {
 	stroke: var(--thl-focus);
-	stroke-width: var(--thl-node-border-width);
+	stroke-width: 2.5px;
 }
 .thl-node-label {
 	fill: var(--thl-muted);
@@ -244,7 +256,7 @@
 	font-size: 11px;
 	font-weight: 400;
 }
-.thl-edge, .thl-flow {
+.thl-edge {
 	fill: none;
 	stroke: var(--thl-muted);
 	stroke-width: 1.3;
@@ -257,22 +269,43 @@
 	paint-order: stroke;
 	font-size: 10px;
 }
-.thl-transferred .thl-edge { stroke: var(--thl-focus); }
-.thl-transferred polygon, .thl-transferred text { fill: var(--thl-focus); }
-/* A collapsed boundary may summarize multiple relations: emphasize that at
-   least one *real* relation sent, without animating every aggregate member. */
-.thl-aggregate-active .thl-edge {
-	stroke: var(--thl-focus);
-	stroke-width: 2.5;
-	stroke-dasharray: 5 3;
+/* Authored history remains visible through later steps. Structural reveals
+   are dashed: a connection becoming visible is not an actual send. */
+.thl-link.thl-revealed:not(.thl-visited) .thl-edge {
+	stroke: var(--thl-trail);
+	stroke-width: 1.6;
+	stroke-dasharray: 3 4;
 }
-.thl-aggregate-active polygon, .thl-aggregate-active text { fill: var(--thl-focus); }
-.thl-flow {
+.thl-link.thl-revealed:not(.thl-visited) polygon,
+.thl-link.thl-revealed:not(.thl-visited) .thl-edge-label { fill: var(--thl-trail); }
+.thl-link.thl-visited .thl-edge {
+	stroke: var(--thl-trail);
+	stroke-width: 2;
+}
+.thl-link.thl-visited polygon,
+.thl-link.thl-visited .thl-edge-label { fill: var(--thl-trail); }
+/* Repeated active sends animate the actual path. The arrowhead and link label
+   share its active colour, and no second line is superimposed. */
+.thl-link.thl-transferred .thl-edge {
 	stroke: var(--thl-focus);
 	stroke-width: 2.5;
 	stroke-dasharray: 1;
 	animation: thl-draw 350ms ease-out both;
 }
+.thl-link.thl-transferred polygon,
+.thl-link.thl-transferred .thl-edge-label { fill: var(--thl-focus); }
+/* A collapsed boundary can contain both traversed and untouched links.
+   Keep the aggregate dashed, and never animate it as a single send. */
+.thl-link.thl-aggregate-visited .thl-edge,
+.thl-link.thl-aggregate-active .thl-edge {
+	stroke: var(--thl-trail);
+	stroke-width: 2;
+	stroke-dasharray: 5 3;
+}
+.thl-link.thl-aggregate-active .thl-edge { stroke: var(--thl-focus); stroke-width: 2.5; }
+.thl-link.thl-aggregate-active polygon,
+.thl-link.thl-aggregate-active .thl-edge-label { fill: var(--thl-focus); }
+
 .thl-caption {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto;
@@ -517,4 +550,4 @@
 	.thl-aux-controls { justify-content: flex-start; }
 }
 @keyframes thl-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-@media (prefers-reduced-motion: reduce) { .thl-flow { animation: none; } .thl-scene { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .thl-transferred .thl-edge { animation: none; stroke-dashoffset: 0; } .thl-scene { transition: none; } }
