@@ -10,8 +10,8 @@ import type { ProjectedScene } from "./scene.js";
 export { effectiveView, format } from "./layout/measure.js";
 export type { Box, Edge, Layout, Pt } from "./layout/types.js";
 
-const PAD = 12;
-const GAP = 28;
+const PAD = 8;
+const GAP = 18;
 const laneOf = (entity: Entity): string => entity.lane ?? "State";
 
 type Group = Layout["groups"][number] & { nodes: Record<string, Box> };
@@ -43,8 +43,8 @@ function arrangeGroup(
 		rows[rank].push(member);
 	}
 	const nodes: Record<string, Box> = {};
-	let y = 32,
-		w = Math.min(maxWidth, Math.max(100, name.length * 7 + 24));
+	let y = 26,
+		w = Math.min(maxWidth, Math.max(80, name.length * 7 + PAD * 2));
 	for (const row of rows) {
 		if (!row) continue;
 		let x = PAD,
@@ -73,7 +73,7 @@ function arrangeGroup(
 			for (const box of boxes) box.x += offset;
 		}
 	}
-	return { name, x: 0, y: 0, w, h: Math.max(64, y), nodes };
+	return { name, x: 0, y: 0, w, h: Math.max(48, y - GAP + PAD), nodes };
 }
 
 /** History-sized boxes and responsive group packing; no per-step layout or shrinking text. */
@@ -85,7 +85,7 @@ export function composeTrace(trace: Trace, availableWidth = 720): Layout {
 	const entities = trace.frames[0]?.state.entities ?? [];
 	const relations = trace.frames[0]?.state.relations ?? [];
 	const maxWidth = width - PAD * 2;
-	const nodeWidth = Math.min(260, maxWidth - PAD * 2);
+	const nodeWidth = Math.min(220, maxWidth - PAD * 2);
 	const sizes = new Map<string, Box>();
 	for (const frame of trace.frames) {
 		const targets = frame.state.active.map(parseTarget);
