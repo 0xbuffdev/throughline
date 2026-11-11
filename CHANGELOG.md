@@ -5,6 +5,17 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Improved (workflow playback visual review)
+
+- Retain authored node and connector activity across later steps; seeking
+  backwards reconstructs the earlier trail without leaking future state.
+- Animate each current send directly on its existing arrow path instead of
+  drawing a second line; repeated sends restart the same-path animation.
+- Keep shown-but-unsent links visibly distinct, preserve partial
+  collapsed-group provenance and announce cumulative progress to screen readers.
+  Neither transfers nor tinted endpoints imply acknowledgment or persistence.
+
+
 ### Changed (pre-release visual review)
 
 - Add a source-backed Vite preview for browser inspection before publishing or deploying.

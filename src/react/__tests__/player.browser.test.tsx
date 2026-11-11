@@ -610,7 +610,7 @@ it("keeps the transfer animation disabled in the reduced-motion stylesheet", asy
 				rule.conditionText.includes("prefers-reduced-motion: reduce")
 			) {
 				for (const nested of rule.cssRules) {
-					if (nested instanceof CSSStyleRule && nested.selectorText === ".thl-flow") {
+					if (nested instanceof CSSStyleRule && nested.selectorText === ".thl-transferred .thl-edge") {
 						reducedMotionAnimationNames.push(nested.style.animationName);
 					}
 				}

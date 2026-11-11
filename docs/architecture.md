@@ -60,6 +60,31 @@ uses this internal boundary without adding a package export, trace schema,
 viewport control, or public selection API. Pan/zoom, automatic camera
 following and user-driven collapse are not part of TL-I12.
 
+## Accumulated authored playback progress
+
+The internal React-only `traceProgress(trace, step)` selector scans compiled
+active targets, explicit transfers and authored link-reveal events only
+through the selected frame. It returns sets of participating nodes,
+traversed relations and structurally revealed relations. Recomputing
+from the selected frame on seeking makes rewind deterministic; memoization
+by trace identity and timeline index avoids redundant work on resize.
+No new trace field, compiler event, parser rule or external dependency
+is introduced, and the compiler remains React-free.
+
+The player distinguishes **persistent participation**, **current focus
+and value changes**, and **a current explicit send**. It animates the
+actual directed SVG connector using a normalized path length and a
+new element key for each send frame. Consecutive sends can reanimate.
+There is no superimposed flow path. Reduced-motion removes animation.
+
+Authored visibility always wins: hidden elements cannot be revived by
+presentation progress. A collapsed aggregate remains dashed and reports
+how many true constituent relation IDs have sent so far; it does not
+animate as a single fabricated transfer. Authored `show link` is styled
+as a structural reveal. Sending never claims destination acknowledgment,
+processing or persistence, even if both endpoints are tinted as
+participating entities.
+
 ## Authored guidance and separate alternatives (TL-I15)
 
 The React-only `ThroughlineGuidance` presentation contract is not serialized

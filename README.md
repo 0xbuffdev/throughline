@@ -199,6 +199,30 @@ source with `compile`.
 The hardening test and release-evidence scope are documented in
 [release-hardening](docs/release-hardening.md).
 
+## Persistent workflow progress
+
+The React player retains a cumulative trail through the **selected** step.
+Focused or explicitly written nodes and endpoints of authored sends stay
+highlighted, along with arrows that have actually transferred an authored
+message. The **current arrow itself** draws when a send occurs; there is
+no second path painted on top of it. The newest focus and data changes
+still have stronger emphasis than previous activity.
+
+Only an explicit `send` highlights a message path. For instance, setting
+a server status **does not** highlight the response link until a separate
+authored response send occurs. A `show link` marks a structural connection
+with a dashed style, not a delivery. Highlighting an endpoint means it
+participated in the authored sequence; it does not imply that a request
+was accepted or that the destination persisted data.
+
+The trail is derived from the compiled trace at each seek position.
+Rewinding removes future progress; replaying restores it. Hidden nodes and
+links stay hidden; collapsed groups retain original relation provenance
+and distinguish partial aggregates. Switching scenarios or replacing
+the trace resets the progression. Reduced-motion preferences retain
+a fully highlighted arrow without drawing animation. Screen readers
+get an authored-progress count with the current step.
+
 ## Guided viewport navigation
 
 The React player opens with a fit-to-view overview. The compact bottom toolbar
