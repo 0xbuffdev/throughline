@@ -33,6 +33,7 @@ it("collapses, expands, drills and navigates breadcrumb hierarchy without changi
 	await expect.poll(() => document.querySelectorAll('[data-group-summary="inner"]').length).toBe(1);
 	expect(document.querySelector('[data-node="a"]')).toBeNull();
 	expect(document.querySelector('[data-node="b"]')).toBeNull();
+	await screen.getByText("Details", { exact: true }).click();
 	await screen.getByText("Inspect state").click();
 	expect(document.querySelector(".thl-inspector")?.textContent).toContain("Beta");
 	const tooltip = [...document.querySelectorAll(".thl-link title")]
