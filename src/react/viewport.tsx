@@ -276,7 +276,7 @@ export function ViewportScene({
 			<svg
 				ref={svgRef}
 				width="100%"
-				height="100%"
+				height={sceneHeight}
 				preserveAspectRatio="xMidYMid meet"
 				viewBox={cameraViewBox(layout, effective)}
 				role="img"
