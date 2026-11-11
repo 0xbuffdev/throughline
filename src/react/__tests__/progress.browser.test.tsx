@@ -121,3 +121,33 @@ it("reset independent scenario progress instead of leaking another scenario's pa
 	expect(document.querySelectorAll(".thl-visited")).toHaveLength(0);
 	await expect.element(screen.getByRole("slider", { name: "Timeline" })).toHaveAttribute("aria-valuetext", "Step 1 of 6");
 });
+
+it("restarts drawing the same connector on consecutive authored sends without adding another path", async () => {
+	const trace = compile([
+		"thl flow",
+		'node a "Sender" = 0',
+		'node b "Receiver" = 0',
+		'link ab a -> b "delivery"',
+		'step "First delivery"',
+		'  send ab = 1',
+		'step "Second delivery"',
+		'  send ab = 2',
+		'step "Completed"',
+		'  note "No new send"',
+	].join("\n"));
+	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	const forward = screen.getByRole("button", { name: "Step forward" });
+	await forward.click();
+	const connection = link("a", "b")!;
+	const firstPath = connection.querySelector<SVGPathElement>(".thl-edge")!;
+	expect(connection.querySelectorAll("path")).toHaveLength(1);
+	await forward.click();
+	const secondPath = connection.querySelector<SVGPathElement>(".thl-edge")!;
+	expect(secondPath).not.toBe(firstPath);
+	expect(connection.querySelectorAll("path")).toHaveLength(1);
+	expect(connection.classList.contains("thl-transferred")).toBe(true);
+	await forward.click();
+	expect(connection.classList.contains("thl-transferred")).toBe(false);
+	expect(connection.classList.contains("thl-visited")).toBe(true);
+	expect(connection.querySelectorAll("path")).toHaveLength(1);
+});

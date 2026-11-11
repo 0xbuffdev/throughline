@@ -153,8 +153,8 @@ after the package CSS:
 ~~~
 
 The `--thl-bg`, `--thl-panel`, `--thl-surface`, `--thl-text`,
-`--thl-muted`, `--thl-line`, `--thl-focus`, `--thl-change` and
-control tokens belong to the player, not the host's `:root` or `.dark`.
+`--thl-muted`, `--thl-line`, `--thl-focus`, `--thl-change`,
+`--thl-trail`, `--thl-trail-bg` and control tokens belong to the player, not the host's `:root` or `.dark`.
 
 The bottom-right **Maximize player** button enters native browser fullscreen
 and changes to **Minimize player** while active, including when fullscreen

@@ -239,6 +239,7 @@
 	stroke-width: 3px;
 }
 .thl-node.thl-focused {
+	fill: var(--thl-focus-bg);
 	stroke: var(--thl-focus);
 	stroke-width: 2.5px;
 }
