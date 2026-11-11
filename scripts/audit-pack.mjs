@@ -243,6 +243,8 @@ try {
 		'const trace = compile([fence+"thl binary","a = 1","b = 1",fence].join(String.fromCharCode(10)));',
 		'const html = renderToString(createElement(ThroughlinePlayer, { trace }));',
 		'assert(html.includes("Visualization player"));',
+		'assert.throws(() => renderToString(createElement(ThroughlinePlayer, { trace: { ...trace, version: 2 } })), /Expected trace version 1/);',
+		'assert.throws(() => renderToString(createElement(ThroughlinePlayer, { trace: { ...trace, frames: null } })), /Expected trace version 1/);',
 	].join("\n");
 	run("node", ["--input-type=module", "-e", ssr], consumer);
 	writeFileSync(join(consumer, "embed-typecheck.ts"), [

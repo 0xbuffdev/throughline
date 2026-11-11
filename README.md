@@ -146,6 +146,17 @@ A refused fullscreen request is
 announced to assistive technology; playback remains available in-page.
 Browser support and host policies determine whether fullscreen can start.
 
+## Trace reader compatibility
+
+`ThroughlinePlayer` expects a compiler-produced version-1 `Trace` and rejects
+unsupported versions or a missing `frames` array at runtime. This is **not**
+a complete validator for arbitrary serialized snapshots. Treat external JSON
+as untrusted and validate it at the host boundary; prefer compiling bounded
+source with `compile`.
+
+The hardening test and release-evidence scope are documented in
+[release-hardening](docs/release-hardening.md).
+
 ## Guided viewport navigation
 
 The React player opens with a fit-to-view overview. A toolbar above the diagram

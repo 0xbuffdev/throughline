@@ -34,6 +34,8 @@ export function routeEdges(
 	nodes: Record<string, Box>,
 ): Record<string, Edge> {
 	const edges: Record<string, Edge> = {};
+	// Use one geometry snapshot for all links rather than allocating per link.
+	const boxes = Object.values(nodes);
 	for (const relation of relations) {
 		const a = nodes[relation.from];
 		const b = nodes[relation.to];
@@ -41,7 +43,7 @@ export function routeEdges(
 		const dx = b.x + b.w / 2 - a.x - a.w / 2;
 		const dy = b.y + b.h / 2 - a.y - a.h / 2;
 		const horizontal = Math.abs(dx) > Math.abs(dy);
-		const blockers = Object.values(nodes).filter(
+		const blockers = boxes.filter(
 			(box) =>
 				box !== a &&
 				box !== b &&

@@ -3,7 +3,7 @@ import type * as React from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { describeFrame } from "../describe.js";
 import { composeTrace } from "../layout.js";
-import type { Trace } from "../model.js";
+import { ProgramError, type Trace } from "../model.js";
 import type { SonificationOptions } from "../sonify.js";
 import { PlayerCaption } from "./caption.js";
 import { validateGuidance, type ThroughlineGuidance } from "./guidance.js";
@@ -32,6 +32,10 @@ export function ThroughlinePlayer({
 	sonification,
 	guidance,
 }: ThroughlinePlayerProps): React.JSX.Element {
+	// Check the reader version before any hook inspects a serialized trace.
+	if (!trace || trace.version !== 1 || !Array.isArray(trace.frames)) {
+		throw new ProgramError([{ message: "Expected trace version 1 and frames array." }]);
+	}
 	const ref = useRef<HTMLDivElement>(null);
 	const sceneRef = useRef<HTMLDivElement>(null);
 	const width = useSceneWidth(sceneRef);

@@ -5,6 +5,13 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Hardened (TL-I16 candidate)
+
+- Reject unsupported trace versions and missing frame arrays at the React reader boundary; this is not full validation of untrusted serialized state.
+- Reuse a shared node-box set during dense edge routing and record cyclic-layout diagnostic benchmarks.
+- Exercise hostile authored text in Chromium and rejected reader versions in isolated packed React SSR.
+- Record source verification and outstanding manual, documentation-app and release gates.
+
 ### Added (TL-I15)
 
 - React-only guided chapters and authored causal explanations with explicit,
