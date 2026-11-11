@@ -25,7 +25,7 @@ it("uses compact borderless icon actions, square nodes and a bottom-only control
 	expect(getComputedStyle(player).paddingTop).toBe("24px");
 	expect(getComputedStyle(player).borderTopLeftRadius).toBe("2px");
 	expect(getComputedStyle(player.querySelector(".thl-viewport-tools button")!).borderTopWidth).toBe("0px");
-	expect(getComputedStyle(screen.getByRole("button", { name: "Play" }).element()).borderTopWidth).toBe("0px");
+	expect(getComputedStyle(screen.getByRole("button", { name: "Play", exact: true }).element()).borderTopWidth).toBe("0px");
 	expect(getComputedStyle(screen.getByRole("combobox", { name: "Select entity" }).element()).borderTopLeftRadius).toBe("2px");
 	expect(screen.getByRole("button", { name: "Zoom in" }).element().querySelector("svg")).not.toBeNull();
 	expect(Number.parseFloat(getComputedStyle(screen.getByRole("button", { name: "Zoom in" }).element()).minWidth)).toBeGreaterThanOrEqual(40);

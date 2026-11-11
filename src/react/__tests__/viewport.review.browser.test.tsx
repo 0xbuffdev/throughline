@@ -49,7 +49,11 @@ it("fits the full vertically dense diagram inside a bounded physical phone viewp
   const topLeft = new DOMPoint(0, 0).matrixTransform(matrix);
   const bottomRight = new DOMPoint(width, height).matrixTransform(matrix);
   expect(topLeft.x).toBeGreaterThanOrEqual(rect.left - 1);
-  expect(topLeft.y).toBeGreaterThanOrEqual(rect.top - 1);
+  expect(topLeft.y, JSON.stringify({
+    svg: { x: rect.x, y: rect.y, w: rect.width, h: rect.height },
+    screenCTM: matrix.toString(), viewBox: svg().getAttribute("viewBox"),
+    svgHeight: svg().style.height,
+  })).toBeGreaterThanOrEqual(rect.top - 1);
   expect(bottomRight.x).toBeLessThanOrEqual(rect.right + 1);
   expect(bottomRight.y).toBeLessThanOrEqual(rect.bottom + 1);
 });
