@@ -6,7 +6,7 @@ import { composeTrace } from "../layout.js";
 import { ProgramError, type Trace } from "../model.js";
 import type { SonificationOptions } from "../sonify.js";
 import { PlayerCaption } from "./caption.js";
-import { validateGuidance, type ThroughlineGuidance } from "./guidance.js";
+import { PlayerGuidanceControls, validateGuidance, type ThroughlineGuidance } from "./guidance.js";
 import { PlayerControls } from "./controls.js";
 import { ViewportScene } from "./viewport.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
@@ -143,34 +143,42 @@ export function ThroughlinePlayer({
 					layout={layout}
 					summary={summary}
 					captionId={captionId}
+					caption={frame && (
+						<PlayerCaption
+							frame={frame}
+							trace={trace}
+							guidance={guidance}
+							onSeek={(step) => dispatch({ type: "step", to: step })}
+							id={captionId}
+							total={trace.frames.length}
+						/>
+					)}
+					chapterControls={frame && guidance && (
+						<PlayerGuidanceControls
+							trace={trace}
+							frame={frame}
+							guidance={guidance}
+							onSeek={(step) => dispatch({ type: "step", to: step })}
+						/>
+					)}
+					controls={frame && (
+						<PlayerControls
+							state={state}
+							dispatch={dispatch}
+							sound={
+								sonification
+									? { enabled: sound, toggle: () => setSound((enabled) => !enabled) }
+									: undefined
+							}
+							fullscreen={{
+								active: fullscreen,
+								available: fullscreenAvailable,
+								toggle: toggleFullscreen,
+							}}
+						/>
+					)}
 				/>
 			</div>
-			{frame && (
-				<>
-					<PlayerCaption
-						frame={frame}
-						trace={trace}
-						guidance={guidance}
-						onSeek={(step) => dispatch({ type: "step", to: step })}
-						id={captionId}
-						total={trace.frames.length}
-					/>
-					<PlayerControls
-						state={state}
-						dispatch={dispatch}
-						sound={
-							sonification
-								? { enabled: sound, toggle: () => setSound((enabled) => !enabled) }
-								: undefined
-						}
-						fullscreen={{
-							active: fullscreen,
-							available: fullscreenAvailable,
-							toggle: toggleFullscreen,
-						}}
-					/>
-				</>
-			)}
 		</div>
 	);
 }

@@ -33,6 +33,10 @@ type ViewportProps = {
 	layout: Layout;
 	summary: string;
 	captionId: string;
+	/** Caption and playback controls remain owned by the player. */
+	caption?: React.ReactNode;
+	chapterControls?: React.ReactNode;
+	controls?: React.ReactNode;
 };
 
 const point = (event: React.PointerEvent): Point => ({ x: event.clientX, y: event.clientY });
@@ -57,6 +61,9 @@ export function ViewportScene({
 	layout,
 	summary,
 	captionId,
+	caption,
+	chapterControls,
+	controls,
 }: ViewportProps): React.JSX.Element {
 	const svgRef = useRef<SVGSVGElement>(null);
 	const pointers = useRef(new Map<number, Point>());
@@ -262,6 +269,46 @@ export function ViewportScene({
 	if (!frame) return <p className="thl-empty">No steps to display.</p>;
 	return (
 		<>
+			<svg
+				ref={svgRef}
+				width="100%"
+				height="100%"
+				preserveAspectRatio="xMidYMid meet"
+				viewBox={cameraViewBox(layout, effective)}
+				role="img"
+				aria-label={summary}
+				aria-describedby={captionId}
+				aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown + - 0"
+				className="thl-scene"
+				tabIndex={0}
+				onKeyDown={onKeyDown}
+				onPointerDown={onPointerDown}
+				onPointerMove={onPointerMove}
+				onPointerUp={(event) => endPointer(event, false)}
+				onPointerCancel={(event) => endPointer(event, true)}
+				// Prevent selecting a node after a drag ends on the same SVG element.
+				onClickCapture={(event) => { if (dragged.current) { event.stopPropagation(); dragged.current = false; } }}
+			>
+				<TraceScene
+					frame={frame}
+					previous={previous}
+					layout={layout}
+					groups={trace.groups}
+					collapsedGroupIds={collapsedGroups}
+					onExpandGroup={expandGroup}
+					selectedId={selected?.id}
+					onSelect={selectEntity}
+				/>
+			</svg>
+			{selected && (
+				<p className="thl-entity-status" aria-live="polite">
+					Selected: {selected.label} ({selected.id}) — {format(selected.value)}
+				</p>
+			)}
+			{caption}
+			<div className="thl-bottom">
+				{chapterControls}
+				<div className="thl-aux-controls">
 			<div className="thl-viewport-tools" role="toolbar" aria-label="Diagram navigation">
 				<select
 					aria-label="Select entity"
@@ -304,42 +351,9 @@ export function ViewportScene({
 					</button>
 				</nav>
 			)}
-			<svg
-				ref={svgRef}
-				width="100%"
-				height="100%"
-				preserveAspectRatio="xMidYMid meet"
-				viewBox={cameraViewBox(layout, effective)}
-				role="img"
-				aria-label={summary}
-				aria-describedby={captionId}
-				aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown + - 0"
-				className="thl-scene"
-				tabIndex={0}
-				onKeyDown={onKeyDown}
-				onPointerDown={onPointerDown}
-				onPointerMove={onPointerMove}
-				onPointerUp={(event) => endPointer(event, false)}
-				onPointerCancel={(event) => endPointer(event, true)}
-				// Prevent selecting a node after a drag ends on the same SVG element.
-				onClickCapture={(event) => { if (dragged.current) { event.stopPropagation(); dragged.current = false; } }}
-			>
-				<TraceScene
-					frame={frame}
-					previous={previous}
-					layout={layout}
-					groups={trace.groups}
-					collapsedGroupIds={collapsedGroups}
-					onExpandGroup={expandGroup}
-					selectedId={selected?.id}
-					onSelect={selectEntity}
-				/>
-			</svg>
-			{selected && (
-				<p className="thl-entity-status" aria-live="polite">
-					Selected: {selected.label} ({selected.id}) — {format(selected.value)}
-				</p>
-			)}
+				</div>
+				{controls}
+			</div>
 		</>
 	);
 }
