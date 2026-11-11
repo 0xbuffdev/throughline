@@ -141,6 +141,7 @@ export function ThroughlinePlayer({
 					frame={frame}
 					previous={trace.frames[state.step - 1]}
 					layout={layout}
+					availableWidth={width}
 					summary={summary}
 					captionId={captionId}
 					caption={frame && (

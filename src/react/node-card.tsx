@@ -50,11 +50,11 @@ export function NodeCard({
 			<rect
 				width={box.w}
 				height={box.h}
-				rx={8}
+				rx={2}
 				className={cn("thl-node", { "thl-focused": focus.length > 0, "thl-selected": selected })}
 			/>
-			<text x={10} y={19} className="thl-node-label">
-				{truncate(entity.label, Math.floor((box.w - 20) / 7))}
+			<text x={8} y={17} className="thl-node-label">
+				{truncate(entity.label, Math.floor((box.w - 16) / 7))}
 			</text>
 			{value.cells.map((cell) => {
 				const isChanged =
@@ -76,7 +76,7 @@ export function NodeCard({
 						})}
 					>
 						<title>{cell.text}</title>
-						<rect width={cell.w} height={cell.h} rx={4} />
+						<rect width={cell.w} height={cell.h} rx={2} />
 						<text
 							x={cell.w / 2}
 							y={cell.h / 2}
@@ -99,8 +99,8 @@ export function NodeCard({
 				);
 			})}
 			{value.note && (
-				<text x={10} y={box.h - 10} className="thl-window">
-					{truncate(value.note, Math.floor((box.w - 20) / 6.2))}
+				<text x={8} y={box.h - 8} className="thl-window">
+					{truncate(value.note, Math.floor((box.w - 16) / 6.2))}
 					<title>{value.note}</title>
 				</text>
 			)}

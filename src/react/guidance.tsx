@@ -142,8 +142,8 @@ export function PlayerGuidanceControls({
 				))}
 			</select>
 			{chapter && (
-				<button type="button" onClick={() => onSeek(chapter.start)}>
-					Restart chapter
+				<button type="button" aria-label="Restart chapter" title="Restart chapter" onClick={() => onSeek(chapter.start)}>
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 1 2.4 5.7M4 6v6h6" /></svg>
 				</button>
 			)}
 		</div>

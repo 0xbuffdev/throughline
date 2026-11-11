@@ -98,11 +98,11 @@ export function TraceScene({
 							y={box.y}
 							width={box.w}
 							height={box.h}
-							rx={12}
+							rx={2}
 							className="thl-group"
 						/>
-						<text x={box.x + 12} y={box.y + 20} className="thl-group-label">
-							{truncate(group.name, Math.floor((box.w - 24) / 7))}
+						<text x={box.x + 8} y={box.y + 17} className="thl-group-label">
+							{truncate(group.name, Math.floor((box.w - 16) / 7))}
 						</text>
 					</g>
 				) : null;
@@ -145,15 +145,15 @@ export function TraceScene({
 						<rect
 							width={geometry.nodes[id].w}
 							height={geometry.nodes[id].h}
-							rx={8}
+							rx={2}
 							className={cn("thl-summary-node", { "thl-focused": focused, "thl-changed": changed })}
 						/>
-						<text x={10} y={20} className="thl-node-label">{truncate(entity.label, Math.floor((geometry.nodes[id].w - 20) / 7))}</text>
-						<text x={10} y={37} className="thl-summary-count">{sourceEntityIds?.length ?? 0} visible entities</text>
+						<text x={8} y={17} className="thl-node-label">{truncate(entity.label, Math.floor((geometry.nodes[id].w - 20) / 7))}</text>
+						<text x={8} y={34} className="thl-summary-count">{sourceEntityIds?.length ?? 0} visible entities</text>
 						{(focused || changed) && (
 							<text
 								id={`thl-summary-state-${summaryGroupId}`}
-								x={10}
+								x={8}
 								y={56}
 								className={cn("thl-summary-state", { "thl-changed": changed })}
 							>
