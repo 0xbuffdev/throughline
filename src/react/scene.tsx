@@ -41,7 +41,12 @@ function SceneLink({
 		})}>
 			<title>{aggregated
 				? `${sourceRelationIds.length} authored connection(s) (${relation.from} → ${relation.to}): ${sourceRelationIds.join(", ")}. Sent in this step: ${activeSourceRelationIds?.join(", ") || "none"}. ${traversedIds.length} of ${sourceRelationIds.length} connections sent so far. A send never implies persisted destination state.`
-				: `${relation.from} → ${relation.to}${relation.label ? `: ${relation.label}` : ""}${traversedIds.length ? ". Authored send occurred at or before this step; no persistence implied." : revealed ? ". Connection explicitly revealed; no transfer implied." : ""}`}
+				: `${relation.from} → ${relation.to}${relation.label ? `: ${relation.label}` : ""}`}
+			{(traversedIds.length > 0 || revealed) && (
+				<desc>{traversedIds.length > 0
+					? "This relation carried an authored send at or before the current step. This does not imply delivery, acknowledgment, or persisted state."
+					: "Connection explicitly revealed by an authored structural event; no message transfer implied."}</desc>
+			)}
 			</title>
 			{/* Animate the actual connector path, never an overlay. Re-key it
 			    for consecutive sends so each distinct authored event animates. */}

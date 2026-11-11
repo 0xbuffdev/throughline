@@ -73,7 +73,7 @@ it("keeps explicitly revealed reconciliation links distinct from sent messages",
 	expect(match.classList.contains("thl-revealed")).toBe(true);
 	expect(match.classList.contains("thl-visited")).toBe(false);
 	expect(match.classList.contains("thl-transferred")).toBe(false);
-	expect(match.querySelector("title")?.textContent).toContain("no transfer implied");
+	expect(match.querySelector("desc")?.textContent).toContain("no message transfer implied");
 	await screen.getByRole("slider", { name: "Timeline" }).fill(String(trace.frames.length - 1));
 	expect(link("a", "reuse")).toBeUndefined();
 });
