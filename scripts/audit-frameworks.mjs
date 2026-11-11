@@ -114,7 +114,7 @@ async function assertHydratedPage(dir, pagePath, label, plainPath = "/plain.html
       radius: getComputedStyle(node).getPropertyValue("--thl-radius").trim(),
       overflow: node.scrollWidth > node.clientWidth,
     }));
-    assert.match(styling.radius, /^(?:0)?\.325rem$/, label + " did not load package CSS");
+    assert.equal(styling.radius, "0.125rem", label + " did not load compact package CSS");
     assert.equal(styling.overflow, false, label + " overflows on mobile");
     if (label === "Fumadocs / React Router") {
       assert((await page.locator(".katex").count()) > 0, "Fumadocs lost remark-math / rehype-katex");
