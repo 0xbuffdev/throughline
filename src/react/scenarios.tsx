@@ -64,7 +64,7 @@ export function ThroughlineScenarios({
 						trace={current.trace}
 						title={current.title}
 						guidance={current.guidance}
-					/
+					/>
 					<div className="thl-scenario-picker">
 						<label htmlFor={selectId}>Scenario</label>
 						<select
@@ -76,7 +76,7 @@ export function ThroughlineScenarios({
 								<option key={scenario.id} value={scenario.id}>{scenario.title}</option>
 							))}
 						</select>
-					</div>>
+					</div>
 				</>
 			) : (
 				<p className="thl-scenario-empty">No scenarios available.</p>

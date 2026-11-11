@@ -115,52 +115,52 @@ interface PlayerGuidanceProps {
 	onSeek: (step: number) => void;
 }
 
-/** Chapter navigation is a footer control; explanatory text stays with the caption. */
-export function PlayerGuidanceControls({ frame, guidance, onSeek }: PlayerGuidanceProps): React.JSX.Element | null {
+/** The chapter controls are positioned in the footer; explanations stay in the caption. */
+export function PlayerGuidanceControls({
+	frame,
+	guidance,
+	onSeek,
+}: PlayerGuidanceProps): React.JSX.Element | null {
 	const chapterSelectId = useId();
 	const chapters = guidance.chapters ?? [];
 	const chapter = chapters.find((item) => frame.index >= item.start && frame.index <= item.end);
 	if (!chapters.length) return null;
 	return (
-		<div className="thl-guidance-controls" role="group" aria-label="Chapter navigation">
-		{chapters.length > 0 && (
-			<div className="thl-chapter-nav">
-				<label htmlFor={chapterSelectId}>Chapter</label>
-				<select
-					id={chapterSelectId}
-					value={chapter?.id ?? ""}
-					onChange={(event) => {
-						const selected = chapters.find((item) => item.id === event.currentTarget.value);
-						if (selected) onSeek(selected.start);
-					}}
-				>
-					<option value="" disabled>Choose a chapter</option>
-					{chapters.map((item) => (
-						<option key={item.id} value={item.id}>{item.title}</option>
-					))}
-				</select>
-				</div>
+		<div className="thl-chapter-nav" role="group" aria-label="Chapter navigation">
+			<label htmlFor={chapterSelectId}>Chapter</label>
+			<select
+				id={chapterSelectId}
+				value={chapter?.id ?? ""}
+				onChange={(event) => {
+					const selected = chapters.find((item) => item.id === event.currentTarget.value);
+					if (selected) onSeek(selected.start);
+				}}
+			>
+				<option value="" disabled>Choose a chapter</option>
+				{chapters.map((item) => (
+					<option key={item.id} value={item.id}>{item.title}</option>
+				))}
+			</select>
+			{chapter && (
+				<button type="button" onClick={() => onSeek(chapter.start)}>
+					Restart chapter
+				</button>
+			)}
+		</div>
 	);
 }
 
+/** Read-only authored evidence and chapter description are caption content. */
 export function PlayerGuidance({
 	trace,
 	frame,
 	guidance,
-	onSeek,
 }: PlayerGuidanceProps): React.JSX.Element {
 	const chapters = guidance.chapters ?? [];
 	const chapter = chapters.find((item) => frame.index >= item.start && frame.index <= item.end);
 	const links = (guidance.causalLinks ?? []).filter((item) => item.step === frame.index);
 	return (
 		<section className="thl-guidance" aria-label="Guided explanation">
-			{chapter && (
-						<button type="button" onClick={() => onSeek(chapter.start)}>
-							Restart chapter
-						</button>
-					)}
-				</div>
-			)}
 			{chapter && (
 				<div className="thl-chapter">
 					<strong>{chapter.title}</strong>
