@@ -1,11 +1,11 @@
 import type { Relation } from "../model.js";
-import type { Box, Edge, Pt } from "./types.js";
+import type { Box, Edge, Layout, Pt } from "./types.js";
 
 function bypass(a: Box, b: Box, blockers: Box[], horizontal: boolean): Edge {
 	if (horizontal) {
 		const y =
 			Math.max(a.y + a.h, b.y + b.h, ...blockers.map((box) => box.y + box.h)) +
-			16;
+			12;
 		const from: Pt = [a.x + a.w / 2, a.y + a.h];
 		const to: Pt = [b.x + b.w / 2, b.y + b.h];
 		return {
@@ -32,6 +32,7 @@ function bypass(a: Box, b: Box, blockers: Box[], horizontal: boolean): Edge {
 export function routeEdges(
 	relations: Relation[],
 	nodes: Record<string, Box>,
+	groups: Layout["groups"] = [],
 ): Record<string, Edge> {
 	const edges: Record<string, Edge> = {};
 	// Use one geometry snapshot for all links rather than allocating per link.
@@ -92,6 +93,41 @@ export function routeEdges(
 			],
 			angle: Math.atan2(to[1] - c2[1], to[0] - c2[0]),
 		};
+	}
+
+	// Inline labels never cover node values or other accepted labels. A dense
+	// graph may not have a safe position: keep the full relation in the SVG
+	// <title> instead of painting illegible overlapping text.
+	const reserved: Box[] = groups.map((group) => ({
+		x: group.x, y: group.y, w: group.w, h: 24,
+	}));
+	const occupied: Box[] = [];
+	const extents = [...boxes, ...groups];
+	const maxX = extents.length ? Math.max(...extents.map((box) => box.x + box.w)) + 8 : 0;
+	const maxY = extents.length ? Math.max(...extents.map((box) => box.y + box.h)) + 8 : 0;
+	const intersects = (a: Box, b: Box): boolean =>
+		a.x < b.x + b.w + 3 && a.x + a.w + 3 > b.x &&
+		a.y < b.y + b.h + 3 && a.y + a.h + 3 > b.y;
+	for (const relation of relations) {
+		const edge = edges[relation.id];
+		if (!edge || !relation.label) continue;
+		const w = Math.min(20, [...relation.label].length) * 6.5 + 8;
+		const h = 16;
+		const offsets: Pt[] = [
+			[0, 0], [0, -16], [0, 16], [0, -30], [0, 30],
+			[-18, 0], [18, 0], [-30, -16], [30, -16],
+		];
+		const placed = offsets.find(([dx, dy]) => {
+			const x = edge.label[0] + dx - w / 2;
+			const y = edge.label[1] + dy - 20;
+			const candidate: Box = { x, y, w, h };
+			if (x < 0 || y < 0 || x + w > maxX || y + h > maxY) return false;
+			if ([...boxes, ...reserved, ...occupied].some((box) => intersects(candidate, box))) return false;
+			edge.label = [edge.label[0] + dx, edge.label[1] + dy];
+			occupied.push(candidate);
+			return true;
+		});
+		if (!placed) edge.labelVisible = false;
 	}
 	return edges;
 }

@@ -103,6 +103,18 @@ export function composeTrace(trace: Trace, availableWidth = 720): Layout {
 			});
 		}
 	}
+	// The width selected from all frames can be narrower than the original
+	// measurement budget. Re-measure heights at that actual width so arrays
+	// and record cells never overflow their stable boxes on later frames.
+	for (const frame of trace.frames) {
+		const targets = frame.state.active.map(parseTarget);
+		for (const entity of frame.state.entities) {
+			const size = sizes.get(entity.id);
+			if (!size) continue;
+			const focus = targets.filter((target) => target?.id === entity.id).map((target) => target!.path);
+			size.h = Math.max(size.h, presentValue(entity, size.w, focus).h);
+		}
+	}
 	const names = [...new Set(entities.map(laneOf))];
 	const groups = names.map((name) =>
 		arrangeGroup(
@@ -147,7 +159,7 @@ export function composeTrace(trace: Trace, availableWidth = 720): Layout {
 		viewBox: `0 0 ${width} ${height}`,
 		groups: groups.map(({ nodes: _, ...group }) => group),
 		nodes,
-		edges: routeEdges(relations, nodes),
+		edges: routeEdges(relations, nodes, groups),
 	}, trace);
 }
 
@@ -163,8 +175,8 @@ export function projectLayout(layout: Layout, scene: ProjectedScene): Layout {
 				const name = scene.groups.find((item) => item.id === node.summaryGroupId)?.name;
 				const group = layout.groups.find((candidate) => candidate.name === name);
 				if (!group) return [];
-				const w = Math.min(184, Math.max(96, group.w - 24));
-				const h = 66;
+				const w = Math.min(184, Math.max(64, group.w - 16));
+				const h = Math.min(66, group.h - 16);
 				return [[node.id, {
 					x: group.x + (group.w - w) / 2,
 					y: group.y + (group.h - h) / 2,
@@ -178,6 +190,7 @@ export function projectLayout(layout: Layout, scene: ProjectedScene): Layout {
 	const routed = routeEdges(
 		scene.edges.filter((edge) => edge.aggregated).map((edge) => edge.relation),
 		nodes,
+		layout.groups,
 	);
 	const edges: Layout["edges"] = Object.fromEntries(
 		scene.edges.flatMap((link) => {

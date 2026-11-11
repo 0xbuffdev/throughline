@@ -128,6 +128,6 @@ export function nestLayout(base: Layout, trace: Trace): Layout {
 		viewBox: `0 0 ${result.w} ${result.h}`,
 		groups: result.groups,
 		nodes: result.nodes,
-		edges: routeEdges(trace.frames[0]?.state.relations ?? [], result.nodes),
+		edges: routeEdges(trace.frames[0]?.state.relations ?? [], result.nodes, result.groups),
 	};
 }

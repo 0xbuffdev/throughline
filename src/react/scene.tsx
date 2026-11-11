@@ -42,7 +42,7 @@ function SceneLink({
 				points="0,0 -7,-3.5 -7,3.5"
 				transform={`translate(${edge.to[0]},${edge.to[1]}) rotate(${(edge.angle * 180) / Math.PI})`}
 			/>
-			{label && (
+			{label && edge.labelVisible !== false && (
 				<text
 					x={edge.label[0]}
 					y={edge.label[1] - 8}
