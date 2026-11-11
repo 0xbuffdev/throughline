@@ -17,6 +17,7 @@ import {
 import type { Frame, Trace } from "../model.js";
 import { projectLayout } from "../layout.js";
 import { projectScene } from "../scene.js";
+import type { TraceProgress } from "../scene/progress.js";
 import { parseTarget } from "../path.js";
 import { TraceScene } from "./scene.js";
 
@@ -31,6 +32,7 @@ type ViewportProps = {
 	frame?: Frame;
 	previous?: Frame;
 	layout: Layout;
+	progress: TraceProgress;
 	availableWidth: number;
 	summary: string;
 	captionId: string;
@@ -60,6 +62,7 @@ export function ViewportScene({
 	frame,
 	previous,
 	layout,
+	progress,
 	availableWidth,
 	summary,
 	captionId,
@@ -298,6 +301,7 @@ export function ViewportScene({
 					frame={frame}
 					previous={previous}
 					layout={layout}
+					progress={progress}
 					groups={trace.groups}
 					collapsedGroupIds={collapsedGroups}
 					onExpandGroup={expandGroup}

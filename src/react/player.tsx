@@ -3,6 +3,7 @@ import type * as React from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { describeFrame } from "../describe.js";
 import { composeTrace } from "../layout.js";
+import { traceProgress } from "../scene/progress.js";
 import { ProgramError, type Trace } from "../model.js";
 import type { SonificationOptions } from "../sonify.js";
 import { PlayerCaption } from "./caption.js";
@@ -45,6 +46,7 @@ export function ThroughlinePlayer({
 	const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
 	const [fullscreenError, setFullscreenError] = useState<string | null>(null);
 	const layout = useMemo(() => composeTrace(trace, width), [trace, width]);
+	const progress = useMemo(() => traceProgress(trace, state.step), [trace, state.step]);
 	const captionId = useId();
 	const keyboardHelpId = useId();
 	const frame = trace.frames[state.step] ?? trace.frames[0];
@@ -103,6 +105,9 @@ export function ThroughlinePlayer({
 	const summary = frame
 		? [
 				describeFrame(frame, trace.frames.length),
+				...(progress.participatingNodes.size || progress.traversedRelations.size
+					? [`Workflow so far: ${progress.participatingNodes.size} participating nodes and ${progress.traversedRelations.size} sent connections.`]
+					: []),
 				chapter && "Chapter: " + chapter.title + ".",
 				...causal.map((item) => "Authored explanation: " + item.title + "."),
 			].filter(Boolean).join(" ")
@@ -141,6 +146,7 @@ export function ThroughlinePlayer({
 					frame={frame}
 					previous={trace.frames[state.step - 1]}
 					layout={layout}
+					progress={progress}
 					availableWidth={width}
 					summary={summary}
 					captionId={captionId}

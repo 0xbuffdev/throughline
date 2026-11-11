@@ -5,10 +5,13 @@ import { projectLayout } from "../layout.js";
 import type { Frame, Relation, SceneGroup } from "../model.js";
 import { parseTarget } from "../path.js";
 import { projectScene } from "../scene.js";
+import type { TraceProgress } from "../scene/progress.js";
 import { NodeCard, truncate } from "./node-card.js";
 
 interface SceneLinkProps {
 	sourceRelationIds: readonly string[];
+	traversedIds: readonly string[];
+	revealed: boolean;
 	aggregated?: boolean;
 	activeSourceRelationIds?: readonly string[];
 	relation: Relation;
@@ -18,6 +21,8 @@ interface SceneLinkProps {
 }
 function SceneLink({
 	sourceRelationIds,
+	traversedIds,
+	revealed,
 	aggregated,
 	activeSourceRelationIds,
 	relation,
@@ -27,17 +32,21 @@ function SceneLink({
 }: SceneLinkProps): React.JSX.Element {
 	const label = relation.label;
 	return (
-		<g className={cn("thl-link", { "thl-transferred": transferred && !aggregated, "thl-aggregate-active": aggregated && transferred })}>
-			<title>{aggregated ? `${sourceRelationIds.length} authored connection(s) (${relation.from} → ${relation.to}): ${sourceRelationIds.join(", ")}. Sent in this step: ${activeSourceRelationIds?.join(", ") || "none"}. A send never implies persisted destination state.` : `${relation.from} → ${relation.to}${relation.label ? `: ${relation.label}` : ""}`}</title>
-			<path d={edge.d} className="thl-edge" />
-			{transferred && !aggregated && (
-				<path
-					key={frame.index}
-					d={edge.d}
-					pathLength={1}
-					className="thl-flow"
-				/>
-			)}
+		<g className={cn("thl-link", {
+			"thl-visited": traversedIds.length > 0,
+			"thl-revealed": revealed,
+			"thl-transferred": transferred && !aggregated,
+			"thl-aggregate-active": aggregated && transferred,
+			"thl-aggregate-visited": aggregated && traversedIds.length > 0,
+		})}>
+			<title>{aggregated
+				? `${sourceRelationIds.length} authored connection(s) (${relation.from} → ${relation.to}): ${sourceRelationIds.join(", ")}. Sent in this step: ${activeSourceRelationIds?.join(", ") || "none"}. ${traversedIds.length} of ${sourceRelationIds.length} connections sent so far. A send never implies persisted destination state.`
+				: `${relation.from} → ${relation.to}${relation.label ? `: ${relation.label}` : ""}${traversedIds.length ? ". Authored send occurred at or before this step; no persistence implied." : revealed ? ". Connection explicitly revealed; no transfer implied." : ""}`}
+			</title>
+			{/* Animate the actual connector path, never an overlay. Re-key it
+			    for consecutive sends so each distinct authored event animates. */}
+			<path key={transferred && !aggregated ? `send-${frame.index}` : "steady"}
+				d={edge.d} pathLength={1} className="thl-edge" />
 			<polygon
 				points="0,0 -7,-3.5 -7,3.5"
 				transform={`translate(${edge.to[0]},${edge.to[1]}) rotate(${(edge.angle * 180) / Math.PI})`}
@@ -61,6 +70,7 @@ interface TraceSceneProps {
 	frame: Frame;
 	previous?: Frame;
 	layout: Layout;
+	progress: TraceProgress;
 	groups?: readonly SceneGroup[];
 	selectedId?: string;
 	collapsedGroupIds?: readonly string[];
@@ -71,6 +81,7 @@ export function TraceScene({
 	frame,
 	previous,
 	layout,
+	progress,
 	groups,
 	selectedId,
 	collapsedGroupIds,
@@ -112,6 +123,8 @@ export function TraceScene({
 					<SceneLink
 						key={id}
 						sourceRelationIds={sourceRelationIds}
+						traversedIds={sourceRelationIds.filter((id) => progress.traversedRelations.has(id))}
+						revealed={sourceRelationIds.some((id) => progress.revealedRelations.has(id))}
 						aggregated={aggregated}
 						activeSourceRelationIds={activeSourceRelationIds}
 						relation={relation}
@@ -128,7 +141,7 @@ export function TraceScene({
 						data-group-summary={summaryGroupId}
 						role="button"
 						tabIndex={0}
-						aria-label={`Expand group ${entity.label}`}
+						aria-label={`Expand group ${entity.label}${sourceEntityIds?.some((id) => progress.participatingNodes.has(id)) ? ", contains workflow activity" : ""}`}
 						aria-describedby={focused || changed ? `thl-summary-state-${summaryGroupId}` : undefined}
 						aria-expanded="false"
 						transform={`translate(${geometry.nodes[id].x},${geometry.nodes[id].y})`}
@@ -141,12 +154,12 @@ export function TraceScene({
 							}
 						}}
 					>
-						<title>{`${entity.label}: ${sourceEntityIds?.length ?? 0} authored-visible entities (collapsed).${changed ? " State changed this step." : ""}${focused ? " Contains authored active focus." : ""}`}</title>
+						<title>{`${entity.label}: ${sourceEntityIds?.length ?? 0} authored-visible entities (collapsed).${changed ? " State changed this step." : ""}${focused ? " Contains authored active focus." : ""}${sourceEntityIds?.some((id) => progress.participatingNodes.has(id)) ? " Contains prior or current workflow activity." : ""}`}</title>
 						<rect
 							width={geometry.nodes[id].w}
 							height={geometry.nodes[id].h}
 							rx={2}
-							className={cn("thl-summary-node", { "thl-focused": focused, "thl-changed": changed })}
+							className={cn("thl-summary-node", { "thl-visited": sourceEntityIds?.some((id) => progress.participatingNodes.has(id)), "thl-focused": focused, "thl-changed": changed })}
 						/>
 						<text x={8} y={17} className="thl-node-label">{truncate(entity.label, Math.floor((geometry.nodes[id].w - 20) / 7))}</text>
 						<text x={8} y={34} className="thl-summary-count">{sourceEntityIds?.length ?? 0} visible entities</text>
@@ -171,6 +184,7 @@ export function TraceScene({
 						target?.id === entity.id ? [target.path] : [],
 					)}
 					selected={id === selectedId}
+					visited={progress.participatingNodes.has(entity.id)}
 					onSelect={() => onSelect?.(id)}
 					changed={changes.flatMap((target) =>
 						target?.id === entity.id ? [target.path] : [],

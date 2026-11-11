@@ -16,6 +16,7 @@ interface NodeCardProps {
 	focus: Path[];
 	changed: Path[];
 	selected?: boolean;
+	visited?: boolean;
 	onSelect?: () => void;
 }
 
@@ -26,6 +27,7 @@ export function NodeCard({
 	focus,
 	changed,
 	selected = false,
+	visited = false,
 	onSelect,
 }: NodeCardProps): React.JSX.Element {
 	const value = presentValue(entity, box.w, focus);
@@ -35,7 +37,7 @@ export function NodeCard({
 			data-node={entity.id}
 			role="button"
 			tabIndex={0}
-			aria-label={`Select ${entity.label}`}
+			aria-label={`Select ${entity.label}${visited ? " (participated in the workflow)" : ""}`}
 			aria-pressed={selected}
 			onClick={onSelect}
 			onKeyDown={(event) => {
@@ -51,7 +53,7 @@ export function NodeCard({
 				width={box.w}
 				height={box.h}
 				rx={2}
-				className={cn("thl-node", { "thl-focused": focus.length > 0, "thl-selected": selected })}
+				className={cn("thl-node", { "thl-visited": visited, "thl-focused": focus.length > 0, "thl-selected": selected })}
 			/>
 			<text x={8} y={17} className="thl-node-label">
 				{truncate(entity.label, Math.floor((box.w - 16) / 7))}
