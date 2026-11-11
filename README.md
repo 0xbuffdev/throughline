@@ -29,6 +29,44 @@ or application-specific runtime.
 - **Complex reference traces:** inspect keyed React reconciliation and a
   distributed checkout with a lost acknowledgement, retry and recovery.
 
+## Preview the current React player locally
+
+The development-only Vite playground loads **this checkout's source files**,
+not the last published npm package. It lets maintainers inspect real behavior
+before approving a release. The app is not included in the npm archive and
+does not require deployment or an account.
+
+Use Node.js 24+ and pnpm 11.2.2:
+
+~~~sh
+pnpm install --frozen-lockfile
+pnpm dev
+~~~
+
+Open **http://localhost:5173** in a browser. Choose Reconciliation,
+Shared references, Matrix, Distributed checkout, or **Compare checkout
+outcomes**; switch the player between light/dark/system, then between full
+width and a 375px mobile viewport. The checkout comparison starts with the
+retry/recovery scenario and offers successful and terminal-failure outcomes.
+Expand **View authored trace source** to check the exact events on display.
+
+For a remote development environment (e.g. GitHub Codespaces), start
+\`pnpm dev --host 0.0.0.0\` and use the environment's forwarded port 5173
+rather than treating localhost on your own computer as the remote server.
+Keep forwarded access private while reviewing traces. If running from the
+unmerged preview branch, check out \`feat/local-player-preview\` first.
+
+~~~sh
+pnpm preview:typecheck
+pnpm preview:build
+~~~
+
+These checks typecheck and bundle the *preview*, independently of the library
+build and normal compiler/browser tests. Nothing here creates a Git tag,
+publishes to npm, or deploys documentation. A browser visual/manual
+accessibility review is still required; build and automated browser tests
+cannot attest to visual correctness.
+
 ## Installation
 
 Install the package from npm:

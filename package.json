@@ -36,6 +36,9 @@
 		"./styles/throughline.css": "./src/styles/throughline.css"
 	},
 	"scripts": {
+		"dev": "vite --config playground/vite.config.ts",
+		"preview:build": "vite build --config playground/vite.config.ts",
+		"preview:typecheck": "tsc -p tsconfig.preview.json",
 		"build": "tsdown && node scripts/verify-dist.mjs",
 		"typecheck": "tsc --noEmit",
 		"test:run": "vitest run",

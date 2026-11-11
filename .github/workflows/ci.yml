@@ -41,6 +41,10 @@ jobs:
         run: pnpm audit:source
       - name: Typecheck
         run: pnpm typecheck
+      - name: Typecheck local preview
+        run: pnpm preview:typecheck
+      - name: Bundle local preview
+        run: pnpm preview:build
       - name: Compiler tests
         run: pnpm test:run
       - name: Install browser
