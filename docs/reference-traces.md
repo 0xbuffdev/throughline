@@ -85,14 +85,7 @@ At the observed **v0.0.2** implementation baseline:
   values are valid. Regression tests pin both behaviors independently.
 - `validateProgram` rejects unsupported `Program.version`; compilation
   emits `Trace.version = 1`.
-- **Open compatibility gap:** `ThroughlinePlayer` consumes a TypeScript
-  `Trace` prop but does not currently reject an unsupported
-  `Trace.version` when an untrusted or serialized object is supplied at
-  runtime. The core compiler's validation of `Program.version` is not
-  equivalent to validation at this consumer boundary. Add a runtime
-  rejection guard in a separately reviewed compatibility PR or make an
-  explicit schema-reader decision before advertising support for arbitrary
-  serialized traces. This documentation does not attest such input is safe.
+- **Reader compatibility boundary (TL-I16):** `ThroughlinePlayer` rejects unsupported `Trace.version` and missing `frames` arrays before reading playback state. This does not completely validate arbitrary untrusted, serialized snapshot content; the host must validate externally supplied trace data.
 
 The new deterministic compilation, arbitrary-seeking, message-endpoint
 and browser-player regression tests are source-level acceptance evidence
