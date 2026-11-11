@@ -309,15 +309,9 @@ export function ViewportScene({
 					onSelect={selectEntity}
 				/>
 			</svg>
-			{selected && (
-				<p className="thl-entity-status" aria-live="polite">
-					Selected: {selected.label} ({selected.id}) — {format(selected.value)}
-				</p>
-			)}
-			{caption}
 			<div className="thl-bottom">
-				{chapterControls}
 				<div className="thl-aux-controls">
+					{chapterControls}
 			<div className="thl-viewport-tools" role="toolbar" aria-label="Diagram navigation">
 				<select
 					aria-label="Select entity"
@@ -379,6 +373,12 @@ export function ViewportScene({
 				</div>
 				{controls}
 			</div>
+			{caption}
+			{selected && (
+				<p className="thl-entity-status" aria-live="polite">
+					Selected: {selected.label} ({selected.id}) — {format(selected.value)}
+				</p>
+			)}
 		</>
 	);
 }
