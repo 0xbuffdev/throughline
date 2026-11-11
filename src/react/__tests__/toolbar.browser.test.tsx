@@ -1,4 +1,5 @@
-import { expect, it, userEvent } from "vitest/browser";
+import { expect, it } from "vitest";
+import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { compileProgram } from "../../compiler.js";
 import { compile } from "../../domains/registry.js";
@@ -14,8 +15,6 @@ const centerY = (element: Element) => {
 };
 
 it("forms one aligned compact toolbar on wide screens and adapts by container width", async () => {
-	await userEvent.setup();
-	const { page } = await import("vitest/browser");
 	await page.viewport(1600, 900);
 	const screen = await render(<ThroughlinePlayer trace={checkout} guidance={CHECKOUT_GUIDANCE} />);
 	const player = document.querySelector<HTMLElement>(".thl")!;
@@ -57,7 +56,6 @@ it("forms one aligned compact toolbar on wide screens and adapts by container wi
 });
 
 it("keeps transport next to the diagram while long authored details change and expand", async () => {
-	const { page } = await import("vitest/browser");
 	await page.viewport(375, 850);
 	const longNote = "An authored workflow observation remains available as a full explanation. ".repeat(48);
 	const trace = compileProgram({
