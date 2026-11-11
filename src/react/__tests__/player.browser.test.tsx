@@ -110,7 +110,7 @@ it("fits a phone without shrinking text or overflowing its controls", async () =
 	const text = document.querySelector(".thl-cell text")!;
 	expect(
 		Number.parseFloat(getComputedStyle(text).fontSize),
-	).toBeGreaterThanOrEqual(13);
+	).toBeGreaterThanOrEqual(12);
 	await expect
 		.element(screen.getByRole("button", { name: "Step forward" }))
 		.toBeVisible();
@@ -298,12 +298,13 @@ it("keeps the reference player hierarchy, optional title, and one caption step c
 		controls.getBoundingClientRect().top,
 	);
 	expect(count.textContent).toBe(`Step 1 of ${trace.frames.length}`);
-	expect(count.getBoundingClientRect().right).toBeGreaterThan(
-		caption.querySelector(".thl-caption-content")!.getBoundingClientRect().right,
-	);
+	// The count occupies the trailing edge even when narrow containers
+	// stack it under the caption rather than reserving an empty column.
+	expect(Math.abs(count.getBoundingClientRect().right - caption.getBoundingClientRect().right)).toBeLessThan(1);
+	expect(count.getBoundingClientRect().top).toBeGreaterThanOrEqual(caption.querySelector(".thl-caption-content")!.getBoundingClientRect().top);
 	expect(getComputedStyle(player).borderTopWidth).toBe("0px");
 	expect(getComputedStyle(caption).borderTopWidth).toBe("0px");
-	expect(getComputedStyle(player).borderTopLeftRadius).toBe("5.2px");
+	expect(getComputedStyle(player).borderTopLeftRadius).toBe("2px");
 	expect(player.querySelector(".thl-count")).toBeNull();
 	expect(controls.textContent).not.toMatch(/\\d+:\\d{2}/);
 

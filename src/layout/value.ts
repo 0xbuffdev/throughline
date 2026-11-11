@@ -125,7 +125,7 @@ export function presentValue(
 						86,
 						Math.max(
 							34,
-							...shown.map((item) => format(item).length * 7.5 + 14),
+							...shown.map((item) => format(item).length * 8 + 14),
 						),
 					);
 		const cols =
@@ -166,7 +166,7 @@ export function presentValue(
 			Math.max(
 				88,
 				...shown.map(
-					([key, item]) => (key.length + format(item).length + 2) * 7.5 + 16,
+					([key, item]) => (key.length + format(item).length + 2) * 8 + 18,
 				),
 			),
 		);
@@ -184,7 +184,7 @@ export function presentValue(
 		result = grid(
 			[{ text, path: [] }],
 			1,
-			Math.min(width - PAD * 2, Math.max(48, text.length * 7.2 + 16)),
+			Math.min(width - PAD * 2, Math.max(48, text.length * 8 + 18)),
 		);
 	}
 	result.w = Math.min(
