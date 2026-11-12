@@ -105,7 +105,8 @@ export function useNarration({
 
 	useEffect(() => {
 		setAvailable(offered && Boolean(speechEngine()));
-	}, [offered]);
+		if (!offered && latest.current.enabled) setEnabled(false);
+	}, [offered, setEnabled]);
 
 	// Frame replacement or manual seeking begins the new authored caption.
 	// A paused player may still narrate a step without automatic advancement.

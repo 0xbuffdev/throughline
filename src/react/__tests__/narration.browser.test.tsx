@@ -157,3 +157,16 @@ it("preserves mobile touch controls when narration and sound effects are both of
 	}
 	expect(screen.getByRole("button", { name: "Narrate captions" }).element().getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
 });
+
+it("stops an active voice and restores the normal clock if a host removes narration", async () => {
+	const speech = speechBoundary();
+	const screen = await render(<ThroughlinePlayer trace={trace} narration />);
+	await screen.getByRole("button", { name: "Narrate captions" }).click();
+	expect(speech.voices).toHaveLength(1);
+	await screen.rerender(<ThroughlinePlayer trace={trace} />);
+	expect(screen.getByRole("button", { name: "Narrate captions" }).query()).toBeNull();
+	expect(speech.synth.cancel).toHaveBeenCalled();
+	await screen.rerender(<ThroughlinePlayer trace={trace} narration />);
+	await expect.element(screen.getByRole("button", { name: "Narrate captions" })).toHaveAttribute("aria-pressed", "false");
+	expect(speech.voices).toHaveLength(1);
+});

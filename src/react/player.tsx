@@ -47,7 +47,7 @@ export function ThroughlinePlayer({
 	const sceneRef = useRef<HTMLDivElement>(null);
 	const width = useSceneWidth(sceneRef);
 	const [narrating, setNarrating] = useState(false);
-	const { state, dispatch, lastAction, onKeyDown } = usePlayer(trace, narrating);
+	const { state, dispatch, lastAction, onKeyDown } = usePlayer(trace, narration && narrating);
 	const [sound, setSound] = useState(sonification?.enabled ?? false);
 	const [fullscreen, setFullscreen] = useState(false);
 	const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
@@ -74,7 +74,7 @@ export function ThroughlinePlayer({
 	const spokenText = frame ? narrationText(frame, trace, guidance) : "";
 	const voice = useNarration({
 		trace, step: state.step, text: spokenText, speed: state.speed,
-		playing: state.playing, enabled: narrating, setEnabled: setNarrating,
+		playing: state.playing, enabled: narration && narrating, setEnabled: setNarrating,
 		dispatch, offered: narration && !!frame,
 	});
 
