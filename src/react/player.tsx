@@ -47,6 +47,9 @@ export function ThroughlinePlayer({
 	const sceneRef = useRef<HTMLDivElement>(null);
 	const width = useSceneWidth(sceneRef);
 	const [narrating, setNarrating] = useState(false);
+	// A host withdrawing the optional feature also discards consent,
+	// including when it later re-enables the control on this instance.
+	useEffect(() => { if (!narration) setNarrating(false); }, [narration]);
 	const { state, dispatch, lastAction, onKeyDown } = usePlayer(trace, narration && narrating);
 	const [sound, setSound] = useState(sonification?.enabled ?? false);
 	const [fullscreen, setFullscreen] = useState(false);

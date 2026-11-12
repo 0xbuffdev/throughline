@@ -647,9 +647,9 @@
 	.thl-caption-trailing { gap: 0.375rem; }
 	.thl-caption-content { max-height: min(12rem, 30vh); }
 }
-/* A 320px embedded player with both optional audio controls requires
+/* A very narrow embedded player with both optional audio controls requires
    a separate utility row; never clip or shrink accessible touch targets. */
-@container (max-width: 360px) {
+@container (max-width: 300px) {
 	.thl-controls { grid-template-columns: minmax(0, 1fr); }
 	.thl-timeline { grid-column: 1; grid-row: 1; }
 	.thl-transport { grid-column: 1; grid-row: 2; }

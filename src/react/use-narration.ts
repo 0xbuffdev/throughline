@@ -105,7 +105,6 @@ export function useNarration({
 
 	useEffect(() => {
 		setAvailable(offered && Boolean(speechEngine()));
-		if (!offered && latest.current.enabled) setEnabled(false);
 	}, [offered, setEnabled]);
 
 	// Frame replacement or manual seeking begins the new authored caption.
