@@ -11,11 +11,13 @@ behavior from features present only in the v0.1.0 source candidate.
 - [Adapter authoring](authoring.md): guidance for extending computed domains.
 - [Architecture](architecture.md): compiler, projection, optional React player and trust boundaries.
 - [Reference traces](reference-traces.md): example semantics and version boundaries.
+- [v0.1.0 migration](migration-v0.1.0.md): compatibility and consumer upgrade checks.
 - [Framework integrations](framework-integrations.md): source-candidate Remark/MDX and host integration; **not currently published v0.0.2 instructions**.
 
 ## Release evidence (not authorization)
 
 - [v0.1.0 readiness](release-readiness-v0.1.0.md): automation, outstanding acceptance criteria and release/rollback plan.
+- [Draft v0.1.0 release notes](release-notes-v0.1.0.md): user-facing feature summary, not a published release.
 - [Hardening](release-hardening.md): verification map, source safety and manual gates.
 - [Post-v0.0.2 QA](release-qa-post-v0.0.2.md): historical pre-fix assessment and the later WebKit fix.
 

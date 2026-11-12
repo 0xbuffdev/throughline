@@ -569,6 +569,8 @@ For the complete guide, see the [Throughline documentation](https://docs.0xbuff.
 - [Complex reference traces, questions and compatibility boundaries](https://github.com/0xbuffdev/throughline/blob/main/docs/reference-traces.md)
 - [Adding a computed domain](https://github.com/0xbuffdev/throughline/blob/main/docs/authoring.md)
 - [Changelog](https://github.com/0xbuffdev/throughline/blob/main/CHANGELOG.md)
+- [v0.1.0 migration guide](docs/migration-v0.1.0.md)
+- [Draft v0.1.0 release notes](docs/release-notes-v0.1.0.md)
 - [v0.1.0 release readiness](docs/release-readiness-v0.1.0.md)
 
 ## Development

@@ -17,7 +17,8 @@ signed release, approval to stage, npm publication or deployment.
   responsive player, guided navigation, captions and explanations,
   independent scenarios, opt-in speech/sound, Remark/MDX, independent
   host integrations and public reference traces. See the
-  [changelog](../CHANGELOG.md).
+  [changelog](../CHANGELOG.md), [draft release notes](release-notes-v0.1.0.md)
+  and [migration guide](migration-v0.1.0.md).
 
 ## Verified automated evidence — pre-preparation source
 
