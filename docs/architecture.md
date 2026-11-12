@@ -68,14 +68,25 @@ No new trace event or compiler schema is introduced.
 
 While narration is enabled, speech completion drives playback ticks
 instead of a fixed interval. Only the active utterance may advance
-the selected trace; seeking invalidates stale callbacks. Pause/resume
+the selected trace; seeking (including to the same step) and changed
+authored guidance invalidate stale callbacks. Pause/resume
 controls the voice, and unavailable or failed synthesis pauses the
 narration clock with an accessible error. When narration is disabled,
 the existing timed playback returns. Step tones remain independent.
 
-Browser speechSynthesis is a shared page resource; applications using
-other text-to-speech output must coordinate ownership. Some voices
-may use browser-managed remote services.
+Browser speechSynthesis is a shared page resource. Throughline maintains a
+per-engine, browser-local owner coordinator: the newest Throughline player
+to begin narration takes over the global speech queue, pauses/disables the
+previous player and announces displacement. Only the current owner may
+call global `cancel()`, `pause()` or `resume()`; a displaced player's later
+seek, toggle or unmount cannot cancel the new owner's speech. Deliberate
+cancellation detaches event handlers before calling the browser API, while
+unexpected `canceled`/`interrupted` errors trigger an accessible error
+and pause rather than advancing the timeline. After a natural speech end,
+ownership is released without global cancellation. This mechanism does not
+coordinate with arbitrary third-party scripts using speechSynthesis and
+cannot guarantee browser/OS voice isolation. Some voices may use
+browser-managed remote services.
 
 ## Footer layout and bounded explanations
 
