@@ -647,13 +647,22 @@
 	.thl-caption-trailing { gap: 0.375rem; }
 	.thl-caption-content { max-height: min(12rem, 30vh); }
 }
-/* A very narrow embedded player with both optional audio controls requires
-   a separate utility row; never clip or shrink accessible touch targets. */
-@container (max-width: 300px) {
-	.thl-controls { grid-template-columns: minmax(0, 1fr); }
-	.thl-timeline { grid-column: 1; grid-row: 1; }
-	.thl-transport { grid-column: 1; grid-row: 2; }
-	.thl-utilities { grid-column: 1; grid-row: 3; justify-content: flex-start; }
+/* Two optional audio buttons increase the minimum toolbar width. Split
+   only dual-audio players so regular 375px previews keep their compact row.
+   The query uses the player's CONTENT width, not the viewport width. */
+@container (max-width: 360px) {
+	.thl-controls:has(.thl-narration):has(.thl-sound) {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.thl-controls:has(.thl-narration):has(.thl-sound) .thl-timeline {
+		grid-column: 1; grid-row: 1;
+	}
+	.thl-controls:has(.thl-narration):has(.thl-sound) .thl-transport {
+		grid-column: 1; grid-row: 2;
+	}
+	.thl-controls:has(.thl-narration):has(.thl-sound) .thl-utilities {
+		grid-column: 1; grid-row: 3; justify-content: flex-start;
+	}
 }
 @keyframes thl-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes thl-fade { from { opacity: 0; } }

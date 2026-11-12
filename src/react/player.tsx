@@ -50,7 +50,7 @@ export function ThroughlinePlayer({
 	// A host withdrawing the optional feature also discards consent,
 	// including when it later re-enables the control on this instance.
 	useEffect(() => { if (!narration) setNarrating(false); }, [narration]);
-	const { state, dispatch, lastAction, onKeyDown } = usePlayer(trace, narration && narrating);
+	const { state, dispatch, lastAction, seekRevision, onKeyDown } = usePlayer(trace, narration && narrating);
 	const [sound, setSound] = useState(sonification?.enabled ?? false);
 	const [fullscreen, setFullscreen] = useState(false);
 	const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
@@ -76,7 +76,7 @@ export function ThroughlinePlayer({
 	const frame = trace.frames[state.step] ?? trace.frames[0];
 	const spokenText = frame ? narrationText(frame, trace, guidance) : "";
 	const voice = useNarration({
-		trace, step: state.step, text: spokenText, speed: state.speed,
+		trace, step: state.step, text: spokenText, seekRevision, speed: state.speed,
 		playing: state.playing, enabled: narration && narrating, setEnabled: setNarrating,
 		dispatch, offered: narration && !!frame,
 	});

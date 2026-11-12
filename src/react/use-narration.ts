@@ -1,11 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Trace } from "../model.js";
 import type { SeekAction, Speed } from "../seek.js";
+import {
+	acquireSpeech,
+	cancelOwnedSpeech,
+	ownsSpeech,
+	releaseSpeech,
+	type SpeechOwner,
+} from "./speech-owner.js";
 
 type Session = {
 	trace: Trace;
 	step: number;
+	text: string;
+	seekRevision: number;
 	utterance: SpeechSynthesisUtterance;
+	engine: SpeechSynthesis;
+	owner: SpeechOwner;
 	ended: boolean;
 	failed: boolean;
 };
@@ -14,6 +25,7 @@ type NarrationInput = {
 	trace: Trace;
 	step: number;
 	text: string;
+	seekRevision: number;
 	speed: Speed;
 	playing: boolean;
 	enabled: boolean;
@@ -28,13 +40,13 @@ function speechEngine(): SpeechSynthesis | null {
 }
 
 /**
- * A browser-owned, opt-in speech controller. The narration clock is driven by
- * utterance completion, never a timer. Stale callbacks cannot advance a seek.
- * The toggle speaks synchronously in its click handler to satisfy browsers
- * that require a user activation for text-to-speech.
+ * React-only speech clock. Authored-frame identity, text and explicit seek
+ * generations invalidate old utterances. Only a completed current utterance
+ * may dispatch a tick. This controller does not expose speech to the core.
  */
 export function useNarration({
-	trace, step, text, speed, playing, enabled, setEnabled, dispatch, offered,
+	trace, step, text, seekRevision, speed, playing, enabled,
+	setEnabled, dispatch, offered,
 }: NarrationInput): {
 	available: boolean;
 	error: string | null;
@@ -43,18 +55,23 @@ export function useNarration({
 	const [available, setAvailable] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const current = useRef<Session | null>(null);
-	const latest = useRef({ trace, step, text, speed, playing, enabled, dispatch });
-	latest.current = { trace, step, text, speed, playing, enabled, dispatch };
-	const previous = useRef({ trace, step, playing, enabled });
+	const latest = useRef({
+		trace, step, text, seekRevision, speed, playing, enabled, dispatch, setEnabled,
+	});
+	latest.current = {
+		trace, step, text, seekRevision, speed, playing, enabled, dispatch, setEnabled,
+	};
+	const previous = useRef({ trace, step, text, seekRevision, playing, enabled });
 
 	const stop = useCallback(() => {
 		const voice = current.current;
 		current.current = null;
 		if (!voice) return;
-		// A browser cancellation may synchronously invoke onerror/onend.
+		// Own cancellations are silent: detach handlers before calling the
+		// global API, which may synchronously report "interrupted".
 		voice.utterance.onend = null;
 		voice.utterance.onerror = null;
-		try { speechEngine()?.cancel(); } catch { /* Speech is optional. */ }
+		cancelOwnedSpeech(voice.engine, voice.owner);
 	}, []);
 
 	const start = useCallback(() => {
@@ -71,29 +88,54 @@ export function useNarration({
 			const utterance = new SpeechSynthesisUtterance(state.text);
 			utterance.rate = state.speed;
 			const session: Session = {
-				trace: state.trace, step: state.step, utterance, ended: false, failed: false,
+				trace: state.trace, step: state.step, text: state.text,
+				seekRevision: state.seekRevision, utterance, engine,
+				owner: {
+					onDisplaced: () => {
+						if (current.current !== session) return;
+						// Acquiring another player's voice has already removed
+						// our ownership. Do NOT cancel() here.
+						current.current = null;
+						utterance.onend = null;
+						utterance.onerror = null;
+						session.failed = true;
+						setError("Narration paused: another Throughline player began speaking. Enable narration again to take over.");
+						latest.current.setEnabled(false);
+						latest.current.dispatch({ type: "pause" });
+					},
+				},
+				ended: false, failed: false,
 			};
+			acquireSpeech(engine, session.owner);
 			current.current = session;
 			utterance.onend = () => {
-				if (current.current !== session || session.failed) return;
+				if (current.current !== session || session.failed ||
+					!ownsSpeech(session.engine, session.owner)) return;
 				session.ended = true;
+				releaseSpeech(session.engine, session.owner);
 				const next = latest.current;
+				// Updated guidance and same-step seeks invalidate an old
+				// callback even before React has run its effect cleanup.
 				if (next.enabled && next.trace === session.trace &&
-					next.step === session.step && next.playing) {
+					next.step === session.step && next.text === session.text &&
+					next.seekRevision === session.seekRevision && next.playing) {
 					next.dispatch({ type: "tick" });
 				}
 			};
 			utterance.onerror = (event) => {
-				if (current.current !== session) return;
+				if (current.current !== session || session.failed) return;
+				// An event that reaches this handler is never our own cancel:
+				// the owned cancellation removed the handlers first.
 				session.ended = true;
 				session.failed = true;
-				if (event.error === "canceled" || event.error === "interrupted") return;
-				setError("Speech could not play (" + event.error + "). Turn narration off and on to retry.");
+				releaseSpeech(session.engine, session.owner);
+				setError(
+					"Speech stopped (" + event.error +
+					"). Narration playback is paused. Turn narration off and on to retry.",
+				);
 				latest.current.dispatch({ type: "pause" });
 			};
 			setError(null);
-			// Cancelled or previously paused speech must not leave a new voice
-			// stuck in the browser-wide synthesis queue.
 			if (engine.paused) engine.resume();
 			engine.speak(utterance);
 		} catch {
@@ -105,43 +147,49 @@ export function useNarration({
 
 	useEffect(() => {
 		setAvailable(offered && Boolean(speechEngine()));
-	}, [offered, setEnabled]);
+	}, [offered]);
 
-	// Frame replacement or manual seeking begins the new authored caption.
-	// A paused player may still narrate a step without automatic advancement.
+	// A changed frame, corrected authored guidance, or an explicit seek
+	// (including a seek to the current frame) starts a fresh utterance.
 	useEffect(() => {
 		if (!enabled || !offered) { stop(); return; }
 		const voice = current.current;
-		if (!voice || voice.trace !== trace || voice.step !== step) start();
-	}, [enabled, offered, trace, step, start, stop]);
+		if (!voice || voice.trace !== trace || voice.step !== step ||
+			voice.text !== text || voice.seekRevision !== seekRevision) {
+			start();
+		}
+	}, [enabled, offered, trace, step, text, seekRevision, start, stop]);
 
-	// Play/Pause acts on the voice, not an independent timer. Do not
-	// immediately pause a voice that was just started by a manual seek.
+	// The speech clock and the player's Play/Pause control share one state.
+	// Pause/resume only if this instance still owns the global speech queue.
 	useEffect(() => {
 		const old = previous.current;
-		previous.current = { trace, step, playing, enabled };
+		previous.current = { trace, step, text, seekRevision, playing, enabled };
 		if (!enabled || old.trace !== trace || old.step !== step ||
+			old.text !== text || old.seekRevision !== seekRevision ||
 			old.enabled !== enabled || old.playing === playing) return;
 		const voice = current.current;
-		const engine = speechEngine();
-		if (!voice || !engine) return;
+		if (!voice) return;
+		if (voice.failed) {
+			if (playing) dispatch({ type: "pause" });
+			return;
+		}
 		if (!playing && !voice.ended) {
-			try { engine.pause(); } catch { /* Preserve player transport. */ }
+			if (ownsSpeech(voice.engine, voice.owner)) {
+				try { voice.engine.pause(); } catch { /* No timeline mutation. */ }
+			}
 		} else if (playing) {
-			if (voice.failed) {
-				dispatch({ type: "pause" });
-			} else if (voice.ended) {
+			if (voice.ended) {
 				dispatch({ type: "tick" });
-			} else {
-				try { engine.resume(); } catch {
+			} else if (ownsSpeech(voice.engine, voice.owner)) {
+				try { voice.engine.resume(); } catch {
 					setError("Speech could not resume.");
 					dispatch({ type: "pause" });
 				}
 			}
 		}
-	}, [trace, step, playing, enabled, dispatch]);
+	}, [trace, step, text, seekRevision, playing, enabled, dispatch]);
 
-	// Stop our owned utterance on unmount or independent scenario replacement.
 	useEffect(() => () => stop(), [stop]);
 
 	const toggle = useCallback(() => {
@@ -150,6 +198,8 @@ export function useNarration({
 			setError(null);
 			setEnabled(false);
 		} else if (speechEngine()) {
+			// Speak within the user gesture, not just the following effect:
+			// browsers may require activation to start the first utterance.
 			setEnabled(true);
 			start();
 		} else {
