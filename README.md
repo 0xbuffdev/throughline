@@ -94,12 +94,12 @@ export function TraceDemo() {
 ~~~
 
 The React player and stylesheet are optional. Read the [player and Markdown
-guide](docs/user-guide.md) for theming, accessible controls, narration,
+guide](https://github.com/0xbuffdev/throughline/blob/main/docs/user-guide.md) for theming, accessible controls, narration,
 hierarchy, scenarios and MDX integration.
 
 ## Preview locally
 
-The [Vite playground](playground/) renders the current checkout's source, not
+The [Vite playground](https://github.com/0xbuffdev/throughline/tree/main/playground) renders the current checkout's source, not
 necessarily the version currently available from npm. With Node.js 24+ and
 pnpm 11.2.2:
 
@@ -133,24 +133,25 @@ deterministic work, not a guarantee of exact heap or CPU usage.
 
 ## Documentation
 
-- [User guide: player, themes, audio, navigation and Markdown](docs/user-guide.md)
-- [Grammar reference](docs/grammar.md) and [supported domains](docs/catalog.md)
-- [Framework integration guide](docs/framework-integrations.md)
-- [Architecture and trace model](docs/architecture.md)
-- [Complete documentation index](docs/README.md)
-- [Changelog](CHANGELOG.md), [v0.1.0 release notes](docs/release-notes-v0.1.0.md)
-  and [upgrade guide](docs/migration-v0.1.0.md)
+- [Documentation website](https://docs.0xbuff.com/docs/throughline)
+- [User guide: player, themes, audio, navigation and Markdown](https://github.com/0xbuffdev/throughline/blob/main/docs/user-guide.md)
+- [Grammar reference](https://github.com/0xbuffdev/throughline/blob/main/docs/grammar.md) and [supported domains](https://github.com/0xbuffdev/throughline/blob/main/docs/catalog.md)
+- [Framework integration guide](https://github.com/0xbuffdev/throughline/blob/main/docs/framework-integrations.md)
+- [Architecture and trace model](https://github.com/0xbuffdev/throughline/blob/main/docs/architecture.md)
+- [Complete documentation index](https://github.com/0xbuffdev/throughline/blob/main/docs/README.md)
+- [Changelog](https://github.com/0xbuffdev/throughline/blob/main/CHANGELOG.md), [v0.1.0 release notes](https://github.com/0xbuffdev/throughline/blob/main/docs/release-notes-v0.1.0.md)
+  and [upgrade guide](https://github.com/0xbuffdev/throughline/blob/main/docs/migration-v0.1.0.md)
 
 ## Development
 
-To build and verify a checkout, use the [development and verification commands](docs/releasing.md#verification).
+To build and verify a checkout, use the [development and verification commands](https://github.com/0xbuffdev/throughline/blob/main/docs/releasing.md#verification).
 
 ## Community
 
 Read [contributing guidelines](https://github.com/0xbuffdev/throughline/blob/main/CONTRIBUTING.md) before opening a PR.
 Use [GitHub issues](https://github.com/0xbuffdev/throughline/issues)
 for reproducible bugs and feature proposals; see
-[support guidance](CONTRIBUTING.md#support) for support and [SECURITY.md](https://github.com/0xbuffdev/throughline/blob/main/SECURITY.md)
+[support guidance](https://github.com/0xbuffdev/throughline/blob/main/CONTRIBUTING.md#support) for support and [SECURITY.md](https://github.com/0xbuffdev/throughline/blob/main/SECURITY.md)
 for confidential vulnerability reports. Participation is governed by
 the [code of conduct](https://github.com/0xbuffdev/throughline/blob/main/CODE_OF_CONDUCT.md).
 
