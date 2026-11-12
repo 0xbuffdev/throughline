@@ -33,7 +33,7 @@ React DOM 19; its CSS must be imported explicitly.
 
 ## Compatibility
 
-The five supported package exports remain `.`, `./remark`, `./react`,
+The five supported v0.1.0 package exports are `.`, `./remark`, `./react`,
 `./examples` and `./styles/throughline.css`. Program and trace schema
 versions remain **1**. New optional group hierarchy syntax is not parsed by
 the v0.0.2 compiler, and older players may flatten nested groups. Player

@@ -39,8 +39,6 @@ program and trace schemas. Changes are grouped using
   trace replacement settle directly on the target frame.
 - Persistent activity trails and collapsing groups retain the underlying
   authored relation and event provenance without implying durable writes.
-- Release verification includes packed consumer, framework, Markdown-host,
-  browser hydration and cross-browser checks.
 
 ### Fixed
 
