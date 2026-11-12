@@ -17,6 +17,12 @@ interface NodeCardProps {
 	changed: Path[];
 	selected?: boolean;
 	visited?: boolean;
+	/** True only when this frame was reached by one forward step. */
+	animate?: boolean;
+	/** Used to restart a cell's change flash on consecutive changing steps. */
+	frameIndex?: number;
+	/** The frame has an authored send, so value flashes wait for it to land. */
+	afterSend?: boolean;
 	onSelect?: () => void;
 }
 
@@ -28,6 +34,9 @@ export function NodeCard({
 	changed,
 	selected = false,
 	visited = false,
+	animate = false,
+	frameIndex = 0,
+	afterSend = false,
 	onSelect,
 }: NodeCardProps): React.JSX.Element {
 	const value = presentValue(entity, box.w, focus);
@@ -55,6 +64,17 @@ export function NodeCard({
 				rx={2}
 				className={cn("thl-node", { "thl-visited": visited, "thl-focused": focus.length > 0, "thl-selected": selected })}
 			/>
+			{/* Drawn after the body, which must stay the first rect. Selection and
+			    keyboard focus use this outer ring so neither can be mistaken for
+			    authored focus (a filled, heavier outline). */}
+			<rect
+				x={-4}
+				y={-4}
+				width={box.w + 8}
+				height={box.h + 8}
+				rx={4}
+				className={cn("thl-ring", { "thl-ring-selected": selected })}
+			/>
 			<text x={8} y={17} className="thl-node-label">
 				{truncate(entity.label, Math.floor((box.w - 16) / 7))}
 			</text>
@@ -70,11 +90,15 @@ export function NodeCard({
 				const isFocused = focus.some((path) => overlaps(path, cell.path));
 				return (
 					<g
-						key={JSON.stringify(cell.path)}
+						// A changed cell is re-keyed by frame so its flash restarts when the
+						// same cell changes on consecutive steps.
+						key={isChanged && animate ? `${JSON.stringify(cell.path)}@${frameIndex}` : JSON.stringify(cell.path)}
 						transform={`translate(${cell.x},${cell.y})`}
 						className={cn("thl-cell", {
 							"thl-changed": isChanged,
 							"thl-focused": isFocused,
+							"thl-animate": isChanged && animate,
+							"thl-after-send": isChanged && animate && afterSend,
 						})}
 					>
 						<title>{cell.text}</title>

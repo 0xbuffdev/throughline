@@ -153,8 +153,21 @@ after the package CSS:
 ~~~
 
 The `--thl-bg`, `--thl-panel`, `--thl-surface`, `--thl-text`,
-`--thl-muted`, `--thl-line`, `--thl-focus`, `--thl-change`,
-`--thl-trail`, `--thl-trail-bg` and control tokens belong to the player, not the host's `:root` or `.dark`.
+`--thl-muted`, `--thl-line`, `--thl-focus`, `--thl-change`, `--thl-change-bg`,
+`--thl-active`, `--thl-trail`, `--thl-trail-bg` and control tokens belong to the player, not the host's `:root` or `.dark`.
+
+The shell and its text are neutral; only state-carrying marks take a hue.
+`--thl-active` colors what happens in the current step (the sending arrow,
+its label and the Play button), `--thl-trail` is the same hue family washed
+out for history, and `--thl-change` is the only warm color, reserved for
+changed values. Dashed outlines mean structure (collapsed, revealed or
+aggregate), never selection: a selected node and the keyboard-focused node
+are marked by an outer ring.
+
+Motion timing follows the step interval. The player sets `--thl-step-ms` on
+its root (1500ms at 1x, 750ms at 2x) and the draw and flash durations derive
+from it. A host can override `--thl-draw-ms` and `--thl-flash-ms` on `.thl`
+like any other token.
 
 The bottom-right **Maximize player** button enters native browser fullscreen
 and changes to **Minimize player** while active, including when fullscreen
@@ -176,8 +189,11 @@ Playback starts paused at the first frame. Changing to a different trace
 object resets the step, playback and speed; passing a stable trace object
 during ordinary renders avoids unnecessary resets. The timeline describes
 **steps**, not elapsed media time. At narrow widths the controls rearrange
-without a separate horizontal scroll area. Transfer animations are disabled
-under `prefers-reduced-motion: reduce`.
+without a separate horizontal scroll area. Motion is declared only under
+`prefers-reduced-motion: no-preference` and plays only when a step is reached
+by one forward step (play, or Step forward): the sending arrow draws, its
+arrowhead lands, then a changed value flashes. Seeking the timeline,
+rewinding or replacing the trace shows the settled frame immediately.
 
 Sound is off by default, and the host must provide a `sonification` option
 before the user can enable it. A host can explicitly start enabled using
@@ -200,6 +216,11 @@ The hardening test and release-evidence scope are documented in
 [release-hardening](docs/release-hardening.md).
 
 ## Responsive controls and step detail
+
+The optional title has 0.75rem of space before the visualization, and the
+footer adds a small 0.25rem offset after the stage's existing gap. These
+separations keep the graph distinct from both its heading and controls.
+
 
 The React player keeps the navigation and transport immediately beneath
 the diagram in one aligned toolbar on wide layouts. Container queries
@@ -239,7 +260,7 @@ Rewinding removes future progress; replaying restores it. Hidden nodes and
 links stay hidden; collapsed groups retain original relation provenance
 and distinguish partial aggregates. Switching scenarios or replacing
 the trace resets the progression. Reduced-motion preferences retain
-a fully highlighted arrow without drawing animation. Screen readers
+a fully highlighted arrow without drawing animation or value flashes. Screen readers
 get an authored-progress count with the current step.
 
 ## Guided viewport navigation

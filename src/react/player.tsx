@@ -5,6 +5,7 @@ import { describeFrame } from "../describe.js";
 import { composeTrace } from "../layout.js";
 import { traceProgress } from "../scene/progress.js";
 import { ProgramError, type Trace } from "../model.js";
+import { BASE_STEP_MS, stepDelayMs } from "../seek.js";
 import type { SonificationOptions } from "../sonify.js";
 import { PlayerCaption } from "./caption.js";
 import { PlayerGuidanceControls, validateGuidance, type ThroughlineGuidance } from "./guidance.js";
@@ -47,6 +48,19 @@ export function ThroughlinePlayer({
 	const [fullscreenError, setFullscreenError] = useState<string | null>(null);
 	const layout = useMemo(() => composeTrace(trace, width), [trace, width]);
 	const progress = useMemo(() => traceProgress(trace, state.step), [trace, state.step]);
+	// Motion is presentation-only and decided when the step changes: only a
+	// forward single step animates. Seeks, rewinds and replaced traces show the
+	// settled frame at once, so scrubbing the timeline never replays transfers.
+	// The decision is latched per step so unrelated re-renders cannot restart
+	// or cancel an animation in progress.
+	const [motion, setMotion] = useState({ trace, step: state.step, animate: false });
+	if (motion.trace !== trace || motion.step !== state.step) {
+		setMotion({
+			trace,
+			step: state.step,
+			animate: motion.trace === trace && state.step - motion.step === 1,
+		});
+	}
 	const captionId = useId();
 	const keyboardHelpId = useId();
 	const frame = trace.frames[state.step] ?? trace.frames[0];
@@ -118,6 +132,7 @@ export function ThroughlinePlayer({
 			ref={ref}
 			className={cn("thl", className)}
 			data-theme={theme}
+			style={{ "--thl-step-ms": `${stepDelayMs(BASE_STEP_MS, state.speed)}ms` } as React.CSSProperties}
 			role="group"
 			aria-label="Visualization player"
 			aria-describedby={keyboardHelpId}
@@ -147,6 +162,7 @@ export function ThroughlinePlayer({
 					previous={trace.frames[state.step - 1]}
 					layout={layout}
 					progress={progress}
+					animate={motion.animate}
 					availableWidth={width}
 					summary={summary}
 					captionId={captionId}

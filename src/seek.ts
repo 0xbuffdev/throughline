@@ -57,6 +57,9 @@ export function seekReducer(state: SeekState, action: SeekAction): SeekState {
 	}
 }
 
+/** Milliseconds between frames at 1x. */
+export const BASE_STEP_MS = 1500;
+
 /** Milliseconds per frame at the given speed; `base` is the 1x cadence. */
 export const stepDelayMs = (base: number, speed: Speed): number =>
 	Math.round(base / speed);

@@ -18,6 +18,7 @@ interface SceneLinkProps {
 	edge: Edge;
 	frame: Frame;
 	transferred: boolean;
+	animate: boolean;
 }
 function SceneLink({
 	sourceRelationIds,
@@ -29,6 +30,7 @@ function SceneLink({
 	edge,
 	frame,
 	transferred,
+	animate,
 }: SceneLinkProps): React.JSX.Element {
 	const label = relation.label;
 	return (
@@ -36,6 +38,7 @@ function SceneLink({
 			"thl-visited": traversedIds.length > 0,
 			"thl-revealed": revealed,
 			"thl-transferred": transferred && !aggregated,
+			"thl-animate": animate && transferred && !aggregated,
 			"thl-aggregate-active": aggregated && transferred,
 			"thl-aggregate-visited": aggregated && traversedIds.length > 0,
 		})}>
@@ -48,8 +51,9 @@ function SceneLink({
 					: "Connection explicitly revealed by an authored structural event; no message transfer implied."}</desc>
 			)}
 			{/* Animate the actual connector path, never an overlay. Re-key it
-			    for consecutive sends so each distinct authored event animates. */}
-			<path key={transferred && !aggregated ? `send-${frame.index}` : "steady"}
+			    for consecutive sends so each distinct authored event animates;
+			    a seek or rewind lands on the settled frame without animating. */}
+			<path key={animate && transferred && !aggregated ? `send-${frame.index}` : "steady"}
 				d={edge.d} pathLength={1} className="thl-edge" />
 			<polygon
 				points="0,0 -7,-3.5 -7,3.5"
@@ -75,6 +79,8 @@ interface TraceSceneProps {
 	previous?: Frame;
 	layout: Layout;
 	progress: TraceProgress;
+	/** True only when this frame was reached by one forward step. */
+	animate?: boolean;
 	groups?: readonly SceneGroup[];
 	selectedId?: string;
 	collapsedGroupIds?: readonly string[];
@@ -86,6 +92,7 @@ export function TraceScene({
 	previous,
 	layout,
 	progress,
+	animate = false,
 	groups,
 	selectedId,
 	collapsedGroupIds,
@@ -122,7 +129,9 @@ export function TraceScene({
 					</g>
 				) : null;
 			})}
-			{scene.edges.map(({ id, relation, transferred, aggregated, sourceRelationIds, activeSourceRelationIds }) =>
+			{/* Paint links that carry the current send last (stable sort), so an
+			    opposite link on the same path never draws over the active one. */}
+			{[...scene.edges].sort((a, b) => Number(a.transferred) - Number(b.transferred)).map(({ id, relation, transferred, aggregated, sourceRelationIds, activeSourceRelationIds }) =>
 				geometry.edges[id] ? (
 					<SceneLink
 						key={id}
@@ -135,6 +144,7 @@ export function TraceScene({
 						edge={geometry.edges[id]}
 						frame={frame}
 						transferred={transferred}
+						animate={animate}
 					/>
 				) : null,
 			)}
@@ -165,6 +175,7 @@ export function TraceScene({
 							rx={2}
 							className={cn("thl-summary-node", { "thl-visited": sourceEntityIds?.some((id) => progress.participatingNodes.has(id)), "thl-focused": focused, "thl-changed": changed })}
 						/>
+						<rect className="thl-ring" x={-4} y={-4} width={geometry.nodes[id].w + 8} height={geometry.nodes[id].h + 8} rx={4} />
 						<text x={8} y={17} className="thl-node-label">{truncate(entity.label, Math.floor((geometry.nodes[id].w - 20) / 7))}</text>
 						<text x={8} y={34} className="thl-summary-count">{sourceEntityIds?.length ?? 0} visible entities</text>
 						{(focused || changed) && (
@@ -189,6 +200,9 @@ export function TraceScene({
 					)}
 					selected={id === selectedId}
 					visited={progress.participatingNodes.has(entity.id)}
+					animate={animate}
+					frameIndex={frame.index}
+					afterSend={frame.state.transfers.length > 0}
 					onSelect={() => onSelect?.(id)}
 					changed={changes.flatMap((target) =>
 						target?.id === entity.id ? [target.path] : [],

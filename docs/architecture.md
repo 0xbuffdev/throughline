@@ -89,7 +89,13 @@ The player distinguishes **persistent participation**, **current focus
 and value changes**, and **a current explicit send**. It animates the
 actual directed SVG connector using a normalized path length and a
 new element key for each send frame. Consecutive sends can reanimate.
-There is no superimposed flow path. Reduced-motion removes animation.
+There is no superimposed flow path. Only a forward single step carries
+`animate`; the player latches that decision per step so unrelated renders
+never restart or cancel it, and seeks and rewinds settle without replaying.
+Animations are declared only under `prefers-reduced-motion: no-preference`;
+an override cannot be relied on because the animated selectors are more
+specific. Durations derive from `--thl-step-ms`, which the player sets from
+the playback speed.
 
 Authored visibility always wins: hidden elements cannot be revived by
 presentation progress. A collapsed aggregate remains dashed and reports

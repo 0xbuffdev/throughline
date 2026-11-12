@@ -33,6 +33,8 @@ type ViewportProps = {
 	previous?: Frame;
 	layout: Layout;
 	progress: TraceProgress;
+	/** True only when the current frame was reached by one forward step. */
+	animate?: boolean;
 	availableWidth: number;
 	summary: string;
 	captionId: string;
@@ -63,6 +65,7 @@ export function ViewportScene({
 	previous,
 	layout,
 	progress,
+	animate = false,
 	availableWidth,
 	summary,
 	captionId,
@@ -302,6 +305,7 @@ export function ViewportScene({
 					previous={previous}
 					layout={layout}
 					progress={progress}
+					animate={animate}
 					groups={trace.groups}
 					collapsedGroupIds={collapsedGroups}
 					onExpandGroup={expandGroup}

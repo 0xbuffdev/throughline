@@ -8,15 +8,24 @@
 	--thl-line: light-dark(oklch(0.89 0 0), oklch(1 0 0 / 13%));
 	--thl-focus: light-dark(oklch(0.25 0 0), oklch(0.93 0 0));
 	--thl-focus-bg: light-dark(oklch(0.92 0 0), oklch(0.31 0 0));
-	--thl-change: light-dark(oklch(0.35 0 0), oklch(0.9 0 0));
-	--thl-change-bg: light-dark(oklch(0.9 0 0), oklch(0.34 0 0));
+	/* A changed value is the only warm mark on screen. Light text on its tint measures 5.4:1. */
+	--thl-change: light-dark(oklch(0.5 0.15 55), oklch(0.82 0.14 80));
+	--thl-change-bg: light-dark(oklch(0.95 0.05 80), oklch(0.3 0.06 70));
 	--thl-control-bg: light-dark(oklch(1 0 0), oklch(0.21 0 0));
 	--thl-control-hover: light-dark(oklch(0.94 0 0), oklch(0.29 0 0));
 	--thl-track: light-dark(oklch(0.85 0 0), oklch(0.36 0 0));
 	--thl-radius: 0.125rem;
 	--thl-node-border-width: 1.25px;
-	--thl-trail: light-dark(oklch(0.49 0.12 225), oklch(0.76 0.11 220));
+	/* Present and past share one hue: --thl-active marks what happens in the
+	   current step; --thl-trail is the same family, washed out, for history.
+	   Trail is for strokes and arrowheads only (4.0:1); text stays --thl-muted. */
+	--thl-active: light-dark(oklch(0.5 0.17 235), oklch(0.78 0.14 225));
+	--thl-trail: light-dark(oklch(0.58 0.06 225), oklch(0.68 0.05 220));
 	--thl-trail-bg: light-dark(oklch(0.955 0.018 225), oklch(0.24 0.027 220));
+	/* Motion timing follows the step interval, which the player sets inline. */
+	--thl-step-ms: 1500ms;
+	--thl-draw-ms: clamp(160ms, calc(var(--thl-step-ms) * 0.23), 520ms);
+	--thl-flash-ms: clamp(320ms, calc(var(--thl-step-ms) * 0.6), 1200ms);
 	color-scheme: light dark;
 	box-sizing: border-box;
 	container-type: inline-size;
@@ -50,6 +59,8 @@
 .thl-title {
 	flex: none;
 	padding: 0;
+	/* Visual breathing room between the optional heading and the diagram. */
+	margin-block-end: 0.75rem;
 	font: inherit;
 	font-size: clamp(1.125rem, 2.2cqi, 1.5rem);
 	font-weight: 650;
@@ -69,6 +80,8 @@
 	padding: 0;
 }
 .thl-bottom {
+	/* Preserve a little air between the SVG and playback controls. */
+	margin-block-start: 0.25rem;
 	display: grid;
 	grid-template-columns: auto minmax(0, 1fr);
 	align-items: center;
@@ -219,8 +232,6 @@
 	font: 600 11px ui-sans-serif, system-ui, sans-serif;
 }
 .thl-summary-state.thl-changed { fill: var(--thl-change); }
-.thl-scene [data-group-summary] { cursor: pointer; outline-offset: 3px; }
-.thl-scene [data-group-summary]:focus-visible .thl-summary-node { stroke-width: 3px; }
 .thl-node {
 	fill: var(--thl-surface);
 	stroke: var(--thl-line);
@@ -234,13 +245,17 @@
 .thl-node.thl-selected {
 	stroke: var(--thl-focus);
 	stroke-width: var(--thl-node-border-width);
-	stroke-dasharray: 5 3;
 }
-.thl-scene [data-node] { cursor: pointer; outline-offset: 3px; }
-.thl-scene [data-node]:focus-visible .thl-node {
-	stroke: var(--thl-focus);
-	stroke-width: 3px;
-}
+/* Dashes mean structure (collapsed, revealed, aggregate) and nothing else.
+   Selection and keyboard focus are outer rings, distinct from authored focus. */
+.thl-ring { fill: none; stroke: transparent; stroke-width: 1.5px; pointer-events: none; }
+.thl-ring.thl-ring-selected { stroke: var(--thl-focus); }
+.thl-scene [data-node],
+.thl-scene [data-group-summary] { cursor: pointer; }
+.thl-scene [data-node]:focus-visible,
+.thl-scene [data-group-summary]:focus-visible { outline: none; }
+.thl-scene [data-node]:focus-visible .thl-ring,
+.thl-scene [data-group-summary]:focus-visible .thl-ring { stroke: var(--thl-active); stroke-width: 2px; }
 .thl-node.thl-focused {
 	fill: var(--thl-focus-bg);
 	stroke: var(--thl-focus);
@@ -280,24 +295,20 @@
 	stroke-width: 1.6;
 	stroke-dasharray: 3 4;
 }
-.thl-link.thl-revealed:not(.thl-visited) polygon,
-.thl-link.thl-revealed:not(.thl-visited) .thl-edge-label { fill: var(--thl-trail); }
+.thl-link.thl-revealed:not(.thl-visited) polygon { fill: var(--thl-trail); }
 .thl-link.thl-visited .thl-edge {
 	stroke: var(--thl-trail);
 	stroke-width: 2;
 }
-.thl-link.thl-visited polygon,
-.thl-link.thl-visited .thl-edge-label { fill: var(--thl-trail); }
+.thl-link.thl-visited polygon { fill: var(--thl-trail); }
 /* Repeated active sends animate the actual path. The arrowhead and link label
    share its active colour, and no second line is superimposed. */
 .thl-link.thl-transferred .thl-edge {
-	stroke: var(--thl-focus);
+	stroke: var(--thl-active);
 	stroke-width: 2.5;
-	stroke-dasharray: 1;
-	animation: thl-draw 350ms ease-out both;
 }
 .thl-link.thl-transferred polygon,
-.thl-link.thl-transferred .thl-edge-label { fill: var(--thl-focus); }
+.thl-link.thl-transferred .thl-edge-label { fill: var(--thl-active); }
 /* A collapsed boundary can contain both traversed and untouched links.
    Keep the aggregate dashed, and never animate it as a single send. */
 .thl-link.thl-aggregate-visited .thl-edge,
@@ -306,9 +317,9 @@
 	stroke-width: 2;
 	stroke-dasharray: 5 3;
 }
-.thl-link.thl-aggregate-active .thl-edge { stroke: var(--thl-focus); stroke-width: 2.5; }
+.thl-link.thl-aggregate-active .thl-edge { stroke: var(--thl-active); stroke-width: 2.5; }
 .thl-link.thl-aggregate-active polygon,
-.thl-link.thl-aggregate-active .thl-edge-label { fill: var(--thl-focus); }
+.thl-link.thl-aggregate-active .thl-edge-label { fill: var(--thl-active); }
 
 /* The caption is after the toolbar, so any authored narrative expansion
    never shifts the transport away from the visualization. */
@@ -517,7 +528,7 @@
 	stroke-linejoin: round;
 }
 .thl-controls button:hover:not(:disabled) { background: var(--thl-control-hover); }
-.thl-controls .thl-play { color: var(--thl-focus); }
+.thl-controls .thl-play { color: var(--thl-active); }
 .thl-controls .thl-play:hover:not(:disabled) { color: var(--thl-text); }
 .thl-controls button:disabled { opacity: 0.4; cursor: default; }
 .thl-speed-control {
@@ -635,4 +646,30 @@
 	.thl-caption-content { max-height: min(12rem, 30vh); }
 }
 @keyframes thl-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes thl-fade { from { opacity: 0; } }
+@keyframes thl-flash {
+	from {
+		fill: color-mix(in oklch, var(--thl-change) 28%, var(--thl-surface));
+		stroke-width: 3px;
+	}
+}
+/* Motion exists only under no-preference. A reduced-motion override cannot
+   be relied on here: the animated selectors below are more specific than any
+   short override, so the animation would win. Only a forward single step
+   carries .thl-animate; seeks and rewinds settle immediately. Sequence per
+   step: the line draws, the arrowhead lands, then a changed value flashes. */
+@media (prefers-reduced-motion: no-preference) {
+	.thl-link.thl-transferred.thl-animate .thl-edge {
+		stroke-dasharray: 1;
+		animation: thl-draw var(--thl-draw-ms) ease-out both;
+	}
+	.thl-link.thl-transferred.thl-animate polygon,
+	.thl-link.thl-transferred.thl-animate .thl-edge-label {
+		animation: thl-fade 120ms ease-out calc(var(--thl-draw-ms) * 0.85) both;
+	}
+	.thl-cell.thl-changed.thl-animate rect {
+		animation: thl-flash var(--thl-flash-ms) ease-out forwards;
+	}
+	.thl-cell.thl-changed.thl-after-send rect { animation-delay: var(--thl-draw-ms); }
+}
 @media (prefers-reduced-motion: reduce) { .thl-transferred .thl-edge { animation: none; stroke-dashoffset: 0; } .thl-scene, .thl-caption-expand svg { transition: none; } }

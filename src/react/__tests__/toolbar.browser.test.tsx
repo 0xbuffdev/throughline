@@ -119,3 +119,20 @@ it("keeps native keyboard disclosure and detailed state inspection accessible", 
 	await userEvent.keyboard("{Enter}");
 	expect(details.open).toBe(false);
 });
+
+it("keeps a modest visible gap between an optional title, the scene and its control bar", async () => {
+	const trace = compile(CHECKOUT_SCENARIOS[2].source);
+	const screen = await render(<ThroughlinePlayer title="Checkout workflow" trace={trace} />);
+	const title = document.querySelector<HTMLElement>(".thl-title")!;
+	const scene = document.querySelector<SVGSVGElement>(".thl-scene")!;
+	const toolbar = document.querySelector<HTMLElement>(".thl-bottom")!;
+	const titleGap = scene.getBoundingClientRect().top - title.getBoundingClientRect().bottom;
+	const controlsGap = toolbar.getBoundingClientRect().top - scene.getBoundingClientRect().bottom;
+	expect(titleGap).toBeGreaterThanOrEqual(10);
+	expect(titleGap).toBeLessThanOrEqual(16);
+	expect(controlsGap).toBeGreaterThanOrEqual(14);
+	expect(controlsGap).toBeLessThanOrEqual(24);
+	await screen.rerender(<ThroughlinePlayer trace={trace} />);
+	expect(document.querySelector(".thl-title")).toBeNull();
+	expect(document.querySelector(".thl-bottom")).not.toBeNull();
+});

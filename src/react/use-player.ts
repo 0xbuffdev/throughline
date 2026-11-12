@@ -2,6 +2,7 @@ import type * as React from "react";
 import { useEffect, useReducer, useState } from "react";
 import type { Trace } from "../model.js";
 import {
+	BASE_STEP_MS,
 	initialSeek,
 	type SeekAction,
 	type SeekState,
@@ -29,7 +30,7 @@ export function usePlayer(trace: Trace): {
 		if (!state.playing) return;
 		const timer = setInterval(
 			() => dispatch({ type: "tick" }),
-			stepDelayMs(1500, state.speed),
+			stepDelayMs(BASE_STEP_MS, state.speed),
 		);
 		return () => clearInterval(timer);
 	}, [state.playing, state.speed]);

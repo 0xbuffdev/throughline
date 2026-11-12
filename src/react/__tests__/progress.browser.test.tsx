@@ -38,8 +38,9 @@ it("keeps checkout history highlighted without faking future responses", async (
 	expect(charge.querySelectorAll("path")).toHaveLength(1);
 	expect(document.querySelector(".thl-flow")).toBeNull();
 	expect(activePath.getAttribute("pathLength")).toBe("1");
-	if (!matchMedia("(prefers-reduced-motion: reduce)").matches)
-		expect(getComputedStyle(activePath).animationName).toBe("thl-draw");
+	// A timeline jump lands on the settled frame without replaying the send;
+	// only a forward single step animates (see states.browser.test.tsx).
+	expect(getComputedStyle(activePath).animationName).toBe("none");
 
 	await timeline.fill(String(at("Provider records charge")));
 	expect(charge.classList.contains("thl-visited")).toBe(true);
