@@ -4,6 +4,13 @@
 **Outcome:** **FAIL — one repeatable WebKit layout assertion fails and release acceptance is not established.**  
 **Execution boundary:** Verification and test tooling only. No production fix, merge, release, npm stage, tag, or approval.
 
+> **Historical assessment.** This report captures the pre-fix candidate
+> `26d4e81`, not the later merged state. [PR #32](https://github.com/0xbuffdev/throughline/pull/32)
+> fixed the WebKit toolbar issue and passed a Firefox/WebKit QA matrix.
+> The original failed result below is retained for traceability; use the
+> [v0.1.0 readiness record](release-readiness-v0.1.0.md) for remaining gates.
+
+
 ## 1. Exact scope
 
 - **Published baseline:** signed `v0.0.2` tag, commit `ab62dd02661701bb2e26014732f765c73bd4e9f7`.

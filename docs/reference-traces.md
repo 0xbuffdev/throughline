@@ -91,15 +91,13 @@ The new deterministic compilation, arbitrary-seeking, message-endpoint
 and browser-player regression tests are source-level acceptance evidence
 once they run in CI; the presence of tests alone is not a passing result.
 
-## Present renderer limitations and follow-up work
+## Published v0.0.2 renderer limitations and later changes
 
-The v0.0.2 player has flat lane/row/column/tree layouts, not nested
-collapse, pan/zoom, follow-active camera, or a dedicated scene-projection
-boundary. Its large scenarios can be harder to follow on narrow screens.
-The minimal player redesign is TL-I07; interaction/accessibility
-regressions are TL-I08; projection and guided navigation are later work.
-Do not describe these reference examples as evidence that those features
-already exist.
+The **published v0.0.2** player had flat layouts without nested collapse,
+pan/zoom, follow-active camera or scene projection. Those features have
+since landed in the **unpublished v0.1.0 source candidate** with separate
+tests and compatibility review. These examples alone do not verify the
+later renderer or prove the candidate has been published.
 
 These questions are the initial **comprehension baseline**, not results
 from a participant study. A measured comparison against equivalent static

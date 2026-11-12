@@ -1,6 +1,6 @@
 # Framework integration checks
 
-These examples target the **unreleased** Remark/MDX integration on the Throughline source branch. They are not installation instructions for the published v0.0.2 package. Do not enable these imports in deployed documentation until an approved package release includes them.
+These examples target the **unreleased v0.1.0 candidate** Remark/MDX integration. They are not installation instructions for the currently published v0.0.2 package. Do not enable these imports in deployed documentation until an approved package release includes them.
 
 The package has separate, opt-in exports: the compiler at `@0xbuff/throughline`, the Remark validator/transform at `@0xbuff/throughline/remark`, the React 19 player/source bridge at `@0xbuff/throughline/react`, and the stylesheet at `@0xbuff/throughline/styles/throughline.css`. Core and Remark do not import React.
 

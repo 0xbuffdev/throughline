@@ -51,7 +51,8 @@ annotations—not the trace history—and relies on compiler-enforced JSON
 depth/work budgets. The original snapshot remains mutable by neither
 projection nor selection, and may be shared across compiled frames. The
 React scene receives authored group layout preferences, preserving existing
-`tree` and `column` lane semantics; hierarchy and collapse are future work.
+`tree` and `column` lane semantics; optional hierarchy and collapse
+are implemented in the later group-projection layer described below.
 
 `projectLayout` filters the existing deterministic trace-wide fallback
 geometry by a projection, retaining the stable positions, viewBox, directions,
@@ -212,8 +213,9 @@ camera and presentation state; replacing a trace resets group preferences.
 Hierarchy is an **additive** version-1 metadata extension, not a new domain or
 public entry point. Older readers can flatten optional metadata but cannot
 perform hierarchical collapse; old authoring parsers reject the new grammar.
-The explicit compatibility strategy remains subject to the separate TL-I14
-context ADR review prior to a source merge or release.
+Although the implementation is merged, its compatibility strategy still
+requires the maintainer's explicit acceptance of the outstanding TL-I14
+design decision before v0.1.0 is released.
 
 ## Trace format and compatibility
 
@@ -277,13 +279,12 @@ compilation records grades or authenticates learners.
 ## Build and trust boundaries
 
 `tsdown` produces ESM, declarations and JavaScript source maps for
-the three JavaScript exports. The stylesheet is shipped separately.
+the four JavaScript exports. The stylesheet is shipped separately.
 The source package uses one Node 24/pnpm CI job to run compiler and
 browser tests, inspect third-party dependency license files and
 install a packed tarball in independent Node, TypeScript, SSR and
 Vite/React consumers.
 
 These checks are necessary but do not establish copyright ownership,
-absence of all secrets, or public-release permission. The private
-source history must be separately cleared before any public-source
-cutover.
+absence of all secrets, or public-release permission. Historical public-source references and distribution rights require
+separate review; present-tree cleanup does not erase already-public history.

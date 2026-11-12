@@ -27,7 +27,7 @@ It cannot publish the package or attest to a human comprehension study.
 | --- | --- | --- |
 | V-01/V-02 | Baseline, compiler, reference-trace, seek and Chromium tests | Version-1 invariants, deterministic frames and arbitrary seeking |
 | V-03/V-04/V-06 | Player-shell, tokens, fullscreen and timeline tests | Step-only player, scoped styling and no invented media timing |
-| V-05 | Player, viewport, hierarchy, guidance, sound and hardening Chromium tests | Keyboard, touch, 375px layouts, text parity, reduced motion and trace reset in Chromium only |
+| V-05 | Player, viewport, hierarchy, guidance, sound and hardening browser tests | Keyboard, touch, 375px layouts, text parity, reduced motion and trace reset; PR #32 Firefox/WebKit automated QA passed, not manual assistive-technology validation |
 | V-07/V-08 | Projection, hierarchy, layout and hardening unit fixtures | Stable IDs, no snapshot mutation, cycles, self-links and boundary provenance |
 | V-09 | Hierarchy-performance and release-hardening unit fixtures | Prints sample compile/layout times and heap deltas; **no calibrated latency threshold** |
 | R-01–R-06 | Remark, MDX, parser-boundaries and isolated packed tests | Safe literal MDX, source diagnostics, root/Remark React isolation |
@@ -56,7 +56,8 @@ host security concern.
 - **TL-I11 / RMK-10:** integrate a released package in the separate
   `documentation` app, preserve existing Remark plugins and verify the
   actual application. Packed framework fixtures alone cannot close it.
-- Non-Chromium browser and assistive-technology manual checks are pending.
+- Automated Firefox/WebKit suites passed on PR #32's fix head; manual
+  cross-browser, real-device, audio and assistive-technology checks are pending.
 - Proposed Remark and hierarchical compatibility decisions in `context`
   require explicit review and acceptance.
 - Historical public-source rights review, release versioning, signed
