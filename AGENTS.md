@@ -26,6 +26,8 @@ filters or application-specific build steps.
 pnpm install --frozen-lockfile
 pnpm audit:source
 pnpm typecheck
+pnpm preview:typecheck
+pnpm preview:build
 pnpm test:run
 pnpm exec playwright install chromium
 pnpm test:browser:run
@@ -63,9 +65,9 @@ skipped tests.
 - `src/examples.ts`: public examples and acceptance fixtures.
 - `src/**/__tests__/`, `scripts/`: regression, browser, packaging,
   source-boundary, and license checks.
-- `docs/`: grammar, authoring, domain, and architecture documentation.
+- `docs/`: grammar, authoring, integration, architecture and release-evidence documentation.
 - `.github/workflows/ci.yml`: read-only quality checks.
-- `.github/workflows/publish.yml`, `RELEASING.md`: manual npm
+- `.github/workflows/publish.yml`, `CONTRIBUTING.md`: manual npm
   staging, provenance, and maintainer approval procedures.
 
 ## Public API and compatibility
@@ -127,5 +129,6 @@ Preserve deterministic compilation and stable seeking through frames.
   reference from the current tree does not erase already-public history.
   Review rights and third-party attribution before distributing changes.
 
-See `CONTRIBUTING.md`, `SECURITY.md`, and `RELEASING.md` for the
-corresponding contributor, vulnerability-reporting, and release details.
+See `CONTRIBUTING.md` (support and release procedures), `SECURITY.md` and
+`docs/release-readiness-v0.1.0.md` for contributor, vulnerability-reporting,
+release and outstanding acceptance details.

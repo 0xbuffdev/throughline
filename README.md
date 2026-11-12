@@ -1,5 +1,7 @@
 # Throughline
 
+[![CI](https://github.com/0xbuffdev/throughline/actions/workflows/ci.yml/badge.svg)](https://github.com/0xbuffdev/throughline/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/%400xbuff%2Fthroughline)](https://www.npmjs.com/package/@0xbuff/throughline) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Node.js](https://img.shields.io/badge/node-%3E%3D24-blue)](package.json)
+
 **Readable state over time, authored in Markdown.**
 
 Throughline compiles small, explanatory state traces into deterministic,
@@ -61,8 +63,7 @@ consumers still choose whether to supply `sonification` at all.
 For a remote development environment (e.g. GitHub Codespaces), start
 \`pnpm dev --host 0.0.0.0\` and use the environment's forwarded port 5173
 rather than treating localhost on your own computer as the remote server.
-Keep forwarded access private while reviewing traces. If running from the
-unmerged preview branch, check out \`feat/local-player-preview\` first.
+Keep forwarded access private while reviewing traces.
 
 ~~~sh
 pnpm preview:typecheck
@@ -563,10 +564,12 @@ For the complete guide, see the [Throughline documentation](https://docs.0xbuff.
 - [Throughline documentation](https://docs.0xbuff.com/docs/throughline)
 - [Grammar and authored flow](https://github.com/0xbuffdev/throughline/blob/main/docs/grammar.md)
 - [Domain catalog and domain-specific limits](https://github.com/0xbuffdev/throughline/blob/main/docs/catalog.md)
+- [Documentation index](docs/README.md)
 - [Architecture, trace format and runtime boundaries](https://github.com/0xbuffdev/throughline/blob/main/docs/architecture.md)
 - [Complex reference traces, questions and compatibility boundaries](https://github.com/0xbuffdev/throughline/blob/main/docs/reference-traces.md)
 - [Adding a computed domain](https://github.com/0xbuffdev/throughline/blob/main/docs/authoring.md)
 - [Changelog](https://github.com/0xbuffdev/throughline/blob/main/CHANGELOG.md)
+- [v0.1.0 release readiness](docs/release-readiness-v0.1.0.md)
 
 ## Development
 
@@ -577,6 +580,8 @@ multi-package workspace.
 pnpm install --frozen-lockfile
 pnpm audit:source
 pnpm typecheck
+pnpm preview:typecheck
+pnpm preview:build
 pnpm test:run
 pnpm exec playwright install chromium
 pnpm test:browser:run
@@ -584,6 +589,8 @@ pnpm build
 pnpm audit:licenses
 pnpm audit:pack
 pnpm audit:browser
+pnpm audit:frameworks
+pnpm audit:markdown-hosts
 ~~~
 
 The packed-consumer audits install the built archive into independent
@@ -594,7 +601,7 @@ Node, TypeScript, React SSR and Vite/browser environments.
 Read [contributing guidelines](https://github.com/0xbuffdev/throughline/blob/main/CONTRIBUTING.md) before opening a PR.
 Use [GitHub issues](https://github.com/0xbuffdev/throughline/issues)
 for reproducible bugs and feature proposals; see
-[SUPPORT.md](https://github.com/0xbuffdev/throughline/blob/main/SUPPORT.md) for support and [SECURITY.md](https://github.com/0xbuffdev/throughline/blob/main/SECURITY.md)
+[support guidance](CONTRIBUTING.md#support) for support and [SECURITY.md](https://github.com/0xbuffdev/throughline/blob/main/SECURITY.md)
 for confidential vulnerability reports. Participation is governed by
 the [code of conduct](https://github.com/0xbuffdev/throughline/blob/main/CODE_OF_CONDUCT.md).
 

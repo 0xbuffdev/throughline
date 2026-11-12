@@ -24,4 +24,4 @@ bug-bounty guarantee is offered.
 Security concerns include unsafe rendering of authored text, unintended code
 or network execution, resource-exhaustion limits, browser injection,
 information disclosure and package supply-chain compromise. For ordinary
-usage questions, see [SUPPORT.md](SUPPORT.md).
+usage questions, see the [support procedure](CONTRIBUTING.md#support).

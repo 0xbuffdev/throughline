@@ -5,6 +5,13 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+No additional changes since the v0.1.0 candidate.
+
+## [0.1.0] — Pending release
+
+This version has not been published to npm. Review the
+[release readiness gates](docs/release-readiness-v0.1.0.md) before publication.
+
 ### Fixed (cross-browser toolbar)
 
 - Keep the wide playback toolbar compact in WebKit without constraining native selector height; verify the compact bar still encloses every control across browser engines.
