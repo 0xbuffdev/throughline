@@ -49,6 +49,14 @@ outcomes**; switch the player between light/dark/system, then between full
 width and a 375px mobile viewport. The checkout comparison starts with the
 retry/recovery scenario and offers successful and terminal-failure outcomes.
 Expand **View authored trace source** to check the exact events on display.
+The preview provides the player's opt-in sound control for **every example
+and scenario comparison**. Select the speaker icon labeled **Sonify trace**
+to unmute, then press Play or Step forward: each step produces a short
+Web Audio oscillator tone, not speech. Sound starts **muted** until clicked;
+you can mute it again at any time. Some browsers block audio until a user
+gesture, and audio availability and output volume depend on the browser
+and device. This opt-in is scoped to the development preview: package
+consumers still choose whether to supply `sonification` at all.
 
 For a remote development environment (e.g. GitHub Codespaces), start
 \`pnpm dev --host 0.0.0.0\` and use the environment's forwarded port 5173

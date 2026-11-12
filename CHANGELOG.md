@@ -5,6 +5,11 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Changed (development preview sound)
+
+- Expose the existing opt-in Web Audio speaker control in every local playground example and scenario comparison, initially muted. No default audio in the published React player and no new audio dependencies.
+
+
 ### Changed (state hierarchy and motion)
 
 - Give the present its own color. `--thl-active` (new) marks the current send, its label and the Play button; `--thl-trail` becomes the same hue washed out for history; `--thl-change` becomes the single warm color for changed values. Previously focus and change were near-identical neutrals (about 0.02-0.03 apart in OKLab) and history was the only colored mark.

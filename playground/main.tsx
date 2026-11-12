@@ -90,6 +90,7 @@ function App() {
 							scenarios={scenarios}
 							initialScenarioId="retry-recovery"
 							theme={theme}
+							sonification={{}}
 						/>
 					) : current ? (
 						<ThroughlinePlayer
@@ -97,6 +98,7 @@ function App() {
 							trace={current.trace}
 							title={current.title}
 							theme={theme}
+							sonification={{}}
 							guidance={current.id === "distributed-checkout" ? CHECKOUT_GUIDANCE : undefined}
 						/>
 					) : null}
@@ -108,8 +110,11 @@ function App() {
 				</details>
 				<p className="preview-footnote">
 					Use the player controls to step, pan, zoom, collapse groups, inspect state
-					and switch outcomes. Resize the browser or choose the 375px view to find
-					layout problems. Changes to the source reload this local preview.
+					and switch outcomes. Sound is available in every example: select the speaker
+					icon to unmute, then Play or step forward to hear short synthesized tones.
+					It starts muted and does not narrate the workflow. Resize the browser or
+					choose the 375px view to find layout problems. Changes to the source reload
+					this local preview.
 				</p>
 			</div>
 		</main>
