@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
-import { ThroughlinePlayer } from "../index.js";
+import { ThroughlinePlayer, ThroughlineScenarios } from "../index.js";
 
 const trace = compile(
 	'```thl flow\nnode n "Number" = 0\nstep "One"\n set n = 1\nstep "Two"\n set n = 2\n```',
@@ -191,5 +191,56 @@ it("releases an already-ended voice once even if a later stop throws", async () 
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 3");
 	expect(first.disconnect).toHaveBeenCalledOnce();
 	expect(audio.gains[0].disconnect).toHaveBeenCalledOnce();
+	await screen.unmount();
+});
+
+it("shows an opt-in speaker but produces no audio until the user clicks it", async () => {
+	const audio = audioBoundary();
+	const screen = await render(<ThroughlinePlayer trace={trace} sonification={{}} />);
+	const button = screen.getByRole("button", { name: "Sonify trace" });
+	await expect.element(button).toHaveAttribute("aria-pressed", "false");
+	expect(audio.contexts).toHaveLength(0);
+	expect(audio.voices).toHaveLength(0);
+
+	await button.click();
+	await expect.element(button).toHaveAttribute("aria-pressed", "true");
+	expect(audio.contexts).toHaveLength(1);
+	expect(audio.voices).toHaveLength(1);
+
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	expect(audio.voices).toHaveLength(2);
+	await button.click();
+	await expect.element(button).toHaveAttribute("aria-pressed", "false");
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	expect(audio.voices).toHaveLength(2);
+	await screen.unmount();
+	expect(audio.contexts[0].close).toHaveBeenCalledOnce();
+});
+
+it("exposes muted sound controls in scenario comparison, resetting on a switch", async () => {
+	const audio = audioBoundary();
+	const scenarios = [
+		{ id: "one", title: "First scenario", trace },
+		{ id: "two", title: "Second scenario", trace: compile(
+			'thl flow\nnode n "Other" = 0\nstep "Other step"\n  set n = 1',
+		) },
+	];
+	const screen = await render(
+		<ThroughlineScenarios scenarios={scenarios} sonification={{}} />,
+	);
+	const sound = screen.getByRole("button", { name: "Sonify trace" });
+	await expect.element(sound).toHaveAttribute("aria-pressed", "false");
+	expect(audio.contexts).toHaveLength(0);
+	await sound.click();
+	await expect.element(sound).toHaveAttribute("aria-pressed", "true");
+	expect(audio.voices).toHaveLength(1);
+
+	await screen.getByRole("combobox", { name: "Scenario" }).selectOptions("two");
+	await expect.element(screen.getByRole("button", { name: "Sonify trace" })).toHaveAttribute("aria-pressed", "false");
+	expect(audio.contexts[0].close).toHaveBeenCalledOnce();
+	expect(audio.contexts).toHaveLength(1);
+	expect(audio.voices).toHaveLength(1);
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	expect(audio.voices).toHaveLength(1);
 	await screen.unmount();
 });
