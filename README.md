@@ -247,6 +247,44 @@ from the diagram. The screen-reader step announcement remains active
 regardless of whether the disclosure is expanded. Details remain open
 between steps until closed, without changing playback state.
 
+## Opt-in caption narration
+
+The optional React-only `narration` prop exposes a **Narrate captions**
+button next to the independent `sonification` sound-effects toggle.
+The button is **off initially**, even when a host offers it. Its first
+activation speaks the current authored step from a user gesture using
+the browser's Speech Synthesis API. It reads the authored step label,
+notes, matching chapter and causal explanation, and transfer summaries.
+It does not invent responses, state changes or causal explanations.
+Very long utterances are shortened with an explicit spoken notice; the
+full authored text remains available in Details.
+
+With narration enabled, **Play advances only after speech finishes**.
+Pause pauses the current voice; Play resumes it. Manual seeking or
+stepping cancels the previous voice and narrates the selected step.
+Switching scenarios cancels the old voice and starts muted. Disabling
+narration returns to timed playback and leaves step tones independent.
+Playback speed applies to the next utterance, not the current one.
+A manual seek to the **same** step (including Restart chapter) restarts its
+narration. If an author updates guidance while the current frame is shown,
+the old utterance is invalidated and the corrected explanation is spoken.
+
+Speech voices, available hardware, and user-activation policies depend
+on the browser and OS. The button is disabled where speech synthesis is
+unavailable; speech errors pause synchronized playback and are announced.
+No text is uploaded by Throughline, but the browser may use a network
+speech service. The core stays React- and browser-independent.
+
+**Multiple embedded players:** Browser speech synthesis has one global queue.
+Throughline coordinates narration across its player instances: when B begins
+speaking, B takes over and A is paused, unmutes no further audio, and reports
+that another player is speaking. A's later seek/unmount does not interrupt B.
+A may explicitly re-enable narration to take over again. External scripts
+calling the browser speech API are not under Throughline's control; an
+unexpected `interrupted` or `canceled` utterance is treated as an error:
+narration-driven playback pauses and shows a recoverable message. This
+behavior does not imply exclusive ownership of third-party speech.
+
 ## Persistent workflow progress
 
 The React player retains a cumulative trail through the **selected** step.

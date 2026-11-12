@@ -5,6 +5,19 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Fixed (narration review)
+
+- Coordinate browser-global speech synthesis between multiple Throughline players; newer narration takes over while displaced players pause and stop owning cancellation.
+- Pause with an accessible error on unexpected speech interruption instead of stalling autoplay or advancing a failed utterance.
+- Restart narration for repeated seeks to the same step and replace stale speech when authored guidance changes.
+- Keep the dual-audio 360px breakpoint while restoring a generic three-row fallback at <=300px content widths, covering players with no audio, only narration, only step tones, or both. Verify embedded layouts with actual browser element bounds.
+
+### Added (opt-in caption narration)
+
+- Offer muted-by-default browser caption narration separately from step tones, using speech-synchronized playback without new runtime dependencies.
+- Pause/resume speaking with playback; cancel on seek, scenario change and unmount; preserve the original timer when narration is off.
+
+
 ### Changed (development preview sound)
 
 - Expose the existing opt-in Web Audio speaker control in every local playground example and scenario comparison, initially muted. No default audio in the published React player and no new audio dependencies.

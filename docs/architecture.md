@@ -60,7 +60,42 @@ uses this internal boundary without adding a package export, trace schema,
 viewport control, or public selection API. Pan/zoom, automatic camera
 following and user-driven collapse are not part of TL-I12.
 
+## Optional spoken explanation
+
+The React-only narration controller synthesizes authored caption text
+(frame label, notes, guided chapter/causal content and explicit sends).
+No new trace event or compiler schema is introduced.
+
+While narration is enabled, speech completion drives playback ticks
+instead of a fixed interval. Only the active utterance may advance
+the selected trace; seeking (including to the same step) and changed
+authored guidance invalidate stale callbacks. Pause/resume
+controls the voice, and unavailable or failed synthesis pauses the
+narration clock with an accessible error. When narration is disabled,
+the existing timed playback returns. Step tones remain independent.
+
+Browser speechSynthesis is a shared page resource. Throughline maintains a
+per-engine, browser-local owner coordinator: the newest Throughline player
+to begin narration takes over the global speech queue, pauses/disables the
+previous player and announces displacement. Only the current owner may
+call global `cancel()`, `pause()` or `resume()`; a displaced player's later
+seek, toggle or unmount cannot cancel the new owner's speech. Deliberate
+cancellation detaches event handlers before calling the browser API, while
+unexpected `canceled`/`interrupted` errors trigger an accessible error
+and pause rather than advancing the timeline. After a natural speech end,
+ownership is released without global cancellation. This mechanism does not
+coordinate with arbitrary third-party scripts using speechSynthesis and
+cannot guarantee browser/OS voice isolation. Some voices may use
+browser-managed remote services.
+
 ## Footer layout and bounded explanations
+
+The optional narration and step-tone controls share responsive rules.
+Dual-audio players use a dedicated utilities row at player content widths up
+to 360px; **all** players use the generic three-row fallback at content
+widths up to 300px, regardless of whether audio features are offered.
+Both breakpoints use the measured player container rather than the viewport,
+preserving accessible controls in narrow embedded layouts.
 
 The React player composes its navigation, chapter selection, timeline,
 and transport in one bottom bar adjacent to the diagram. Container

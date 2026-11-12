@@ -10,10 +10,12 @@ import {
 	stepDelayMs,
 } from "../seek.js";
 
-export function usePlayer(trace: Trace): {
+export function usePlayer(trace: Trace, externalClock = false): {
 	state: SeekState;
 	dispatch: React.Dispatch<SeekAction>;
 	lastAction: SeekAction | null;
+	/** Increments on every explicit seek, including seeking the current frame. */
+	seekRevision: number;
 	onKeyDown: React.KeyboardEventHandler;
 } {
 	const [identity, setIdentity] = useState(trace);
@@ -25,8 +27,10 @@ export function usePlayer(trace: Trace): {
 	// Track how a frame was reached without extending the public seek state.
 	// Timeline seeks (even an adjacent one) never count as forward playback.
 	const lastAction = useRef<SeekAction | null>(null);
+	const [seekRevision, bumpSeekRevision] = useState(0);
 	const dispatch = useCallback<React.Dispatch<SeekAction>>((action) => {
 		lastAction.current = action;
+		if (action.type === "step") bumpSeekRevision((revision) => revision + 1);
 		reducerDispatch(action);
 	}, []);
 	// Reset during render, before any child can read a stale frame index.
@@ -35,13 +39,13 @@ export function usePlayer(trace: Trace): {
 		dispatch({ type: "reset", max: Math.max(0, trace.frames.length - 1) });
 	}
 	useEffect(() => {
-		if (!state.playing) return;
+		if (!state.playing || externalClock) return;
 		const timer = setInterval(
 			() => dispatch({ type: "tick" }),
 			stepDelayMs(BASE_STEP_MS, state.speed),
 		);
 		return () => clearInterval(timer);
-	}, [state.playing, state.speed]);
+	}, [state.playing, state.speed, externalClock]);
 	const onKeyDown: React.KeyboardEventHandler = (event) => {
 		if (event.target !== event.currentTarget) return;
 		if (["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)) {
@@ -58,7 +62,7 @@ export function usePlayer(trace: Trace): {
 			dispatch({ type: "toggle" });
 		}
 	};
-	return { state, dispatch, lastAction: lastAction.current, onKeyDown };
+	return { state, dispatch, lastAction: lastAction.current, seekRevision, onKeyDown };
 }
 
 export function useSceneWidth(
