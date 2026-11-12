@@ -24,7 +24,6 @@ for (const file of [
 	"CONTRIBUTING.md",
 	"CODE_OF_CONDUCT.md",
 	"SECURITY.md",
-	"SUPPORT.md",
 ]) {
 	const contents = readFileSync(join(root, file), "utf8");
 	assert(contents.length >= 300, "Incomplete community file: " + file);

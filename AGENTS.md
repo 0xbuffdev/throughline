@@ -18,33 +18,10 @@ documentation before changing observable behavior. The source and
 
 ## Development and verification
 
-Use Node.js 24+, pnpm **11.2.2**, and the committed `pnpm-lock.yaml`.
-This is a **single package**, not a workspace. Do not introduce workspace
-filters or application-specific build steps.
-
-```sh
-pnpm install --frozen-lockfile
-pnpm audit:source
-pnpm typecheck
-pnpm test:run
-pnpm exec playwright install chromium
-pnpm test:browser:run
-pnpm build
-pnpm audit:licenses
-pnpm audit:pack
-pnpm audit:browser
-pnpm audit:frameworks
-pnpm audit:markdown-hosts
-```
-
-Run the checks relevant to each change and the full sequence before
-submitting a release-related PR. `audit:licenses` requires a build;
-`audit:pack` and `audit:browser` exercise the packed package in
-independent Node, TypeScript, React SSR, and Vite/browser consumers.
-The framework and Markdown-host audits install the freshly packed package in disposable projects using committed npm lockfiles and `npm ci`. Registry access is required. Refresh intentional host-version updates with `node scripts/fixtures/update-integration-locks.mjs` and review the four generated lockfiles.
-Some consumer checks install public dependencies. Report any skipped or
-failed checks accurately; do not suppress failures with focused or
-skipped tests.
+Use Node.js 24+, pnpm 11.2.2 and the committed lockfile in this
+single-package repository. Run the relevant tests for each change and
+follow [verification and release procedures](docs/releasing.md) for a
+full release candidate. Never misrepresent skipped or failed checks.
 
 ## Repository map
 
@@ -63,9 +40,9 @@ skipped tests.
 - `src/examples.ts`: public examples and acceptance fixtures.
 - `src/**/__tests__/`, `scripts/`: regression, browser, packaging,
   source-boundary, and license checks.
-- `docs/`: grammar, authoring, domain, and architecture documentation.
+- `docs/`: grammar, authoring, integration and architecture documentation.
 - `.github/workflows/ci.yml`: read-only quality checks.
-- `.github/workflows/publish.yml`, `RELEASING.md`: manual npm
+- `.github/workflows/publish.yml`, `docs/releasing.md`: manual npm
   staging, provenance, and maintainer approval procedures.
 
 ## Public API and compatibility
@@ -111,9 +88,9 @@ Preserve deterministic compilation and stable seeking through frames.
   Document purpose, compatibility impact, implementation, and checks
   actually run. Keep `README.md`, relevant `docs/`, tests, and
   `CHANGELOG.md` in sync with user-visible changes.
-- This project has one maintainer. Final review, required signing,
-  merges, Git tags, and npm release approvals are maintainer actions;
-  never invent other reviewers or claim those actions happened.
+- Final review, any required signing, merges, Git tags and npm release
+  approvals require maintainer authorization. Never invent approvals or
+  claim unperformed actions are complete.
 - Do not publish, stage, approve, move release tags, change repository
   visibility, or rewrite Git history without explicit authorization.
 - Publication uses an immutable, GitHub-verified signed tag and the
@@ -121,11 +98,6 @@ Preserve deterministic compilation and stable seeking through frames.
   `npm-publish` staging job receives `id-token: write`. No npm
   token or OIDC write permission belongs in quality CI. npm staging
   is not a public release; final npm 2FA approval is separate.
-- The repository's public Git history includes a historical reference
-  to private planning material. Treat this as an unresolved exposure;
-  inspect historical refs and credentials when relevant. Removing a
-  reference from the current tree does not erase already-public history.
-  Review rights and third-party attribution before distributing changes.
 
-See `CONTRIBUTING.md`, `SECURITY.md`, and `RELEASING.md` for the
-corresponding contributor, vulnerability-reporting, and release details.
+See `CONTRIBUTING.md`, `SECURITY.md` and `docs/releasing.md` for
+contribution, security reporting and release procedures.

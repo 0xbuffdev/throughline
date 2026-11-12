@@ -1,6 +1,8 @@
-# Framework integration checks
+# Framework integrations
 
-These examples target the **unreleased** Remark/MDX integration on the Throughline source branch. They are not installation instructions for the published v0.0.2 package. Do not enable these imports in deployed documentation until an approved package release includes them.
+These examples describe the opt-in Remark/MDX integrations introduced in
+Throughline v0.1.0. Verify the installed version supports these exports before
+using them in a consuming application.
 
 The package has separate, opt-in exports: the compiler at `@0xbuff/throughline`, the Remark validator/transform at `@0xbuff/throughline/remark`, the React 19 player/source bridge at `@0xbuff/throughline/react`, and the stylesheet at `@0xbuff/throughline/styles/throughline.css`. Core and Remark do not import React.
 
@@ -178,8 +180,10 @@ export function TraceMarkdown({ source }) {
 
 This adapter does not pretend to execute Remark, and it does not automatically transform a standard `~~~thl flow` info string. The fixture verifies that the renderer fails on invalid Throughline sources and preserves unrelated fenced code. When source comes from a publishing system, validate it separately before publication.
 
-## Release and test boundary
+## Testing integrations
 
 `pnpm audit:frameworks` packs the current source into a tarball and installs it into **independent** temporary Fumadocs, Next.js and Astro consumer projects using committed npm lockfiles and `npm ci`. `pnpm audit:markdown-hosts` uses a fourth independently locked consumer. To update dependencies deliberately, run `node scripts/fixtures/update-integration-locks.mjs` and review the resulting lockfile diffs. The framework audit verifies Fumadocs source generation, Unified MDX with the preserved math/Mermaid/KaTeX pipeline, and a Vite-built Fumadocs/React Router page using the real MDX macro. It also builds independent Next.js App Router and Astro Unified/React-island consumers. All three host exports are served to Chromium to exercise real trace stepping, stylesheet loading, mobile sizing, browser errors and unchanged MDX pages. Those checks are not a claim of manual assistive-technology approval or of a production documentation deployment. `pnpm audit:markdown-hosts` packs the same source and checks SSR integration with `react-markdown`, `mdx-bundler`, and `markdown-to-jsx`, including invalid input and documents with no Throughline fences. The existing `audit:pack` covers Node-only, Remark/MDX, source escaping, SSR and root/React import isolation; `audit:browser` additionally checks a packed Vite React hydration boundary.
 
-The production documentation application must continue using the current published package until a reviewed release candidate is approved and published. Release approval, package versioning, signing, npm distribution, site update and deployment are separate maintainer actions.
+Fixture checks verify the integration patterns, not an arbitrary host's
+configuration or deployment. Test the host's own build, content validation,
+styles and browser behavior after upgrading.

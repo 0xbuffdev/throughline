@@ -8,7 +8,6 @@ on:
         description: "GitHub-verified signed release tag"
         type: string
         required: true
-        default: v0.0.2
       confirmation:
         description: "Enter STAGE-<tag>, for example STAGE-v0.0.2"
         type: string
@@ -93,7 +92,7 @@ jobs:
           assert.equal(pkg.homepage, "https://docs.0xbuff.com/docs/throughline");
           assert.equal(pkg.repository?.url, "git+https://github.com/0xbuffdev/throughline.git");
           assert.deepEqual(Object.keys(pkg.exports).sort(),
-            [".", "./react", "./examples", "./styles/throughline.css"].sort());
+            [".", "./remark", "./react", "./examples", "./styles/throughline.css"].sort());
           NODE
 
       - name: Install frozen dependencies
@@ -102,6 +101,10 @@ jobs:
         run: pnpm audit:source
       - name: Typecheck
         run: pnpm typecheck
+      - name: Typecheck and bundle local playground
+        run: |
+          pnpm preview:typecheck
+          pnpm preview:build
       - name: Compiler tests
         run: pnpm test:run
       - name: Install Chromium
@@ -116,6 +119,11 @@ jobs:
         run: pnpm audit:pack
       - name: Verify packed Vite/React browser hydration
         run: pnpm audit:browser
+
+      - name: Verify framework integration consumers
+        run: pnpm audit:frameworks
+      - name: Verify Markdown host consumers
+        run: pnpm audit:markdown-hosts
 
       - name: Pack reviewed tarball and checksum
         shell: bash

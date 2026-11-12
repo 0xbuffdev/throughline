@@ -17,11 +17,10 @@ If that option is unavailable, open a brief issue asking for a confidential
 reporting channel **without including the vulnerability details**.
 
 Include the affected package version, impact, reproduction steps and
-mitigations only through a private channel. The sole maintainer coordinates
-investigation and disclosure as availability permits. No response-time or
+mitigations only through a private channel. Reports are triaged privately as capacity permits. No response-time or
 bug-bounty guarantee is offered.
 
 Security concerns include unsafe rendering of authored text, unintended code
 or network execution, resource-exhaustion limits, browser injection,
 information disclosure and package supply-chain compromise. For ordinary
-usage questions, see [SUPPORT.md](SUPPORT.md).
+usage questions, see the [support procedure](CONTRIBUTING.md#support).

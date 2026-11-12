@@ -1,6 +1,6 @@
 {
 	"name": "@0xbuff/throughline",
-	"version": "0.0.2",
+	"version": "0.1.0",
 	"description": "Readable state over time, authored in Markdown. A deterministic trace compiler with an optional React player.",
 	"private": false,
 	"license": "Apache-2.0",

@@ -1,9 +1,5 @@
 # Contributing to Throughline
 
-Throughline is maintained by one project maintainer. Bug reports,
-documentation corrections, test improvements and narrowly scoped code
-contributions are welcome. Opening a PR does not guarantee acceptance.
-
 ## Before you start
 
 - Check the [README](README.md), [authoring docs](docs/grammar.md),
@@ -23,6 +19,8 @@ Prerequisites: Node.js 24+, pnpm 11.2.2 and a Chromium-capable system.
 pnpm install --frozen-lockfile
 pnpm audit:source
 pnpm typecheck
+pnpm preview:typecheck
+pnpm preview:build
 pnpm test:run
 pnpm exec playwright install chromium
 pnpm test:browser:run
@@ -30,6 +28,8 @@ pnpm build
 pnpm audit:licenses
 pnpm audit:pack
 pnpm audit:browser
+pnpm audit:frameworks
+pnpm audit:markdown-hosts
 ~~~
 
 This repository is a standalone package. The root compiler must stay
@@ -49,7 +49,7 @@ compiler-to-player boundary.
 5. Open the PR with a concise purpose, implementation notes, potential
    compatibility risks, test results and any remaining work.
 
-The maintainer performs final review, any required signing and merge.
+Maintainers perform final review, any required signing and merge.
 Do not publish npm packages, create release tags or change repository
 visibility as part of a contribution without explicit authorization.
 
@@ -62,3 +62,23 @@ issue with exploitation details.
 By submitting a contribution, you agree it may be distributed under
 the repository's [Apache-2.0 license](LICENSE); do not submit code or
 content that you lack rights to contribute.
+
+## Support
+
+For usage questions, consult the [README](README.md),
+[grammar reference](docs/grammar.md),
+[domain catalog](docs/catalog.md), and
+[architecture notes](docs/architecture.md).
+
+For a reproducible bug, use the
+[bug report template](https://github.com/0xbuffdev/throughline/issues/new/choose)
+and include the version,
+minimal authored `thl` block, expected/actual behavior and relevant
+runtime (Node, browser, React). Avoid disclosing secrets or sensitive
+content.
+
+For an API or feature idea, use the feature request template and
+explain the underlying problem and compatibility impact. Support and review are provided as available, without a guaranteed response time.
+
+**Security vulnerabilities:** use [SECURITY.md](SECURITY.md) rather than
+publishing exploitation details in an issue.

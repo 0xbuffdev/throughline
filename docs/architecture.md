@@ -29,7 +29,7 @@ build pipelines or other offline ESM environments without React or a DOM.
    form the presentation shell. Browser fullscreen enters and exits for
    this player element when supported; seeking never invents timing.
 
-## Pure scene projection (TL-I12)
+## Pure scene projection
 
 The internal `projectScene(snapshot, groups, preferences)` function separates
 **compiled system state** from **presentation state**. Its overview projects all
@@ -51,14 +51,15 @@ annotations—not the trace history—and relies on compiler-enforced JSON
 depth/work budgets. The original snapshot remains mutable by neither
 projection nor selection, and may be shared across compiled frames. The
 React scene receives authored group layout preferences, preserving existing
-`tree` and `column` lane semantics; hierarchy and collapse are future work.
+`tree` and `column` lane semantics; optional hierarchy and collapse
+are implemented in the later group-projection layer described below.
 
 `projectLayout` filters the existing deterministic trace-wide fallback
 geometry by a projection, retaining the stable positions, viewBox, directions,
 cycles and self-loops across arbitrary seeking and selection. The React scene
 uses this internal boundary without adding a package export, trace schema,
-viewport control, or public selection API. Pan/zoom, automatic camera
-following and user-driven collapse are not part of TL-I12.
+viewport control, or public selection API. Pan/zoom, automatic camera following and user-driven collapse are separate
+presentation layers above projection.
 
 ## Optional spoken explanation
 
@@ -140,7 +141,7 @@ as a structural reveal. Sending never claims destination acknowledgment,
 processing or persistence, even if both endpoints are tinted as
 participating entities.
 
-## Authored guidance and separate alternatives (TL-I15)
+## Authored guidance and separate alternatives
 
 The React-only `ThroughlineGuidance` presentation contract is not serialized
 into a trace or used by the compiler. Validation checks bounded chapter ranges,
@@ -192,7 +193,7 @@ The root compiler does not fetch remote data or use runtime application
 services. External consumers import only the declared public exports;
 deep imports are deliberately unsupported.
 
-## Group hierarchy and projection (TL-I14)
+## Group hierarchy and projection
 
 Optional `SceneGroup.id`/`parentId` metadata forms a static tree of uniquely
 identified groups. The authoring parser validates the graph before compilation,
@@ -212,8 +213,8 @@ camera and presentation state; replacing a trace resets group preferences.
 Hierarchy is an **additive** version-1 metadata extension, not a new domain or
 public entry point. Older readers can flatten optional metadata but cannot
 perform hierarchical collapse; old authoring parsers reject the new grammar.
-The explicit compatibility strategy remains subject to the separate TL-I14
-context ADR review prior to a source merge or release.
+Consumers should coordinate deployment of the new hierarchy grammar with
+the installed compiler and player versions.
 
 ## Trace format and compatibility
 
@@ -277,13 +278,11 @@ compilation records grades or authenticates learners.
 ## Build and trust boundaries
 
 `tsdown` produces ESM, declarations and JavaScript source maps for
-the three JavaScript exports. The stylesheet is shipped separately.
+the four JavaScript exports. The stylesheet is shipped separately.
 The source package uses one Node 24/pnpm CI job to run compiler and
 browser tests, inspect third-party dependency license files and
 install a packed tarball in independent Node, TypeScript, SSR and
 Vite/React consumers.
 
-These checks are necessary but do not establish copyright ownership,
-absence of all secrets, or public-release permission. The private
-source history must be separately cleared before any public-source
-cutover.
+Tests and package audits verify specific technical contracts; they do not
+replace source-rights, provenance or release authorization reviews.

@@ -5,37 +5,71 @@ Each version is published from an immutable, GitHub-verified signed
 `vX.Y.Z` tag using manual GitHub Actions OIDC staged publishing.
 **The GitHub workflow only stages a release; npm 2FA approval publishes it.**
 
+## Verification
+
+Use Node.js 24+, pnpm 11.2.2 and the committed lockfile. Run the full
+release suite on the exact reviewed revision:
+
+~~~sh
+pnpm install --frozen-lockfile
+pnpm audit:source
+pnpm typecheck
+pnpm preview:typecheck
+pnpm preview:build
+pnpm test:run
+pnpm exec playwright install chromium
+pnpm test:browser:run
+pnpm build
+pnpm audit:licenses
+pnpm audit:pack
+pnpm audit:browser
+pnpm audit:frameworks
+pnpm audit:markdown-hosts
+~~~
+
+For Firefox and WebKit verification, install the browser binaries and run
+`THROUGHLINE_QA_BROWSER=firefox pnpm test:browser:run` and
+`THROUGHLINE_QA_BROWSER=webkit pnpm test:browser:run`. Verify the final CI
+results and the packed tarball, not just a successful TypeScript build.
+
+Validate browser/device appearance, keyboard and screen-reader interactions,
+200%/400% zoom, reduced motion and opt-in speech/sound on the supported
+platforms. Maintain recorded acceptance evidence for any release-specific
+performance, comprehension or documentation-application integration
+requirements. These checks are not replaced by mocked or fixture-only tests.
+
 ## Release checklist
 
-1. Confirm source ownership, third-party licenses, security reporting,
-   public Git-history safety and the final changelog. The repository's
-   earliest Git history contains a historical private planning reference.
-   This has already been exposed by public visibility; deleting files from
-   the latest tree does not erase old commits, forks or caches.
+1. Verify rights to distribute the source, applicable third-party notices,
+   security reporting, release acceptance, compatibility and the final
+   changelog. Review the public history for any sensitive references.
+   Historical exposure cannot be undone by deleting current-tree files.
 2. Update the version in `package.json` and document the changes in
-   `CHANGELOG.md`. Maintain the four public package exports and keep
+   `CHANGELOG.md`. Maintain the five public package exports and keep
    `Program.version` / `Trace.version` independent of npm SemVer.
-3. Run the source, TypeScript, unit, browser, build, license and packed
-   consumer checks described in `AGENTS.md`. Review the exact archive
-   contents. Merge the release PR after review and ensure main CI is green.
+3. Run the source, TypeScript, preview, Chromium/Firefox/WebKit browser,
+   build, license and packed consumer checks listed above.
+   Record the exact candidate SHA, CI runs and applicable manual review.
+   Review the exact archive contents. Merge the release PR after review and
+   ensure main CI is green.
 4. From a clean checkout with a signing key registered with GitHub, create
    and push an immutable signed tag **only after** the release commit is
-   merged. For version `0.0.2`:
+   merged. For version `0.1.0`:
 
    ~~~sh
    git switch main
    git pull --ff-only
-   git tag -s v0.0.2 -m "Throughline v0.0.2"
-   git tag -v v0.0.2
-   git push origin v0.0.2
+   git tag -s v0.1.0 -m "Throughline v0.1.0"
+   git tag -v v0.1.0
+   git push origin v0.1.0
    ~~~
 
    GitHub must show the tag as **Verified**. Protect `v*` tag updates and
    deletions. Do not move or reuse existing release tags.
 5. In [GitHub Actions](https://github.com/0xbuffdev/throughline/actions),
    run **Throughline npm release (staged with provenance)** from `main`.
-   Enter the exact signed tag (e.g. `v0.0.2`) and confirmation
-   `STAGE-v0.0.2`. The read-only verification job checks the signed tag,
+   Enter the exact signed tag (e.g. `v0.1.0`) and confirmation
+   `STAGE-v0.1.0`. The read-only verification job checks the signed tag,
    manifest, build, tests, packed consumers and archive SHA-256.
 6. Inspect the GitHub release artifact and approve the protected
    `npm-publish` environment job. Its **stage-only** Trusted Publisher
@@ -53,7 +87,7 @@ Each version is published from an immutable, GitHub-verified signed
    npm stage download <stage-id>
    ~~~
 
-   Confirm the exact version, contents and provenance, then approve
+   Confirm the exact version, contents and provenance, then, with final maintainer authorization, approve
    **that stage only** with npm account 2FA:
 
    ~~~sh
@@ -66,7 +100,7 @@ Each version is published from an immutable, GitHub-verified signed
    ~~~sh
    npm view @0xbuff/throughline version
    npm view @0xbuff/throughline dist-tags
-   npm view @0xbuff/throughline@0.0.2 version
+   npm view @0xbuff/throughline@0.1.0 version
    ~~~
 
    Check [npm's package page](https://www.npmjs.com/package/@0xbuff/throughline)

@@ -85,12 +85,8 @@ See `grammar.md`. No limits beyond the engine caps (200 entities,
 - Limits: factorial only, depth ≤ 6 (13 beats max). General calls,
   branches, and prediction are future adapters.
 
-## Planned (tier 2, lesson-on-demand)
+## Future domains
 
-Each is one `parse` + one `build()` on `tracer()`, ~100 lines with
-tests — transcription of the `visualizer/` reference computations, never
-bespoke SVG: `vectors` (dot-product geometry, SEF6), `gradient`
-(descent + finite-difference compare, SEF6/AI3), `search` (binary
-search, SEF3), `sort` (bubble/insertion, SEF3), `cache`/`race`/`tcp`
-(SYS1–SYS4 simulators). Workflows never need adapters: `flow` + the
-grammar covers them.
+Only the five domains above are supported. New computed adapters require a
+separate compatibility review, tests and documentation. Exploratory ideas
+are not part of the v0.1.0 public API.

@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { compile } from "../index.js";
 
-describe("public README quick start", () => {
-	it("compiles the exact hierarchy fence published in the README", () => {
-		const readme = readFileSync(new URL("../../README.md", import.meta.url), "utf8");
-		const section = readme.split("## Hierarchical groups and drill-down (TL-I14)")[1]?.split("## Supported domains")[0];
+describe("public documentation examples", () => {
+	it("compiles the exact hierarchy fence in the user guide", () => {
+		const guide = readFileSync(new URL("../../docs/user-guide.md", import.meta.url), "utf8");
+		const section = guide.split("## Hierarchical groups and drill-down")[1]?.split("## Supported domains")[0];
 		expect(section).toBeDefined();
 		const source = section?.match(/~~~thl flow\n[\s\S]*?\n~~~/)?.[0];
 		expect(source).toBeDefined();

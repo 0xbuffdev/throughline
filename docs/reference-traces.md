@@ -1,4 +1,4 @@
-# Sophisticated reference traces (TL-I06)
+# Reference traces
 
 The public `EXAMPLES` export contains two hand-authored `thl flow` teaching
 fixtures. They compile to version-1 traces; they do not execute React or a
@@ -85,22 +85,16 @@ At the observed **v0.0.2** implementation baseline:
   values are valid. Regression tests pin both behaviors independently.
 - `validateProgram` rejects unsupported `Program.version`; compilation
   emits `Trace.version = 1`.
-- **Reader compatibility boundary (TL-I16):** `ThroughlinePlayer` rejects unsupported `Trace.version` and missing `frames` arrays before reading playback state. This does not completely validate arbitrary untrusted, serialized snapshot content; the host must validate externally supplied trace data.
+- **Reader compatibility boundary:** `ThroughlinePlayer` rejects unsupported `Trace.version` and missing `frames` arrays before reading playback state. This does not completely validate arbitrary untrusted, serialized snapshot content; the host must validate externally supplied trace data.
 
-The new deterministic compilation, arbitrary-seeking, message-endpoint
-and browser-player regression tests are source-level acceptance evidence
-once they run in CI; the presence of tests alone is not a passing result.
+The test suites cover deterministic compilation, seeking, relation endpoints
+and browser-player rendering.
 
-## Present renderer limitations and follow-up work
+## Changes since v0.0.2
 
-The v0.0.2 player has flat lane/row/column/tree layouts, not nested
-collapse, pan/zoom, follow-active camera, or a dedicated scene-projection
-boundary. Its large scenarios can be harder to follow on narrow screens.
-The minimal player redesign is TL-I07; interaction/accessibility
-regressions are TL-I08; projection and guided navigation are later work.
-Do not describe these reference examples as evidence that those features
-already exist.
+The v0.0.2 player used flat layouts without nested collapse, pan/zoom,
+follow-active navigation or scene projection. Version 0.1.0 adds those
+presentation features while keeping the trace schema at version 1.
 
-These questions are the initial **comprehension baseline**, not results
-from a participant study. A measured comparison against equivalent static
-material remains the V-10 release evidence gate.
+These teaching questions are examples for comprehension testing, not
+measured participant-study results.
