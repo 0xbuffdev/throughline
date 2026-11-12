@@ -19,6 +19,6 @@ it("bounds browser utterance input without changing the compiled authored trace"
 	const speech = narrationText(trace.frames[1], trace);
 	expect(speech.length).toBeLessThanOrEqual(3000);
 	expect(speech).toContain("A very long note");
-	expect(speech.endsWith("...")).toBe(true);
+	expect(speech).toContain("Narration shortened. Read Details");
 	expect(trace).toEqual(before);
 });

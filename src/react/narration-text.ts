@@ -32,5 +32,6 @@ export function narrationText(frame: Frame, trace: Trace, guidance?: Throughline
 	// varying per-utterance limits. Keep one spoken step at a safe size.
 	const text = segments.filter(Boolean).join(". ").replace(/\s+/g, " ").trim();
 	if (text.length <= 3000) return text;
-	return text.slice(0, 2997).trimEnd() + "...";
+	const suffix = " Narration shortened. Read Details for the complete explanation.";
+	return text.slice(0, 3000 - suffix.length).trimEnd() + suffix;
 }

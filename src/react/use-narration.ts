@@ -7,6 +7,7 @@ type Session = {
 	step: number;
 	utterance: SpeechSynthesisUtterance;
 	ended: boolean;
+	failed: boolean;
 };
 
 type NarrationInput = {
@@ -70,7 +71,7 @@ export function useNarration({
 			const utterance = new SpeechSynthesisUtterance(state.text);
 			utterance.rate = state.speed;
 			const session: Session = {
-				trace: state.trace, step: state.step, utterance, ended: false,
+				trace: state.trace, step: state.step, utterance, ended: false, failed: false,
 			};
 			current.current = session;
 			utterance.onend = () => {
@@ -85,8 +86,9 @@ export function useNarration({
 			utterance.onerror = (event) => {
 				if (current.current !== session) return;
 				session.ended = true;
+				session.failed = true;
 				if (event.error === "canceled" || event.error === "interrupted") return;
-				setError("Speech could not play (" + event.error + "). Choose another browser voice or disable narration.");
+				setError("Speech could not play (" + event.error + "). Turn narration off and on to retry.");
 				latest.current.dispatch({ type: "pause" });
 			};
 			setError(null);
@@ -126,7 +128,9 @@ export function useNarration({
 		if (!playing && !voice.ended) {
 			try { engine.pause(); } catch { /* Preserve player transport. */ }
 		} else if (playing) {
-			if (voice.ended) {
+			if (voice.failed) {
+				dispatch({ type: "pause" });
+			} else if (voice.ended) {
 				dispatch({ type: "tick" });
 			} else {
 				try { engine.resume(); } catch {

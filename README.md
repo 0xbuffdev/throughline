@@ -256,6 +256,8 @@ activation speaks the current authored step from a user gesture using
 the browser's Speech Synthesis API. It reads the authored step label,
 notes, matching chapter and causal explanation, and transfer summaries.
 It does not invent responses, state changes or causal explanations.
+Very long utterances are shortened with an explicit spoken notice; the
+full authored text remains available in Details.
 
 With narration enabled, **Play advances only after speech finishes**.
 Pause pauses the current voice; Play resumes it. Manual seeking or
