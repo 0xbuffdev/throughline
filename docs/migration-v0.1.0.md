@@ -1,7 +1,7 @@
 # Upgrading Throughline from v0.0.2 to v0.1.0
 
-**v0.1.0 is a pending release, not an installable version yet.**
-Use these steps only after the reviewed tag and npm publication are verified.
+This guide describes the upgrade from the previously published v0.0.2.
+Verify that v0.1.0 is available on npm before installing it.
 `Program.version` and `Trace.version` remain `1`, but npm SemVer
 is separate from the trace schema and visual/API compatibility still matters.
 
@@ -78,7 +78,7 @@ Validate external JSON at the host boundary or compile bounded source.
 
 Before changing production documentation or other consumers, compare
 actual example output and interactions against the pinned v0.0.2
-baseline, confirm the [release readiness gates](release-readiness-v0.1.0.md)
+baseline, review the [release procedure](releasing.md)
 and take a rollback snapshot of dependency locks and host configuration.
 Keep the previous working package version pinned until v0.1.0 is
 explicitly approved and verified. If integration fails, revert the

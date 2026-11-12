@@ -1,28 +1,30 @@
 # Throughline documentation
 
-The [repository README](../README.md) covers installation, exports, a quick
-start and the local visual playground. The files below distinguish published
-behavior from features present only in the v0.1.0 source candidate.
+Start with the [README](../README.md) to install Throughline, compile a trace
+and render it with the optional React player.
 
-## Authoring and integration
+## Using Throughline
 
-- [Grammar](grammar.md): hand-authored `thl flow` and validation limits.
-- [Domain catalog](catalog.md): the five supported domains.
-- [Adapter authoring](authoring.md): guidance for extending computed domains.
-- [Architecture](architecture.md): compiler, projection, optional React player and trust boundaries.
-- [Reference traces](reference-traces.md): example semantics and version boundaries.
-- [v0.1.0 migration](migration-v0.1.0.md): compatibility and consumer upgrade checks.
-- [Framework integrations](framework-integrations.md): source-candidate Remark/MDX and host integration; **not currently published v0.0.2 instructions**.
+- [User guide](user-guide.md): player behavior, theme tokens, accessibility,
+  navigation, narration, scenarios, Remark and MDX.
+- [Flow grammar](grammar.md): source syntax, step operations, limits and
+  diagnostics.
+- [Domain catalog](catalog.md): flow, bindings, binary, matrix and callstack.
+- [Framework integration](framework-integrations.md): Fumadocs, Next.js,
+  Astro and other Markdown renderers.
+- [Reference traces](reference-traces.md): reconciliation and distributed
+  checkout examples.
 
-## Release evidence (not authorization)
+## Development and releases
 
-- [v0.1.0 readiness](release-readiness-v0.1.0.md): automation, outstanding acceptance criteria and release/rollback plan.
-- [Draft v0.1.0 release notes](release-notes-v0.1.0.md): user-facing feature summary, not a published release.
-- [Hardening](release-hardening.md): verification map, source safety and manual gates.
-- [Post-v0.0.2 QA](release-qa-post-v0.0.2.md): historical pre-fix assessment and the later WebKit fix.
+- [Architecture](architecture.md): compiler, trace model, presentation and
+  trust boundaries.
+- [Adapter authoring](authoring.md): building optional computed domains.
+- [Release procedure](releasing.md): exact verification commands, signing,
+  staged publication and post-release checks.
+- [v0.1.0 release notes](release-notes-v0.1.0.md) and
+  [migration guide](migration-v0.1.0.md).
 
-Support, contribution and the maintainer's signed-tag/staged-release procedure
-are consolidated in [CONTRIBUTING.md](../CONTRIBUTING.md).
-Report vulnerabilities via [SECURITY.md](../SECURITY.md).
-The source-backed [playground](../playground/) remains available through
-`pnpm dev` and is excluded from the npm package archive.
+For contributions and support, use [CONTRIBUTING.md](../CONTRIBUTING.md).
+For private vulnerability reports, follow [SECURITY.md](../SECURITY.md).
+The development-only [playground](../playground/) runs with `pnpm dev`.

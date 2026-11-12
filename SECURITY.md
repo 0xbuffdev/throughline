@@ -17,8 +17,7 @@ If that option is unavailable, open a brief issue asking for a confidential
 reporting channel **without including the vulnerability details**.
 
 Include the affected package version, impact, reproduction steps and
-mitigations only through a private channel. The sole maintainer coordinates
-investigation and disclosure as availability permits. No response-time or
+mitigations only through a private channel. Reports are triaged privately as capacity permits. No response-time or
 bug-bounty guarantee is offered.
 
 Security concerns include unsafe rendering of authored text, unintended code

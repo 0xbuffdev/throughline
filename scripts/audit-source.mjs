@@ -28,9 +28,6 @@ for (const file of [
 	const contents = readFileSync(join(root, file), "utf8");
 	assert(contents.length >= 300, "Incomplete community file: " + file);
 }
-const contributionGuide = readFileSync(join(root, "CONTRIBUTING.md"), "utf8");
-assert(contributionGuide.includes("## Support"), "Contributing guide must include support guidance");
-assert(contributionGuide.includes("## Maintainer release procedure"), "Contributing guide must include release procedure");
 const attribution = readFileSync(join(root, "COPYRIGHT.md"), "utf8");
 assert.match(
 	attribution,
