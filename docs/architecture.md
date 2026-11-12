@@ -60,6 +60,23 @@ uses this internal boundary without adding a package export, trace schema,
 viewport control, or public selection API. Pan/zoom, automatic camera
 following and user-driven collapse are not part of TL-I12.
 
+## Optional spoken explanation
+
+The React-only narration controller synthesizes authored caption text
+(frame label, notes, guided chapter/causal content and explicit sends).
+No new trace event or compiler schema is introduced.
+
+While narration is enabled, speech completion drives playback ticks
+instead of a fixed interval. Only the active utterance may advance
+the selected trace; seeking invalidates stale callbacks. Pause/resume
+controls the voice, and unavailable or failed synthesis pauses the
+narration clock with an accessible error. When narration is disabled,
+the existing timed playback returns. Step tones remain independent.
+
+Browser speechSynthesis is a shared page resource; applications using
+other text-to-speech output must coordinate ownership. Some voices
+may use browser-managed remote services.
+
 ## Footer layout and bounded explanations
 
 The React player composes its navigation, chapter selection, timeline,

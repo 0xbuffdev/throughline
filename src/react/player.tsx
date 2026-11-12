@@ -10,6 +10,8 @@ import type { SonificationOptions } from "../sonify.js";
 import { PlayerCaption } from "./caption.js";
 import { PlayerGuidanceControls, validateGuidance, type ThroughlineGuidance } from "./guidance.js";
 import { PlayerControls } from "./controls.js";
+import { narrationText } from "./narration-text.js";
+import { useNarration } from "./use-narration.js";
 import { ViewportScene } from "./viewport.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
 import { useSound } from "./use-sound.js";
@@ -22,6 +24,8 @@ export interface ThroughlinePlayerProps {
 	theme?: "light" | "dark" | "auto";
 	/** Omit to remove audio controls entirely. */
 	sonification?: SonificationOptions;
+	/** Opt in to the browser caption-narration toggle; muted until user activation. */
+	narration?: boolean;
 	/** Optional, explicitly authored, trace-scoped chapters and causal evidence. */
 	guidance?: ThroughlineGuidance;
 }
@@ -32,6 +36,7 @@ export function ThroughlinePlayer({
 	className,
 	theme = "auto",
 	sonification,
+	narration = false,
 	guidance,
 }: ThroughlinePlayerProps): React.JSX.Element {
 	// Check the reader version before any hook inspects a serialized trace.
@@ -41,7 +46,8 @@ export function ThroughlinePlayer({
 	const ref = useRef<HTMLDivElement>(null);
 	const sceneRef = useRef<HTMLDivElement>(null);
 	const width = useSceneWidth(sceneRef);
-	const { state, dispatch, lastAction, onKeyDown } = usePlayer(trace);
+	const [narrating, setNarrating] = useState(false);
+	const { state, dispatch, lastAction, onKeyDown } = usePlayer(trace, narrating);
 	const [sound, setSound] = useState(sonification?.enabled ?? false);
 	const [fullscreen, setFullscreen] = useState(false);
 	const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
@@ -65,6 +71,12 @@ export function ThroughlinePlayer({
 	const captionId = useId();
 	const keyboardHelpId = useId();
 	const frame = trace.frames[state.step] ?? trace.frames[0];
+	const spokenText = frame ? narrationText(frame, trace, guidance) : "";
+	const voice = useNarration({
+		trace, step: state.step, text: spokenText, speed: state.speed,
+		playing: state.playing, enabled: narrating, setEnabled: setNarrating,
+		dispatch, offered: narration && !!frame,
+	});
 
 	useEffect(() => {
 		const syncFullscreen = () => {
@@ -148,6 +160,7 @@ export function ThroughlinePlayer({
 			<p role="status" aria-atomic="true" className="thl-sr-only">
 				{summary}
 			</p>
+			{voice.error && narration && <p role="alert" className="thl-narration-error">{voice.error}</p>}
 			{fullscreenError && (
 				<p role="alert" className="thl-sr-only">
 					{fullscreenError}
@@ -189,6 +202,11 @@ export function ThroughlinePlayer({
 						<PlayerControls
 							state={state}
 							dispatch={dispatch}
+							narration={narration ? {
+								enabled: narrating,
+								available: voice.available,
+								toggle: voice.toggle,
+							} : undefined}
 							sound={
 								sonification
 									? { enabled: sound, toggle: () => setSound((enabled) => !enabled) }

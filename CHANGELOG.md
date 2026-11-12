@@ -5,6 +5,12 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Added (opt-in caption narration)
+
+- Offer muted-by-default browser caption narration separately from step tones, using speech-synchronized playback without new runtime dependencies.
+- Pause/resume speaking with playback; cancel on seek, scenario change and unmount; preserve the original timer when narration is off.
+
+
 ### Changed (development preview sound)
 
 - Expose the existing opt-in Web Audio speaker control in every local playground example and scenario comparison, initially muted. No default audio in the published React player and no new audio dependencies.

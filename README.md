@@ -247,6 +247,29 @@ from the diagram. The screen-reader step announcement remains active
 regardless of whether the disclosure is expanded. Details remain open
 between steps until closed, without changing playback state.
 
+## Opt-in caption narration
+
+The optional React-only `narration` prop exposes a **Narrate captions**
+button next to the independent `sonification` sound-effects toggle.
+The button is **off initially**, even when a host offers it. Its first
+activation speaks the current authored step from a user gesture using
+the browser's Speech Synthesis API. It reads the authored step label,
+notes, matching chapter and causal explanation, and transfer summaries.
+It does not invent responses, state changes or causal explanations.
+
+With narration enabled, **Play advances only after speech finishes**.
+Pause pauses the current voice; Play resumes it. Manual seeking or
+stepping cancels the previous voice and narrates the selected step.
+Switching scenarios cancels the old voice and starts muted. Disabling
+narration returns to timed playback and leaves step tones independent.
+Playback speed applies to the next utterance, not the current one.
+
+Speech voices, available hardware, and user-activation policies depend
+on the browser and OS. The button is disabled where speech synthesis is
+unavailable; speech errors pause synchronized playback and are announced.
+No text is uploaded by Throughline, but the browser may use a network
+speech service. The core stays React- and browser-independent.
+
 ## Persistent workflow progress
 
 The React player retains a cumulative trail through the **selected** step.

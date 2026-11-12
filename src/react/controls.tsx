@@ -10,6 +10,7 @@ interface PlayerControlsProps {
 	state: SeekState;
 	dispatch: React.Dispatch<SeekAction>;
 	sound?: { enabled: boolean; toggle: () => void };
+	narration?: { enabled: boolean; available: boolean; toggle: () => void };
 	fullscreen: { active: boolean; available: boolean; toggle: () => void };
 }
 
@@ -17,6 +18,7 @@ export function PlayerControls({
 	state,
 	dispatch,
 	sound,
+	narration,
 	fullscreen,
 }: PlayerControlsProps): React.JSX.Element {
 	return (
@@ -118,6 +120,22 @@ export function PlayerControls({
 							) : (
 								<path d="m17 9 5 6m0-6-5 6" />
 							)}
+						</svg>
+					</button>
+				)}
+				{narration && (
+					<button
+						type="button"
+						className="thl-narration"
+						aria-label="Narrate captions"
+						title={narration.available ? (narration.enabled ? "Stop narration" : "Read captions aloud") : "Narration unavailable"}
+						aria-pressed={narration.enabled}
+						disabled={!narration.available}
+						onClick={narration.toggle}
+					>
+						<svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+							<path d="M4 7h9M4 12h7M4 17h8" />
+							<path d="M17 8a4 4 0 0 1 0 8M19 5a8 8 0 0 1 0 14" />
 						</svg>
 					</button>
 				)}

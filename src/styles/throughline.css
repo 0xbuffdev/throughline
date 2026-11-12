@@ -563,7 +563,9 @@
 	stroke-linecap: round;
 	stroke-linejoin: round;
 }
-.thl-controls .thl-sound[aria-pressed="true"] { color: var(--thl-focus); background: var(--thl-focus-bg); }
+.thl-controls .thl-sound[aria-pressed="true"],
+.thl-controls .thl-narration[aria-pressed="true"] { color: var(--thl-focus); background: var(--thl-focus-bg); }
+.thl-narration-error { margin: 0; font-size: 0.8125rem; color: var(--thl-change); }
 .thl-timeline {
 	appearance: none;
 	display: block;

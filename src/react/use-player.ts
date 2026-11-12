@@ -10,7 +10,7 @@ import {
 	stepDelayMs,
 } from "../seek.js";
 
-export function usePlayer(trace: Trace): {
+export function usePlayer(trace: Trace, externalClock = false): {
 	state: SeekState;
 	dispatch: React.Dispatch<SeekAction>;
 	lastAction: SeekAction | null;
@@ -35,13 +35,13 @@ export function usePlayer(trace: Trace): {
 		dispatch({ type: "reset", max: Math.max(0, trace.frames.length - 1) });
 	}
 	useEffect(() => {
-		if (!state.playing) return;
+		if (!state.playing || externalClock) return;
 		const timer = setInterval(
 			() => dispatch({ type: "tick" }),
 			stepDelayMs(BASE_STEP_MS, state.speed),
 		);
 		return () => clearInterval(timer);
-	}, [state.playing, state.speed]);
+	}, [state.playing, state.speed, externalClock]);
 	const onKeyDown: React.KeyboardEventHandler = (event) => {
 		if (event.target !== event.currentTarget) return;
 		if (["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)) {

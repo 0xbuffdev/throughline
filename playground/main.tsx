@@ -90,6 +90,7 @@ function App() {
 							scenarios={scenarios}
 							initialScenarioId="retry-recovery"
 							theme={theme}
+							narration
 							sonification={{}}
 						/>
 					) : current ? (
@@ -99,6 +100,7 @@ function App() {
 							title={current.title}
 							theme={theme}
 							sonification={{}}
+							narration
 							guidance={current.id === "distributed-checkout" ? CHECKOUT_GUIDANCE : undefined}
 						/>
 					) : null}
@@ -110,7 +112,10 @@ function App() {
 				</details>
 				<p className="preview-footnote">
 					Use the player controls to step, pan, zoom, collapse groups, inspect state
-					and switch outcomes. Sound is available in every example: select the speaker
+					and switch outcomes. Narration is available in every example:
+					select Narrate captions to hear the authored explanation.
+					Play waits for speech to finish before advancing. The separate
+					step-tone sound control is still available: select the speaker
 					icon to unmute, then Play or step forward to hear short synthesized tones.
 					It starts muted and does not narrate the workflow. Resize the browser or
 					choose the 375px view to find layout problems. Changes to the source reload
