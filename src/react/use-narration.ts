@@ -75,7 +75,7 @@ export function useNarration({
 			};
 			current.current = session;
 			utterance.onend = () => {
-				if (current.current !== session) return;
+				if (current.current !== session || session.failed) return;
 				session.ended = true;
 				const next = latest.current;
 				if (next.enabled && next.trace === session.trace &&

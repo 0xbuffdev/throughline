@@ -123,3 +123,37 @@ it("resets speech control and invalidates old voices on independent scenario cha
 	expect(speech.voices).toHaveLength(1);
 	expect(speech.synth.cancel).toHaveBeenCalled();
 });
+
+it("holds the current step after a speech failure instead of treating failure as completion", async () => {
+	const speech = speechBoundary();
+	const screen = await render(<ThroughlinePlayer trace={trace} narration />);
+	const button = screen.getByRole("button", { name: "Narrate captions" });
+	await button.click();
+	speech.voices[0].onerror?.({ error: "not-allowed" });
+	await expect.element(screen.getByRole("alert")).toHaveTextContent("Turn narration off and on to retry.");
+	await screen.getByRole("button", { name: "Play", exact: true }).click();
+	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 3");
+	speech.voices[0].onend?.();
+	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 3");
+	await button.click();
+	await button.click();
+	expect(speech.voices).toHaveLength(2);
+});
+
+it("preserves mobile touch controls when narration and sound effects are both offered", async () => {
+	const { page } = await import("vitest/browser");
+	await page.viewport(320, 750);
+	speechBoundary();
+	const screen = await render(<ThroughlinePlayer trace={trace} narration sonification={{}} />);
+	await expect.element(screen.getByRole("button", { name: "Narrate captions" })).toBeEnabled();
+	const player = document.querySelector<HTMLElement>(".thl")!;
+	const controls = document.querySelector<HTMLElement>(".thl-controls")!;
+	const bounds = controls.getBoundingClientRect();
+	expect(player.scrollWidth).toBeLessThanOrEqual(player.clientWidth);
+	for (const item of controls.querySelectorAll<HTMLElement>("button, select, input")) {
+		const rect = item.getBoundingClientRect();
+		expect(rect.left).toBeGreaterThanOrEqual(bounds.left - 1);
+		expect(rect.right).toBeLessThanOrEqual(bounds.right + 1);
+	}
+	expect(screen.getByRole("button", { name: "Narrate captions" }).element().getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
+});
