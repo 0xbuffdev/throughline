@@ -1,7 +1,7 @@
 # Release-candidate verification — changes after v0.0.2
 
 **Assessment date:** 2026-11-12  
-**Outcome:** **INCONCLUSIVE — release acceptance is not established.**  
+**Outcome:** **FAIL — one repeatable WebKit layout assertion fails and release acceptance is not established.**  
 **Execution boundary:** Verification and test tooling only. No production fix, merge, release, npm stage, tag, or approval.
 
 ## 1. Exact scope
@@ -31,10 +31,12 @@ The exact candidate commit has a **successful GitHub Actions push run**, [Throug
 | Packed Vite React SSR/hydration, keyboard/touch/mobile | Passed |
 | Isolated Fumadocs, Next.js and Astro consumers | Passed |
 | `react-markdown`, `mdx-bundler`, `markdown-to-jsx` consumers | Passed |
-| Firefox and WebKit browser regression suites | **Not established at report creation; see QA workflow on this PR** |
+| Firefox full browser regression suite | **82 passed, 14 files** — [QA matrix #43214005524](https://github.com/0xbuffdev/throughline/actions/runs/43214005524), twice | 
+| WebKit full browser regression suite | **81 passed, 1 failed** — same matrix, **two executions** both fail with a 56px toolbar exceeding the existing \`<55px\` assertion | 
+| QA branch normal unit/Chromium/packed CI | **Passed** — [PR CI #43214005254](https://github.com/0xbuffdev/throughline/actions/runs/43214005254) |
 | Real audio output, physical devices, screen readers, real documentation app | **Not executed / not evidenced here** |
 
-**Provenance:** The checks above were executed by the linked CI runner, not in a separate local checkout. The local execution environment had no route to clone GitHub or install repository dependencies; no unexecuted command is counted as a pass. The additional browser workflow in this PR runs the **same 82-test suite** under Firefox/WebKit on GitHub-hosted runners; verify its actual conclusions before updating this record.
+**Provenance:** The checks above were executed by the linked CI runner, not in a separate local checkout. The local execution environment had no route to clone GitHub or install repository dependencies; no unexecuted command is counted as a pass. The additional QA matrix ran the **same 82-test suite** under Firefox/WebKit; the WebKit failure was reproduced on the rerun, not waived.
 
 ## 3. Acceptance coverage and limitations
 
@@ -58,7 +60,7 @@ The exact candidate commit has a **successful GitHub Actions push run**, [Throug
 
 **QA-03 — P1 / integration gate:** Locked fixture builds do not verify the actual documentation application, its plugin order, rendered MDX pages and React bridge. The separately owned documentation integration is required before claiming end-to-end docs acceptance.
 
-**QA-04 — P2 / browser coverage:** Initial green CI ran Chromium only. This PR adds an opt-in browser selector and independent Firefox/WebKit matrix over the **existing full browser suite**. CI execution on the PR must be inspected; an installed browser or a triggered workflow alone does not constitute a pass.
+**QA-04 — P2 / reproduced cross-browser toolbar-layout assertion (failed):** On Linux GitHub Actions WebKit 27.2 with the 1,600 × 900 viewport, \`src/react/__tests__/toolbar.browser.test.tsx:30\` fails \`expect(bottom.getBoundingClientRect().height).toBeLessThan(55)\`: **observed 56px**. Steps: (1) checkout QA branch \`05fefb6\` with Node 24/pnpm 11.2.2, (2) \`pnpm install --frozen-lockfile\`, (3) \`pnpm exec playwright install --with-deps webkit\`, (4) \`THROUGHLINE_QA_BROWSER=webkit pnpm test:browser:run\`. Both independent workflow attempts gave **81/82 passed and this same failure**: [release-browser run #43214005524](https://github.com/0xbuffdev/throughline/actions/runs/43214005524). Firefox gave **82/82 passed** in both attempts. This is a real, repeatable **test failure**; its cause may be a WebKit-native control metric vs. intended CSS spacing. The assertion alone does not prove overlap, clipping or an accessibility violation. Inspect the WebKit screenshot and component/control geometry and determine whether CSS should be corrected or the strict pixel assumption is unsupported. Do **not** relax the check merely to make CI green.
 
 **QA-05 — P2 / performance evidence:** Existing single-run layout/heap diagnostics do not establish repeatable thresholds. Collect warm and cold samples on fixed hardware, at small/moderate/near-limit graph sizes and 320/720px widths. Record median, tail, heap, layout crossings and version deltas; investigate meaningful regressions before setting a gate.
 
@@ -66,7 +68,7 @@ The exact candidate commit has a **successful GitHub Actions push run**, [Throug
 
 **QA-07 — P1 / source-history and publication gate:** Historical public-source references and distribution rights must be reviewed separately. Update SemVer/changelog, verify package archive, and follow the signed-tag/manual staged-publication process only after authorized review. The published `0.0.2` version cannot be reused for a new package.
 
-These findings describe **unclosed verification/release gates**. The checks inspected did not establish a reproducible regression defect in the reviewed candidate. **Do not infer absence of defects from passing tests.**
+The WebKit cross-browser check is **reproducibly failing**, while the remaining items are **unclosed verification/release gates**. The source and logs do not yet establish the WebKit discrepancy as a user-visible layout defect rather than a too-strict test assertion; it must be triaged. **Do not infer absence of defects from passing tests.**
 
 ## 5. Reproducible retest instructions
 
@@ -99,4 +101,4 @@ For reproducible bugs, record the fixture, preconditions, numbered actions, expe
 
 ## 6. Decision and next actions
 
-**Result: INCONCLUSIVE / NOT CLEARED FOR RELEASE.** The candidate's standard CI is green. The extra cross-browser checks and manual/human/integration/performance/governance gates have no completed evidence in this report. Review the QA workflow outcomes, address any defects on separate production-fix PRs, retest the exact new revision, and close or explicitly re-scope the remaining gates through maintainer review before preparing a signed package release. This QA PR does not approve, merge or publish anything.
+**Result: FAIL / NOT CLEARED FOR RELEASE.** The candidate's standard CI and Firefox browser suite are green, but **the WebKit 56px vs. <55px check failed twice**. The manual/human/integration/performance/governance gates remain unclosed. Triage the discrepancy on its merits, fix confirmed product defects on separate production-fix PRs if needed, and retest the exact new revision. Close or explicitly re-scope the remaining gates through maintainer review before preparing a signed package release. This QA PR does not approve, merge or publish anything.
