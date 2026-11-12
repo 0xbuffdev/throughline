@@ -12,6 +12,15 @@ No additional changes since the v0.1.0 candidate.
 This version has not been published to npm. Review the
 [release readiness gates](docs/release-readiness-v0.1.0.md) before publication.
 
+### Release preparation
+
+- Consolidate contributor support and signed-tag/staged-publication procedures
+  in `CONTRIBUTING.md`, keeping the separate security and copyright notices.
+- Audit documentation, retain the source-backed playground, add npm/CI badges
+  and record remaining v0.1.0 acceptance criteria.
+- Align release verification with all five public exports and the independent
+  packed framework and Markdown-host audits.
+
 ### Fixed (cross-browser toolbar)
 
 - Keep the wide playback toolbar compact in WebKit without constraining native selector height; verify the compact bar still encloses every control across browser engines.
@@ -118,7 +127,7 @@ This version has not been published to npm. Review the
 ### Compatibility
 
 - Program and trace schemas remain version 1; old compilers reject the new opt-in syntax, and old players may show hierarchical traces as flat groups.
-- Merge of the source changes is blocked on approval of the separate group-model compatibility ADR in `context`.
+- The implementation is merged, but group-model compatibility still requires explicit release acceptance; approval does not follow automatically from merge.
 
 
 

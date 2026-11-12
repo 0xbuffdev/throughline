@@ -104,12 +104,13 @@ Each version is published from an immutable, GitHub-verified signed
    This has already been exposed by public visibility; deleting files from
    the latest tree does not erase old commits, forks or caches.
 2. Update the version in `package.json` and document the changes in
-   `CHANGELOG.md`. Maintain the four public package exports and keep
+   `CHANGELOG.md`. Maintain the five public package exports and keep
    `Program.version` / `Trace.version` independent of npm SemVer.
 3. Run the source, TypeScript, preview, Chromium/Firefox/WebKit browser,
    build, license and packed consumer checks described in `AGENTS.md`.
-   Record the exact candidate SHA, CI runs and applicable manual review. Review the exact archive
-   contents. Merge the release PR after review and ensure main CI is green.
+   Record the exact candidate SHA, CI runs and applicable manual review.
+   Review the exact archive contents. Merge the release PR after review and
+   ensure main CI is green.
 4. From a clean checkout with a signing key registered with GitHub, create
    and push an immutable signed tag **only after** the release commit is
    merged. For version `0.1.0`:

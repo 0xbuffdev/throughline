@@ -8,7 +8,6 @@ on:
         description: "GitHub-verified signed release tag"
         type: string
         required: true
-        default: v0.1.0
       confirmation:
         description: "Enter STAGE-<tag>, for example STAGE-v0.0.2"
         type: string
