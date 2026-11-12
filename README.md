@@ -29,6 +29,52 @@ or application-specific runtime.
 - **Complex reference traces:** inspect keyed React reconciliation and a
   distributed checkout with a lost acknowledgement, retry and recovery.
 
+## Preview the current React player locally
+
+The development-only Vite playground loads **this checkout's source files**,
+not the last published npm package. It lets maintainers inspect real behavior
+before approving a release. The app is not included in the npm archive and
+does not require deployment or an account.
+
+Use Node.js 24+ and pnpm 11.2.2:
+
+~~~sh
+pnpm install --frozen-lockfile
+pnpm dev
+~~~
+
+Open **http://localhost:5173** in a browser. Choose Reconciliation,
+Shared references, Matrix, Distributed checkout, or **Compare checkout
+outcomes**; switch the player between light/dark/system, then between full
+width and a 375px mobile viewport. The checkout comparison starts with the
+retry/recovery scenario and offers successful and terminal-failure outcomes.
+Expand **View authored trace source** to check the exact events on display.
+The preview provides the player's opt-in sound control for **every example
+and scenario comparison**. Select the speaker icon labeled **Sonify trace**
+to unmute, then press Play or Step forward: each step produces a short
+Web Audio oscillator tone, not speech. Sound starts **muted** until clicked;
+you can mute it again at any time. Some browsers block audio until a user
+gesture, and audio availability and output volume depend on the browser
+and device. This opt-in is scoped to the development preview: package
+consumers still choose whether to supply `sonification` at all.
+
+For a remote development environment (e.g. GitHub Codespaces), start
+\`pnpm dev --host 0.0.0.0\` and use the environment's forwarded port 5173
+rather than treating localhost on your own computer as the remote server.
+Keep forwarded access private while reviewing traces. If running from the
+unmerged preview branch, check out \`feat/local-player-preview\` first.
+
+~~~sh
+pnpm preview:typecheck
+pnpm preview:build
+~~~
+
+These checks typecheck and bundle the *preview*, independently of the library
+build and normal compiler/browser tests. Nothing here creates a Git tag,
+publishes to npm, or deploys documentation. A browser visual/manual
+accessibility review is still required; build and automated browser tests
+cannot attest to visual correctness.
+
 ## Installation
 
 Install the package from npm:
@@ -96,10 +142,14 @@ accepts an optional `title` (omitted when absent), and `light`, `dark` or
 `auto` themes. The borderless, pale-light/charcoal-dark shell centers the
 visualization above a caption with an exact `Step N of M` indicator and a
 bottom control bar. Playback is **step-based**: there is no invented media
-time. The optional state inspector remains in the caption.
+time. The optional state inspector and authored causal explanations remain in the caption; chapter navigation and all player navigation/transport controls sit below it.
 
-The shell's default `--thl-radius` is `0.325rem` and node outline width is
-`--thl-node-border-width: 0.125rem`. Host overrides are scoped to the
+The shell, group boxes, nodes, cells and form inputs use a compact default
+`--thl-radius: 0.125rem` (2px at a 16px root font size), with 0.5rem inner
+spacing and 1.5rem player padding. Node strokes default to
+`--thl-node-border-width: 1.25px`. Icon-only buttons have no visible boxes,
+but retain at least 2.5rem interactive targets and visible keyboard focus.
+ Host overrides are scoped to the
 player; for example, with `className="my-trace"` and a stylesheet loaded
 after the package CSS:
 
@@ -111,8 +161,21 @@ after the package CSS:
 ~~~
 
 The `--thl-bg`, `--thl-panel`, `--thl-surface`, `--thl-text`,
-`--thl-muted`, `--thl-line`, `--thl-focus`, `--thl-change` and
-control tokens belong to the player, not the host's `:root` or `.dark`.
+`--thl-muted`, `--thl-line`, `--thl-focus`, `--thl-change`, `--thl-change-bg`,
+`--thl-active`, `--thl-trail`, `--thl-trail-bg` and control tokens belong to the player, not the host's `:root` or `.dark`.
+
+The shell and its text are neutral; only state-carrying marks take a hue.
+`--thl-active` colors what happens in the current step (the sending arrow,
+its label and the Play button), `--thl-trail` is the same hue family washed
+out for history, and `--thl-change` is the only warm color, reserved for
+changed values. Dashed outlines mean structure (collapsed, revealed or
+aggregate), never selection: a selected node and the keyboard-focused node
+are marked by an outer ring.
+
+Motion timing follows the step interval. The player sets `--thl-step-ms` on
+its root (1500ms at 1x, 750ms at 2x) and the draw and flash durations derive
+from it. A host can override `--thl-draw-ms` and `--thl-flash-ms` on `.thl`
+like any other token.
 
 The bottom-right **Maximize player** button enters native browser fullscreen
 and changes to **Minimize player** while active, including when fullscreen
@@ -134,8 +197,11 @@ Playback starts paused at the first frame. Changing to a different trace
 object resets the step, playback and speed; passing a stable trace object
 during ordinary renders avoids unnecessary resets. The timeline describes
 **steps**, not elapsed media time. At narrow widths the controls rearrange
-without a separate horizontal scroll area. Transfer animations are disabled
-under `prefers-reduced-motion: reduce`.
+without a separate horizontal scroll area. Motion is declared only under
+`prefers-reduced-motion: no-preference` and plays only when a step is reached
+by one forward step (play, or Step forward): the sending arrow draws, its
+arrowhead lands, then a changed value flashes. Seeking the timeline,
+rewinding or replacing the trace shows the settled frame immediately.
 
 Sound is off by default, and the host must provide a `sonification` option
 before the user can enable it. A host can explicitly start enabled using
@@ -157,9 +223,57 @@ source with `compile`.
 The hardening test and release-evidence scope are documented in
 [release-hardening](docs/release-hardening.md).
 
+## Responsive controls and step detail
+
+The optional title has 0.75rem of space before the visualization, and the
+footer adds a small 0.25rem offset after the stage's existing gap. These
+separations keep the graph distinct from both its heading and controls.
+
+
+The React player keeps the navigation and transport immediately beneath
+the diagram in one aligned toolbar on wide layouts. Container queries
+reflow the toolbar into two rows at intermediate widths and compact
+touch-sized controls at mobile widths. Desktop icons render at 14px,
+while the icon-button hit area stays 34px, increasing to 40px on
+mobile. Native selects use 0.125rem corners and 0.5rem padding.
+
+The authored caption now follows the toolbar as a native **Details**
+disclosure. Its closed header shows the step title, a single-line
+preview of the note, and the step counter. Open Details to read the
+complete note, transfers, optional causal evidence, and the state
+inspector. The detailed content has its own bounded scroll area so
+long author-provided explanations cannot push the controls away
+from the diagram. The screen-reader step announcement remains active
+regardless of whether the disclosure is expanded. Details remain open
+between steps until closed, without changing playback state.
+
+## Persistent workflow progress
+
+The React player retains a cumulative trail through the **selected** step.
+Focused or explicitly written nodes and endpoints of authored sends stay
+highlighted, along with arrows that have actually transferred an authored
+message. The **current arrow itself** draws when a send occurs; there is
+no second path painted on top of it. The newest focus and data changes
+still have stronger emphasis than previous activity.
+
+Only an explicit `send` highlights a message path. For instance, setting
+a server status **does not** highlight the response link until a separate
+authored response send occurs. A `show link` marks a structural connection
+with a dashed style, not a delivery. Highlighting an endpoint means it
+participated in the authored sequence; it does not imply that a request
+was accepted or that the destination persisted data.
+
+The trail is derived from the compiled trace at each seek position.
+Rewinding removes future progress; replaying restores it. Hidden nodes and
+links stay hidden; collapsed groups retain original relation provenance
+and distinguish partial aggregates. Switching scenarios or replacing
+the trace resets the progression. Reduced-motion preferences retain
+a fully highlighted arrow without drawing animation or value flashes. Screen readers
+get an authored-progress count with the current step.
+
 ## Guided viewport navigation
 
-The React player opens with a fit-to-view overview. A toolbar above the diagram
+The React player opens with a fit-to-view overview. The compact bottom toolbar
 provides Zoom in, Zoom out (1× to 4×), Fit to view, a native Select entity menu,
 and an explicit Follow active entity toggle. Selecting an entity in the diagram
 or menu centers it and exposes its value as text; this never changes the trace.
@@ -181,11 +295,12 @@ following alongside the existing playback reset. Resizing the host can change
 layout geometry, but cannot mutate frames. Hidden entities remain unselectable.
 
 The viewport operates only on SVG viewBox presentation state, without a new
-trace schema, group hierarchy or inferred events. Its physical SVG height is
-bounded independently of the graph's world height (between 16rem and 32rem,
-responsive to the browser viewport). Fit-to-view preserves the entire graph's
-aspect ratio within this viewport; dense traces may initially appear small,
-so zoom or select a node for detail. Navigation keeps the camera center within
+trace schema, group hierarchy or inferred events. Its physical SVG height
+follows the stable trace-wide layout's aspect ratio so sparse scenes do not
+reserve a tall blank viewport. Very dense scenes are capped at 960px; Fit
+to view still preserves the complete graph's aspect ratio, and zoom, pan
+and selection expose smaller mobile details. The height responds smoothly
+to container changes except when reduced motion is requested. Navigation keeps the camera center within
 the world bounds, which allows actual centering of edge nodes while retaining
 some of the scene on screen.
 

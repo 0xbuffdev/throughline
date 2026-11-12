@@ -20,6 +20,7 @@ it("renders malicious-looking labels, notes and values as inert text on mobile",
 	expect(player.querySelector("img, iframe, script")).toBeNull();
 	expect(player.querySelector(".thl-caption-note")?.textContent).toBe(payload);
 	expect(player.querySelector(".thl-caption-title")?.textContent).toBe("<svg onload=alert(1)>");
+	await screen.getByText("Details", { exact: true }).click();
 	await screen.getByText("Inspect state").click();
 	expect(player.querySelector(".thl-inspector")?.textContent).toContain("<script>bad()</script>");
 	expect(player.scrollWidth).toBeLessThanOrEqual(player.clientWidth);

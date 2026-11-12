@@ -20,7 +20,7 @@ export type SeekAction =
 	| { type: "tick" }
 	| { type: "toggle" }
 	| { type: "pause" }
-	| { type: "step"; to: number }
+	| { type: "step"; to: number; /** Only explicit Step forward or ArrowRight requests motion. */ animate?: boolean }
 	| { type: "speed"; to: Speed };
 
 export const initialSeek = (max: number): SeekState => ({
@@ -56,6 +56,9 @@ export function seekReducer(state: SeekState, action: SeekAction): SeekState {
 			return { ...state, speed: action.to };
 	}
 }
+
+/** Milliseconds between frames at 1x. */
+export const BASE_STEP_MS = 1500;
 
 /** Milliseconds per frame at the given speed; `base` is the 1x cadence. */
 export const stepDelayMs = (base: number, speed: Speed): number =>

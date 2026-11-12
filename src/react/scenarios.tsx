@@ -55,6 +55,16 @@ export function ThroughlineScenarios({
 		<div className="thl-scenarios" role="group" aria-label="Scenario comparison">
 			{current ? (
 				<>
+					{current.description && (
+						<p className="thl-scenario-description">{current.description}</p>
+					)}
+					<ThroughlinePlayer
+						key={current.id}
+						{...playerProps}
+						trace={current.trace}
+						title={current.title}
+						guidance={current.guidance}
+					/>
 					<div className="thl-scenario-picker">
 						<label htmlFor={selectId}>Scenario</label>
 						<select
@@ -67,16 +77,6 @@ export function ThroughlineScenarios({
 							))}
 						</select>
 					</div>
-					{current.description && (
-						<p className="thl-scenario-description">{current.description}</p>
-					)}
-					<ThroughlinePlayer
-						key={current.id}
-						{...playerProps}
-						trace={current.trace}
-						title={current.title}
-						guidance={current.guidance}
-					/>
 				</>
 			) : (
 				<p className="thl-scenario-empty">No scenarios available.</p>

@@ -10,8 +10,8 @@ import type { ProjectedScene } from "./scene.js";
 export { effectiveView, format } from "./layout/measure.js";
 export type { Box, Edge, Layout, Pt } from "./layout/types.js";
 
-const PAD = 12;
-const GAP = 28;
+const PAD = 8;
+const GAP = 18;
 const laneOf = (entity: Entity): string => entity.lane ?? "State";
 
 type Group = Layout["groups"][number] & { nodes: Record<string, Box> };
@@ -43,8 +43,8 @@ function arrangeGroup(
 		rows[rank].push(member);
 	}
 	const nodes: Record<string, Box> = {};
-	let y = 32,
-		w = Math.min(maxWidth, Math.max(100, name.length * 7 + 24));
+	let y = 26,
+		w = Math.min(maxWidth, Math.max(80, name.length * 7 + PAD * 2));
 	for (const row of rows) {
 		if (!row) continue;
 		let x = PAD,
@@ -73,7 +73,7 @@ function arrangeGroup(
 			for (const box of boxes) box.x += offset;
 		}
 	}
-	return { name, x: 0, y: 0, w, h: Math.max(64, y), nodes };
+	return { name, x: 0, y: 0, w, h: Math.max(48, y - GAP + PAD), nodes };
 }
 
 /** History-sized boxes and responsive group packing; no per-step layout or shrinking text. */
@@ -85,7 +85,7 @@ export function composeTrace(trace: Trace, availableWidth = 720): Layout {
 	const entities = trace.frames[0]?.state.entities ?? [];
 	const relations = trace.frames[0]?.state.relations ?? [];
 	const maxWidth = width - PAD * 2;
-	const nodeWidth = Math.min(260, maxWidth - PAD * 2);
+	const nodeWidth = Math.min(220, maxWidth - PAD * 2);
 	const sizes = new Map<string, Box>();
 	for (const frame of trace.frames) {
 		const targets = frame.state.active.map(parseTarget);
@@ -101,6 +101,18 @@ export function composeTrace(trace: Trace, availableWidth = 720): Layout {
 				w: Math.max(old?.w ?? 0, value.w),
 				h: Math.max(old?.h ?? 0, value.h),
 			});
+		}
+	}
+	// The width selected from all frames can be narrower than the original
+	// measurement budget. Re-measure heights at that actual width so arrays
+	// and record cells never overflow their stable boxes on later frames.
+	for (const frame of trace.frames) {
+		const targets = frame.state.active.map(parseTarget);
+		for (const entity of frame.state.entities) {
+			const size = sizes.get(entity.id);
+			if (!size) continue;
+			const focus = targets.filter((target) => target?.id === entity.id).map((target) => target!.path);
+			size.h = Math.max(size.h, presentValue(entity, size.w, focus).h);
 		}
 	}
 	const names = [...new Set(entities.map(laneOf))];
@@ -147,7 +159,7 @@ export function composeTrace(trace: Trace, availableWidth = 720): Layout {
 		viewBox: `0 0 ${width} ${height}`,
 		groups: groups.map(({ nodes: _, ...group }) => group),
 		nodes,
-		edges: routeEdges(relations, nodes),
+		edges: routeEdges(relations, nodes, groups),
 	}, trace);
 }
 
@@ -163,8 +175,8 @@ export function projectLayout(layout: Layout, scene: ProjectedScene): Layout {
 				const name = scene.groups.find((item) => item.id === node.summaryGroupId)?.name;
 				const group = layout.groups.find((candidate) => candidate.name === name);
 				if (!group) return [];
-				const w = Math.min(184, Math.max(96, group.w - 24));
-				const h = 66;
+				const w = Math.min(184, Math.max(64, group.w - 16));
+				const h = Math.min(66, group.h - 16);
 				return [[node.id, {
 					x: group.x + (group.w - w) / 2,
 					y: group.y + (group.h - h) / 2,
@@ -178,6 +190,7 @@ export function projectLayout(layout: Layout, scene: ProjectedScene): Layout {
 	const routed = routeEdges(
 		scene.edges.filter((edge) => edge.aggregated).map((edge) => edge.relation),
 		nodes,
+		layout.groups,
 	);
 	const edges: Layout["edges"] = Object.fromEntries(
 		scene.edges.flatMap((link) => {

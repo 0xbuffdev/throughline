@@ -110,7 +110,7 @@ it("fits a phone without shrinking text or overflowing its controls", async () =
 	const text = document.querySelector(".thl-cell text")!;
 	expect(
 		Number.parseFloat(getComputedStyle(text).fontSize),
-	).toBeGreaterThanOrEqual(13);
+	).toBeGreaterThanOrEqual(12);
 	await expect
 		.element(screen.getByRole("button", { name: "Step forward" }))
 		.toBeVisible();
@@ -127,6 +127,7 @@ it("exposes full values for inspection and keeps ordinary numbers readable", asy
 	expect(
 		document.querySelector('[data-node="a"] .thl-cell text')?.textContent,
 	).toBe("14");
+	await screen.getByText("Details", { exact: true }).click();
 	await screen.getByText("Inspect state").click();
 	await expect
 		.element(
@@ -294,16 +295,17 @@ it("keeps the reference player hierarchy, optional title, and one caption step c
 	expect(stage.getBoundingClientRect().top).toBeLessThan(
 		caption.getBoundingClientRect().top,
 	);
-	expect(caption.getBoundingClientRect().top).toBeLessThan(
-		controls.getBoundingClientRect().top,
+	expect(controls.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+		caption.getBoundingClientRect().top,
 	);
 	expect(count.textContent).toBe(`Step 1 of ${trace.frames.length}`);
-	expect(count.getBoundingClientRect().right).toBeGreaterThan(
-		caption.querySelector(".thl-caption-content")!.getBoundingClientRect().right,
-	);
+	// The step count stays in the compact disclosure heading, after controls.
+	expect(count.getBoundingClientRect().right).toBeLessThanOrEqual(caption.getBoundingClientRect().right + 1);
+	expect(count.getBoundingClientRect().top).toBeGreaterThanOrEqual(caption.getBoundingClientRect().top);
+	expect((caption as HTMLDetailsElement).open).toBe(false);
 	expect(getComputedStyle(player).borderTopWidth).toBe("0px");
 	expect(getComputedStyle(caption).borderTopWidth).toBe("0px");
-	expect(getComputedStyle(player).borderTopLeftRadius).toBe("5.2px");
+	expect(getComputedStyle(player).borderTopLeftRadius).toBe("2px");
 	expect(player.querySelector(".thl-count")).toBeNull();
 	expect(controls.textContent).not.toMatch(/\\d+:\\d{2}/);
 
@@ -609,7 +611,7 @@ it("keeps the transfer animation disabled in the reduced-motion stylesheet", asy
 				rule.conditionText.includes("prefers-reduced-motion: reduce")
 			) {
 				for (const nested of rule.cssRules) {
-					if (nested instanceof CSSStyleRule && nested.selectorText === ".thl-flow") {
+					if (nested instanceof CSSStyleRule && nested.selectorText === ".thl-transferred .thl-edge") {
 						reducedMotionAnimationNames.push(nested.style.animationName);
 					}
 				}

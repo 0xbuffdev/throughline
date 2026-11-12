@@ -18,8 +18,8 @@ export type ValueLayout = {
 	note?: string;
 };
 
-const PAD = 10;
-const TOP = 32;
+const PAD = 8;
+const TOP = 27;
 const gap = 4;
 const limit = (n: number, min: number, max: number): number =>
 	Math.max(min, Math.min(max, n));
@@ -40,20 +40,20 @@ function grid(
 	note?: string,
 ): ValueLayout {
 	const labeled = items.some((item) => item.label !== undefined);
-	const stride = labeled ? 46 : 32;
+	const stride = labeled ? 38 : 28;
 	return {
 		w: columns * (cellW + gap) - gap + PAD * 2,
 		h:
 			TOP +
 			Math.max(1, Math.ceil(items.length / columns)) * stride +
-			(note ? 24 : 6),
+			(note ? 20 : 6),
 		note,
 		cells: items.map((item, i) => ({
 			...item,
 			x: PAD + (i % columns) * (cellW + gap),
 			y: TOP + Math.floor(i / columns) * stride,
 			w: cellW,
-			h: 28,
+			h: 24,
 		})),
 	};
 }
@@ -76,7 +76,7 @@ export function presentValue(
 		);
 		const cols = Math.max(
 			1,
-			Math.min(6, colCount, Math.floor((width - 16) / 38)),
+			Math.min(6, colCount, Math.floor((width - 16) / 36)),
 		);
 		const firstRow = windowStart(rows.length, 6, focusIndex(focus[0]?.[0]));
 		const firstCol = windowStart(colCount, cols, focusIndex(focus[0]?.[1]));
@@ -94,7 +94,7 @@ export function presentValue(
 		result = grid(
 			items,
 			cols,
-			Math.min(56, (width - 20 - (cols - 1) * gap) / cols),
+			Math.min(56, (width - PAD * 2 - (cols - 1) * gap) / cols),
 			note,
 		);
 	} else if (view === "array" || view === "stack" || view === "bits") {
@@ -125,7 +125,7 @@ export function presentValue(
 						86,
 						Math.max(
 							34,
-							...shown.map((item) => format(item).length * 7.5 + 14),
+							...shown.map((item) => format(item).length * 8 + 14),
 						),
 					);
 		const cols =
@@ -135,7 +135,7 @@ export function presentValue(
 						1,
 						Math.min(
 							shown.length || 1,
-							Math.floor((width - 16) / (cellW + gap)),
+							Math.floor((width - PAD * 2) / (cellW + gap)),
 						),
 					);
 		const note =
@@ -149,7 +149,7 @@ export function presentValue(
 				label: String(bits ? bits.length - 1 - i : start + i),
 			})),
 			cols,
-			Math.min(cellW, width - 20),
+			Math.min(cellW, width - PAD * 2),
 			note,
 		);
 	} else if (view === "record") {
@@ -162,11 +162,11 @@ export function presentValue(
 				? `Fields ${start + 1}–${start + shown.length} of ${entries.length}`
 				: undefined;
 		const cellW = Math.min(
-			width - 20,
+			width - PAD * 2,
 			Math.max(
-				100,
+				88,
 				...shown.map(
-					([key, item]) => (key.length + format(item).length + 2) * 7.5 + 16,
+					([key, item]) => (key.length + format(item).length + 2) * 8 + 18,
 				),
 			),
 		);
@@ -184,12 +184,12 @@ export function presentValue(
 		result = grid(
 			[{ text, path: [] }],
 			1,
-			Math.min(width - 20, Math.max(60, text.length * 8 + 16)),
+			Math.min(width - PAD * 2, Math.max(48, text.length * 8 + 18)),
 		);
 	}
 	result.w = Math.min(
 		width,
-		Math.max(result.w, Math.min(240, entity.label.length * 7 + 20)),
+		Math.max(result.w, Math.min(220, entity.label.length * 7 + PAD * 2)),
 	);
 	if (!result.cells.length)
 		result.cells.push({
@@ -197,7 +197,7 @@ export function presentValue(
 			text: "empty",
 			x: PAD,
 			y: TOP,
-			w: result.w - 20,
+			w: result.w - PAD * 2,
 			h: 28,
 		});
 	return result;

@@ -2,7 +2,7 @@ import type { ValueLayout } from "./value.js";
 
 export type Pt = [number, number];
 export type Box = Pick<ValueLayout, "w" | "h"> & { x: number; y: number };
-export type Edge = { d: string; from: Pt; to: Pt; label: Pt; angle: number };
+export type Edge = { d: string; from: Pt; to: Pt; label: Pt; labelVisible?: boolean; angle: number };
 export type Layout = {
 	width: number;
 	height: number;

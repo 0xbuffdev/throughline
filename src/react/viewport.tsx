@@ -17,6 +17,7 @@ import {
 import type { Frame, Trace } from "../model.js";
 import { projectLayout } from "../layout.js";
 import { projectScene } from "../scene.js";
+import type { TraceProgress } from "../scene/progress.js";
 import { parseTarget } from "../path.js";
 import { TraceScene } from "./scene.js";
 
@@ -31,8 +32,16 @@ type ViewportProps = {
 	frame?: Frame;
 	previous?: Frame;
 	layout: Layout;
+	progress: TraceProgress;
+	/** True only when the current frame was reached by one forward step. */
+	animate?: boolean;
+	availableWidth: number;
 	summary: string;
 	captionId: string;
+	/** Caption and playback controls remain owned by the player. */
+	caption?: React.ReactNode;
+	chapterControls?: React.ReactNode;
+	controls?: React.ReactNode;
 };
 
 const point = (event: React.PointerEvent): Point => ({ x: event.clientX, y: event.clientY });
@@ -55,8 +64,14 @@ export function ViewportScene({
 	frame,
 	previous,
 	layout,
+	progress,
+	animate = false,
+	availableWidth,
 	summary,
 	captionId,
+	caption,
+	chapterControls,
+	controls,
 }: ViewportProps): React.JSX.Element {
 	const svgRef = useRef<SVGSVGElement>(null);
 	const pointers = useRef(new Map<number, Point>());
@@ -260,8 +275,47 @@ export function ViewportScene({
 	};
 
 	if (!frame) return <p className="thl-empty">No steps to display.</p>;
+	// Match SVG height to the laid-out scene; only bound very dense graphs.
+	const sceneHeight = Math.max(112, Math.min(960, Math.ceil(layout.height * availableWidth / layout.width)));
 	return (
 		<>
+			<svg
+				ref={svgRef}
+				width="100%"
+				height={sceneHeight}
+				preserveAspectRatio="xMidYMid meet"
+				viewBox={cameraViewBox(layout, effective)}
+				role="img"
+				aria-label={summary}
+				aria-describedby={captionId}
+				aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown + - 0"
+				className="thl-scene"
+				style={{ height: `${sceneHeight}px` }}
+				tabIndex={0}
+				onKeyDown={onKeyDown}
+				onPointerDown={onPointerDown}
+				onPointerMove={onPointerMove}
+				onPointerUp={(event) => endPointer(event, false)}
+				onPointerCancel={(event) => endPointer(event, true)}
+				// Prevent selecting a node after a drag ends on the same SVG element.
+				onClickCapture={(event) => { if (dragged.current) { event.stopPropagation(); dragged.current = false; } }}
+			>
+				<TraceScene
+					frame={frame}
+					previous={previous}
+					layout={layout}
+					progress={progress}
+					animate={animate}
+					groups={trace.groups}
+					collapsedGroupIds={collapsedGroups}
+					onExpandGroup={expandGroup}
+					selectedId={selected?.id}
+					onSelect={selectEntity}
+				/>
+			</svg>
+			<div className="thl-bottom">
+				<div className="thl-aux-controls">
+					{chapterControls}
 			<div className="thl-viewport-tools" role="toolbar" aria-label="Diagram navigation">
 				<select
 					aria-label="Select entity"
@@ -271,14 +325,24 @@ export function ViewportScene({
 					<option value="">Select entity</option>
 					{visible.map((entity) => <option key={entity.id} value={entity.id}>{entity.label} ({entity.id})</option>)}
 				</select>
-				<button type="button" aria-label="Zoom out" onClick={() => manual(zoomCamera(layout, effectiveRef.current, 0.8))} disabled={effective.zoom <= MIN_ZOOM}>−</button>
-				<button type="button" aria-label="Zoom in" onClick={() => manual(zoomCamera(layout, effectiveRef.current, 1.25))} disabled={effective.zoom >= MAX_ZOOM}>+</button>
-				<button type="button" aria-label="Fit to view" onClick={fit}>Fit</button>
-				<button type="button" aria-label="Follow active entity" aria-pressed={followActive} onClick={toggleFollow}>Follow</button>
+				<button type="button" aria-label="Zoom out" title="Zoom out" onClick={() => manual(zoomCamera(layout, effectiveRef.current, 0.8))} disabled={effective.zoom <= MIN_ZOOM}>
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg>
+				</button>
+				<button type="button" aria-label="Zoom in" title="Zoom in" onClick={() => manual(zoomCamera(layout, effectiveRef.current, 1.25))} disabled={effective.zoom >= MAX_ZOOM}>
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+				</button>
+				<button type="button" aria-label="Fit to view" title="Fit to view" onClick={fit}>
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5" /></svg>
+				</button>
+				<button type="button" aria-label="Follow active entity" title="Follow active entity" aria-pressed={followActive} onClick={toggleFollow}>
+					<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v4m0 12v4M2 12h4m12 0h4" /></svg>
+				</button>
 			</div>
 			{availableGroups.length > 0 && (
 				<nav className="thl-group-controls" aria-label="Group hierarchy">
-					<button type="button" onClick={() => focusGroup(null)} aria-label="Return to group overview">Overview</button>
+					<button type="button" onClick={() => focusGroup(null)} aria-label="Return to group overview" title="Group overview">
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 12 3l9 7v11H3V10zm6 11v-8h6v8" /></svg>
+					</button>
 					{crumbs.map((group) => (
 						<span key={group.id} className="thl-breadcrumb">
 							<span aria-hidden="true">/</span>
@@ -300,41 +364,20 @@ export function ViewportScene({
 						aria-expanded={drilledGroup ? !collapsedGroups.includes(drilledGroup) : undefined}
 						onClick={() => { if (drilledGroup) toggleCollapse(drilledGroup); }}
 					>
-						{drilledGroup && collapsedGroups.includes(drilledGroup) ? "Expand" : "Collapse"}
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							{drilledGroup && collapsedGroups.includes(drilledGroup) ? (
+								<path d="M4 8V4h4m8 0h4v4M4 16v4h4m8 0h4v-4" />
+							) : (
+								<path d="M8 4H4v4m16 0h4v4M4 16v4h4m8 0h4v-4" />
+							)}
+						</svg>
 					</button>
 				</nav>
 			)}
-			<svg
-				ref={svgRef}
-				width="100%"
-				height="100%"
-				preserveAspectRatio="xMidYMid meet"
-				viewBox={cameraViewBox(layout, effective)}
-				role="img"
-				aria-label={summary}
-				aria-describedby={captionId}
-				aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown + - 0"
-				className="thl-scene"
-				tabIndex={0}
-				onKeyDown={onKeyDown}
-				onPointerDown={onPointerDown}
-				onPointerMove={onPointerMove}
-				onPointerUp={(event) => endPointer(event, false)}
-				onPointerCancel={(event) => endPointer(event, true)}
-				// Prevent selecting a node after a drag ends on the same SVG element.
-				onClickCapture={(event) => { if (dragged.current) { event.stopPropagation(); dragged.current = false; } }}
-			>
-				<TraceScene
-					frame={frame}
-					previous={previous}
-					layout={layout}
-					groups={trace.groups}
-					collapsedGroupIds={collapsedGroups}
-					onExpandGroup={expandGroup}
-					selectedId={selected?.id}
-					onSelect={selectEntity}
-				/>
-			</svg>
+				</div>
+				{controls}
+			</div>
+			{caption}
 			{selected && (
 				<p className="thl-entity-status" aria-live="polite">
 					Selected: {selected.label} ({selected.id}) — {format(selected.value)}

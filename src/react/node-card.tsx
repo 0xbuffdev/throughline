@@ -16,6 +16,13 @@ interface NodeCardProps {
 	focus: Path[];
 	changed: Path[];
 	selected?: boolean;
+	visited?: boolean;
+	/** True only when this frame was reached by one forward step. */
+	animate?: boolean;
+	/** Used to restart a cell's change flash on consecutive changing steps. */
+	frameIndex?: number;
+	/** The frame has an authored send, so value flashes wait for it to land. */
+	afterSend?: boolean;
 	onSelect?: () => void;
 }
 
@@ -26,6 +33,10 @@ export function NodeCard({
 	focus,
 	changed,
 	selected = false,
+	visited = false,
+	animate = false,
+	frameIndex = 0,
+	afterSend = false,
 	onSelect,
 }: NodeCardProps): React.JSX.Element {
 	const value = presentValue(entity, box.w, focus);
@@ -35,7 +46,7 @@ export function NodeCard({
 			data-node={entity.id}
 			role="button"
 			tabIndex={0}
-			aria-label={`Select ${entity.label}`}
+			aria-label={`Select ${entity.label}${visited ? " (participated in the workflow)" : ""}`}
 			aria-pressed={selected}
 			onClick={onSelect}
 			onKeyDown={(event) => {
@@ -50,11 +61,22 @@ export function NodeCard({
 			<rect
 				width={box.w}
 				height={box.h}
-				rx={8}
-				className={cn("thl-node", { "thl-focused": focus.length > 0, "thl-selected": selected })}
+				rx={2}
+				className={cn("thl-node", { "thl-visited": visited, "thl-focused": focus.length > 0, "thl-selected": selected })}
 			/>
-			<text x={10} y={19} className="thl-node-label">
-				{truncate(entity.label, Math.floor((box.w - 20) / 7))}
+			{/* Drawn after the body, which must stay the first rect. Selection and
+			    keyboard focus use this outer ring so neither can be mistaken for
+			    authored focus (a filled, heavier outline). */}
+			<rect
+				x={-4}
+				y={-4}
+				width={box.w + 8}
+				height={box.h + 8}
+				rx={4}
+				className={cn("thl-ring", { "thl-ring-selected": selected })}
+			/>
+			<text x={8} y={17} className="thl-node-label">
+				{truncate(entity.label, Math.floor((box.w - 16) / 7))}
 			</text>
 			{value.cells.map((cell) => {
 				const isChanged =
@@ -68,15 +90,19 @@ export function NodeCard({
 				const isFocused = focus.some((path) => overlaps(path, cell.path));
 				return (
 					<g
-						key={JSON.stringify(cell.path)}
+						// A changed cell is re-keyed by frame so its flash restarts when the
+						// same cell changes on consecutive steps.
+						key={isChanged && animate ? `${JSON.stringify(cell.path)}@${frameIndex}` : JSON.stringify(cell.path)}
 						transform={`translate(${cell.x},${cell.y})`}
 						className={cn("thl-cell", {
 							"thl-changed": isChanged,
 							"thl-focused": isFocused,
+							"thl-animate": isChanged && animate,
+							"thl-after-send": isChanged && animate && afterSend,
 						})}
 					>
 						<title>{cell.text}</title>
-						<rect width={cell.w} height={cell.h} rx={4} />
+						<rect width={cell.w} height={cell.h} rx={2} />
 						<text
 							x={cell.w / 2}
 							y={cell.h / 2}
@@ -99,8 +125,8 @@ export function NodeCard({
 				);
 			})}
 			{value.note && (
-				<text x={10} y={box.h - 10} className="thl-window">
-					{truncate(value.note, Math.floor((box.w - 20) / 6.2))}
+				<text x={8} y={box.h - 8} className="thl-window">
+					{truncate(value.note, Math.floor((box.w - 16) / 6.2))}
 					<title>{value.note}</title>
 				</text>
 			)}

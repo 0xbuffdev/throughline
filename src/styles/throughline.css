@@ -8,13 +8,24 @@
 	--thl-line: light-dark(oklch(0.89 0 0), oklch(1 0 0 / 13%));
 	--thl-focus: light-dark(oklch(0.25 0 0), oklch(0.93 0 0));
 	--thl-focus-bg: light-dark(oklch(0.92 0 0), oklch(0.31 0 0));
-	--thl-change: light-dark(oklch(0.35 0 0), oklch(0.9 0 0));
-	--thl-change-bg: light-dark(oklch(0.9 0 0), oklch(0.34 0 0));
+	/* A changed value is the only warm mark on screen. Light text on its tint measures 5.4:1. */
+	--thl-change: light-dark(oklch(0.5 0.15 55), oklch(0.82 0.14 80));
+	--thl-change-bg: light-dark(oklch(0.95 0.05 80), oklch(0.3 0.06 70));
 	--thl-control-bg: light-dark(oklch(1 0 0), oklch(0.21 0 0));
 	--thl-control-hover: light-dark(oklch(0.94 0 0), oklch(0.29 0 0));
 	--thl-track: light-dark(oklch(0.85 0 0), oklch(0.36 0 0));
-	--thl-radius: 0.325rem;
-	--thl-node-border-width: 0.125rem;
+	--thl-radius: 0.125rem;
+	--thl-node-border-width: 1.25px;
+	/* Present and past share one hue: --thl-active marks what happens in the
+	   current step; --thl-trail is the same family, washed out, for history.
+	   Trail is for strokes and arrowheads only (4.0:1); text stays --thl-muted. */
+	--thl-active: light-dark(oklch(0.5 0.17 235), oklch(0.78 0.14 225));
+	--thl-trail: light-dark(oklch(0.58 0.06 225), oklch(0.68 0.05 220));
+	--thl-trail-bg: light-dark(oklch(0.955 0.018 225), oklch(0.24 0.027 220));
+	/* Motion timing follows the step interval, which the player sets inline. */
+	--thl-step-ms: 1500ms;
+	--thl-draw-ms: clamp(160ms, calc(var(--thl-step-ms) * 0.23), 520ms);
+	--thl-flash-ms: clamp(320ms, calc(var(--thl-step-ms) * 0.6), 1200ms);
 	color-scheme: light dark;
 	box-sizing: border-box;
 	container-type: inline-size;
@@ -27,6 +38,7 @@
 	color: var(--thl-text);
 	border: 0;
 	border-radius: var(--thl-radius);
+	padding: 1.5rem;
 	font: inherit;
 	line-height: 1.5;
 }
@@ -46,82 +58,124 @@
 }
 .thl-title {
 	flex: none;
-	padding: clamp(1rem, 2.8cqi, 2rem) clamp(1rem, 3.2cqi, 2.5rem) 0;
+	padding: 0;
+	/* Visual breathing room between the optional heading and the diagram. */
+	margin-block-end: 0.75rem;
 	font: inherit;
-	font-size: clamp(1.125rem, 2.2cqi, 1.75rem);
+	font-size: clamp(1.125rem, 2.2cqi, 1.5rem);
 	font-weight: 650;
-	line-height: 1.25;
+	line-height: 1.3;
 	overflow-wrap: anywhere;
 }
 .thl-stage {
 	display: flex;
 	flex-direction: column;
 	gap: 0.75rem;
-	flex: 1 0 auto;
-	align-items: center;
-	justify-content: center;
-	min-width: 0;
-	min-height: clamp(16rem, 42cqi, 32rem);
-	padding: clamp(0.75rem, 2cqi, 1.5rem);
-}
-.thl-viewport-tools {
-	display: flex;
 	flex: none;
-	flex-wrap: wrap;
-	align-self: stretch;
-	align-items: center;
-	justify-content: flex-end;
-	gap: 0.375rem;
+	align-items: stretch;
+	justify-content: flex-start;
+	width: 100%;
+	min-width: 0;
+	min-height: 0;
+	padding: 0;
 }
-.thl-viewport-tools button, .thl-viewport-tools select {
-	appearance: none;
+.thl-bottom {
+	/* Preserve a little air between the SVG and playback controls. */
+	margin-block-start: 0.25rem;
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: center;
+	column-gap: 0.75rem;
+	row-gap: 0.375rem;
+	min-width: 0;
+	padding-block: 0.375rem;
+	border-top: 1px solid var(--thl-line);
+	border-bottom: 1px solid var(--thl-line);
+}
+.thl-aux-controls {
+	display: flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	gap: 0.25rem 0.75rem;
+	min-width: 0;
+}
+.thl-viewport-tools,
+.thl-group-controls,
+.thl-chapter-nav {
+	display: flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	gap: 0.125rem;
+	min-width: 0;
+}
+.thl-viewport-tools { flex: 1 1 auto; }
+.thl-viewport-tools button,
+.thl-group-controls button,
+.thl-chapter-nav button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-height: 2.75rem;
-	min-width: 2.75rem;
-	padding: 0.375rem 0.625rem;
-	border: 1px solid var(--thl-line);
+	flex: 0 0 auto;
+	width: 2.125rem;
+	height: 2.125rem;
+	padding: 0.5rem;
+	border: 0;
 	border-radius: var(--thl-radius);
-	background: var(--thl-control-bg);
+	background: transparent;
 	color: var(--thl-text);
 	font: inherit;
-	font-size: 0.8125rem;
 	cursor: pointer;
 }
-.thl-viewport-tools select { max-width: min(100%, 13rem); min-width: 0; }
+.thl-viewport-tools button svg,
+.thl-group-controls button svg,
+.thl-chapter-nav button svg {
+	display: block;
+	width: 0.875rem;
+	height: 0.875rem;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.85;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
 .thl-viewport-tools button:hover:not(:disabled),
-.thl-viewport-tools select:hover { background: var(--thl-control-hover); }
-.thl-viewport-tools button[aria-pressed="true"] { background: var(--thl-focus-bg); }
-.thl-viewport-tools button:disabled { opacity: 0.42; cursor: default; }
-.thl-group-controls {
-	display: flex;
-	flex: none;
-	flex-wrap: wrap;
-	align-items: center;
-	align-self: stretch;
-	gap: 0.375rem;
-	min-width: 0;
+.thl-group-controls button:hover:not(:disabled),
+.thl-chapter-nav button:hover:not(:disabled) {
+	background: var(--thl-control-hover);
 }
-.thl-group-controls button, .thl-group-controls select {
-	appearance: none;
-	min-height: 2.5rem;
+.thl-viewport-tools button[aria-pressed="true"] {
+	color: var(--thl-focus);
+	background: var(--thl-focus-bg);
+}
+.thl-viewport-tools button:disabled,
+.thl-group-controls button:disabled { opacity: 0.4; cursor: default; }
+.thl-viewport-tools select,
+.thl-group-controls select,
+.thl-chapter-nav select,
+.thl-scenario-picker select {
+	min-height: 2.125rem;
 	min-width: 0;
-	max-width: 100%;
-	padding: 0.375rem 0.625rem;
+	padding: 0.5rem;
 	border: 1px solid var(--thl-line);
 	border-radius: var(--thl-radius);
 	background: var(--thl-control-bg);
 	color: var(--thl-text);
 	font: inherit;
-	font-size: 0.8125rem;
+	font-size: 0.75rem;
+	line-height: 1.125;
 	cursor: pointer;
 }
-.thl-group-controls button:disabled { opacity: 0.42; cursor: default; }
-.thl-group-controls button:hover:not(:disabled),
-.thl-group-controls select:hover { background: var(--thl-control-hover); }
-.thl-breadcrumb { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--thl-muted); }
-.thl-group-controls select { flex: 1 1 9rem; max-width: 16rem; }
+.thl-viewport-tools select { flex: 1 1 7.5rem; max-width: 10rem; }
+.thl-group-controls select { flex: 1 1 6.5rem; max-width: 8rem; }
+.thl-chapter-nav select { flex: 1 1 8.5rem; max-width: 10.5rem; }
+.thl-group-controls .thl-breadcrumb button {
+	width: auto;
+	padding-inline: 0.5rem;
+	font-size: 0.75rem;
+}
+.thl-breadcrumb { display: inline-flex; align-items: center; gap: 0.125rem; color: var(--thl-muted); }
+.thl-chapter-nav label,
+.thl-scenario-picker label { color: var(--thl-muted); font-size: 0.75rem; font-weight: 600; }
 
 .thl-entity-status {
 	align-self: stretch;
@@ -134,8 +188,9 @@
 	display: block;
 	flex: 0 0 auto;
 	width: 100%;
-	/* Physical viewport height is independent of even very tall trace layouts. */
-	height: clamp(16rem, 52vh, 32rem);
+	/* The source-backed player sets this height from the composed SVG world. */
+	height: auto;
+	transition: height 180ms ease;
 	max-width: 100%;
 	touch-action: none;
 	cursor: grab;
@@ -147,7 +202,7 @@
 }
 .thl-group-label {
 	fill: var(--thl-muted);
-	font: 600 12px ui-sans-serif, system-ui, sans-serif;
+	font: 600 11px ui-sans-serif, system-ui, sans-serif;
 	letter-spacing: 0.3px;
 }
 .thl-summary-node {
@@ -157,6 +212,11 @@
 	stroke-dasharray: 4 3;
 }
 .thl-summary-count { fill: var(--thl-muted); font-size: 12px; }
+.thl-summary-node.thl-visited {
+	fill: var(--thl-trail-bg);
+	stroke: var(--thl-trail);
+	stroke-width: 2px;
+}
 .thl-summary-node.thl-focused {
 	fill: var(--thl-focus-bg);
 	stroke: var(--thl-focus);
@@ -172,33 +232,41 @@
 	font: 600 11px ui-sans-serif, system-ui, sans-serif;
 }
 .thl-summary-state.thl-changed { fill: var(--thl-change); }
-.thl-scene [data-group-summary] { cursor: pointer; outline-offset: 3px; }
-.thl-scene [data-group-summary]:focus-visible .thl-summary-node { stroke-width: 3px; }
 .thl-node {
 	fill: var(--thl-surface);
 	stroke: var(--thl-line);
 	stroke-width: var(--thl-node-border-width);
 }
+.thl-node.thl-visited {
+	fill: var(--thl-trail-bg);
+	stroke: var(--thl-trail);
+	stroke-width: 1.75px;
+}
 .thl-node.thl-selected {
 	stroke: var(--thl-focus);
 	stroke-width: var(--thl-node-border-width);
-	stroke-dasharray: 5 3;
 }
-.thl-scene [data-node] { cursor: pointer; outline-offset: 3px; }
-.thl-scene [data-node]:focus-visible .thl-node {
-	stroke: var(--thl-focus);
-	stroke-width: 3px;
-}
+/* Dashes mean structure (collapsed, revealed, aggregate) and nothing else.
+   Selection and keyboard focus are outer rings, distinct from authored focus. */
+.thl-ring { fill: none; stroke: transparent; stroke-width: 1.5px; pointer-events: none; }
+.thl-ring.thl-ring-selected { stroke: var(--thl-focus); }
+.thl-scene [data-node],
+.thl-scene [data-group-summary] { cursor: pointer; }
+.thl-scene [data-node]:focus-visible,
+.thl-scene [data-group-summary]:focus-visible { outline: none; }
+.thl-scene [data-node]:focus-visible .thl-ring,
+.thl-scene [data-group-summary]:focus-visible .thl-ring { stroke: var(--thl-active); stroke-width: 2px; }
 .thl-node.thl-focused {
+	fill: var(--thl-focus-bg);
 	stroke: var(--thl-focus);
-	stroke-width: var(--thl-node-border-width);
+	stroke-width: 2.5px;
 }
 .thl-node-label {
 	fill: var(--thl-muted);
-	font: 500 12px ui-sans-serif, system-ui, sans-serif;
+	font: 500 11px ui-sans-serif, system-ui, sans-serif;
 }
 .thl-cell rect { fill: var(--thl-panel); stroke: transparent; }
-.thl-cell text { fill: var(--thl-text); font-size: 13px; font-weight: 600; }
+.thl-cell text { fill: var(--thl-text); font-size: 12px; font-weight: 600; }
 .thl-cell.thl-focused rect { fill: var(--thl-focus-bg); stroke: var(--thl-focus); }
 .thl-cell.thl-changed rect { fill: var(--thl-change-bg); stroke: var(--thl-change); }
 .thl-cell.thl-changed text { fill: var(--thl-change); }
@@ -207,7 +275,7 @@
 	font-size: 11px;
 	font-weight: 400;
 }
-.thl-edge, .thl-flow {
+.thl-edge {
 	fill: none;
 	stroke: var(--thl-muted);
 	stroke-width: 1.3;
@@ -218,45 +286,119 @@
 	stroke: var(--thl-bg);
 	stroke-width: 4px;
 	paint-order: stroke;
-	font-size: 11px;
+	font-size: 10px;
 }
-.thl-transferred .thl-edge { stroke: var(--thl-focus); }
-.thl-transferred polygon, .thl-transferred text { fill: var(--thl-focus); }
-/* A collapsed boundary may summarize multiple relations: emphasize that at
-   least one *real* relation sent, without animating every aggregate member. */
-.thl-aggregate-active .thl-edge {
-	stroke: var(--thl-focus);
+/* Authored history remains visible through later steps. Structural reveals
+   are dashed: a connection becoming visible is not an actual send. */
+.thl-link.thl-revealed:not(.thl-visited) .thl-edge {
+	stroke: var(--thl-trail);
+	stroke-width: 1.6;
+	stroke-dasharray: 3 4;
+}
+.thl-link.thl-revealed:not(.thl-visited) polygon { fill: var(--thl-trail); }
+.thl-link.thl-visited .thl-edge {
+	stroke: var(--thl-trail);
+	stroke-width: 2;
+}
+.thl-link.thl-visited polygon { fill: var(--thl-trail); }
+/* Repeated active sends animate the actual path. The arrowhead and link label
+   share its active colour, and no second line is superimposed. */
+.thl-link.thl-transferred .thl-edge {
+	stroke: var(--thl-active);
 	stroke-width: 2.5;
+}
+.thl-link.thl-transferred polygon,
+.thl-link.thl-transferred .thl-edge-label { fill: var(--thl-active); }
+/* A collapsed boundary can contain both traversed and untouched links.
+   Keep the aggregate dashed, and never animate it as a single send. */
+.thl-link.thl-aggregate-visited .thl-edge,
+.thl-link.thl-aggregate-active .thl-edge {
+	stroke: var(--thl-trail);
+	stroke-width: 2;
 	stroke-dasharray: 5 3;
 }
-.thl-aggregate-active polygon, .thl-aggregate-active text { fill: var(--thl-focus); }
-.thl-flow {
-	stroke: var(--thl-focus);
-	stroke-width: 2.5;
-	stroke-dasharray: 1;
-	animation: thl-draw 350ms ease-out both;
-}
+.thl-link.thl-aggregate-active .thl-edge { stroke: var(--thl-active); stroke-width: 2.5; }
+.thl-link.thl-aggregate-active polygon,
+.thl-link.thl-aggregate-active .thl-edge-label { fill: var(--thl-active); }
+
+/* The caption is after the toolbar, so any authored narrative expansion
+   never shifts the transport away from the visualization. */
 .thl-caption {
+	display: block;
+	min-width: 0;
+	padding: 0;
+	border: 0;
+}
+.thl-caption-summary {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto;
-	align-items: end;
-	gap: 1rem 1.75rem;
-	min-height: 7rem;
-	padding: 1rem clamp(1rem, 3.2cqi, 2.5rem) 1.5rem;
+	align-items: center;
+	gap: 0.375rem 0.75rem;
+	min-height: 2.75rem;
+	padding: 0.125rem 0;
+	list-style: none;
+	cursor: pointer;
 }
-.thl-caption-content { min-width: 0; }
+.thl-caption-summary::-webkit-details-marker { display: none; }
+.thl-caption-heading { display: grid; gap: 0.125rem; min-width: 0; }
 .thl-caption-title {
 	display: block;
-	font-size: clamp(1rem, 1.5cqi, 1.25rem);
+	min-width: 0;
+	font-size: 0.875rem;
 	font-weight: 650;
-	line-height: 1.4;
-}
-.thl-caption-note {
-	margin-top: 0.25rem !important;
-	color: var(--thl-muted);
-	font-size: 0.9375rem;
+	line-height: 1.3;
 	overflow-wrap: anywhere;
 }
+.thl-caption-teaser {
+	display: block;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	color: var(--thl-muted);
+	font-size: 0.75rem;
+	line-height: 1.3;
+}
+.thl-caption-trailing {
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: center;
+	gap: 0.75rem;
+}
+.thl-caption-expand {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	color: var(--thl-muted);
+	font-size: 0.75rem;
+	white-space: nowrap;
+}
+.thl-caption-expand svg {
+	width: 0.875rem;
+	height: 0.875rem;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.75;
+	stroke-linejoin: round;
+	transition: transform 150ms ease;
+}
+.thl-caption[open] .thl-caption-expand svg { transform: rotate(180deg); }
+.thl-caption-content {
+	min-width: 0;
+	max-height: min(16rem, 33vh);
+	overflow-x: hidden;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 0.5rem 0 0.25rem;
+}
+.thl-caption-note {
+	margin: 0;
+	color: var(--thl-muted);
+	font-size: 0.8125rem;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+
 .thl-guidance {
 	display: grid;
 	gap: 0.625rem;
@@ -265,28 +407,14 @@
 	font-size: 0.875rem;
 	overflow-wrap: anywhere;
 }
-.thl-chapter-nav, .thl-scenario-picker {
+.thl-scenario-picker {
 	display: flex;
-	align-items: center;
 	flex-wrap: wrap;
+	align-items: center;
 	gap: 0.5rem;
+	padding: 0;
 	min-width: 0;
 }
-.thl-chapter-nav label, .thl-scenario-picker label { font-weight: 600; }
-.thl-chapter-nav select, .thl-chapter-nav button, .thl-scenario-picker select {
-	appearance: auto;
-	min-height: 2.75rem;
-	min-width: 0;
-	max-width: 100%;
-	padding: 0.375rem 0.625rem;
-	border: 1px solid var(--thl-line, currentColor);
-	border-radius: var(--thl-radius, 0.325rem);
-	background: var(--thl-control-bg, transparent);
-	color: inherit;
-	font: inherit;
-}
-.thl-chapter-nav button { cursor: pointer; }
-.thl-chapter-nav button:hover { background: var(--thl-control-hover); }
 .thl-chapter p, .thl-causal-evidence { color: var(--thl-muted); }
 .thl-causal-link {
 	display: grid;
@@ -299,15 +427,20 @@
 .thl-causal-link dt { color: var(--thl-muted); }
 .thl-causal-link dd { margin: 0; overflow-wrap: anywhere; }
 .thl-scenarios { display: flex; flex-direction: column; width: 100%; min-width: 0; gap: 0.5rem; }
-.thl-scenario-picker { padding: 0.5rem 0.75rem; }
-.thl-scenario-description, .thl-scenario-empty { padding: 0 0.75rem; margin: 0; overflow-wrap: anywhere; }
+.thl-scenario-picker { padding: 0.375rem 1.5rem; }
+.thl-scenario-picker select {
+	border-color: var(--thl-line, currentColor);
+	background: var(--thl-control-bg, transparent);
+	color: inherit;
+}
+.thl-scenario-description, .thl-scenario-empty { padding: 0; margin: 0; color: var(--thl-muted); font-size: 0.875rem; overflow-wrap: anywhere; }
 @media (max-width: 560px) {
 	.thl-causal-link dl > div { grid-template-columns: minmax(0, 1fr); gap: 0; }
 }
 .thl-step-count {
 	white-space: nowrap;
 	color: var(--thl-muted);
-	font-size: 0.875rem;
+	font-size: 0.75rem;
 	font-variant-numeric: tabular-nums;
 	justify-self: end;
 	align-self: end;
@@ -355,58 +488,49 @@
 }
 .thl-controls {
 	display: grid;
-	grid-template-columns: auto minmax(0, 1fr) auto;
+	grid-template-columns: auto minmax(6rem, 1fr) auto;
 	align-items: center;
-	gap: 0.75rem clamp(0.75rem, 2cqi, 1.5rem);
-	padding: 0.875rem clamp(1rem, 2.5cqi, 2rem);
-	border-top: 1px solid var(--thl-line);
+	min-width: 0;
+	gap: 0.25rem 0.5rem;
+	padding: 0;
+	border: 0;
 }
 .thl-transport, .thl-utilities {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	flex-wrap: nowrap;
+	gap: 0.125rem;
 	min-width: 0;
 }
 .thl-utilities { justify-content: flex-end; }
-.thl-controls button, .thl-controls select {
-	appearance: none;
+.thl-controls button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	height: 2.75rem;
-	min-width: 2.75rem;
-	padding: 0 0.75rem;
-	border: 1px solid var(--thl-line);
+	height: 2.125rem;
+	width: 2.125rem;
+	flex: 0 0 auto;
+	padding: 0.5rem;
+	border: 0;
 	border-radius: var(--thl-radius);
 	color: var(--thl-text);
-	background: var(--thl-control-bg);
+	background: transparent;
 	font: inherit;
-	font-size: 0.875rem;
 	cursor: pointer;
 }
 .thl-controls button svg {
 	display: block;
-	width: 1.25rem;
-	height: 1.25rem;
+	width: 0.875rem;
+	height: 0.875rem;
 	stroke: currentColor;
-	stroke-width: 1.8;
+	stroke-width: 1.85;
 	stroke-linecap: round;
 	stroke-linejoin: round;
 }
-.thl-controls button:hover:not(:disabled), .thl-controls select:hover {
-	background: var(--thl-control-hover);
-}
-.thl-controls .thl-play {
-	background: var(--thl-focus);
-	border-color: var(--thl-focus);
-	color: var(--thl-bg);
-	min-width: 3rem;
-}
-.thl-controls .thl-play:hover:not(:disabled) {
-	background: var(--thl-text);
-	color: var(--thl-bg);
-}
-.thl-controls button:disabled { opacity: 0.42; cursor: default; }
+.thl-controls button:hover:not(:disabled) { background: var(--thl-control-hover); }
+.thl-controls .thl-play { color: var(--thl-active); }
+.thl-controls .thl-play:hover:not(:disabled) { color: var(--thl-text); }
+.thl-controls button:disabled { opacity: 0.4; cursor: default; }
 .thl-speed-control {
 	display: inline-flex;
 	position: relative;
@@ -414,13 +538,24 @@
 	min-width: 0;
 }
 .thl-controls .thl-speed-control select {
-	padding-inline: 0.75rem 1.875rem;
+	appearance: none;
+	min-height: 2.125rem;
+	min-width: 3.5rem;
+	padding: 0.5rem 1.375rem 0.5rem 0.5rem;
+	border: 1px solid var(--thl-line);
+	border-radius: var(--thl-radius);
+	background: var(--thl-control-bg);
+	color: var(--thl-text);
+	font: inherit;
+	font-size: 0.75rem;
+	line-height: 1.125;
+	cursor: pointer;
 }
 .thl-speed-chevron {
 	position: absolute;
-	right: 0.625rem;
-	width: 0.875rem;
-	height: 0.875rem;
+	right: 0.375rem;
+	width: 0.625rem;
+	height: 0.625rem;
 	pointer-events: none;
 	color: var(--thl-text);
 	stroke: currentColor;
@@ -428,20 +563,20 @@
 	stroke-linecap: round;
 	stroke-linejoin: round;
 }
-.thl-controls .thl-sound[aria-pressed="true"] { background: var(--thl-focus-bg); }
+.thl-controls .thl-sound[aria-pressed="true"] { color: var(--thl-focus); background: var(--thl-focus-bg); }
 .thl-timeline {
 	appearance: none;
 	display: block;
 	width: 100%;
 	min-width: 0;
-	height: 2.75rem;
+	height: 2.125rem;
 	margin: 0;
 	padding: 0;
 	background: transparent;
 	cursor: pointer;
 }
 .thl-timeline::-webkit-slider-runnable-track {
-	height: 0.375rem;
+	height: 0.25rem;
 	border-radius: 999px;
 	background: linear-gradient(to right,
 		var(--thl-focus) var(--thl-progress),
@@ -456,16 +591,16 @@
 }
 .thl-timeline::-webkit-slider-thumb {
 	appearance: none;
-	width: 1.125rem;
-	height: 1.125rem;
-	margin-top: -0.375rem;
+	width: 0.875rem;
+	height: 0.875rem;
+	margin-top: -0.3125rem;
 	border: 2px solid var(--thl-focus);
 	border-radius: 999px;
 	background: var(--thl-surface);
 }
 .thl-timeline::-moz-range-thumb {
-	width: 1rem;
-	height: 1rem;
+	width: 0.875rem;
+	height: 0.875rem;
 	border: 2px solid var(--thl-focus);
 	border-radius: 999px;
 	background: var(--thl-surface);
@@ -480,30 +615,61 @@
 	clip-path: inset(50%);
 	white-space: nowrap;
 }
+/* Wide: one aligned bar. Intermediate sizes: two predictable rows.
+   Touch: compact layout, but no touch target smaller than 40px. */
+@container (max-width: 1240px) {
+	.thl-bottom { grid-template-columns: minmax(0, 1fr); }
+	.thl-aux-controls { flex-wrap: wrap; justify-content: flex-start; }
+	.thl-controls { grid-template-columns: auto minmax(0, 1fr) auto; }
+}
 @container (max-width: 560px) {
+	.thl-aux-controls { gap: 0.25rem 0.5rem; }
+	.thl-viewport-tools { flex: 1 1 100%; width: 100%; }
+	.thl-chapter-nav { flex: 0 1 100%; }
+	.thl-viewport-tools button,
+	.thl-group-controls button,
+	.thl-chapter-nav button,
+	.thl-controls button { width: 2.5rem; height: 2.5rem; }
+	.thl-viewport-tools select,
+	.thl-group-controls select,
+	.thl-chapter-nav select,
+	.thl-controls .thl-speed-control select { min-height: 2.5rem; }
 	.thl-controls {
 		grid-template-columns: minmax(0, 1fr) auto;
+		row-gap: 0;
 	}
-	.thl-timeline {
-		grid-column: 1 / -1;
-		grid-row: 1;
-	}
+	.thl-timeline { grid-column: 1 / -1; grid-row: 1; }
 	.thl-transport { grid-column: 1; grid-row: 2; }
 	.thl-utilities { grid-column: 2; grid-row: 2; }
-	.thl-transport, .thl-utilities { gap: 0.25rem; }
-	.thl-controls button, .thl-controls select {
-		min-width: 2.75rem;
-		padding: 0 0.5rem;
-	}
-	.thl-caption {
-		min-height: 0;
-		padding-bottom: 1.25rem;
-	}
-}
-@container (max-width: 350px) {
-	.thl-caption { grid-template-columns: minmax(0, 1fr); }
-	.thl-step-count { grid-column: 1; }
-	.thl-controls { column-gap: 0.25rem; }
+	.thl-caption-summary { grid-template-columns: minmax(0, 1fr) auto; }
+	.thl-caption-trailing { gap: 0.375rem; }
+	.thl-caption-content { max-height: min(12rem, 30vh); }
 }
 @keyframes thl-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-@media (prefers-reduced-motion: reduce) { .thl-flow { animation: none; } }
+@keyframes thl-fade { from { opacity: 0; } }
+@keyframes thl-flash {
+	from {
+		fill: color-mix(in oklch, var(--thl-change) 28%, var(--thl-surface));
+		stroke-width: 3px;
+	}
+}
+/* Motion exists only under no-preference. A reduced-motion override cannot
+   be relied on here: the animated selectors below are more specific than any
+   short override, so the animation would win. Only a forward single step
+   carries .thl-animate; seeks and rewinds settle immediately. Sequence per
+   step: the line draws, the arrowhead lands, then a changed value flashes. */
+@media (prefers-reduced-motion: no-preference) {
+	.thl-link.thl-transferred.thl-animate .thl-edge {
+		stroke-dasharray: 1;
+		animation: thl-draw var(--thl-draw-ms) ease-out both;
+	}
+	.thl-link.thl-transferred.thl-animate polygon,
+	.thl-link.thl-transferred.thl-animate .thl-edge-label {
+		animation: thl-fade 120ms ease-out calc(var(--thl-draw-ms) * 0.85) both;
+	}
+	.thl-cell.thl-changed.thl-animate rect {
+		animation: thl-flash var(--thl-flash-ms) ease-out forwards;
+	}
+	.thl-cell.thl-changed.thl-after-send rect { animation-delay: var(--thl-draw-ms); }
+}
+@media (prefers-reduced-motion: reduce) { .thl-transferred .thl-edge { animation: none; stroke-dashoffset: 0; } .thl-scene, .thl-caption-expand svg { transition: none; } }

@@ -115,41 +115,52 @@ interface PlayerGuidanceProps {
 	onSeek: (step: number) => void;
 }
 
+/** The chapter controls are positioned in the footer; explanations stay in the caption. */
+export function PlayerGuidanceControls({
+	frame,
+	guidance,
+	onSeek,
+}: PlayerGuidanceProps): React.JSX.Element | null {
+	const chapterSelectId = useId();
+	const chapters = guidance.chapters ?? [];
+	const chapter = chapters.find((item) => frame.index >= item.start && frame.index <= item.end);
+	if (!chapters.length) return null;
+	return (
+		<div className="thl-chapter-nav" role="group" aria-label="Chapter navigation">
+			<label htmlFor={chapterSelectId}>Chapter</label>
+			<select
+				id={chapterSelectId}
+				value={chapter?.id ?? ""}
+				onChange={(event) => {
+					const selected = chapters.find((item) => item.id === event.currentTarget.value);
+					if (selected) onSeek(selected.start);
+				}}
+			>
+				<option value="" disabled>Choose a chapter</option>
+				{chapters.map((item) => (
+					<option key={item.id} value={item.id}>{item.title}</option>
+				))}
+			</select>
+			{chapter && (
+				<button type="button" aria-label="Restart chapter" title="Restart chapter" onClick={() => onSeek(chapter.start)}>
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 1 2.4 5.7M4 6v6h6" /></svg>
+				</button>
+			)}
+		</div>
+	);
+}
+
+/** Read-only authored evidence and chapter description are caption content. */
 export function PlayerGuidance({
 	trace,
 	frame,
 	guidance,
-	onSeek,
 }: PlayerGuidanceProps): React.JSX.Element {
-	const chapterSelectId = useId();
 	const chapters = guidance.chapters ?? [];
 	const chapter = chapters.find((item) => frame.index >= item.start && frame.index <= item.end);
 	const links = (guidance.causalLinks ?? []).filter((item) => item.step === frame.index);
 	return (
 		<section className="thl-guidance" aria-label="Guided explanation">
-			{chapters.length > 0 && (
-				<div className="thl-chapter-nav">
-					<label htmlFor={chapterSelectId}>Chapter</label>
-					<select
-						id={chapterSelectId}
-						value={chapter?.id ?? ""}
-						onChange={(event) => {
-							const selected = chapters.find((item) => item.id === event.currentTarget.value);
-							if (selected) onSeek(selected.start);
-						}}
-					>
-						<option value="" disabled>Choose a chapter</option>
-						{chapters.map((item) => (
-							<option key={item.id} value={item.id}>{item.title}</option>
-						))}
-					</select>
-					{chapter && (
-						<button type="button" onClick={() => onSeek(chapter.start)}>
-							Restart chapter
-						</button>
-					)}
-				</div>
-			)}
 			{chapter && (
 				<div className="thl-chapter">
 					<strong>{chapter.title}</strong>

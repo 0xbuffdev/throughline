@@ -3,10 +3,12 @@ import type * as React from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { describeFrame } from "../describe.js";
 import { composeTrace } from "../layout.js";
+import { traceProgress } from "../scene/progress.js";
 import { ProgramError, type Trace } from "../model.js";
+import { BASE_STEP_MS, stepDelayMs } from "../seek.js";
 import type { SonificationOptions } from "../sonify.js";
 import { PlayerCaption } from "./caption.js";
-import { validateGuidance, type ThroughlineGuidance } from "./guidance.js";
+import { PlayerGuidanceControls, validateGuidance, type ThroughlineGuidance } from "./guidance.js";
 import { PlayerControls } from "./controls.js";
 import { ViewportScene } from "./viewport.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
@@ -39,12 +41,27 @@ export function ThroughlinePlayer({
 	const ref = useRef<HTMLDivElement>(null);
 	const sceneRef = useRef<HTMLDivElement>(null);
 	const width = useSceneWidth(sceneRef);
-	const { state, dispatch, onKeyDown } = usePlayer(trace);
+	const { state, dispatch, lastAction, onKeyDown } = usePlayer(trace);
 	const [sound, setSound] = useState(sonification?.enabled ?? false);
 	const [fullscreen, setFullscreen] = useState(false);
 	const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
 	const [fullscreenError, setFullscreenError] = useState<string | null>(null);
 	const layout = useMemo(() => composeTrace(trace, width), [trace, width]);
+	const progress = useMemo(() => traceProgress(trace, state.step), [trace, state.step]);
+	// Motion is presentation-only and decided when the step changes: only a
+	// forward single step animates. Seeks, rewinds and replaced traces show the
+	// settled frame at once, so scrubbing the timeline never replays transfers.
+	// The decision is latched per step so unrelated re-renders cannot restart
+	// or cancel an animation in progress.
+	const [motion, setMotion] = useState({ trace, step: state.step, animate: false });
+	if (motion.trace !== trace || motion.step !== state.step) {
+		setMotion({
+			trace,
+			step: state.step,
+			animate: motion.trace === trace && state.step - motion.step === 1 &&
+				(lastAction?.type === "tick" || (lastAction?.type === "step" && lastAction.animate === true)),
+		});
+	}
 	const captionId = useId();
 	const keyboardHelpId = useId();
 	const frame = trace.frames[state.step] ?? trace.frames[0];
@@ -103,6 +120,9 @@ export function ThroughlinePlayer({
 	const summary = frame
 		? [
 				describeFrame(frame, trace.frames.length),
+				...(progress.participatingNodes.size || progress.traversedRelations.size
+					? [`Workflow so far: ${progress.participatingNodes.size} participating nodes and ${progress.traversedRelations.size} sent connections.`]
+					: []),
 				chapter && "Chapter: " + chapter.title + ".",
 				...causal.map((item) => "Authored explanation: " + item.title + "."),
 			].filter(Boolean).join(" ")
@@ -113,6 +133,7 @@ export function ThroughlinePlayer({
 			ref={ref}
 			className={cn("thl", className)}
 			data-theme={theme}
+			style={{ "--thl-step-ms": `${stepDelayMs(BASE_STEP_MS, state.speed)}ms` } as React.CSSProperties}
 			role="group"
 			aria-label="Visualization player"
 			aria-describedby={keyboardHelpId}
@@ -141,36 +162,47 @@ export function ThroughlinePlayer({
 					frame={frame}
 					previous={trace.frames[state.step - 1]}
 					layout={layout}
+					progress={progress}
+					animate={motion.animate}
+					availableWidth={width}
 					summary={summary}
 					captionId={captionId}
+					caption={frame && (
+						<PlayerCaption
+							frame={frame}
+							trace={trace}
+							guidance={guidance}
+							onSeek={(step) => dispatch({ type: "step", to: step })}
+							id={captionId}
+							total={trace.frames.length}
+						/>
+					)}
+					chapterControls={frame && guidance && (
+						<PlayerGuidanceControls
+							trace={trace}
+							frame={frame}
+							guidance={guidance}
+							onSeek={(step) => dispatch({ type: "step", to: step })}
+						/>
+					)}
+					controls={frame && (
+						<PlayerControls
+							state={state}
+							dispatch={dispatch}
+							sound={
+								sonification
+									? { enabled: sound, toggle: () => setSound((enabled) => !enabled) }
+									: undefined
+							}
+							fullscreen={{
+								active: fullscreen,
+								available: fullscreenAvailable,
+								toggle: toggleFullscreen,
+							}}
+						/>
+					)}
 				/>
 			</div>
-			{frame && (
-				<>
-					<PlayerCaption
-						frame={frame}
-						trace={trace}
-						guidance={guidance}
-						onSeek={(step) => dispatch({ type: "step", to: step })}
-						id={captionId}
-						total={trace.frames.length}
-					/>
-					<PlayerControls
-						state={state}
-						dispatch={dispatch}
-						sound={
-							sonification
-								? { enabled: sound, toggle: () => setSound((enabled) => !enabled) }
-								: undefined
-						}
-						fullscreen={{
-							active: fullscreen,
-							available: fullscreenAvailable,
-							toggle: toggleFullscreen,
-						}}
-					/>
-				</>
-			)}
 		</div>
 	);
 }

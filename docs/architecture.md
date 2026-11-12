@@ -60,6 +60,51 @@ uses this internal boundary without adding a package export, trace schema,
 viewport control, or public selection API. Pan/zoom, automatic camera
 following and user-driven collapse are not part of TL-I12.
 
+## Footer layout and bounded explanations
+
+The React player composes its navigation, chapter selection, timeline,
+and transport in one bottom bar adjacent to the diagram. Container
+queries use the player container's width, not global browser size,
+to split this bar into predictable rows at narrow widths; visual icon
+sizes do not reduce keyboard and touch target areas. The authored
+caption is a native details disclosure *after* the transport bar.
+Collapsed by default, its summary remains visible with the step
+title, note preview and count; the full explanation, evidence and
+inspector are reachable without moving the controls. The expanded
+body is bounded and independently scrollable, and the SVG references
+its caption summary for descriptive accessibility.
+
+## Accumulated authored playback progress
+
+The internal React-only `traceProgress(trace, step)` selector scans compiled
+active targets, explicit transfers and authored link-reveal events only
+through the selected frame. It returns sets of participating nodes,
+traversed relations and structurally revealed relations. Recomputing
+from the selected frame on seeking makes rewind deterministic; memoization
+by trace identity and timeline index avoids redundant work on resize.
+No new trace field, compiler event, parser rule or external dependency
+is introduced, and the compiler remains React-free.
+
+The player distinguishes **persistent participation**, **current focus
+and value changes**, and **a current explicit send**. It animates the
+actual directed SVG connector using a normalized path length and a
+new element key for each send frame. Consecutive sends can reanimate.
+There is no superimposed flow path. Only a forward single step carries
+`animate`; the player latches that decision per step so unrelated renders
+never restart or cancel it, and seeks and rewinds settle without replaying.
+Animations are declared only under `prefers-reduced-motion: no-preference`;
+an override cannot be relied on because the animated selectors are more
+specific. Durations derive from `--thl-step-ms`, which the player sets from
+the playback speed.
+
+Authored visibility always wins: hidden elements cannot be revived by
+presentation progress. A collapsed aggregate remains dashed and reports
+how many true constituent relation IDs have sent so far; it does not
+animate as a single fabricated transfer. Authored `show link` is styled
+as a structural reveal. Sending never claims destination acknowledgment,
+processing or persistence, even if both endpoints are tinted as
+participating entities.
+
 ## Authored guidance and separate alternatives (TL-I15)
 
 The React-only `ThroughlineGuidance` presentation contract is not serialized

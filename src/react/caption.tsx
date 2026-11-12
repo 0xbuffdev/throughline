@@ -21,9 +21,25 @@ export function PlayerCaption({
 	total,
 }: PlayerCaptionProps): React.JSX.Element {
 	return (
-		<div className="thl-caption" id={id}>
+		// The explanation follows the transport bar. Unbounded authored notes
+		// must not reflow playback controls or steal space from the diagram.
+		<details className="thl-caption">
+			<summary className="thl-caption-summary" id={id}>
+				<span className="thl-caption-heading">
+					<strong className="thl-caption-title">{frame.label}</strong>
+					{frame.state.notes.length > 0 && (
+						<span className="thl-caption-teaser">{frame.state.notes.join(" ")}</span>
+					)}
+				</span>
+				<span className="thl-caption-trailing">
+					<span className="thl-step-count">Step {frame.index + 1} of {total}</span>
+					<span className="thl-caption-expand">
+						<span>Details</span>
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+					</span>
+				</span>
+			</summary>
 			<div className="thl-caption-content">
-				<strong className="thl-caption-title">{frame.label}</strong>
 				{frame.state.notes.length > 0 && (
 					<p className="thl-caption-note">{frame.state.notes.join(" ")}</p>
 				)}
@@ -34,12 +50,10 @@ export function PlayerCaption({
 								(relation) => relation.id === transfer.relation,
 							);
 							return (
-								// biome-ignore lint/suspicious/noArrayIndexKey: transfers are stateless entries; identical sends may repeat within one frame.
-								<li key={`${transfer.relation}:${index}`}>
-									{link ? `${link.from} → ${link.to}` : transfer.relation}
-									{transfer.value !== undefined && (
-										<code>{format(transfer.value)}</code>
-									)}
+								// biome-ignore lint/suspicious/noArrayIndexKey: stateless repeated transfers can share a relation.
+								<li key={transfer.relation + ":" + index}>
+									{link ? link.from + " → " + link.to : transfer.relation}
+									{transfer.value !== undefined && <code>{format(transfer.value)}</code>}
 								</li>
 							);
 						})}
@@ -48,9 +62,6 @@ export function PlayerCaption({
 				{guidance && <PlayerGuidance trace={trace} frame={frame} guidance={guidance} onSeek={onSeek} />}
 				<StateInspector frame={frame} />
 			</div>
-			<span className="thl-step-count">
-				Step {frame.index + 1} of {total}
-			</span>
-		</div>
+		</details>
 	);
 }

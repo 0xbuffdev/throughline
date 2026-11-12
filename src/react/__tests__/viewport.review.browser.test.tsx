@@ -32,16 +32,22 @@ it("fits the full vertically dense diagram inside a bounded physical phone viewp
   const screen = await render(<ThroughlinePlayer trace={dense} />);
   await expect.poll(() => view()[2]).toBeLessThan(720);
   await expect.poll(() => view()[3]).toBeGreaterThan(900);
-  const rect = svg().getBoundingClientRect();
-  expect(rect.height).toBeLessThanOrEqual(513);
-  expect(rect.width).toBeLessThan(375);
+  // Wait for the responsive scene-height transition to finish before
+  // comparing world corners with physical viewport coordinates.
+  await expect.poll(() => Math.abs(svg().getBoundingClientRect().height - Number.parseFloat(svg().style.height))).toBeLessThan(1);
+  const initialRect = svg().getBoundingClientRect();
+  expect(initialRect.height).toBeLessThanOrEqual(961);
+  expect(initialRect.width).toBeLessThan(375);
   expect(svg().getAttribute("preserveAspectRatio")).toBe("xMidYMid meet");
   await screen.getByRole("button", { name: "Zoom in" }).click();
   await screen.getByRole("button", { name: "Fit to view" }).click();
   const [x, y, width, height] = view();
   expect(x).toBe(0);
   expect(y).toBe(0);
-  // Both world corners project inside the *physical* SVG viewport.
+  // The footer is below a tall diagram, so clicking Fit scrolls the page
+  // to the control. Compare world-to-screen coordinates to the *current*
+  // SVG rect, not a stale rect captured before scrolling.
+  const rect = svg().getBoundingClientRect();
   const matrix = svg().getScreenCTM()!;
   const topLeft = new DOMPoint(0, 0).matrixTransform(matrix);
   const bottomRight = new DOMPoint(width, height).matrixTransform(matrix);

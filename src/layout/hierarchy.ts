@@ -52,9 +52,9 @@ export function nestLayout(base: Layout, trace: Trace): Layout {
 		list.push(entity.id);
 		members.set(name, list);
 	}
-	const limit = Math.max(160, base.width - 24);
-	const GAP = 28;
-	const PAD = 12;
+	const limit = Math.max(160, base.width - 16);
+	const GAP = 18;
+	const PAD = 8;
 	const move = (placed: Placed, dx: number, dy: number, into: Placed): void => {
 		for (const [id, box] of Object.entries(placed.nodes))
 			into.nodes[id] = { ...box, x: box.x + dx, y: box.y + dy };
@@ -128,6 +128,6 @@ export function nestLayout(base: Layout, trace: Trace): Layout {
 		viewBox: `0 0 ${result.w} ${result.h}`,
 		groups: result.groups,
 		nodes: result.nodes,
-		edges: routeEdges(trace.frames[0]?.state.relations ?? [], result.nodes),
+		edges: routeEdges(trace.frames[0]?.state.relations ?? [], result.nodes, result.groups),
 	};
 }

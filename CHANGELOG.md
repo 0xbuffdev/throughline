@@ -5,6 +5,52 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Changed (development preview sound)
+
+- Expose the existing opt-in Web Audio speaker control in every local playground example and scenario comparison, initially muted. No default audio in the published React player and no new audio dependencies.
+
+
+### Changed (state hierarchy and motion)
+
+- Give the present its own color. `--thl-active` (new) marks the current send, its label and the Play button; `--thl-trail` becomes the same hue washed out for history; `--thl-change` becomes the single warm color for changed values. Previously focus and change were near-identical neutrals (about 0.02-0.03 apart in OKLab) and history was the only colored mark.
+- Keep trail color on strokes and arrowheads only; visited and revealed edge labels stay `--thl-muted` so 10px text keeps at least 4.5:1 contrast.
+- Reserve dashes for structure. Selected nodes and keyboard focus are an outer ring (`.thl-ring`) instead of a dashed outline and a 3px stroke that matched authored focus; the ring is the first-rect-safe sibling drawn after the node body.
+- Animate only a forward single step. Seeking the timeline, rewinding and replacing the trace settle on the final frame instead of replaying the send. The decision is latched per step in the player.
+- Sequence motion within a step: the arrow draws, its arrowhead and label fade in, then a changed value flashes (waiting for the arrow when the step has a send). Durations derive from `--thl-step-ms`, which the player sets from the playback speed.
+
+### Fixed (reduced motion)
+
+- Reduced motion did not disable the send animation: the opt-out selector `.thl-transferred .thl-edge` was less specific than the rule that set the animation, so the animation still ran under `prefers-reduced-motion: reduce`. Animations are now declared only under `prefers-reduced-motion: no-preference`, and a test fails on any unguarded animation rule.
+
+### Changed (responsive player controls)
+
+- Add a small consistent gap between the visualization and its optional title and bottom controls.
+
+- Place chapter and diagram navigation beside transport controls in one compact adaptive footer, with 14px visible icons, slimmer native inputs and 40px mobile hit targets.
+- Move variable-length captions below the footer as accessible step disclosures, retaining a one-line preview and a bounded independently scrollable detailed explanation.
+- Keep the diagram and playback controls stationary as authored notes and evidence change between steps.
+
+
+### Improved (workflow playback visual review)
+
+- Retain authored node and connector activity across later steps; seeking
+  backwards reconstructs the earlier trail without leaking future state.
+- Animate each current send directly on its existing arrow path instead of
+  drawing a second line; repeated sends restart the same-path animation.
+- Keep shown-but-unsent links visibly distinct, preserve partial
+  collapsed-group provenance and announce cumulative progress to screen readers.
+  Neither transfers nor tinted endpoints imply acknowledgment or persistence.
+
+
+### Changed (pre-release visual review)
+
+- Add a source-backed Vite preview for browser inspection before publishing or deploying.
+- Compact group/node/cell geometry, reduce panel whitespace, set 2px corners and 1.5rem player padding, and replace boxed icon actions with accessible borderless hit targets.
+- Move chapter, viewport and hierarchy navigation below the caption into a common footer with playback controls; keep the authored narrative in the caption.
+- Size the SVG stage from stable layout content rather than a 52vh placeholder; cap only dense content and retain mobile fit/zoom semantics.
+- Place visible relation labels away from node values and competing labels; when space is insufficient, keep the full relation in its SVG title rather than drawing over nodes.
+
+
 ### Hardened (TL-I16 candidate)
 
 - Reject unsupported trace versions and missing frame arrays at the React reader boundary; this is not full validation of untrusted serialized state.
