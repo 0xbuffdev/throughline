@@ -41,7 +41,7 @@ export function ThroughlinePlayer({
 	const ref = useRef<HTMLDivElement>(null);
 	const sceneRef = useRef<HTMLDivElement>(null);
 	const width = useSceneWidth(sceneRef);
-	const { state, dispatch, onKeyDown } = usePlayer(trace);
+	const { state, dispatch, lastAction, onKeyDown } = usePlayer(trace);
 	const [sound, setSound] = useState(sonification?.enabled ?? false);
 	const [fullscreen, setFullscreen] = useState(false);
 	const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
@@ -58,7 +58,8 @@ export function ThroughlinePlayer({
 		setMotion({
 			trace,
 			step: state.step,
-			animate: motion.trace === trace && state.step - motion.step === 1,
+			animate: motion.trace === trace && state.step - motion.step === 1 &&
+				(lastAction?.type === "tick" || (lastAction?.type === "step" && lastAction.animate === true)),
 		});
 	}
 	const captionId = useId();

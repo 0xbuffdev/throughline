@@ -54,7 +54,7 @@ export function PlayerControls({
 					aria-label="Step forward"
 					title="Step forward"
 					disabled={state.step === state.max}
-					onClick={() => dispatch({ type: "step", to: state.step + 1 })}
+					onClick={() => dispatch({ type: "step", to: state.step + 1, animate: true })}
 				>
 					<svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
 						<path d="M19 5v14M5 5l8 7-8 7" />

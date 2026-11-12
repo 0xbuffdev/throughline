@@ -27,6 +27,12 @@ it("animates a send only when it is reached by one forward step", async () => {
 	expect(chargeLink().classList.contains("thl-animate")).toBe(false);
 	expect(edgeAnimation()).toBe("none");
 
+	// Even an adjacent timeline seek is a seek, not explicit Step forward.
+	await timeline.fill(String(sendAt - 1));
+	await timeline.fill(String(sendAt));
+	expect(chargeLink().classList.contains("thl-animate")).toBe(false);
+	expect(edgeAnimation()).toBe("none");
+
 	// Stepping forward onto it animates the same connector path.
 	await timeline.fill(String(sendAt - 1));
 	await screen.getByRole("button", { name: "Step forward" }).click();

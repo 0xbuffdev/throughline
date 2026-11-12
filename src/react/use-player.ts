@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { Trace } from "../model.js";
 import {
 	BASE_STEP_MS,
@@ -13,14 +13,22 @@ import {
 export function usePlayer(trace: Trace): {
 	state: SeekState;
 	dispatch: React.Dispatch<SeekAction>;
+	lastAction: SeekAction | null;
 	onKeyDown: React.KeyboardEventHandler;
 } {
 	const [identity, setIdentity] = useState(trace);
-	const [state, dispatch] = useReducer(
+	const [state, reducerDispatch] = useReducer(
 		seekReducer,
 		Math.max(0, trace.frames.length - 1),
 		initialSeek,
 	);
+	// Track how a frame was reached without extending the public seek state.
+	// Timeline seeks (even an adjacent one) never count as forward playback.
+	const lastAction = useRef<SeekAction | null>(null);
+	const dispatch = useCallback<React.Dispatch<SeekAction>>((action) => {
+		lastAction.current = action;
+		reducerDispatch(action);
+	}, []);
 	// Reset during render, before any child can read a stale frame index.
 	if (identity !== trace) {
 		setIdentity(trace);
@@ -44,13 +52,13 @@ export function usePlayer(trace: Trace): {
 					: event.key === "End"
 						? state.max
 						: state.step + (event.key === "ArrowRight" ? 1 : -1);
-			dispatch({ type: "step", to });
+			dispatch({ type: "step", to, animate: event.key === "ArrowRight" });
 		} else if (event.key === " " && state.max > 0) {
 			event.preventDefault();
 			dispatch({ type: "toggle" });
 		}
 	};
-	return { state, dispatch, onKeyDown };
+	return { state, dispatch, lastAction: lastAction.current, onKeyDown };
 }
 
 export function useSceneWidth(

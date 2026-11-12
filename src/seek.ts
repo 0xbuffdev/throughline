@@ -20,7 +20,7 @@ export type SeekAction =
 	| { type: "tick" }
 	| { type: "toggle" }
 	| { type: "pause" }
-	| { type: "step"; to: number }
+	| { type: "step"; to: number; /** Only explicit Step forward or ArrowRight requests motion. */ animate?: boolean }
 	| { type: "speed"; to: Speed };
 
 export const initialSeek = (max: number): SeekState => ({
