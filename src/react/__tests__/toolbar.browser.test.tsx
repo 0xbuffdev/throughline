@@ -27,10 +27,23 @@ it("forms one aligned compact toolbar on wide screens and adapts by container wi
 	expect(Math.abs(centerY(chapter) - centerY(entity))).toBeLessThan(3);
 	expect(Math.abs(centerY(chapter) - centerY(play))).toBeLessThan(3);
 	expect(Math.abs(centerY(chapter) - centerY(timeline))).toBeLessThan(3);
-	expect(bottom.getBoundingClientRect().height).toBeLessThan(55);
+	const toolbarBounds = bottom.getBoundingClientRect();
+	expect(toolbarBounds.height).toBeLessThan(55);
+	// A compact bar must still enclose native form controls in every engine.
+	for (const control of bottom.querySelectorAll<HTMLElement>("button, select, input")) {
+		const rect = control.getBoundingClientRect();
+		const name = control.getAttribute("aria-label") ?? control.tagName;
+		expect(rect.top, name + " escapes toolbar top").toBeGreaterThanOrEqual(toolbarBounds.top - 1);
+		expect(rect.bottom, name + " escapes toolbar bottom").toBeLessThanOrEqual(toolbarBounds.bottom + 1);
+	}
 	expect(zoom.getBoundingClientRect().width).toBe(34);
 	expect(getComputedStyle(zoom.querySelector("svg")!).width).toBe("14px");
-	expect(chapter.getBoundingClientRect().height).toBe(34);
+	// Native select widgets are 34px in Chromium/Firefox and 42px in WebKit.
+	// Constrain the allowable size while the toolbar-height and bounds checks
+	// above enforce the actual compact, unclipped layout contract.
+	const chapterHeight = chapter.getBoundingClientRect().height;
+	expect(chapterHeight).toBeGreaterThanOrEqual(34);
+	expect(chapterHeight).toBeLessThanOrEqual(42);
 	expect(getComputedStyle(chapter).borderTopLeftRadius).toBe("2px");
 	expect(getComputedStyle(chapter).paddingLeft).toBe("8px");
 

@@ -5,6 +5,10 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 
 ## Unreleased
 
+### Fixed (cross-browser toolbar)
+
+- Keep the wide playback toolbar compact in WebKit without constraining native selector height; verify the compact bar still encloses every control across browser engines.
+
 ### Fixed (narration review)
 
 - Coordinate browser-global speech synthesis between multiple Throughline players; newer narration takes over while displaced players pause and stop owning cancellation.
