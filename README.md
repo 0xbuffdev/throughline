@@ -131,8 +131,6 @@ program is limited to 200 entities, 1,000 relations, 2,000 steps and
 10,000 events, plus work/expansion budgets. These limits are for
 deterministic work, not a guarantee of exact heap or CPU usage.
 
- see the [Throughline documentation](https://docs.0xbuff.com/docs/throughline) and the [architecture notes](https://github.com/0xbuffdev/throughline/blob/main/docs/architecture.md).
-
 ## Documentation
 
 - [User guide: player, themes, audio, navigation and Markdown](docs/user-guide.md)
