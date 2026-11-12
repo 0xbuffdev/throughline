@@ -10,7 +10,7 @@ Semantic Versioning independently of the version-1 trace and program schemas.
 - Coordinate browser-global speech synthesis between multiple Throughline players; newer narration takes over while displaced players pause and stop owning cancellation.
 - Pause with an accessible error on unexpected speech interruption instead of stalling autoplay or advancing a failed utterance.
 - Restart narration for repeated seeks to the same step and replace stale speech when authored guidance changes.
-- Allow dual-audio control rows to wrap predictably in 300–320px embedded content widths, without changing controls in ordinary one-audio players.
+- Keep the dual-audio 360px breakpoint while restoring a generic three-row fallback at <=300px content widths, covering players with no audio, only narration, only step tones, or both. Verify embedded layouts with actual browser element bounds.
 
 ### Added (opt-in caption narration)
 

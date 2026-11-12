@@ -191,3 +191,54 @@ it("keeps two audio controls within embedded content widths of 300–320px", asy
 		}
 	}
 });
+
+it("keeps controls visible with neither, one, or both optional audio features at narrow embed widths", async () => {
+	await page.viewport(1100, 850);
+	speechBoundary();
+	const configurations = [
+		{ name: "no audio", narration: false, sonification: false },
+		{ name: "narration only", narration: true, sonification: false },
+		{ name: "sound effects only", narration: false, sonification: true },
+		{ name: "both audio controls", narration: true, sonification: true },
+	] as const;
+	const widths = [260, 280, 296, 300, 320, 348, 368, 380, 420];
+	const screen = await render(
+		<div style={{ width: "320px" }}>
+			<ThroughlinePlayer trace={trace} />
+		</div>,
+	);
+	for (const configuration of configurations) {
+		for (const width of widths) {
+			await screen.rerender(
+				<div style={{ width: width + "px" }}>
+					<ThroughlinePlayer
+						trace={trace}
+						narration={configuration.narration}
+						sonification={configuration.sonification ? {} : undefined}
+					/>
+				</div>,
+			);
+			const label = configuration.name + " at " + width + "px";
+			const player = document.querySelector<HTMLElement>(".thl")!;
+			const controls = player.querySelector<HTMLElement>(".thl-controls")!;
+			const bounds = controls.getBoundingClientRect();
+			await expect.poll(() => Math.round(player.getBoundingClientRect().width)).toBe(width);
+			expect(player.scrollWidth, label).toBeLessThanOrEqual(player.clientWidth);
+			for (const item of controls.querySelectorAll<HTMLElement>("button, select, input")) {
+				const rect = item.getBoundingClientRect();
+				expect(rect.left, label + " left").toBeGreaterThanOrEqual(bounds.left - 1);
+				expect(rect.right, label + " right").toBeLessThanOrEqual(bounds.right + 1);
+			}
+			const contentWidth = width - 48;
+			const mustSplit = contentWidth <= 300 ||
+				(configuration.narration && configuration.sonification && contentWidth <= 360);
+			const transport = controls.querySelector(".thl-transport")!.getBoundingClientRect();
+			const utilities = controls.querySelector(".thl-utilities")!.getBoundingClientRect();
+			if (mustSplit) {
+				expect(utilities.top, label + " utility row").toBeGreaterThan(transport.top);
+			} else {
+				expect(Math.abs(utilities.top - transport.top), label + " aligned rows").toBeLessThan(2);
+			}
+		}
+	}
+});

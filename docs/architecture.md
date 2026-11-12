@@ -90,6 +90,13 @@ browser-managed remote services.
 
 ## Footer layout and bounded explanations
 
+The optional narration and step-tone controls share responsive rules.
+Dual-audio players use a dedicated utilities row at player content widths up
+to 360px; **all** players use the generic three-row fallback at content
+widths up to 300px, regardless of whether audio features are offered.
+Both breakpoints use the measured player container rather than the viewport,
+preserving accessible controls in narrow embedded layouts.
+
 The React player composes its navigation, chapter selection, timeline,
 and transport in one bottom bar adjacent to the diagram. Container
 queries use the player container's width, not global browser size,

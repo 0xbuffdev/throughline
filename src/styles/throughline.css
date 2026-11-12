@@ -664,6 +664,15 @@
 		grid-column: 1; grid-row: 3; justify-content: flex-start;
 	}
 }
+/* Restore the generic narrow-content fallback, independently of optional
+   audio controls. One audio button can also exceed the transport row's
+   available width below 300px; the dual-audio 360px rule remains above. */
+@container (max-width: 300px) {
+	.thl-controls { grid-template-columns: minmax(0, 1fr); }
+	.thl-timeline { grid-column: 1; grid-row: 1; }
+	.thl-transport { grid-column: 1; grid-row: 2; }
+	.thl-utilities { grid-column: 1; grid-row: 3; justify-content: flex-start; }
+}
 @keyframes thl-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes thl-fade { from { opacity: 0; } }
 @keyframes thl-flash {
