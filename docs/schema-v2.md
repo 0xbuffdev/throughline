@@ -1,18 +1,18 @@
-# Schema-2 artifact validation, atomic replay and semantic queries (TL-U02–U04)
+# Schema-2 semantic runtime, indexed queries and native graph (TL-U02–U05)
 
-The schema-2 validator, atomic deterministic compiler and indexed trace inspector
-implement the pure accepted semantic foundation. The preexisting schema-1 Markdown parser and player are
-not v2 consumers; no backward-compatibility support is promised.
+The schema-2 validator, deterministic compiler and indexed inspector implement
+the pure semantic foundation. TL-U05 adds the native graph projection and React
+player without a v1 adapter. The preexisting schema-1 Markdown parser and player
+remain separate while TL-U06–TL-U10 deliver sequence, full Inspect UI, one-fence
+authoring and integrations. No backward-compatibility promise is made.
 Normative authority: Throughline Specification 0004 §§10–13 (maintainer-owned architecture record).
-TL-U05 and later tickets migrate views, the player, examples and the
-single unqualified `thl` fence.
 
 ## Public data boundary
 
 ```ts
 import {
   validateArtifact, parseArtifactJson, serializeArtifact, compileArtifact,
-  inspectTrace,
+  inspectTrace, projectView,
   type VisualArtifact
 } from "@0xbuff/throughline";
 
@@ -43,6 +43,8 @@ inspect.valueAt(1, "counter", ["x"]);   // {status:"absent"}
 inspect.diff(0, 1);                    // explicit write with eventId "write1"
 inspect.history("counter");            // authored writes, never fabricated effects
 inspect.causalEvidenceOf("write1");    // unmodeled: no declared dependency
+const graph = projectView(inspect, { kind: "graph", frameIndex: 1 });
+// The graph is renderer-independent; every item has exact semantic source IDs.
 ```
 
 No resolver, network connection, rendering library or provider SDK participates
@@ -258,6 +260,98 @@ assertions, took **177.8 ms**. Reproduction:
 The fixture hash, hardware and observed timings are emitted by the test.
 This is measured evidence **on that runner**, not a cross-hardware latency SLA.
 
+## TL-U05 — Pure graph projection and native React player
+
+The accepted `ViewRequest`, `ViewDescriptor`, `ViewItem` and `SourceIds`
+contracts are available from the root package. A projection is a deeply
+immutable renderer-independent collection of items, each retaining at least
+one validated source group/entity/relation/event ID and a meaningful text
+description. **Visual item IDs are local to a projection. Cross-frame or
+cross-view selection always uses the original semantic entity IDs.**
+
+~~~ts
+const inspect = inspectTrace(compileArtifact(source));
+const view = projectView(inspect, {
+  kind: "graph",
+  frameIndex: 1,
+  selectedEntityIds: ["left"],
+  collapsedGroupIds: [],
+});
+console.log(view.frameId);           // authored step ID
+console.log(view.items[0]?.source);  // exact frozen semantic source IDs
+~~~
+
+`projectView` requires an authentic `inspectTrace` instance backed by a
+compiler-owned in-process trace; cloned JSON or forged inspectors are refused.
+The request must name a valid frame and any selected/collapsed group IDs must
+resolve to the original artifact. The projector never fetches, executes code,
+or mutates semantic state.
+
+**Graph presence and evidence:** Only entities marked present in the selected
+frame, and relations marked present **with both endpoints present**, draw as
+nodes and links. The source step's `message` phase `sent` alone marks a
+connector as a currently authored send. `received`, `acknowledged` and
+`processed` are independently listed evidence, not inferred sends. Neither
+messages nor observations write canonical cells. A historical workflow trail
+marks only explicit **sent** phases in or before the selected frame, not
+fabricated responses or persistence. Each event's declared `originId` and
+origin kind (authored, computed, simulated, observed or AI-proposed) are shown
+as **provenance metadata**, not independently verified truth. An
+observation-family event or presence change is not automatically “observed”
+or “authored”; its declared origin is a separate fact.
+
+**Static nested groups:** Groups are declared in the validated artifact.
+`collapsedGroupIds` is presentation-only: hidden member nodes are replaced
+by a local summary whose provenance retains the contributing present
+source entity/group and internal relation/event IDs, **plus source IDs and
+event IDs for absent entities or relations explicitly affected at the
+current step** (for example, a topology removal). The summary's
+`data.count` still counts only *currently present* members; removed
+members/links remain absent from the drawn graph. Group source event IDs
+retain the authored event-list ordering independently of event origin kind.
+Parallel outward relations collapse to one visual connector but retain
+**all** source relation IDs. Internal links are never drawn as invented
+group self-loops. Expanding restores original source nodes; no topology
+event or data mutation is emitted.
+
+Layout is based on declared identities independently of modeled presence,
+so seeking never reparents or repositions an entity merely because the trace
+frame changes. **Ancestor panels are painted before their descendants,
+regardless of declaration order**, with stable sibling ordering, to avoid
+opaque parent backgrounds covering child labels. The pure edge router is
+reused from the existing layout module; there is no adapter through legacy
+`Program.version:1`.
+
+**Fallback while building all three views:** Explicit `graph` uses the
+implemented source-linked graph; graph-incompatible requests and unsupported
+`sequence` requests receive a truthful state/event table and an explicit
+diagnostic. An auto-selection that requires a not-yet-implemented sequence
+view likewise chooses the table, **not** a fabricated graph. TL-U06 delivers
+the sequence projector; TL-U07 delivers the complete Inspect/history UI and
+view-navigation experience. Later tickets implement stable view switching
+from authoring hints across the complete supported three-view set.
+
+**Native React:** `ThroughlineGraphPlayer` is exported solely from
+`@0xbuff/throughline/react`, consuming `CompiledTrace` directly. It reuses
+the pure geometry/camera math, accessible playback transport and optional
+browser speech lifecycle (voice initially off; never a core dependency).
+Frame seeking, step captions, evidence listing, source-based selection,
+read-only group collapse, pan/zoom/fit, focusable keyboard controls and
+source-linked SVG descriptions are available. A separate v2 state table
+fallback is readable and never promotes observations to durable writes.
+The old `ThroughlinePlayer` remains a temporary schema-1 entrypoint, **not
+a new compatibility API**; migrate internal examples/MDX in TL-U08–TL-U10.
+
+Regression coverage includes distributed checkout (isolated receives,
+processed-without-sent evidence, explicit settlement write, preactivation
+and removal), child-before-parent declarations, exact source IDs of
+removed constituents under collapse, mixed-origin event descriptions,
+cross-frame immutable seeking and invalid trusted objects. Chromium,
+Firefox, WebKit, mobile widths, keyboard/selection and packed Node/React SSR
+are release evidence gates on the source PR, not substitute claims of human
+understanding. Near-cap 200-entity/1000-relation layout tests record hardware
+and a fixture SHA-256; timings are observations, not portable SLAs.
+
 ## Acceptance and deferred replay checks
 
 TL-U02 tests positive recursion/matrix/checkout-shaped artifacts and rejects
@@ -265,5 +359,7 @@ broken cross-references, malformed and duplicate JSON, invalid paths, dates,
 cycles, unsafe input, depth/count/byte/work-limit breaches and mutation leaks.
 TL-U03 adds atomic replay, no-false-persistence and endpoint-presence
 checks, deterministic checkpoint/mutation tests and expanded-budget rejection.
-Graph/sequence/state-table projections and a v2 player remain TL-U05–TL-U10 work. Test and release
-evidence must be recorded from real CI, not assumed from this documentation.
+TL-U05 adds the graph, diagnosed fallback and native v2 player. Sequence,
+full Inspect history UI, unified authoring and packed-host migration remain
+TL-U06–TL-U10 work. Test and release evidence must be recorded from real CI,
+not assumed from documentation alone.

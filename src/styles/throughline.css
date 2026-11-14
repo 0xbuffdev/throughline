@@ -745,3 +745,92 @@
 	.thl-cell.thl-changed.thl-after-send rect { animation-delay: var(--thl-draw-ms); }
 }
 @media (prefers-reduced-motion: reduce) { .thl-transferred .thl-edge { animation: none; stroke-dashoffset: 0; } .thl-scene, .thl-caption-expand svg { transition: none; } }
+
+
+/* Native schema-2 graph/inspect views. Reuse the v1 controls and scene tokens,
+   never the version-1 compilation or modeled state. */
+.thl-v2 .thl-canvas { min-height: 13rem; }
+.thl-v2 .thl-scene { touch-action: none; }
+.thl-v2 .thl-viewport-tools { z-index: 1; }
+.thl-v2 .thl-viewport-tools button { min-width: 2.25rem; min-height: 2.25rem; }
+.thl-v2 .thl-v2-value {
+	font: inherit;
+	font-size: 12px;
+	fill: var(--thl-text);
+}
+.thl-v2 .thl-v2-value.thl-changed,
+.thl-v2 .thl-v2-change { fill: var(--thl-change); }
+.thl-v2 .thl-v2-change { font-size: 10px; font-weight: 600; }
+.thl-v2 .thl-v2-field {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+	align-items: center;
+	font-size: 0.875rem;
+}
+.thl-v2 .thl-v2-field select {
+	min-height: 2.2rem;
+	max-width: 100%;
+	background: var(--thl-control-bg);
+	border: 1px solid var(--thl-line);
+	color: var(--thl-text);
+	padding: 0.25rem;
+}
+.thl-v2 .thl-v2-caption {
+	border: 1px solid var(--thl-line);
+	border-radius: var(--thl-radius);
+	background: var(--thl-surface);
+	padding: 0.7rem;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+.thl-v2 .thl-v2-caption summary {
+	cursor: pointer;
+	font-weight: 650;
+}
+.thl-v2 .thl-v2-caption p { margin-top: 0.35rem; color: var(--thl-muted); }
+.thl-v2 .thl-v2-caption ol {
+	padding-inline-start: 1.4rem;
+	margin-block: 0.5rem 0;
+	max-height: 12rem;
+	overflow-y: auto;
+}
+.thl-v2 .thl-v2-caption li { margin-block-end: 0.25rem; }
+.thl-v2 .thl-v2-selection {
+	border: 1px solid var(--thl-line);
+	border-radius: var(--thl-radius);
+	padding: 0.75rem;
+	min-width: 0;
+}
+.thl-v2 .thl-v2-selection h3 { font-size: 1rem; margin: 0; }
+.thl-v2 .thl-v2-selection p { color: var(--thl-muted); margin-block: 0.25rem; }
+.thl-v2 .thl-v2-selection pre {
+	font-size: 0.875rem;
+	line-height: 1.4;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	overflow-x: auto;
+	max-height: 14rem;
+	overflow-y: auto;
+}
+.thl-v2 .thl-v2-fallback {
+	max-width: 100%;
+	max-height: min(70vh, 34rem);
+	overflow: auto;
+	padding: 0.5rem;
+	background: var(--thl-surface);
+}
+.thl-v2 .thl-v2-fallback table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.thl-v2 .thl-v2-fallback th,
+.thl-v2 .thl-v2-fallback td {
+	padding: 0.5rem;
+	text-align: start;
+	border-bottom: 1px solid var(--thl-line);
+	vertical-align: top;
+	overflow-wrap: anywhere;
+}
+.thl-v2 .thl-v2-fallback code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.thl-v2 .thl-v2-fallback button { color: inherit; font: inherit; }
+@media (prefers-reduced-motion: reduce) {
+	.thl-v2 .thl-edge, .thl-v2 .thl-node { animation: none !important; transition: none !important; }
+}

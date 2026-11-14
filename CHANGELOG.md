@@ -9,6 +9,14 @@ program and trace schemas. Changes are grouped using
 
 ### Added
 
+- Added the pure schema-2 `projectView` graph projection, static nested-group
+  collapse with complete semantic source provenance, a truthful state/event
+  table fallback while sequence is pending, and the dedicated accessible
+  `ThroughlineGraphPlayer` React component (TL-U05).
+  Only authored `sent` events animate workflow connectors; observations,
+  receipts and processed phases never invent persistent writes or sends.
+  Native v2 playback reuses transport, speech ownership and pure edge routing
+  without converting schema-2 artifacts into schema-1 traces.
 - Added schema-2 `inspectTrace` indexed pure state/diff/history,
   entity-event, relation-transfer, explicit-dependency and claim queries
   (TL-U04). Distinguishes absent/unknown/known-null values, preserves

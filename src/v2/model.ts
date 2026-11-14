@@ -209,3 +209,35 @@ export type TraceInspector = {
 	claimsForEvent(eventId: Id): readonly Claim[];
 	relationsFor(entityId: Id): readonly Relation[];
 };
+
+/** Stable source provenance for renderer-independent v2 views. */
+export type SourceIds = {
+	readonly entityIds?: readonly Id[];
+	readonly relationIds?: readonly Id[];
+	readonly eventIds?: readonly Id[];
+	readonly groupIds?: readonly Id[];
+};
+export type ViewKind = "graph" | "sequence" | "state-table";
+export type ViewItem = {
+	readonly id: Id;
+	readonly role: "entity" | "relation" | "event" | "group" | "value";
+	readonly label: string;
+	readonly description: string;
+	readonly source: Readonly<SourceIds>;
+	readonly fromItemId?: Id;
+	readonly toItemId?: Id;
+	readonly data?: JsonValue;
+};
+export type ViewRequest = {
+	readonly kind?: ViewKind;
+	readonly frameIndex: number;
+	readonly selectedEntityIds?: readonly Id[];
+	readonly collapsedGroupIds?: readonly Id[];
+};
+export type ViewDescriptor = {
+	readonly kind: ViewKind;
+	readonly frameId: string;
+	readonly summary: string;
+	readonly items: readonly ViewItem[];
+	readonly diagnostics?: readonly string[];
+};

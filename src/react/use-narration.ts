@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Trace } from "../model.js";
 import type { SeekAction, Speed } from "../seek.js";
 import {
 	acquireSpeech,
@@ -10,7 +9,7 @@ import {
 } from "./speech-owner.js";
 
 type Session = {
-	trace: Trace;
+	trace: object;
 	step: number;
 	text: string;
 	seekRevision: number;
@@ -22,7 +21,7 @@ type Session = {
 };
 
 type NarrationInput = {
-	trace: Trace;
+	trace: object;
 	step: number;
 	text: string;
 	seekRevision: number;
