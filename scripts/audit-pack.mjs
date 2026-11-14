@@ -133,7 +133,7 @@ try {
 	);
 	const core = [
 		'import assert from "node:assert/strict";',
-		'import { compile, ProgramError, compileArtifact, inspectTrace } from "@0xbuff/throughline";',
+		'import { compile, ProgramError, compileArtifact, inspectTrace, projectView } from "@0xbuff/throughline";',
 		'import { EXAMPLES } from "@0xbuff/throughline/examples";',
 		'assert(Array.isArray(EXAMPLES) && EXAMPLES.length > 0);',
 		'assert(compile(EXAMPLES[0].source).frames.length > 0);',
@@ -163,6 +163,13 @@ try {
 		'assert.equal(presence.after, false);',
 		'assert.deepEqual(inspector.dependenciesOf("write"), []);',
 		'assert.equal(inspector.causalEvidenceOf("write").status, "unmodeled");',
+		'const graph = projectView(inspector, { kind: "graph", frameIndex: 1 });',
+		'assert.equal(graph.kind, "graph");',
+		'assert.equal(graph.frameId, "increment");',
+		'assert.deepEqual(graph.items.filter(item => item.role === "entity").flatMap(item => item.source.entityIds ?? []), ["counter"]);',
+		'assert.deepEqual(graph.items.filter(item => item.role === "event").flatMap(item => item.source.eventIds ?? []), ["write"]);',
+		'assert.equal(Object.isFrozen(graph.items), true);',
+		'assert.throws(() => projectView({ ...inspector }, { kind: "graph", frameIndex: 1 }), /untrusted trace inspector/);',
 		'assert.throws(() => inspectTrace(JSON.parse(JSON.stringify(compiled))), /untrusted compiled trace/);',
 		'assert.throws(() => compileArtifact({ schemaVersion: 2, frames: [] }), /required property|unexpected property/);',
 	].join("\n");
@@ -171,7 +178,7 @@ try {
 	writeFileSync(
 		join(consumer, "index.ts"),
 		[
-			'import { compile, compileArtifact, inspectTrace, type Trace, type VisualArtifact, type CompiledTrace, type TraceInspector, type QueryCell, type StateChange, type HistoryEntry, type PresenceChange, type SemanticEvent } from "@0xbuff/throughline";',
+			'import { compile, compileArtifact, inspectTrace, projectView, type Trace, type VisualArtifact, type CompiledTrace, type TraceInspector, type QueryCell, type StateChange, type HistoryEntry, type PresenceChange, type SemanticEvent, type ViewRequest, type ViewDescriptor, type ViewItem } from "@0xbuff/throughline";',
 			'import { EXAMPLES } from "@0xbuff/throughline/examples";',
 			'const trace: Trace = compile(EXAMPLES[0]!.source);',
 			'const frames: number = trace.frames.length;',
@@ -184,6 +191,10 @@ try {
 			'if (cell.status !== "known" || cell.value !== 1) throw new Error("Incorrect query state");',
 			'const changes: readonly StateChange[] = inspector.diff(0, 1);',
 			'const dependencies: readonly SemanticEvent[] = inspector.dependenciesOf("write");',
+			'const request: ViewRequest = { kind: "graph", frameIndex: 1 };',
+			'const view: ViewDescriptor = projectView(inspector, request);',
+			'const node: ViewItem = view.items.find(item => item.role === "entity")!;',
+			'if (node.source.entityIds?.[0] !== "counter" || view.frameId !== "increment") throw new Error("Incorrect view provenance");',
 			'if (changes.length !== 1 || dependencies.length !== 0) throw new Error("Incorrect query evidence");',
 			'const history: readonly HistoryEntry[] = inspector.history("counter");',
 			'const frameId: string = history[0]!.frameId;',
@@ -284,22 +295,32 @@ try {
 		'import assert from "node:assert/strict";',
 		'import { createElement } from "react";',
 		'import { renderToString } from "react-dom/server";',
-		'import { compile } from "@0xbuff/throughline";',
-		'import { ThroughlinePlayer } from "@0xbuff/throughline/react";',
+		'import { compile, compileArtifact } from "@0xbuff/throughline";',
+		'import { ThroughlinePlayer, ThroughlineGraphPlayer } from "@0xbuff/throughline/react";',
 		'const fence = String.fromCharCode(96).repeat(3);',
 		'const trace = compile([fence+"thl binary","a = 1","b = 1",fence].join(String.fromCharCode(10)));',
 		'const html = renderToString(createElement(ThroughlinePlayer, { trace }));',
 		'assert(html.includes("Visualization player"));',
 		'assert.throws(() => renderToString(createElement(ThroughlinePlayer, { trace: { ...trace, version: 2 } })), /Expected trace version 1/);',
 		'assert.throws(() => renderToString(createElement(ThroughlinePlayer, { trace: { ...trace, frames: null } })), /Expected trace version 1/);',
+		'const v2Model = { schemaVersion: 2, id: "ssr", origins: [{ id: "author", kind: "authored" }], entities: [{ id: "alpha", label: "Alpha" }, { id: "beta", label: "Beta" }], relations: [{ id: "link", from: "alpha", to: "beta" }], initialState: { alpha: { status: "known", value: 1 }, beta: { status: "unknown", reason: "unobserved" } }, steps: [{ id: "sendStep", label: "Send", events: [{ id: "send", type: "message", originId: "author", relationId: "link", messageId: "message", phase: "sent" }] }] };',
+		'const v2 = compileArtifact(v2Model);',
+		'const graphHtml = renderToString(createElement(ThroughlineGraphPlayer, { trace: v2 }));',
+		'assert.match(graphHtml, /Source-linked graph at current frame/);',
+		'assert.match(graphHtml, /data-source-entity-ids="alpha"/);',
+		'assert.match(graphHtml, /data-source-relation-ids="link"/);',
+		'assert.match(graphHtml, /Step 1 of 2/);',
+		'assert.doesNotMatch(graphHtml, /class="[^"]*thl-transferred/);',
+		'assert.throws(() => renderToString(createElement(ThroughlineGraphPlayer, { trace: JSON.parse(JSON.stringify(v2)) })), /untrusted compiled trace/);',
 	].join("\n");
 	run("node", ["--input-type=module", "-e", ssr], consumer);
 	writeFileSync(join(consumer, "embed-typecheck.ts"), [
-		'import { ThroughlineEmbed, type ThroughlineEmbedProps } from "@0xbuff/throughline/react";',
+		'import { ThroughlineEmbed, ThroughlineGraphPlayer, type ThroughlineEmbedProps, type ThroughlineGraphPlayerProps } from "@0xbuff/throughline/react";',
 		'import { remarkThroughline, type ThroughlineRemarkOptions } from "@0xbuff/throughline/remark";',
 		'const props: ThroughlineEmbedProps = { source: "thl flow\\nnode x \\"X\\" = 1", theme: "dark" };',
 		'const plugin: ThroughlineRemarkOptions = { mode: "mdx", componentName: "CustomTrace" };',
-		'void [props, plugin, ThroughlineEmbed, remarkThroughline];',
+		'const model: ThroughlineGraphPlayerProps = { trace: { schemaVersion: 2, artifact: { schemaVersion: 2 } as never, frames: [] } };',
+		'void [props, plugin, model, ThroughlineEmbed, ThroughlineGraphPlayer, remarkThroughline];',
 	].join("\n"));
 	run("node", ["node_modules/typescript/bin/tsc", "--strict", "--noEmit", "--skipLibCheck", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--target", "ES2022", "--jsx", "react-jsx", "embed-typecheck.ts"], consumer);
 
