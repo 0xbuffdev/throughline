@@ -137,7 +137,7 @@ describe("TL-U05 — v2 graph projection and truthful source identities", () => 
 		const group = named(atActivation, "group", "Backend");
 		expect(group.source.entityIds).toEqual(["ledger", "worker"]);
 		expect(group.source.relationIds).toEqual(["task"]);
-		expect(group.source.eventIds).toEqual(["taskOn", "workerOn"]);
+		expect(group.source.eventIds).toEqual(["workerOn", "taskOn"]);
 		// The relation's current topology source is not an authored send
 		// or independently witnessed receive/acknowledgement.
 		const active = projectView(inspector, { kind: "graph", frameIndex: 4 });
@@ -146,6 +146,106 @@ describe("TL-U05 — v2 graph projection and truthful source identities", () => 
 		expect(task.data).toMatchObject({
 			sentCurrent: 0, observedCurrent: 0,
 		});
+	});
+
+	it("retains absent entity/relation identities and topology-removal events in collapsed summaries", () => {
+		const query = model();
+		const before = query.stateAt(6);
+		const atRemoval = projectView(query, {
+			kind: "graph", frameIndex: 6, collapsedGroupIds: ["back"],
+		});
+		const backend = named(atRemoval, "group", "Backend");
+		// Only ledger is modeled present; worker/task remain absent from
+		// visible graph nodes and links, even though removal evidence remains.
+		expect(backend.data).toMatchObject({ collapsed: true, count: 1 });
+		expect(backend.description).toContain("1 present modeled entities");
+		expect(backend.description).toContain("removed or absent");
+		expect(backend.source.entityIds).toEqual(["ledger", "worker"]);
+		expect(backend.source.relationIds).toEqual(["task"]);
+		expect(backend.source.eventIds).toEqual(["taskOff", "workerOff"]);
+		expect(atRemoval.items.filter(item => item.role === "entity")
+			.flatMap(item => item.source.entityIds ?? [])).not.toContain("worker");
+		expect(atRemoval.items.filter(item => item.role === "relation")
+			.flatMap(item => item.source.relationIds ?? [])).not.toContain("task");
+		expect(query.stateAt(6)).toBe(before);
+		expect(before.presentEntityIds).not.toContain("worker");
+		expect(before.presentRelationIds).not.toContain("task");
+
+		const initial = named(projectView(query, {
+			kind: "graph", frameIndex: 0, collapsedGroupIds: ["back"],
+		}), "group", "Backend");
+		// Absence alone does not manufacture removal evidence.
+		expect(initial.source.entityIds).toEqual(["ledger"]);
+		expect(initial.source.relationIds).toBeUndefined();
+		expect(initial.source.eventIds).toBeUndefined();
+	});
+
+	it("keeps event type separate from declared computed, simulated, observed and AI origins", () => {
+		const artifact = distributedGraph();
+		artifact.origins.push(
+			{ id: "simulation", kind: "simulated" },
+			{ id: "generator", kind: "ai-proposed" },
+			{ id: "calculator", kind: "computed" },
+		);
+		artifact.steps[3].events[0].originId = "simulation"; // entity topology
+		artifact.steps[3].events[1].originId = "generator";  // relation topology
+		artifact.steps[1].events[1].originId = "calculator"; // observation-family
+		artifact.steps[5].events[0].originId = "witness";    // observed relation removal
+		const query = inspectTrace(compileArtifact(artifact));
+		const activated = projectView(query, { kind: "graph", frameIndex: 4 });
+		const entity = named(activated, "event", "topology · workerOn");
+		const relation = named(activated, "event", "topology · taskOn");
+		expect(entity.data).toMatchObject({
+			type: "topology", originId: "simulation", originKind: "simulated",
+		});
+		expect(entity.description).toContain("Modeled presence change workerOn");
+		expect(entity.description).toContain("Declared origin simulation (simulated)");
+		expect(entity.description).toContain("not independent verification");
+		expect(entity.source.eventIds).toEqual(["workerOn"]);
+		expect(relation.description).toContain("Declared origin generator (ai-proposed)");
+		expect(relation.data).toMatchObject({
+			originId: "generator", originKind: "ai-proposed",
+		});
+		expect(activated.items.filter(item => item.role === "event")
+			.every(item => !item.description.includes("Authored presence"))).toBe(true);
+		const observed = projectView(query, { kind: "state-table", frameIndex: 2 });
+		const observation = named(observed, "event", "observation · evidence");
+		expect(observation.description).toContain("Observation-family event");
+		expect(observation.description).toContain("Declared origin calculator (computed)");
+		expect(observation.description).not.toContain("Observed event");
+		expect(observation.data).toMatchObject({
+			type: "observation", originId: "calculator", originKind: "computed",
+		});
+		const removed = projectView(query, { kind: "graph", frameIndex: 6 });
+		expect(named(removed, "event", "topology · taskOff").description)
+			.toContain("Declared origin witness (observed)");
+		expect(named(removed, "event", "topology · workerOff").description)
+			.toContain("Declared origin author (authored)");
+	});
+
+	it("orders nested group panels by ancestry even when children precede parents", () => {
+		const artifact = distributedGraph();
+		artifact.groups = [
+			{ id: "back", label: "Backend", parentId: "system" },
+			{ id: "front", label: "Frontend", parentId: "system" },
+			{ id: "system", label: "Checkout" },
+		];
+		const trace = compileArtifact(artifact);
+		const query = inspectTrace(trace);
+		const projected = projectView(query, { kind: "graph", frameIndex: 0 });
+		// The source descriptor remains in declaration order and keeps the
+		// exact declared group IDs, while the renderer geometry is paint-sorted.
+		expect(projected.items.filter(item => item.role === "group")
+			.map(item => item.label)).toEqual(["Backend", "Frontend", "Checkout"]);
+		const layout = layoutGraph(trace, 480);
+		const visible = layoutGraphView(layout, projected);
+		expect(visible.groups.map(group => group.name))
+			.toEqual(["Checkout", "Backend", "Frontend"]);
+		expect(visible.groups[0].h).toBeGreaterThan(visible.groups[1].h);
+		expect(visible.groups[0].y).toBeLessThan(visible.groups[1].y);
+		expect(visible.groups[0].y).toBeLessThan(visible.groups[2].y);
+		expect(visible.groups.map(group => group.id))
+			.toEqual(["group_2", "group_0", "group_1"]);
 	});
 
 	it("maps concurrent distinct source links to one collapsed connector without losing IDs", () => {
