@@ -234,9 +234,17 @@ or missing phases. Chronological adjacency is not a dependency. An empty
 event had no real-world cause.
 
 The 10k-event/2k-step pure index benchmark lives in
-`src/__tests__/artifact-v2-inspector.test.ts`. It logs a fixture SHA-256,
-hardware, Node version, indexed compilation time and repeated-query duration.
-It is measurement evidence, **not** a cross-hardware latency SLA.
+`src/__tests__/artifact-v2-inspector.test.ts`. The final measured fixture
+(**canonical JSON SHA-256**
+`63e10c7b1b32404f39372f85cac49e023da7e07b76467ea6ee6d4f2493d0af28`)
+contains **2,000 ordered steps and 10,000 disjoint explicit writes**.
+On the 2026-11-14 GitHub Actions **Linux Intel Xeon 6975P-C** runner using
+**Node.js 24.22.2**, compiling and indexing the fixture took **167.8 ms**;
+10,000 independent `eventById` / `stateAt` lookup pairs, including Vitest
+assertions, took **177.8 ms**. Reproduction:
+[CI run 43634893438](https://github.com/0xbuffdev/throughline/actions/runs/43634893438).
+The fixture hash, hardware and observed timings are emitted by the test.
+This is measured evidence **on that runner**, not a cross-hardware latency SLA.
 
 ## Acceptance and deferred replay checks
 
