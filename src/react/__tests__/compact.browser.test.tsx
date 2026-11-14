@@ -5,11 +5,12 @@ import { compile } from "../../domains/registry.js";
 import { CHECKOUT_GUIDANCE, EXAMPLES } from "../../examples.js";
 import { ThroughlinePlayer } from "../index.js";
 import "../../styles/throughline.css";
+import { openPlayerPanel, stepCount } from "./player-actions.js";
 
 const isBelow = (a: Element, b: Element) =>
 	Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
 
-it("uses compact borderless icon actions, square nodes and a bottom-only control area", async () => {
+it("uses compact borderless icon actions, square nodes and transport below the viewport", async () => {
 	const trace = compile(EXAMPLES.find((example) => example.id === "distributed-checkout")!.source);
 	const screen = await render(<ThroughlinePlayer trace={trace} title="Review" guidance={CHECKOUT_GUIDANCE} />);
 	const player = document.querySelector<HTMLElement>(".thl")!;
@@ -19,15 +20,18 @@ it("uses compact borderless icon actions, square nodes and a bottom-only control
 	const playback = player.querySelector(".thl-controls")!;
 	const chapter = screen.getByRole("combobox", { name: "Chapter" }).element();
 
+	const scene = player.querySelector(".thl-scene")!;
+	expect(isBelow(chapter, scene)).toBe(true);
+	expect(isBelow(navigation, bottom)).toBe(true);
 	expect(isBelow(bottom, caption)).toBe(true);
-	expect(bottom.contains(chapter)).toBe(true);
-	expect(bottom.contains(navigation)).toBe(true);
 	expect(bottom.contains(playback)).toBe(true);
 	expect(getComputedStyle(player).paddingTop).toBe("24px");
 	expect(getComputedStyle(player).borderTopLeftRadius).toBe("2px");
 	expect(getComputedStyle(player.querySelector(".thl-viewport-tools button")!).borderTopWidth).toBe("0px");
 	expect(getComputedStyle(screen.getByRole("button", { name: "Play", exact: true }).element()).borderTopWidth).toBe("0px");
+	await openPlayerPanel(screen, "View");
 	expect(getComputedStyle(screen.getByRole("combobox", { name: "Select entity" }).element()).borderTopLeftRadius).toBe("2px");
+	await screen.getByRole("button", { name: "View", exact: true }).click();
 	expect(screen.getByRole("button", { name: "Zoom in" }).element().querySelector("svg")).not.toBeNull();
 	expect(screen.getByRole("button", { name: "Zoom in" }).element().getBoundingClientRect().width).toBeGreaterThanOrEqual(34);
 	for (const selector of [".thl-node", ".thl-group", ".thl-cell rect"]) {
@@ -35,7 +39,7 @@ it("uses compact borderless icon actions, square nodes and a bottom-only control
 		expect(node.getAttribute("rx"), selector).toBe("2");
 	}
 	await screen.getByRole("button", { name: "Restart chapter" }).click();
-	await expect.element(screen.getByRole("slider", { name: "Timeline" })).toHaveAttribute("aria-valuetext", "Step 1 of 17");
+	expect(stepCount(screen)?.textContent).toBe("Step 1 of 17");
 });
 
 it("sizes a mobile graph to its scene, without cropping or connector labels crossing nodes", async () => {

@@ -115,7 +115,7 @@ interface PlayerGuidanceProps {
 	onSeek: (step: number) => void;
 }
 
-/** The chapter controls are positioned in the footer; explanations stay in the caption. */
+/** Chapter navigation above the scene. Authored explanations stay in the caption. */
 export function PlayerGuidanceControls({
 	frame,
 	guidance,

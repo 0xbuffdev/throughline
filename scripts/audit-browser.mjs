@@ -188,19 +188,14 @@ try {
 	assert.match(await page.getByRole("status").textContent(), /Step 3 of 3/);
 
 	// Use a real Chromium touch-enabled context, not a synthetic input event.
-	const timeline = page.getByRole("slider", { name: "Timeline" });
-	const bounds = await timeline.boundingBox();
-	assert(bounds && bounds.width > 0, "Hydrated timeline has no touch target");
-	await timeline.tap({
-		position: { x: Math.max(4, Math.floor(bounds.width * 0.02)), y: Math.floor(bounds.height / 2) },
-	});
-	await page.waitForFunction(
-		() => document.querySelector('[role="status"]')?.textContent?.includes("Step 1 of 3"),
-	);
-	assert.equal(await timeline.inputValue(), "0", "Touch seeking must select the first frame");
+	assert.equal(await page.getByRole("slider").count(), 0, "Player must be slider-free");
+	await page.getByRole("button", { name: "Player options" }).tap();
+	await page.getByRole("spinbutton", { name: "Step number" }).fill("1");
+	await page.getByRole("button", { name: "Go to step" }).tap();
+	assert.match(await page.getByRole("status").textContent(), /Step 1 of 3/);
 	assert.deepEqual(errors, [], "Hydration or browser console errors were emitted");
 
-	console.log("Packed Vite React consumer passed SSR hydration, CSS, keyboard, touch timeline, mobile and export checks.");
+	console.log("Packed Vite React consumer passed SSR hydration, CSS, keyboard, touch step navigation, mobile and export checks.");
 } finally {
 	await context?.close();
 	await browser?.close();

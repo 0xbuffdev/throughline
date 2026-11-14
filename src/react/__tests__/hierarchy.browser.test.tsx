@@ -4,6 +4,7 @@ import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
 import { ThroughlinePlayer } from "../index.js";
 import "../../styles/throughline.css";
+import { openPlayerPanel } from "./player-actions.js";
 
 const source = [
 	"```thl flow",
@@ -26,6 +27,7 @@ it("collapses, expands, drills and navigates breadcrumb hierarchy without changi
 	const trace = compile(source);
 	const original = structuredClone(trace);
 	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	await openPlayerPanel(screen, "View");
 	const drill = screen.getByRole("combobox", { name: "Drill into group" });
 	await userEvent.selectOptions(drill.element(), "inner");
 	await expect.element(screen.getByRole("button", { name: "Collapse group Inner" })).toBeEnabled();
@@ -54,6 +56,7 @@ it("collapses, expands, drills and navigates breadcrumb hierarchy without changi
 	expect(document.querySelector('[data-group-summary="inner"]')).not.toBeNull();
 	await screen.getByRole("button", { name: "Expand group Inner" }).first().click();
 	await expect.poll(() => document.querySelectorAll('[data-node="a"]').length).toBe(1);
+	await openPlayerPanel(screen, "View");
 	await userEvent.selectOptions(screen.getByRole("combobox", { name: "Select entity" }).element(), "a");
 	await expect.element(screen.getByText(/Selected: Alpha/)).toBeVisible();
 	await screen.getByRole("button", { name: "Return to group overview" }).click();
@@ -64,6 +67,7 @@ it("supports keyboard summary expansion, respects hidden nodes, and resets hiera
 	await page.viewport(375, 850);
 	const trace = compile(source);
 	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	await openPlayerPanel(screen, "View");
 	await userEvent.selectOptions(screen.getByRole("combobox", { name: "Drill into group" }).element(), "outer");
 	await screen.getByRole("button", { name: "Collapse group Outer" }).click();
 	const summary = document.querySelector<SVGGElement>('[data-group-summary="outer"]')!;
@@ -76,6 +80,7 @@ it("supports keyboard summary expansion, respects hidden nodes, and resets hiera
 	expect(document.querySelector('[data-node="b"]')).toBeNull();
 	await screen.rerender(<ThroughlinePlayer trace={compile(source)} />);
 	await expect.poll(() => document.querySelectorAll('[data-group-summary]').length).toBe(0);
+	await openPlayerPanel(screen, "View");
 	await expect.element(screen.getByRole("combobox", { name: "Drill into group" })).toHaveValue("");
 	const player = document.querySelector<HTMLElement>(".thl")!;
 	expect(player.scrollWidth).toBeLessThanOrEqual(player.clientWidth);
@@ -107,6 +112,7 @@ it("exposes authored focus and writes while descendants remain collapsed", async
 	].join("\n"));
 	const original = structuredClone(trace);
 	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	await openPlayerPanel(screen, "View");
 	await userEvent.selectOptions(screen.getByRole("combobox", { name: "Drill into group" }).element(), "inner");
 	await screen.getByRole("button", { name: "Collapse group Inner" }).click();
 	const group = () => document.querySelector<SVGGElement>('[data-group-summary="inner"]')!;

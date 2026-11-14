@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
 import { ThroughlinePlayer, ThroughlineScenarios } from "../index.js";
+import { openPlayerPanel } from "./player-actions.js";
 
 const trace = compile(
 	'```thl flow\nnode n "Number" = 0\nstep "One"\n set n = 1\nstep "Two"\n set n = 2\n```',
@@ -79,10 +80,12 @@ it("stops and disconnects replaced voices, and closes audio on unmount", async (
 	expect(audio.voices[0].disconnect).toHaveBeenCalledOnce();
 	expect(audio.gains[0].disconnect).toHaveBeenCalledOnce();
 	expect(audio.voices).toHaveLength(2);
+	await openPlayerPanel(screen, "Player options");
 	await screen.getByRole("button", { name: "Sonify trace" }).click();
 	expect(audio.voices[1].stop).toHaveBeenLastCalledWith();
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(audio.voices).toHaveLength(2);
+	await openPlayerPanel(screen, "Player options");
 	await screen.getByRole("button", { name: "Sonify trace" }).click();
 	expect(audio.voices).toHaveLength(3);
 	await screen.unmount();
@@ -197,6 +200,7 @@ it("releases an already-ended voice once even if a later stop throws", async () 
 it("shows an opt-in speaker but produces no audio until the user clicks it", async () => {
 	const audio = audioBoundary();
 	const screen = await render(<ThroughlinePlayer trace={trace} sonification={{}} />);
+	await openPlayerPanel(screen, "Player options");
 	const button = screen.getByRole("button", { name: "Sonify trace" });
 	await expect.element(button).toHaveAttribute("aria-pressed", "false");
 	expect(audio.contexts).toHaveLength(0);
@@ -209,6 +213,7 @@ it("shows an opt-in speaker but produces no audio until the user clicks it", asy
 
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(audio.voices).toHaveLength(2);
+	await openPlayerPanel(screen, "Player options");
 	await button.click();
 	await expect.element(button).toHaveAttribute("aria-pressed", "false");
 	await screen.getByRole("button", { name: "Step forward" }).click();
@@ -228,6 +233,7 @@ it("exposes muted sound controls in scenario comparison, resetting on a switch",
 	const screen = await render(
 		<ThroughlineScenarios scenarios={scenarios} sonification={{}} />,
 	);
+	await openPlayerPanel(screen, "Player options");
 	const sound = screen.getByRole("button", { name: "Sonify trace" });
 	await expect.element(sound).toHaveAttribute("aria-pressed", "false");
 	expect(audio.contexts).toHaveLength(0);
@@ -236,6 +242,7 @@ it("exposes muted sound controls in scenario comparison, resetting on a switch",
 	expect(audio.voices).toHaveLength(1);
 
 	await screen.getByRole("combobox", { name: "Scenario" }).selectOptions("two");
+	await openPlayerPanel(screen, "Player options");
 	await expect.element(screen.getByRole("button", { name: "Sonify trace" })).toHaveAttribute("aria-pressed", "false");
 	expect(audio.contexts[0].close).toHaveBeenCalledOnce();
 	expect(audio.contexts).toHaveLength(1);

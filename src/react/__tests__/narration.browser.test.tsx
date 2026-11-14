@@ -3,6 +3,7 @@ import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
 import { ThroughlinePlayer, ThroughlineScenarios } from "../index.js";
 import "../../styles/throughline.css";
+import { openPlayerPanel, seekFrame } from "./player-actions.js";
 
 const trace = compile(
 	'thl flow\nnode n "State" = 0\nstep "First"\n  set n = 1\n  note "Request started"\nstep "Second"\n  set n = 2\n  note "Server replied"',
@@ -36,6 +37,7 @@ function speechBoundary() {
 it("does not speak without user activation, and leaves the original sonification independent", async () => {
 	const speech = speechBoundary();
 	const screen = await render(<ThroughlinePlayer trace={trace} narration sonification={{}} />);
+	await openPlayerPanel(screen, "Player options");
 	const button = screen.getByRole("button", { name: "Narrate captions" });
 	await expect.element(button).toHaveAttribute("aria-pressed", "false");
 	expect(speech.voices).toHaveLength(0);
@@ -49,6 +51,7 @@ it("does not speak without user activation, and leaves the original sonification
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(speech.voices).toHaveLength(2);
 	expect(speech.voices[1].text).toContain("Request started");
+	await openPlayerPanel(screen, "Player options");
 	await button.click();
 	await expect.element(button).toHaveAttribute("aria-pressed", "false");
 	expect(speech.synth.cancel).toHaveBeenCalled();
@@ -57,6 +60,7 @@ it("does not speak without user activation, and leaves the original sonification
 it("lets speech completion, rather than an interval, drive autoplay", async () => {
 	const speech = speechBoundary();
 	const screen = await render(<ThroughlinePlayer trace={trace} narration />);
+	await openPlayerPanel(screen, "Player options");
 	await screen.getByRole("button", { name: "Narrate captions" }).click();
 	const play = screen.getByRole("button", { name: "Play", exact: true });
 	await play.click();
@@ -77,6 +81,7 @@ it("lets speech completion, rather than an interval, drive autoplay", async () =
 it("pauses, resumes and cancels stale callbacks when seeking", async () => {
 	const speech = speechBoundary();
 	const screen = await render(<ThroughlinePlayer trace={trace} narration />);
+	await openPlayerPanel(screen, "Player options");
 	await screen.getByRole("button", { name: "Narrate captions" }).click();
 	await screen.getByRole("button", { name: "Play", exact: true }).click();
 	await screen.getByRole("button", { name: "Pause" }).click();
@@ -84,7 +89,7 @@ it("pauses, resumes and cancels stale callbacks when seeking", async () => {
 	await screen.getByRole("button", { name: "Play", exact: true }).click();
 	expect(speech.synth.resume).toHaveBeenCalled();
 	const stale = speech.voices[0].onend;
-	await screen.getByRole("slider", { name: "Timeline" }).fill("2");
+	await seekFrame(screen, 2);
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 3");
 	expect(speech.voices).toHaveLength(2);
 	stale?.();
@@ -95,6 +100,7 @@ it("disables unavailable narration and never starts speech without an offered pr
 	vi.stubGlobal("SpeechSynthesisUtterance", undefined);
 	vi.stubGlobal("speechSynthesis", undefined);
 	const screen = await render(<ThroughlinePlayer trace={trace} narration />);
+	await openPlayerPanel(screen, "Player options");
 	const narrator = screen.getByRole("button", { name: "Narrate captions" });
 	await expect.element(narrator).toBeDisabled();
 	await screen.rerender(<ThroughlinePlayer trace={trace} />);
@@ -114,10 +120,12 @@ it("resets speech control and invalidates old voices on independent scenario cha
 			narration
 		/>,
 	);
+	await openPlayerPanel(screen, "Player options");
 	await screen.getByRole("button", { name: "Narrate captions" }).click();
 	expect(speech.voices).toHaveLength(1);
 	const previous = speech.voices[0].onend;
 	await screen.getByRole("combobox", { name: "Scenario" }).selectOptions("second");
+	await openPlayerPanel(screen, "Player options");
 	await expect.element(screen.getByRole("button", { name: "Narrate captions" })).toHaveAttribute("aria-pressed", "false");
 	previous?.();
 	expect(speech.voices).toHaveLength(1);
@@ -127,6 +135,7 @@ it("resets speech control and invalidates old voices on independent scenario cha
 it("holds the current step after a speech failure instead of treating failure as completion", async () => {
 	const speech = speechBoundary();
 	const screen = await render(<ThroughlinePlayer trace={trace} narration />);
+	await openPlayerPanel(screen, "Player options");
 	const button = screen.getByRole("button", { name: "Narrate captions" });
 	await button.click();
 	speech.voices[0].onerror?.({ error: "not-allowed" });
@@ -135,6 +144,7 @@ it("holds the current step after a speech failure instead of treating failure as
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 3");
 	speech.voices[0].onend?.();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 3");
+	await openPlayerPanel(screen, "Player options");
 	await button.click();
 	await button.click();
 	expect(speech.voices).toHaveLength(2);
@@ -145,6 +155,7 @@ it("preserves mobile touch controls when narration and sound effects are both of
 	await page.viewport(320, 750);
 	speechBoundary();
 	const screen = await render(<ThroughlinePlayer trace={trace} narration sonification={{}} />);
+	await openPlayerPanel(screen, "Player options");
 	await expect.element(screen.getByRole("button", { name: "Narrate captions" })).toBeEnabled();
 	const player = document.querySelector<HTMLElement>(".thl")!;
 	const controls = document.querySelector<HTMLElement>(".thl-controls")!;
@@ -161,12 +172,14 @@ it("preserves mobile touch controls when narration and sound effects are both of
 it("stops an active voice and restores the normal clock if a host removes narration", async () => {
 	const speech = speechBoundary();
 	const screen = await render(<ThroughlinePlayer trace={trace} narration />);
+	await openPlayerPanel(screen, "Player options");
 	await screen.getByRole("button", { name: "Narrate captions" }).click();
 	expect(speech.voices).toHaveLength(1);
 	await screen.rerender(<ThroughlinePlayer trace={trace} />);
 	expect(screen.getByRole("button", { name: "Narrate captions" }).query()).toBeNull();
 	expect(speech.synth.cancel).toHaveBeenCalled();
 	await screen.rerender(<ThroughlinePlayer trace={trace} narration />);
+	await openPlayerPanel(screen, "Player options");
 	await expect.element(screen.getByRole("button", { name: "Narrate captions" })).toHaveAttribute("aria-pressed", "false");
 	expect(speech.voices).toHaveLength(1);
 });

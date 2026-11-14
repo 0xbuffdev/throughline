@@ -108,6 +108,10 @@ body {
 	margin: 0 auto;
 }
 
+.preview-frame[data-width="tablet"] {
+	width: min(768px, 100%);
+}
+
 .preview-frame[data-width="mobile"] {
 	width: min(375px, 100%);
 }

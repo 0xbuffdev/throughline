@@ -7,7 +7,8 @@
 Throughline compiles small, explanatory state traces into deterministic,
 versioned snapshots. Its optional React player makes each change visible as
 a step-by-step SVG scene—with keyboard controls, accessible descriptions,
-responsive layouts and opt-in sound.
+responsive controls and opt-in sound. Previous, play/pause and next are
+always in reach. Player options can jump directly to a numbered step.
 
 Use it to explain what changes during an algorithm, a data-structure
 operation, a recursive call or a system workflow. Throughline does not

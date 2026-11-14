@@ -4,6 +4,7 @@ import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
 import { ThroughlinePlayer } from "../index.js";
 import "../../styles/throughline.css";
+import { openPlayerPanel } from "./player-actions.js";
 
 const source = [
 	"```thl flow",
@@ -32,12 +33,14 @@ it("keeps overview until following is enabled and gives manual actions precedenc
 	const follow = screen.getByRole("button", { name: "Follow active entity" });
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(view()).toEqual(original);
+	await openPlayerPanel(screen, "View");
 	await follow.click();
 	await expect.element(follow).toHaveAttribute("aria-pressed", "true");
 	const atAlpha = view();
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(view()).not.toEqual(atAlpha);
 	await screen.getByRole("button", { name: "Zoom in" }).click();
+	await openPlayerPanel(screen, "View");
 	await expect.element(follow).toHaveAttribute("aria-pressed", "false");
 	const manual = view();
 	await screen.getByRole("button", { name: "Step forward" }).click();
@@ -66,12 +69,15 @@ it("supports keyboard pan and zoom on the scene while the player still owns step
 it("selects and inspects entities, respecting authored visibility and replacing traces", async () => {
 	const trace = compile(source);
 	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	await openPlayerPanel(screen, "View");
 	await userEvent.selectOptions(screen.getByRole("combobox", { name: "Select entity" }).element(), "b");
 	await expect.element(screen.getByText(/Selected: Beta/)).toBeVisible();
 	expect(document.querySelector('[data-node="b"] .thl-selected')).not.toBeNull();
+	await screen.getByRole("button", { name: "View", exact: true }).click();
 	await screen.getByRole("button", { name: "Zoom in" }).click();
 	await screen.rerender(<ThroughlinePlayer trace={compile(source)} />);
 	await expect.element(screen.getByText(/Selected: Beta/)).not.toBeInTheDocument();
+	await openPlayerPanel(screen, "View");
 	await expect.element(screen.getByRole("button", { name: "Follow active entity" })).toHaveAttribute("aria-pressed", "false");
 	expect(view()[2]).toBeGreaterThan(0);
 	await screen.getByRole("button", { name: "Fit to view" }).click();

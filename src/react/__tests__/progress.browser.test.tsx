@@ -5,6 +5,7 @@ import { compile } from "../../domains/registry.js";
 import { CHECKOUT_SCENARIOS, EXAMPLES } from "../../examples.js";
 import { ThroughlinePlayer, ThroughlineScenarios } from "../index.js";
 import "../../styles/throughline.css";
+import { openPlayerPanel, seekFrame, stepCount } from "./player-actions.js";
 
 const checkout = compile(EXAMPLES.find((example) => example.id === "distributed-checkout")!.source);
 const at = (label: string) => checkout.frames.findIndex((frame) => frame.label === label);
@@ -17,10 +18,9 @@ it("keeps checkout history highlighted without faking future responses", async (
 	await page.viewport(375, 850);
 	const original = structuredClone(checkout);
 	const screen = await render(<ThroughlinePlayer trace={checkout} />);
-	const timeline = screen.getByRole("slider", { name: "Timeline" });
 	expect(document.querySelectorAll(".thl-visited")).toHaveLength(0);
 
-	await timeline.fill(String(at("Send first charge request")));
+	await seekFrame(screen, at("Send first charge request"));
 	const request = link("customer", "api")!;
 	const charge = link("worker", "provider")!;
 	const acknowledge = link("provider", "worker")!;
@@ -42,23 +42,23 @@ it("keeps checkout history highlighted without faking future responses", async (
 	// only a forward single step animates (see states.browser.test.tsx).
 	expect(getComputedStyle(activePath).animationName).toBe("none");
 
-	await timeline.fill(String(at("Provider records charge")));
+	await seekFrame(screen, at("Provider records charge"));
 	expect(charge.classList.contains("thl-visited")).toBe(true);
 	expect(charge.classList.contains("thl-transferred")).toBe(false);
 	expect(acknowledge.classList.contains("thl-visited")).toBe(false);
 
-	await timeline.fill(String(at("Receive confirmed result")));
+	await seekFrame(screen, at("Receive confirmed result"));
 	expect(acknowledge.classList.contains("thl-visited")).toBe(true);
 	expect(acknowledge.classList.contains("thl-transferred")).toBe(true);
 	expect(document.querySelector('[data-node="receipt"] .thl-node.thl-visited')).toBeNull();
-	await timeline.fill(String(at("Persist payment confirmation")));
+	await seekFrame(screen, at("Persist payment confirmation"));
 	expect(document.querySelector('[data-node="receipt"] .thl-node.thl-visited')).not.toBeNull();
 
-	await timeline.fill(String(checkout.frames.length - 1));
+	await seekFrame(screen, checkout.frames.length - 1);
 	expect(link("customer", "api")?.classList.contains("thl-visited")).toBe(true);
 	expect(link("provider", "worker")?.classList.contains("thl-visited")).toBe(true);
 	expect(link("worker", "receipt")?.classList.contains("thl-visited")).toBe(true);
-	await timeline.fill("0");
+	await seekFrame(screen, 0);
 	expect(document.querySelectorAll(".thl-visited")).toHaveLength(0);
 	expect(checkout).toEqual(original);
 	const player = document.querySelector<HTMLElement>(".thl")!;
@@ -69,13 +69,13 @@ it("keeps explicitly revealed reconciliation links distinct from sent messages",
 	const trace = compile(EXAMPLES.find((example) => example.id === "reconciliation")!.source);
 	const screen = await render(<ThroughlinePlayer trace={trace} />);
 	const reuse = trace.frames.findIndex((frame) => frame.label === "Reuse key a");
-	await screen.getByRole("slider", { name: "Timeline" }).fill(String(reuse));
+	await seekFrame(screen, reuse);
 	const match = link("a", "reuse")!;
 	expect(match.classList.contains("thl-revealed")).toBe(true);
 	expect(match.classList.contains("thl-visited")).toBe(false);
 	expect(match.classList.contains("thl-transferred")).toBe(false);
 	expect(match.querySelector("desc")?.textContent).toContain("no message transfer implied");
-	await screen.getByRole("slider", { name: "Timeline" }).fill(String(trace.frames.length - 1));
+	await seekFrame(screen, trace.frames.length - 1);
 	expect(link("a", "reuse")).toBeUndefined();
 });
 
@@ -96,16 +96,17 @@ it("keeps exact partial provenance under group collapse without animating a made
 		'  set b = 4',
 	].join("\n");
 	const screen = await render(<ThroughlinePlayer trace={compile(source)} />);
+	await openPlayerPanel(screen, "View");
 	await screen.getByRole("combobox", { name: "Drill into group" }).selectOptions("inner");
 	await screen.getByRole("button", { name: "Collapse group Inner" }).click();
-	await screen.getByRole("slider", { name: "Timeline" }).fill("1");
+	await seekFrame(screen, 1);
 	const aggregate = document.querySelector<SVGGElement>(".thl-link.thl-aggregate-active")!;
 	expect(aggregate).not.toBeNull();
 	expect(aggregate.classList.contains("thl-aggregate-visited")).toBe(true);
 	expect(aggregate.querySelector("title")?.textContent).toContain("1 of 2 connections sent so far");
 	expect(aggregate.querySelectorAll("path")).toHaveLength(1);
 	expect(getComputedStyle(aggregate.querySelector(".thl-edge")!).animationName).toBe("none");
-	await screen.getByRole("slider", { name: "Timeline" }).fill("2");
+	await seekFrame(screen, 2);
 	expect(aggregate.classList.contains("thl-aggregate-visited")).toBe(true);
 	expect(aggregate.classList.contains("thl-aggregate-active")).toBe(false);
 	expect(document.querySelector(".thl-summary-node.thl-visited")).not.toBeNull();
@@ -116,11 +117,11 @@ it("reset independent scenario progress instead of leaking another scenario's pa
 		id: scenario.id, title: scenario.title, trace: compile(scenario.source),
 	}));
 	const screen = await render(<ThroughlineScenarios scenarios={scenarios} />);
-	await screen.getByRole("slider", { name: "Timeline" }).fill("4");
+	await seekFrame(screen, 4);
 	expect(document.querySelectorAll(".thl-visited").length).toBeGreaterThan(0);
 	await screen.getByRole("combobox", { name: "Scenario" }).selectOptions("terminal-failure");
 	expect(document.querySelectorAll(".thl-visited")).toHaveLength(0);
-	await expect.element(screen.getByRole("slider", { name: "Timeline" })).toHaveAttribute("aria-valuetext", "Step 1 of 6");
+	expect(stepCount(screen)?.textContent).toBe("Step 1 of 6");
 });
 
 it("restarts drawing the same connector on consecutive authored sends without adding another path", async () => {

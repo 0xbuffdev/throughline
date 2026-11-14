@@ -7,6 +7,15 @@ program and trace schemas. Changes are grouped using
 
 ## [Unreleased]
 
+### Changed
+
+- Reorganized the React player into a responsive header, chapter navigation,
+  diagram, playback bar and caption. Existing scene tokens and corner sizes
+  apply across embed widths.
+- Replaced the timeline slider with a step counter and a **Go to step**
+  action under Player options. Custom styles targeting the old timeline
+  track and thumb can be removed.
+
 ## [0.1.0]
 
 ### Added
