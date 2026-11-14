@@ -145,3 +145,67 @@ export type CompiledTrace = {
 	artifact: Readonly<VisualArtifact>;
 	frames: readonly CompiledFrame[];
 };
+
+/** Query-only state distinct from a known JSON null or unknown entity cell. */
+export type QueryCell = Cell | { readonly status: "absent" };
+
+/**
+ * An authored write at a committed step. For a path-filtered history, `path`
+ * remains the original authored target, while before/after refer to the
+ * requested query path (Specification 0004 §12.2).
+ */
+export type HistoryEntry = {
+	readonly frameId: string;
+	readonly frameIndex: number;
+	readonly stepId: Id;
+	readonly eventId: Id;
+	readonly originId: Id;
+	readonly entityId: Id;
+	readonly path: Path;
+	readonly before: QueryCell;
+	readonly after: QueryCell;
+};
+
+/** An explicit write remains a change even when old/new values are equal. */
+export type WriteChange = HistoryEntry & { readonly kind: "write" };
+
+/** Presence is modeled existence, never a renderer visibility toggle. */
+export type PresenceChange = {
+	readonly kind: "presence";
+	readonly frameId: string;
+	readonly frameIndex: number;
+	readonly stepId: Id;
+	readonly eventId: Id;
+	readonly originId: Id;
+	readonly target: "entity" | "relation";
+	readonly targetId: Id;
+	readonly before: boolean;
+	readonly after: boolean;
+};
+
+export type StateChange = WriteChange | PresenceChange;
+
+export type CausalEvidence = {
+	readonly status: "explicit" | "unmodeled";
+	readonly dependencies: readonly SemanticEvent[];
+	readonly explanation: string;
+};
+
+/**
+ * Read-only, pure indexed inspection of a compiler-owned schema-2 trace.
+ * No method interprets event order as physical time or inferred causality.
+ */
+export type TraceInspector = {
+	readonly frameCount: number;
+	stateAt(frameIndex: number): Readonly<StateSnapshot>;
+	valueAt(frameIndex: number, entityId: Id, path?: Path): QueryCell;
+	diff(from: number, to: number): readonly StateChange[];
+	history(entityId: Id, path?: Path): readonly HistoryEntry[];
+	eventsFor(entityId: Id): readonly SemanticEvent[];
+	transfersFor(relationId: Id): readonly SemanticEvent[];
+	dependenciesOf(eventId: Id): readonly SemanticEvent[];
+	causalEvidenceOf(eventId: Id): CausalEvidence;
+	eventById(eventId: Id): SemanticEvent;
+	claimsForEvent(eventId: Id): readonly Claim[];
+	relationsFor(entityId: Id): readonly Relation[];
+};

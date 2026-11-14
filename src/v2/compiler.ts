@@ -225,6 +225,20 @@ function checkSent(
 }
 
 /**
+ * CompiledTrace is an in-process derived object, never a deserialization
+ * format. Only traces created by this compiler are eligible for indexing.
+ * Weak ownership prevents a forged JSON object with matching fields from
+ * crossing the inspector boundary (no external compiled-trace reader yet).
+ */
+const ownedTraces = new WeakSet<object>();
+
+/** Internal trust check; deliberately not exported by the package entrypoint. */
+export function assertOwnedTrace(input: CompiledTrace): void {
+	if (typeof input !== "object" || input === null || !ownedTraces.has(input))
+		reject("$", "untrusted compiled trace; recompile from a validated artifact");
+}
+
+/**
  * Compile semantic schema-2 state, not source code or inferred effects.
  *
  * Validation is mandatory at this public boundary; external compiled frames
@@ -346,9 +360,11 @@ export function compileArtifact(input: VisualArtifact): CompiledTrace {
 		frames.push(result);
 	}
 
-	return Object.freeze({
+	const trace: CompiledTrace = Object.freeze({
 		schemaVersion: 2 as const,
 		artifact,
 		frames: Object.freeze(frames),
 	});
+	ownedTraces.add(trace);
+	return trace;
 }

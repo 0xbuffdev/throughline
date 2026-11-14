@@ -9,6 +9,11 @@ program and trace schemas. Changes are grouped using
 
 ### Added
 
+- Added schema-2 `inspectTrace` indexed pure state/diff/history,
+  entity-event, relation-transfer, explicit-dependency and claim queries
+  (TL-U04). Distinguishes absent/unknown/known-null values, preserves
+  provenance and rejects forged or deserialized compiled traces; no legacy
+  adapters or inferred causal relationships.
 - Added schema-2 `compileArtifact` with atomic step replay, copy-on-write
   persistent values, exact event-ID frame checkpoints, modeled topology,
   no-false-send/observation semantics and the 8M expanded-work ceiling (TL-U03).
