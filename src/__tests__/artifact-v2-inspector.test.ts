@@ -162,15 +162,15 @@ describe("TL-U04 — pure indexed semantic queries", () => {
 			"dispatch", "dispatch", "dispatch", "dispatch",
 		]);
 		expect(changes[1]).toMatchObject({
-			kind: "write", direction: "forward",
+			kind: "write", frameId: "dispatch",
 			eventId: "repeat", originId: "author",
 			path: ["meta", "flag"],
 			before: { status: "known", value: false },
 			after: { status: "known", value: false },
 		});
 		expect(changes[2]).toMatchObject({
-			kind: "topology", target: "entity", targetId: "staging",
-			beforePresent: false, afterPresent: true,
+			kind: "presence", frameId: "dispatch", target: "entity",
+			targetId: "staging", before: false, after: true,
 		});
 		expect(query.diff(1, 2).map((item) => item.eventId)).toEqual([
 			"matrix", "disconnect", "bankKnown",
@@ -185,22 +185,24 @@ describe("TL-U04 — pure indexed semantic queries", () => {
 		expect(Object.isFrozen(changes[0])).toBe(true);
 	});
 
-	it("reverse diffs are labeled comparisons, never synthesized undo events", () => {
+	it("rejects reverse and out-of-range diff requests with typed diagnostics", () => {
 		const query = inspectTrace(compileArtifact(authored()));
-		const backward = query.diff(2, 0);
-		expect(backward.map((change) => change.eventId)).toEqual([
-			"bankKnown", "disconnect", "matrix",
-			"connect", "activate", "repeat", "debit",
-		]);
-		expect(backward.every((change) => change.direction === "backward")).toBe(true);
-		expect(backward[0]).toMatchObject({
-			kind: "write", before: { status: "known", value: null },
-			after: { status: "unknown", reason: "not inspected" },
-		});
-		expect(backward[1]).toMatchObject({
-			kind: "topology", beforePresent: false, afterPresent: true,
-		});
-		expect(query.diff(2, 1).map((change) => change.frameIndex)).toEqual([2, 2, 2]);
+		for (const [from, to] of [[2, 0], [3, 2], [1, 0]]) {
+			try {
+				query.diff(from, to);
+			} catch (error) {
+				expect(error).toBeInstanceOf(TraceQueryError);
+				const rejection = error as TraceQueryError;
+				expect(rejection.path).toBe("$.fromIndex");
+				expect(rejection.message).toMatch(/fromIndex <= toIndex/);
+				continue;
+			}
+			throw new Error("reverse diff must reject");
+		}
+		expect(query.diff(0, 0)).toEqual([]);
+		expect(query.diff(3, 3)).toEqual([]);
+		expect(query.diff(1, 3).map((change) => change.frameId))
+			.toEqual(["receipt", "receipt", "receipt", "later"]);
 	});
 
 	it("history intersects parent/child paths and excludes observation, message and topology events", () => {
@@ -219,9 +221,84 @@ describe("TL-U04 — pure indexed semantic queries", () => {
 			.toEqual(["matrix"]);
 		expect(query.history("buyer", ["matrix", 0, 1])).toEqual([]);
 		expect(query.history("buyer", ["nullable"])).toEqual([]);
+		// The requested location determines value semantics, while the
+		// source event path and event ID retain authored provenance.
+		const parent = query.history("buyer", ["meta"])[0];
+		expect(parent).toMatchObject({
+			frameId: "dispatch", frameIndex: 1, stepId: "dispatch",
+			eventId: "repeat", path: ["meta", "flag"],
+			before: { status: "known", value: { flag: false } },
+			after: { status: "known", value: { flag: false } },
+		});
+		// The event target remains the original nested write path.
+		expect(parent.path).toEqual(["meta", "flag"]);
+		const matrixParent = query.history("buyer", ["matrix", 1])[0];
+		expect(matrixParent).toMatchObject({
+			frameId: "receipt", eventId: "matrix",
+			before: { status: "known", value: [3, 4] },
+			after: { status: "known", value: [7, 4] },
+		});
+		const entireEntity = query.history("buyer", [])[0];
+		expect(entireEntity).toMatchObject({
+			frameId: "dispatch", eventId: "debit", path: ["balance"],
+		});
+		expect(entireEntity.before).toEqual(query.stateAt(0).values.buyer);
+		expect(entireEntity.after).toEqual(query.stateAt(1).values.buyer);
 		expect(query.history("bank").map((entry) => entry.eventId))
 			.toEqual(["bankKnown", "hideBank"]);
 		expect(query.history("other")).toEqual([]);
+	});
+
+	it("evaluates a parent-record replacement at descendant requested paths", () => {
+		const source = authored();
+		source.steps = [{
+			id: "replace", label: "Replace parent record",
+			events: [{
+				id: "parent", originId: "author", type: "write",
+				entityId: "buyer", path: ["meta"],
+				value: { status: "known", value: { flag: true, introduced: 42 } },
+			}],
+		}];
+		const query = inspectTrace(compileArtifact(source));
+		const flag = query.history("buyer", ["meta", "flag"])[0];
+		expect(flag).toMatchObject({
+			frameId: "replace", eventId: "parent", path: ["meta"],
+			before: { status: "known", value: false },
+			after: { status: "known", value: true },
+		});
+		const introduced = query.history("buyer", ["meta", "introduced"])[0];
+		expect(introduced).toMatchObject({
+			frameId: "replace", eventId: "parent",
+			before: { status: "absent" },
+			after: { status: "known", value: 42 },
+		});
+		expect(query.history("buyer", ["meta"])[0]).toMatchObject({
+			before: { status: "known", value: { flag: false } },
+			after: { status: "known", value: { flag: true, introduced: 42 } },
+		});
+		expect(query.diff(0, 1)[0]).toMatchObject({
+			kind: "write", frameId: "replace", path: ["meta"],
+		});
+	});
+
+	it("distinguishes all presence changes with exact boolean fields and frame IDs", () => {
+		const query = inspectTrace(compileArtifact(authored()));
+		expect(query.diff(0, 2).filter((change) => change.kind === "presence"))
+			.toEqual([
+				expect.objectContaining({
+					kind: "presence", frameId: "dispatch", eventId: "activate",
+					target: "entity", targetId: "staging", before: false, after: true,
+				}),
+				expect.objectContaining({
+					kind: "presence", frameId: "dispatch", eventId: "connect",
+					target: "relation", targetId: "staged", before: false, after: true,
+				}),
+				expect.objectContaining({
+					kind: "presence", frameId: "receipt", eventId: "disconnect",
+					target: "relation", targetId: "staged", before: true, after: false,
+				}),
+			]);
+		expect(query.diff(0, 1).every((change) => "frameId" in change)).toBe(true);
 	});
 
 	it("indexes endpoint-related events and authored transfers without fabricating delivery", () => {
