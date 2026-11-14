@@ -5,7 +5,7 @@ import { compile } from "../../domains/registry.js";
 import { EXAMPLES } from "../../examples.js";
 import { ThroughlinePlayer } from "../index.js";
 import "../../styles/throughline.css";
-import { openPlayerPanel, seekFrame, stepCount } from "./player-actions.js";
+import { closePlayerPanel, openPlayerPanel, seekFrame, stepCount } from "./player-actions.js";
 
 it("keeps authored tree and column lane metadata through the React projection", async () => {
 	const trace = compile([
@@ -162,9 +162,10 @@ it("keeps keyboard stepping on the player surface and audio explicitly optional"
 		<ThroughlinePlayer trace={trace} sonification={{ onTone }} />,
 	);
 	expect(onTone).not.toHaveBeenCalled();
-	await openPlayerPanel(screen, "Player options");
+	await openPlayerPanel(screen);
 	await screen.getByRole("button", { name: "Sonify trace" }).click();
 	expect(onTone).toHaveBeenCalledTimes(1);
+	await closePlayerPanel(screen);
 	screen.getByRole("group", { name: "Visualization player" }).element().focus();
 	await userEvent.keyboard("{ArrowRight}");
 	await expect
@@ -309,7 +310,7 @@ it("keeps the reference player hierarchy, optional title, and one transport step
 
 	await screen.rerender(<ThroughlinePlayer trace={trace} theme="light" />);
 	expect(player.querySelector(".thl-title")).toBeNull();
-	await openPlayerPanel(screen, "Player options");
+	await openPlayerPanel(screen);
 	await expect
 		.element(screen.getByRole("button", { name: "Maximize player" }))
 		.toBeInTheDocument();
@@ -372,18 +373,18 @@ it("enters and exits fullscreen with the real browser event contract", async () 
 
 	try {
 		document.dispatchEvent(new Event("fullscreenchange"));
-		await openPlayerPanel(screen, "Player options");
+		await openPlayerPanel(screen);
 		const maximize = screen.getByRole("button", { name: "Maximize player" });
 		await expect.element(maximize).toBeEnabled();
 		await maximize.click();
 		expect(request).toHaveBeenCalledOnce();
-		await openPlayerPanel(screen, "Player options");
+		await openPlayerPanel(screen);
 		await expect
 			.element(screen.getByRole("button", { name: "Minimize player" }))
 			.toBeEnabled();
 		await screen.getByRole("button", { name: "Minimize player" }).click();
 		expect(exit).toHaveBeenCalledOnce();
-		await openPlayerPanel(screen, "Player options");
+		await openPlayerPanel(screen);
 		await expect
 			.element(screen.getByRole("button", { name: "Maximize player" }))
 			.toBeEnabled();
@@ -392,7 +393,7 @@ it("enters and exits fullscreen with the real browser event contract", async () 
 		document.dispatchEvent(new Event("fullscreenchange"));
 		active = null;
 		document.dispatchEvent(new Event("fullscreenchange"));
-		await openPlayerPanel(screen, "Player options");
+		await openPlayerPanel(screen);
 		await expect
 			.element(screen.getByRole("button", { name: "Maximize player" }))
 			.toBeEnabled();
@@ -417,7 +418,7 @@ it("disables fullscreen controls where the host forbids the API", async () => {
 			value: false,
 		});
 		document.dispatchEvent(new Event("fullscreenchange"));
-		await openPlayerPanel(screen, "Player options");
+		await openPlayerPanel(screen);
 		await expect
 			.element(screen.getByRole("button", { name: "Maximize player" }))
 			.toBeDisabled();
@@ -437,7 +438,7 @@ it("keeps sound controllers alongside fullscreen at narrow widths", async () => 
 		<ThroughlinePlayer trace={trace} sonification={{ onTone: vi.fn() }} />,
 	);
 	const player = document.querySelector(".thl") as HTMLElement;
-	await openPlayerPanel(screen, "Player options");
+	await openPlayerPanel(screen);
 	const sound = screen.getByRole("button", { name: "Sonify trace" });
 	await expect.element(sound).toHaveAttribute("aria-pressed", "false");
 	await sound.click();
@@ -595,7 +596,7 @@ it("reports refused fullscreen requests without preventing further interaction",
 		Object.defineProperty(document, "exitFullscreen", { configurable: true, value: vi.fn() });
 		Object.defineProperty(player, "requestFullscreen", { configurable: true, value: request });
 		document.dispatchEvent(new Event("fullscreenchange"));
-		await openPlayerPanel(screen, "Player options");
+		await openPlayerPanel(screen);
 		await screen.getByRole("button", { name: "Maximize player" }).click();
 		expect(request).toHaveBeenCalledOnce();
 		await expect.element(screen.getByRole("alert")).toHaveTextContent(

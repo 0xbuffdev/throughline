@@ -115,7 +115,7 @@ interface PlayerGuidanceProps {
 	onSeek: (step: number) => void;
 }
 
-/** Responsive chapter navigation. Authored explanations stay in the caption. */
+/** Chapter controls for the player options panel. */
 export function PlayerGuidanceControls({
 	frame,
 	guidance,

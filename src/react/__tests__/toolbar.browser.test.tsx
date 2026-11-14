@@ -33,56 +33,43 @@ it("uses the embed width to arrange chapter, viewport and playback controls", as
 	const host = player.parentElement!;
 	const scene = player.querySelector(".thl-scene")!;
 	const bottom = player.querySelector(".thl-bottom")!;
-	const chapter = screen.getByRole("combobox", { name: "Chapter" }).element() as HTMLSelectElement;
-	const chapterNav = chapter.closest(".thl-chapter-nav")!;
-	const restart = screen.getByRole("button", { name: "Restart chapter" }).element();
-	const view = screen.getByRole("button", { name: "View", exact: true }).element();
-	const options = screen.getByRole("button", { name: "Player options", exact: true }).element();
-	const chevron = chapterNav.querySelector(".thl-chapter-chevron")!;
-	expect(chevron.getAttribute("aria-hidden")).toBe("true");
-	expect(getComputedStyle(chevron).pointerEvents).toBe("none");
-	expect(getComputedStyle(chapter).appearance).toBe("none");
 	const play = screen.getByRole("button", { name: "Play", exact: true }).element();
 	const zoom = screen.getByRole("button", { name: "Zoom in" }).element();
 	const speed = screen.getByRole("combobox", { name: "Playback speed" }).element();
 	const count = player.querySelector(".thl-step-count")!;
+	const options = screen.getByRole("button", { name: "Player options", exact: true });
+	expect(player.querySelectorAll(".thl-header > button")).toHaveLength(1);
 	expect(screen.getByRole("slider").query()).toBeNull();
+	await openPlayerPanel(screen);
+	const chapter = screen.getByRole("combobox", { name: "Chapter" }).element() as HTMLSelectElement;
+	const chapterNav = chapter.closest(".thl-chapter-nav")!;
+	const chevron = chapterNav.querySelector(".thl-chapter-chevron")!;
+	expect(chevron.getAttribute("aria-hidden")).toBe("true");
+	expect(getComputedStyle(chevron).pointerEvents).toBe("none");
+	expect(getComputedStyle(chapter).appearance).toBe("none");
 	await screen.getByRole("combobox", { name: "Chapter" }).selectOptions("retry");
-	await openPlayerPanel(screen, "View");
+	expect(chapter).not.toBeVisible();
+	expect(document.activeElement).toBe(options.element());
+	await openPlayerPanel(screen);
 	await screen.getByRole("combobox", { name: "Select entity" }).selectOptions("worker");
-	await screen.getByRole("button", { name: "View", exact: true }).click();
+	const panel = screen.getByRole("group", { name: "Player options", exact: true }).element();
+	expect(panel.querySelector(".thl-view-options")).not.toBeNull();
 	chapter.focus();
 	for (const width of [1400, 768, 375, 300]) {
 		host.style.width = width + "px";
 		await expect.poll(() => player.getBoundingClientRect().width).toBe(width);
-		expect(pageTop(chapter)).toBeLessThan(pageTop(scene));
+		const bounds = panel.getBoundingClientRect();
+		const chapterBounds = chapter.getBoundingClientRect();
+		expect(chapterBounds.right).toBeLessThan(bounds.right);
+		expect(bounds.left).toBeGreaterThanOrEqual(0);
+		expect(bounds.right).toBeLessThanOrEqual(window.innerWidth);
+		expect(document.activeElement).toBe(chapter);
+		expect(chapter.selectedOptions[0].textContent).toBe(longChapterTitle);
 		expect(pageTop(bottom)).toBeGreaterThan(pageTop(scene));
 		expect(Math.abs(centerY(play) - centerY(count))).toBeLessThan(3);
 		expect(player.querySelector(".thl-step-count-full")?.textContent).toBe("Step 10 of 17");
 		expect(player.querySelector('[data-node="worker"] .thl-selected')).not.toBeNull();
 		expect(player.scrollWidth).toBeLessThanOrEqual(player.clientWidth);
-		const chapterRow = chapterNav.getBoundingClientRect();
-		const viewBounds = view.getBoundingClientRect();
-		const optionsBounds = options.getBoundingClientRect();
-		expect(viewBounds.right).toBeLessThanOrEqual(optionsBounds.left);
-		expect(screen.getByRole("combobox", { name: "Chapter" }).element()).toBe(chapter);
-		expect(document.activeElement).toBe(chapter);
-		expect(chapter.selectedOptions[0].textContent).toBe(longChapterTitle);
-		if (width === 1400) {
-			expect(Math.abs(centerY(chapterNav) - centerY(view))).toBeLessThan(3);
-			expect(chapterRow.right).toBeLessThanOrEqual(viewBounds.left);
-			expect(chapter.getBoundingClientRect().width).toBeLessThanOrEqual(256);
-		} else {
-			expect(chapterRow.top).toBeGreaterThanOrEqual(viewBounds.bottom);
-			const headerBounds = player.querySelector(".thl-header")!.getBoundingClientRect();
-			if (width === 768) {
-				expect(chapterRow.left + chapterRow.width / 2).toBeCloseTo(headerBounds.left + headerBounds.width / 2, 0);
-			} else {
-				expect(chapterRow.width).toBeCloseTo(headerBounds.width, 0);
-				expect(restart.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
-				expect(chapter.getBoundingClientRect().right).toBeLessThanOrEqual(restart.getBoundingClientRect().left);
-			}
-		}
 		if (width >= 768) {
 			expect(zoom.getBoundingClientRect().left).toBeGreaterThanOrEqual(scene.getBoundingClientRect().right);
 			expect(Math.abs(centerY(play) - centerY(speed))).toBeLessThan(3);
@@ -90,6 +77,7 @@ it("uses the embed width to arrange chapter, viewport and playback controls", as
 			expect(zoom.getBoundingClientRect().bottom).toBeLessThanOrEqual(scene.getBoundingClientRect().top);
 			expect(zoom.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
 			expect(chapter.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
+			expect(screen.getByRole("button", { name: "Restart chapter" }).element().getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
 			await expect.element(screen.getByText("10 / 17", { exact: true })).toBeVisible();
 		}
 	}

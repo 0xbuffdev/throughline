@@ -150,6 +150,7 @@ export function ThroughlinePlayer({
 		progress,
 		animate: motion.animate,
 		availableWidth: width,
+		fullscreen,
 		summary,
 		captionId,
 	});
@@ -169,7 +170,7 @@ export function ThroughlinePlayer({
 			onKeyDown={onKeyDown}
 		>
 			<p id={keyboardHelpId} className="thl-sr-only">
-				Focus this player to use Left and Right arrows to step, Home and End to seek, and Space to play or pause. Focus the diagram to pan with arrow keys, zoom with plus or minus, fit with zero, and select entities from View. Controls also work independently.
+				Focus this player to use Left and Right arrows to step, Home and End to seek, and Space to play or pause. Focus the diagram to pan with arrow keys, zoom with plus or minus, fit with zero, and select entities from Player options. Controls also work independently.
 			</p>
 			<p role="status" aria-atomic="true" className="thl-sr-only">
 				{summary}
@@ -183,19 +184,14 @@ export function ThroughlinePlayer({
 			{(title || frame) && (
 				<header className="thl-header">
 					{title && <h2 className="thl-title">{title}</h2>}
-					{frame && guidance?.chapters?.length ? (
-						<PlayerGuidanceControls
-							trace={trace}
-							frame={frame}
-							guidance={guidance}
-							onSeek={(step) => dispatch({ type: "step", to: step })}
-						/>
-					) : null}
-					{viewport.options}
 					{frame && (
 						<PlayerOptions
 							state={state}
 							dispatch={dispatch}
+							chapterControls={guidance?.chapters?.length ? (onSeek) => (
+								<PlayerGuidanceControls trace={trace} frame={frame} guidance={guidance} onSeek={onSeek} />
+							) : undefined}
+							diagramControls={viewport.options}
 							narration={narration ? {
 								enabled: narrating,
 								available: voice.available,

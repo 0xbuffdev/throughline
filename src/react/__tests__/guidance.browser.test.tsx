@@ -5,7 +5,7 @@ import { compile } from "../../domains/registry.js";
 import { CHECKOUT_GUIDANCE, CHECKOUT_SCENARIOS } from "../../examples.js";
 import { ThroughlinePlayer, ThroughlineScenarios } from "../index.js";
 import "../../styles/throughline.css";
-import { seekFrame, stepCount } from "./player-actions.js";
+import { openPlayerPanel, seekFrame, stepCount } from "./player-actions.js";
 
 const scenarios = CHECKOUT_SCENARIOS.map((item) => ({
 	id: item.id,
@@ -18,6 +18,7 @@ const scenarios = CHECKOUT_SCENARIOS.map((item) => ({
 it("navigates authored chapters and shows evidence without inventing events", async () => {
 	const trace = compile(CHECKOUT_SCENARIOS[2].source);
 	const screen = await render(<ThroughlinePlayer trace={trace} guidance={CHECKOUT_GUIDANCE} />);
+	await openPlayerPanel(screen);
 	await expect.element(screen.getByRole("combobox", { name: "Chapter" })).toHaveValue("request");
 	await screen.getByRole("combobox", { name: "Chapter" }).selectOptions("retry");
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Chapter: Idempotent retry");
@@ -63,8 +64,10 @@ it("switches independent outcomes with no prior timeline, speed or scene leakage
 
 	await picker.selectOptions("retry-recovery");
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 17");
+	await openPlayerPanel(screen);
 	await expect.element(screen.getByRole("combobox", { name: "Chapter" })).toHaveValue("request");
 	expect(document.querySelector(".thl-scenario-description")?.textContent).toContain("lost acknowledgement");
+	await screen.getByRole("button", { name: "Player options" }).click();
 	await picker.selectOptions("success");
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 6");
 	expect(document.querySelector(".thl-guidance")).toBeNull();
@@ -107,13 +110,17 @@ it("restarts an already-selected chapter and pauses playback", async () => {
 	const chapter = screen.getByRole("combobox", { name: "Chapter" });
 
 	await seekFrame(screen, 3);
+	await openPlayerPanel(screen);
 	await expect.element(chapter).toHaveValue("request");
 	expect(stepCount(screen)?.textContent).toBe("Step 4 of 17");
+	await screen.getByRole("button", { name: "Player options" }).click();
 	await screen.getByRole("button", { name: "Play", exact: true }).click();
 	await expect.element(screen.getByRole("button", { name: "Pause" })).toBeEnabled();
 
+	await openPlayerPanel(screen);
 	await screen.getByRole("button", { name: "Restart chapter" }).click();
 	expect(stepCount(screen)?.textContent).toBe("Step 1 of 17");
+	await openPlayerPanel(screen);
 	await expect.element(chapter).toHaveValue("request");
 	await expect.element(screen.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
 });

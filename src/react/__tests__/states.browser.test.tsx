@@ -125,7 +125,7 @@ it("shows selection and keyboard focus as outer rings, not dashes or authored fo
 		"  focus a",
 		"```",
 	].join("\n"))} />);
-	await openPlayerPanel(screen, "View");
+	await openPlayerPanel(screen);
 	await screen.getByRole("combobox", { name: "Select entity" }).selectOptions("a");
 	const selected = document.querySelector<SVGRectElement>('[data-node="a"] .thl-ring.thl-ring-selected')!;
 	expect(selected).not.toBeNull();

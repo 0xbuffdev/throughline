@@ -17,7 +17,7 @@ it("keeps all desktop, tablet and phone toolbar controls inside their bounds wit
 	await render(<ThroughlinePlayer trace={trace} guidance={CHECKOUT_GUIDANCE} />);
 	const player = document.querySelector<HTMLElement>(".thl")!;
 	const controls = () => [...player.querySelectorAll<HTMLElement>(
-		".thl-header > button, .thl-chapter-nav :is(button, select), .thl-viewport-tools button, .thl-bottom :is(button, select)",
+		".thl-header > button, .thl-viewport-tools button, .thl-bottom :is(button, select)",
 	)];
 
 	for (const [width, height] of [[1600, 900], [960, 850], [375, 850], [320, 750]] as const) {
@@ -27,7 +27,7 @@ it("keeps all desktop, tablet and phone toolbar controls inside their bounds wit
 
 		const boundary = player.getBoundingClientRect();
 		const interactive = controls();
-		expect(interactive.length).toBeGreaterThan(8);
+		expect(interactive.length).toBeGreaterThanOrEqual(8);
 		const rects = interactive.map((element) => ({
 			name: element.getAttribute("aria-label") ?? element.tagName.toLowerCase(),
 			rect: element.getBoundingClientRect(),

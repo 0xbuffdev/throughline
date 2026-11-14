@@ -96,7 +96,7 @@ it("keeps exact partial provenance under group collapse without animating a made
 		'  set b = 4',
 	].join("\n");
 	const screen = await render(<ThroughlinePlayer trace={compile(source)} />);
-	await openPlayerPanel(screen, "View");
+	await openPlayerPanel(screen);
 	await screen.getByRole("combobox", { name: "Drill into group" }).selectOptions("inner");
 	await screen.getByRole("button", { name: "Collapse group Inner" }).click();
 	await seekFrame(screen, 1);

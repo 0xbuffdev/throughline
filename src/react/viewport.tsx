@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Layout } from "../layout/types.js";
 import { format } from "../layout/measure.js";
 import {
@@ -36,6 +36,7 @@ type ViewportProps = {
 	/** True only when the current frame was reached by one forward step. */
 	animate?: boolean;
 	availableWidth: number;
+	fullscreen: boolean;
 	summary: string;
 	captionId: string;
 };
@@ -63,10 +64,10 @@ export function useViewport({
 	progress,
 	animate = false,
 	availableWidth,
+	fullscreen,
 	summary,
 	captionId,
 }: ViewportProps) {
-	const viewId = useId();
 	const svgRef = useRef<SVGSVGElement>(null);
 	const pointers = useRef(new Map<number, Point>());
 	const pointerNodes = useRef(new Map<number, string | null>());
@@ -284,7 +285,7 @@ export function useViewport({
 				aria-describedby={captionId}
 				aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown + - 0"
 				className="thl-scene"
-				style={{ height: `${sceneHeight}px` }}
+				style={{ height: fullscreen ? "100%" : `${sceneHeight}px` }}
 				tabIndex={0}
 				onKeyDown={onKeyDown}
 				onPointerDown={onPointerDown}
@@ -323,57 +324,54 @@ export function useViewport({
 		),
 		options: (
 			<>
-				<button type="button" className="thl-view-trigger" popoverTarget={viewId}>View</button>
-				<div id={viewId} className="thl-popover thl-view-options" popover="auto" role="group" aria-label="Diagram view">
-					<select
-						aria-label="Select entity"
-						value={selected?.id ?? ""}
-						onChange={(event) => selectEntity(event.target.value || null)}
-					>
-						<option value="">Select entity</option>
-						{visible.map((entity) => <option key={entity.id} value={entity.id}>{entity.label} ({entity.id})</option>)}
-					</select>
-					<button type="button" aria-label="Follow active entity" title="Follow active entity" aria-pressed={followActive} onClick={toggleFollow}>
-						<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v4m0 12v4M2 12h4m12 0h4" /></svg>
-						<span>Follow active entity</span>
-					</button>
-					{availableGroups.length > 0 && (
-						<nav className="thl-group-controls" aria-label="Group hierarchy">
-							<button type="button" onClick={() => focusGroup(null)} aria-label="Return to group overview" title="Group overview">
-								<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 12 3l9 7v11H3V10zm6 11v-8h6v8" /></svg>
-							</button>
-							{crumbs.map((group) => (
-								<span key={group.id} className="thl-breadcrumb">
-									<span aria-hidden="true">/</span>
-									<button type="button" onClick={() => focusGroup(group.id)}>{group.name}</button>
-								</span>
-							))}
-							<select
-								aria-label="Drill into group"
-								value={drilledGroup ?? ""}
-								onChange={(event) => focusGroup(event.target.value || null)}
-							>
-								<option value="">Choose group</option>
-								{availableGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
-							</select>
-							<button
-								type="button"
-								disabled={!drilledGroup}
-								aria-label={drilledGroup && collapsedGroups.includes(drilledGroup) ? `Expand group ${groupById.get(drilledGroup)?.name}` : `Collapse group ${groupById.get(drilledGroup ?? "")?.name ?? ""}`}
-								aria-expanded={drilledGroup ? !collapsedGroups.includes(drilledGroup) : undefined}
-								onClick={() => { if (drilledGroup) toggleCollapse(drilledGroup); }}
-							>
-								<svg viewBox="0 0 24 24" aria-hidden="true">
-									{drilledGroup && collapsedGroups.includes(drilledGroup) ? (
-										<path d="M4 8V4h4m8 0h4v4M4 16v4h4m8 0h4v-4" />
-									) : (
-										<path d="M8 4H4v4m16 0h4v4M4 16v4h4m8 0h4v-4" />
-									)}
-								</svg>
-							</button>
-						</nav>
-					)}
-				</div>
+				<select
+					aria-label="Select entity"
+					value={selected?.id ?? ""}
+					onChange={(event) => selectEntity(event.target.value || null)}
+				>
+					<option value="">Select entity</option>
+					{visible.map((entity) => <option key={entity.id} value={entity.id}>{entity.label} ({entity.id})</option>)}
+				</select>
+				<button type="button" aria-label="Follow active entity" title="Follow active entity" aria-pressed={followActive} onClick={toggleFollow}>
+					<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v4m0 12v4M2 12h4m12 0h4" /></svg>
+					<span>Follow active entity</span>
+				</button>
+				{availableGroups.length > 0 && (
+					<nav className="thl-group-controls" aria-label="Group hierarchy">
+						<button type="button" onClick={() => focusGroup(null)} aria-label="Return to group overview" title="Group overview">
+							<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10 12 3l9 7v11H3V10zm6 11v-8h6v8" /></svg>
+						</button>
+						{crumbs.map((group) => (
+							<span key={group.id} className="thl-breadcrumb">
+								<span aria-hidden="true">/</span>
+								<button type="button" onClick={() => focusGroup(group.id)}>{group.name}</button>
+							</span>
+						))}
+						<select
+							aria-label="Drill into group"
+							value={drilledGroup ?? ""}
+							onChange={(event) => focusGroup(event.target.value || null)}
+						>
+							<option value="">Choose group</option>
+							{availableGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+						</select>
+						<button
+							type="button"
+							disabled={!drilledGroup}
+							aria-label={drilledGroup && collapsedGroups.includes(drilledGroup) ? `Expand group ${groupById.get(drilledGroup)?.name}` : `Collapse group ${groupById.get(drilledGroup ?? "")?.name ?? ""}`}
+							aria-expanded={drilledGroup ? !collapsedGroups.includes(drilledGroup) : undefined}
+							onClick={() => { if (drilledGroup) toggleCollapse(drilledGroup); }}
+						>
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								{drilledGroup && collapsedGroups.includes(drilledGroup) ? (
+									<path d="M4 8V4h4m8 0h4v4M4 16v4h4m8 0h4v-4" />
+								) : (
+									<path d="M8 4H4v4m16 0h4v4M4 16v4h4m8 0h4v-4" />
+								)}
+							</svg>
+						</button>
+					</nav>
+				)}
 			</>
 		),
 		selection: selected && (

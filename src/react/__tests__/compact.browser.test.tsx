@@ -18,10 +18,9 @@ it("uses compact borderless icon actions, square nodes and transport below the v
 	const bottom = player.querySelector(".thl-bottom")!;
 	const navigation = player.querySelector(".thl-viewport-tools")!;
 	const playback = player.querySelector(".thl-controls")!;
-	const chapter = screen.getByRole("combobox", { name: "Chapter" }).element();
 
 	const scene = player.querySelector(".thl-scene")!;
-	expect(isBelow(chapter, scene)).toBe(true);
+	expect(isBelow(player.querySelector(".thl-header")!, scene)).toBe(true);
 	expect(isBelow(navigation, bottom)).toBe(true);
 	expect(isBelow(bottom, caption)).toBe(true);
 	expect(bottom.contains(playback)).toBe(true);
@@ -29,15 +28,16 @@ it("uses compact borderless icon actions, square nodes and transport below the v
 	expect(getComputedStyle(player).borderTopLeftRadius).toBe("2px");
 	expect(getComputedStyle(player.querySelector(".thl-viewport-tools button")!).borderTopWidth).toBe("0px");
 	expect(getComputedStyle(screen.getByRole("button", { name: "Play", exact: true }).element()).borderTopWidth).toBe("0px");
-	await openPlayerPanel(screen, "View");
+	await openPlayerPanel(screen);
 	expect(getComputedStyle(screen.getByRole("combobox", { name: "Select entity" }).element()).borderTopLeftRadius).toBe("2px");
-	await screen.getByRole("button", { name: "View", exact: true }).click();
+	await screen.getByRole("button", { name: "Player options", exact: true }).click();
 	expect(screen.getByRole("button", { name: "Zoom in" }).element().querySelector("svg")).not.toBeNull();
 	expect(screen.getByRole("button", { name: "Zoom in" }).element().getBoundingClientRect().width).toBeGreaterThanOrEqual(34);
 	for (const selector of [".thl-node", ".thl-group", ".thl-cell rect"]) {
 		const node = player.querySelector<SVGRectElement>(selector)!;
 		expect(node.getAttribute("rx"), selector).toBe("2");
 	}
+	await openPlayerPanel(screen);
 	await screen.getByRole("button", { name: "Restart chapter" }).click();
 	expect(stepCount(screen)?.textContent).toBe("Step 1 of 17");
 });

@@ -5,7 +5,7 @@ import { compile } from "../../domains/registry.js";
 import type { ThroughlineGuidance } from "../guidance.js";
 import { ThroughlinePlayer } from "../index.js";
 import "../../styles/throughline.css";
-import { openPlayerPanel } from "./player-actions.js";
+import { closePlayerPanel, openPlayerPanel } from "./player-actions.js";
 
 const trace = compile(
 	'thl flow\nnode a "Client" = 0\nstep "Request"\n  set a = 1\n  note "Request started"\nstep "Response"\n  set a = 2\n  note "Response received"',
@@ -43,9 +43,10 @@ afterEach(() => vi.unstubAllGlobals());
 it("reports an external interruption and pauses without completing the step", async () => {
 	const speech = speechBoundary();
 	const screen = await render(<ThroughlinePlayer trace={trace} narration />);
-	await openPlayerPanel(screen, "Player options");
+	await openPlayerPanel(screen);
 	const narrator = screen.getByRole("button", { name: "Narrate captions" });
 	await narrator.click();
+	await closePlayerPanel(screen);
 	await screen.getByRole("button", { name: "Play", exact: true }).click();
 	const abandoned = speech.voices[0].onend;
 	speech.voices[0].onerror?.({ error: "interrupted" });
@@ -54,7 +55,7 @@ it("reports an external interruption and pauses without completing the step", as
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 3");
 	abandoned?.();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 3");
-	await openPlayerPanel(screen, "Player options");
+	await openPlayerPanel(screen);
 	await narrator.click();
 	await narrator.click();
 	expect(speech.voices).toHaveLength(2);
@@ -77,11 +78,13 @@ it("takes over speech across two players and never cancels B when displaced A se
 	const aPlay = a.querySelector<HTMLButtonElement>(".thl-play")!;
 	await userEvent.click(a.querySelector<HTMLButtonElement>(".thl-options-trigger")!);
 	await userEvent.click(aSound);
+	await userEvent.click(a.querySelector<HTMLButtonElement>(".thl-options-trigger")!);
 	await userEvent.click(aPlay);
 	expect(speech.voices).toHaveLength(1);
 	const stale = speech.voices[0].onend;
 	await userEvent.click(b.querySelector<HTMLButtonElement>(".thl-options-trigger")!);
 	await userEvent.click(bSound);
+	await userEvent.click(b.querySelector<HTMLButtonElement>(".thl-options-trigger")!);
 	expect(speech.voices).toHaveLength(2);
 	await expect.poll(() => aSound.getAttribute("aria-pressed")).toBe("false");
 	await expect.poll(() => aPlay.getAttribute("aria-label")).toBe("Play");
@@ -113,6 +116,7 @@ it("preserves B's active voice when the unmounted A had already yielded ownershi
 	for (const player of players) {
 		await userEvent.click(player.querySelector<HTMLButtonElement>(".thl-options-trigger")!);
 		await userEvent.click(player.querySelector<HTMLButtonElement>(".thl-narration")!);
+		await userEvent.click(player.querySelector<HTMLButtonElement>(".thl-options-trigger")!);
 	}
 	const count = speech.synth.cancel.mock.calls.length;
 	await screen.rerender(
@@ -133,8 +137,9 @@ it("replaces stale guidance on the same frame without allowing the old voice to 
 		chapters: [{ id: "one", title: "Corrected instructions", start: 0, end: 2 }],
 	};
 	const screen = await render(<ThroughlinePlayer trace={trace} narration guidance={first} />);
-	await openPlayerPanel(screen, "Player options");
+	await openPlayerPanel(screen);
 	await screen.getByRole("button", { name: "Narrate captions" }).click();
+	await closePlayerPanel(screen);
 	await screen.getByRole("button", { name: "Play", exact: true }).click();
 	expect(speech.voices[0].text).toContain("Original instructions");
 	const stale = speech.voices[0].onend;
@@ -154,9 +159,8 @@ it("restarts same-frame narration, including after the old utterance completed",
 		chapters: [{ id: "opening", title: "Opening chapter", start: 0, end: 2 }],
 	};
 	const screen = await render(<ThroughlinePlayer trace={trace} narration guidance={guidance} />);
-	await openPlayerPanel(screen, "Player options");
+	await openPlayerPanel(screen);
 	await screen.getByRole("button", { name: "Narrate captions" }).click();
-	await screen.getByRole("button", { name: "Player options" }).click();
 	const restart = screen.getByRole("button", { name: "Restart chapter" });
 	const old = speech.voices[0].onend;
 	await restart.click();
@@ -164,6 +168,7 @@ it("restarts same-frame narration, including after the old utterance completed",
 	old?.();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 3");
 	speech.voices[1].onend?.();
+	await openPlayerPanel(screen);
 	await restart.click();
 	expect(speech.voices).toHaveLength(3);
 	expect(speech.voices[2].text).toContain("Opening chapter");

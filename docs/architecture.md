@@ -93,19 +93,19 @@ browser-managed remote services.
 
 `ThroughlinePlayer` composes one header, measured diagram,
 transport and caption. The viewport owns camera and selection state and
-supplies the diagram and its view controls. One native chapter selector
-moves from the header line before View to a second row as the embed narrows.
-Container queries also move viewport
-tools to a row above the diagram in narrow embeds, shorten the visual step
-count, and reflow transport controls as needed. Native popovers keep
-secondary controls available by keyboard and touch without duplicating them.
+supplies the diagram and its view controls. One native popover groups
+chapter and step navigation, diagram controls, and display and audio options.
+Container queries move viewport tools above the diagram in narrow embeds,
+shorten the visual step count, and reflow transport controls as needed.
+Fullscreen gives the SVG the flexible space between the header and the
+playback and caption area. The SVG keeps the viewBox centered as Details opens.
 
 The transport displays the current step and total, and **Go to step** uses
 the same reducer action as chapter navigation. The native details
-disclosure follows the transport. Its summary shows the step title and
-note preview. The explanation, evidence and inspector stay in the expanded
-body is bounded and independently scrollable, and the SVG references
-its caption summary for descriptive accessibility.
+disclosure follows the transport. The closed summary shows the step title
+and note preview. The expanded body contains the full note, evidence and
+inspector in a bounded scrolling area. The SVG references the caption
+summary for descriptive accessibility.
 
 ## Accumulated authored playback progress
 

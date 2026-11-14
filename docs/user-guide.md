@@ -8,13 +8,10 @@ Markdown integration. The core compiler can also be used without React.
 
 Import the optional stylesheet once in the host application. The player
 accepts an optional `title` (omitted when absent), and `light`, `dark` or
-`auto` themes. The header contains **View** for diagram navigation and
-**Player options** for direct step jumps, fullscreen and any enabled audio
-features. On wide embeds, the chapter selector and restart button appear
-immediately before **View**. They move to a centered second row at tablet
-widths, and the selector fills the available row on phones. Below the
-diagram, Previous, Play/Pause and Next sit alongside the step count and
-speed selector. The caption and its optional inspector follow playback.
+`auto` themes. **Player options** in the header groups chapter
+selection, step jumps, diagram navigation, and display and audio settings.
+Below the diagram, Previous, Play/Pause and Next sit alongside the step count
+and speed selector. The caption and its optional inspector follow playback.
 
 The shell, group boxes, nodes, cells and form inputs use a compact default
 `--thl-radius: 0.125rem` (2px at a 16px root font size), with 0.5rem inner
@@ -84,6 +81,9 @@ number of frames; rerendering with the same trace does not replay audio.
 A refused fullscreen request is
 announced to assistive technology; playback remains available in-page.
 Browser support and host policies determine whether fullscreen can start.
+In fullscreen the header stays at the top, the diagram is centered in the
+available space, and playback controls sit at the bottom above the caption.
+Expanding Details moves the controls up and gives the diagram a smaller area.
 
 ## Trace reader compatibility
 
@@ -331,7 +331,7 @@ this plugin does not make arbitrary MDX content safe to execute.
 ## Guided explanations and scenario comparison
 
 Guidance is **optional, host-authored presentation data**, not compiled trace
-metadata. Chapters identify inclusive, zero-based frame ranges. Selecting a
+metadata. Chapters identify inclusive, zero-based frame ranges. In **Player options**, selecting a
 chapter seeks to its first frame and pauses playback. The **Restart chapter**
 button returns to the beginning of the current chapter (including while
 playing). Causal explanations
