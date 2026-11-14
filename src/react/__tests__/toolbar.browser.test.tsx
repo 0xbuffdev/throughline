@@ -114,6 +114,8 @@ it("keeps transport next to the diagram while long authored details change and e
 	const toolbar = player.querySelector<HTMLElement>(".thl-bottom")!;
 	const caption = player.querySelector<HTMLDetailsElement>(".thl-caption")!;
 	const body = player.querySelector<HTMLElement>(".thl-caption-content")!;
+	const teaser = () => caption.querySelector(".thl-caption-teaser")!;
+	const note = () => body.querySelector(".thl-caption-note")!;
 	const barTop = pageTop(toolbar);
 	const sceneBottom = scene.getBoundingClientRect().bottom + window.scrollY;
 	expect(caption.open).toBe(false);
@@ -122,22 +124,32 @@ it("keeps transport next to the diagram while long authored details change and e
 
 	await seekFrame(screen, 2);
 	expect(caption.open).toBe(false);
-	expect(player.querySelector(".thl-caption-teaser")?.textContent).toBe(longNote);
+	expect(teaser().textContent).toBe(longNote);
+	expect(teaser()).toBeVisible();
+	expect(note()).not.toBeVisible();
 	expect(pageTop(toolbar)).toBeCloseTo(barTop, 0);
 	expect(caption.getBoundingClientRect().height).toBeLessThan(65);
 
 	await screen.getByText("Details", { exact: true }).click();
 	expect(caption.open).toBe(true);
-	await expect.element(screen.getByText(longNote, { exact: true }).last()).toBeVisible();
+	expect(teaser()).not.toBeVisible();
+	expect(note()).toBeVisible();
+	expect(note().textContent).toBe(longNote);
 	expect(body.scrollHeight).toBeGreaterThan(body.clientHeight);
 	expect(body.getBoundingClientRect().height).toBeLessThanOrEqual(193);
 	expect(pageTop(toolbar)).toBeCloseTo(barTop, 0);
 
 	await seekFrame(screen, 3);
 	expect(caption.open).toBe(true);
+	expect(teaser()).not.toBeVisible();
+	expect(note()).toBeVisible();
+	expect(note().textContent).toBe("Done.");
 	expect(pageTop(toolbar)).toBeCloseTo(barTop, 0);
 	await screen.getByText("Details", { exact: true }).click();
 	expect(caption.open).toBe(false);
+	expect(teaser()).toBeVisible();
+	expect(teaser().textContent).toBe("Done.");
+	expect(note()).not.toBeVisible();
 });
 
 it("keeps native keyboard disclosure and detailed state inspection accessible", async () => {

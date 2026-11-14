@@ -439,6 +439,7 @@
 	font-size: 0.75rem;
 	line-height: 1.3;
 }
+.thl-caption[open] .thl-caption-teaser { display: none; }
 .thl-caption-expand {
 	display: inline-flex;
 	align-items: center;

@@ -17,6 +17,10 @@ program and trace schemas. Changes are grouped using
   action under Player options. Custom styles targeting the old timeline
   track and thumb can be removed.
 
+### Fixed
+
+- Show the step note once when caption details are expanded.
+
 ## [0.1.0]
 
 ### Added
