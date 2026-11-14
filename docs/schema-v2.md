@@ -2,7 +2,7 @@
 
 This is the **accepted, independently validated data foundation**, not a claim
 that the existing v1 compiler, Markdown parser or React player uses v2 yet.
-Normative authority: [Throughline Specification 0004 §§10–13](https://github.com/0xbuffdev/context/blob/main/repos/throughline/specs/0004-universal-visualization-engine.md).
+Normative authority: Throughline Specification 0004 §§10–13 (maintainer-owned architecture record).
 TL-U03 compiles validated artifacts into frames, U04 adds indexed queries,
 and later tickets migrate views, examples and the single unqualified thl fence.
 
