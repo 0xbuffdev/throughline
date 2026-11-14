@@ -1,10 +1,10 @@
-# Schema-2 semantic artifact validation and deterministic replay (TL-U02–U03)
+# Schema-2 artifact validation, atomic replay and semantic queries (TL-U02–U04)
 
-The schema-2 validator and atomic deterministic compiler implement the accepted
-semantic foundation. The preexisting schema-1 Markdown parser and player are
+The schema-2 validator, atomic deterministic compiler and indexed trace inspector
+implement the pure accepted semantic foundation. The preexisting schema-1 Markdown parser and player are
 not v2 consumers; no backward-compatibility support is promised.
 Normative authority: Throughline Specification 0004 §§10–13 (maintainer-owned architecture record).
-TL-U04 adds indexed queries; later tickets migrate views, examples and the
+TL-U05 and later tickets migrate views, the player, examples and the
 single unqualified `thl` fence.
 
 ## Public data boundary
@@ -12,6 +12,7 @@ single unqualified `thl` fence.
 ```ts
 import {
   validateArtifact, parseArtifactJson, serializeArtifact, compileArtifact,
+  inspectTrace,
   type VisualArtifact
 } from "@0xbuff/throughline";
 
@@ -35,6 +36,13 @@ const json = serializeArtifact(validated);   // deterministic, sorted object key
 const decoded = parseArtifactJson(json);     // strict duplicate-key checking
 const trace = compileArtifact(decoded);      // detached, immutable derived frames
 console.log(trace.frames.map(frame => frame.id)); // ["@initial", "increment"]
+const inspect = inspectTrace(trace);
+inspect.stateAt(0);                     // immutable initial state
+inspect.valueAt(1, "counter");          // {status:"known", value:1}
+inspect.valueAt(1, "counter", ["x"]);   // {status:"absent"}
+inspect.diff(0, 1);                    // explicit write with eventId "write1"
+inspect.history("counter");            // authored writes, never fabricated effects
+inspect.causalEvidenceOf("write1");    // unmodeled: no declared dependency
 ```
 
 No resolver, network connection, rendering library or provider SDK participates
@@ -47,7 +55,7 @@ in validation or compilation. The input is inert data. `message` and
   groups, relations, origins, steps, events and claims are independent.
   References must resolve; dependency event IDs must refer to **earlier** steps.
 - An entity has exactly one known/unknown initial cell. Known JSON null is not
-  unknown. A missing nested path will be `absent` at query time (TL-U04), not
+  unknown. A missing nested path is `absent` at query time, not
   inserted into the serialized artifact. Unknown knowledge is whole-entity.
 - Only four semantic events are accepted: `write`, `topology`, `message`,
   `observation`. A message phase is evidence, not an implicit destination write.
@@ -177,6 +185,59 @@ performance claim about different hardware, runtimes or input distributions.
 graph/sequence/state-table projections or a v2 player. Those are separate
 reviewed implementation tickets TL-U04–TL-U10.
 
+## TL-U04 — Pure indexed semantic inspection
+
+`inspectTrace(trace: CompiledTrace): TraceInspector` requires an **in-process,
+compiler-owned** trace. It rejects a JSON-deserialized, forged or reassembled
+`CompiledTrace` even if its `schemaVersion` is 2: compile a validated
+`VisualArtifact` instead. Traces and query results are immutable, detached
+from the caller's original input, and do not invoke React, AI or network code.
+
+The inspector indexes authored event IDs, entity-associated events, declared
+relations, message transfers, explicit write history, authored claims and
+earlier-step causal dependencies exactly once per trace. Queries do not replay
+the artifact or scan every step to resolve an event ID:
+
+| Query | Semantics |
+| --- | --- |
+| `stateAt(frameIndex)` | Frozen snapshot at a strict zero-based frame index; `@initial` is index 0 |
+| `valueAt(frameIndex, entityId, path?)` | Known JSON, unknown whole-entity cell or distinct absent nested path |
+| `diff(from, to)` | Source-linked, ordered **explicit writes and topology events**, including same-value writes |
+| `history(entityId, path?)` | Explicit writes whose paths intersect the requested path (ancestor or descendant); no inferred persistence |
+| `eventsFor(entityId)` | Explicit direct entity events plus messages and topology operations on incident declared relations |
+| `transfersFor(relationId)` | Only authored `message` events, including lone received/processed phases |
+| `dependenciesOf(eventId)` | Only declared `dependsOn` event references from earlier steps |
+| `causalEvidenceOf(eventId)` | `explicit` for declared dependencies; otherwise `unmodeled` and an explanatory text |
+| `eventById(eventId)` / `claimsForEvent(eventId)` | Exact authored event and explicit citing claims; `reviewed` is editorial, not independent scientific proof |
+| `relationsFor(entityId)` | Static declared incident relations; check `stateAt` for modeled presence at a frame |
+
+**Frame semantics:** `diff(from,to)` includes commits after `from` through
+`to`. Reverse requests compare those commits in reverse order, swap
+before/after facts and mark `direction:"backward"`; **they do not create an
+inverse event, causal edge or physical-time rollback**. An event's `frameIndex`
+always names its original authored commit. Same-step writes read the prior and
+post-commit snapshot, never an invented intermediate state.
+
+**Nested paths:** unknown whole-entity cells stay unknown even for a nested
+query. Missing or incompatible keys/indices inside a known value return
+`{status:"absent"}`, distinct from `{status:"known",value:null}`. Values
+on declared but initially absent entities remain queryable separately from
+modeled presence. Paths reuse the schema's safe string/index vocabulary and
+are limited to depth 32 at the read boundary. Invalid frame indexes and
+undeclared IDs throw `TraceQueryError` rather than disguising invalid input
+as an absent value.
+
+**No invented evidence:** `observation` and `message` do not appear as
+writes in diff/history; `transfersFor` does not imply receipt, persistence
+or missing phases. Chronological adjacency is not a dependency. An empty
+`dependenciesOf` list means no explicit cause is modeled, **not** that the
+event had no real-world cause.
+
+The 10k-event/2k-step pure index benchmark lives in
+`src/__tests__/artifact-v2-inspector.test.ts`. It logs a fixture SHA-256,
+hardware, Node version, indexed compilation time and repeated-query duration.
+It is measurement evidence, **not** a cross-hardware latency SLA.
+
 ## Acceptance and deferred replay checks
 
 TL-U02 tests positive recursion/matrix/checkout-shaped artifacts and rejects
@@ -184,5 +245,5 @@ broken cross-references, malformed and duplicate JSON, invalid paths, dates,
 cycles, unsafe input, depth/count/byte/work-limit breaches and mutation leaks.
 TL-U03 adds atomic replay, no-false-persistence and endpoint-presence
 checks, deterministic checkpoint/mutation tests and expanded-budget rejection.
-Queries/projections and a v2 player remain TL-U04–TL-U10 work. Test and release
+Graph/sequence/state-table projections and a v2 player remain TL-U05–TL-U10 work. Test and release
 evidence must be recorded from real CI, not assumed from this documentation.
