@@ -258,23 +258,47 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 	const items: ViewItem[] = [];
 	for (const [index, group] of (artifact.groups ?? []).entries()) {
 		if (!visibleGroups.has(group.id)) continue;
-		const memberIds = artifact.entities.filter((entity) =>
-			presentEntities.has(entity.id) &&
-			(ancestors.get(entity.id) ?? []).includes(group.id)).map((entity) => entity.id);
+		const declaredMembers = artifact.entities.filter(entity =>
+			(ancestors.get(entity.id) ?? []).includes(group.id)).map(entity => entity.id);
+		const declaredSet = new Set(declaredMembers);
+		const memberIds = declaredMembers.filter(id => presentEntities.has(id));
 		const collapsedHere = collapsedTop.has(group.id);
 		const subtree = [group.id, ...(artifact.groups ?? []).filter((candidate) =>
 			ancestorIds(candidate.id).slice(0, -1).includes(group.id)).map((g) => g.id)];
-		const interior = collapsedHere ? relations.filter((rel) =>
+		const interior = collapsedHere ? relations.filter(rel =>
 			representative.get(rel.from) === groupId(index) &&
 			representative.get(rel.to) === groupId(index)) : [];
-		const interiorIds = interior.map((r) => r.id);
-		const interiorEventIds = interior.flatMap(r => relationSourceEvents.get(r.id) ?? []);
-		const memberSet = new Set(memberIds);
-		const activeMemberEvents = collapsedHere ? events.filter(event =>
-			(event.type === "write" || event.type === "observation")
-				? memberSet.has(event.entityId)
-				: event.type === "topology" && event.target === "entity"
-					? memberSet.has(event.targetId) : false).map(event => event.id) : [];
+		const presentInteriorIds = new Set(interior.map(rel => rel.id));
+
+		// Model presence controls *what is drawn*, not the source identities
+		// of explicitly removed members. Preserve identities referenced by
+		// this step's events against DECLARED subtree membership, even when
+		// those constituents have disappeared from the committed snapshot.
+		const affectedMembers = new Set<Id>();
+		if (collapsedHere) for (const event of events) {
+			const target = event.type === "write" || event.type === "observation"
+				? event.entityId : event.type === "topology" && event.target === "entity"
+					? event.targetId : undefined;
+			if (target !== undefined && declaredSet.has(target))
+				affectedMembers.add(target);
+		}
+		const sourceMemberIds = collapsedHere
+			? declaredMembers.filter(id => presentEntities.has(id) || affectedMembers.has(id))
+			: memberIds;
+		const interiorIds = collapsedHere ? artifact.relations.filter(rel =>
+			declaredSet.has(rel.from) && declaredSet.has(rel.to) &&
+			(presentInteriorIds.has(rel.id) || relationSourceEvents.has(rel.id))
+		).map(rel => rel.id) : [];
+		const interiorEventIds = interiorIds.flatMap(id => relationSourceEvents.get(id) ?? []);
+		const memberEventIds = collapsedHere ? events.filter(event => {
+			const target = event.type === "write" || event.type === "observation"
+				? event.entityId : event.type === "topology" && event.target === "entity"
+					? event.targetId : undefined;
+			return target !== undefined && declaredSet.has(target);
+		}).map(event => event.id) : [];
+		const sourcedEvents = new Set([...interiorEventIds, ...memberEventIds]);
+		const sourceEventIds = events.filter(event => sourcedEvents.has(event.id))
+			.map(event => event.id);
 		items.push(item({
 			id: groupId(index),
 			role: "group",
@@ -282,15 +306,17 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 			description: group.label + (collapsedHere ? " collapsed group with " : " expanded group with ") +
 				memberIds.length + " present modeled entities. " +
 				(interiorIds.length ? interiorIds.length +
-					" internal declared relations retain source identity; " : "") +
+					" internal declared relation source(s) retain their IDs; " : "") +
+				(sourceMemberIds.length > memberIds.length ||
+					interiorIds.length > interior.length
+					? "Source evidence includes constituents removed or absent at this frame. "
+					: "") +
 				"Collapsing is presentation only.",
 			source: source({
 				groupIds: freezeIds(subtree),
-				...(memberIds.length ? { entityIds: freezeIds(memberIds) } : {}),
+				...(sourceMemberIds.length ? { entityIds: freezeIds(sourceMemberIds) } : {}),
 				...(interiorIds.length ? { relationIds: freezeIds(interiorIds) } : {}),
-				...(interiorEventIds.length || activeMemberEvents.length ? {
-					eventIds: freezeIds([...new Set([...interiorEventIds, ...activeMemberEvents])]),
-				} : {}),
+				...(sourceEventIds.length ? { eventIds: freezeIds(sourceEventIds) } : {}),
 			}),
 			data: Object.freeze({ collapsed: collapsedHere, count: memberIds.length,
 				selected: memberIds.some(id => selected.has(id)) }),
