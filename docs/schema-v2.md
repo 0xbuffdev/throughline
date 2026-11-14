@@ -127,9 +127,11 @@ creation and unknown-cell partial patching are rejected.
 
 Within a step, writes are checked against the same previous snapshot. A
 prefix trie rejects overlapping paths on one entity (including root vs child),
-while a topology map rejects contradictory presence operations. Valid disjoint
-writes commit together. Presence is a property of declared entities and
-relations; `focusEntityIds` and UI collapse have no impact on presence.
+while a topology map rejects contradictory presence operations. The same
+write trie is the **single pending-write source**: disjoint updates commit in
+one copy-on-write traversal, cloning each affected array/record **once per
+step** rather than once per event. Presence is a property of declared entities
+and relations; `focusEntityIds` and UI collapse have no impact on presence.
 
 A `message` with phase `sent` requires its declared relation and both declared
 endpoints to be present **before and after** the atomic step; activating an
@@ -141,10 +143,35 @@ validated by TL-U02. Wall timestamps do not reorder steps or establish duration.
 
 The compiler measures every expanded frame, charging each JSON primitive,
 property and array element *on every frame*, including unchanged shared values.
-An immutable subtree's measured size may be memoized to bound runtime work,
-but the expanded cost still counts against the 8,000,000-unit ceiling.
+For event IDs and modeled-presence ID arrays, the **array entry and its ID
+string primitive each consume one traversal unit**, exactly as for cell
+arrays. An immutable subtree's measured size may be memoized to bound runtime
+work, but the expanded cost still counts against the 8,000,000-unit ceiling.
 Compiled frames, cells, event IDs and snapshot presence arrays are frozen at
 the public boundary; a caller cannot mutate a past state or authored artifact.
+
+### Measured near-limit compilation (non-SLA evidence)
+
+The TL-U03 boundary regression validates a single atomic step containing
+**10,000 distinct indexed writes** into a known numeric array of **200,000
+entries**. The old per-event array copy performed approximately 2 billion
+element-definition operations. The batched version traverses the touched
+array only once during commit and preserves the unchanged initial frame.
+
+- **Fixture (canonical JSON SHA-256):**
+  `8e038de327785546936739f5b5309d4952ebc631e2ef0244ff68c0c6b6a09572`
+- **Execution:** `compileArtifact` completed in **950 ms** on the recorded
+  GitHub Actions Linux runner with an **AMD EPYC 7763 64-Core Processor**,
+  **Node.js v24.22.2**, on 2026-11-14.
+- **Reproduction:** `src/__tests__/artifact-v2-compiler.test.ts` boundary
+  regression; [CI run 43633490421](https://github.com/0xbuffdev/throughline/actions/runs/43633490421).
+  The test prints the machine, fixture digest and measured duration.
+- **Independent budget regression:** 200 present entities, 1,000 declared
+  present relations and 2,000 empty steps must **reject** because expanded
+  ID-string accounting pushes the trace beyond 8M units.
+
+This is one reproducible **observation**, not a portable time guarantee or a
+performance claim about different hardware, runtimes or input distributions.
 
 **Scope:** This source does not promise schema-1 compatibility, query indexes,
 graph/sequence/state-table projections or a v2 player. Those are separate
