@@ -565,7 +565,7 @@ export function parseArtifactJson(source: string): VisualArtifact {
  * JSON.stringify: even ordinary arrays inherit Object.prototype.toJSON.
  * Primitive encoding is safe; key sorting provides canonical object order.
  */
-function encodeJson(value: unknown): string {
+export function encodeJson(value: unknown): string {
 	if (value === null || typeof value !== "object")
 		return JSON.stringify(value);
 	if (Array.isArray(value)) {
