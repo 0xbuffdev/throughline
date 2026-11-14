@@ -129,6 +129,25 @@ describe("TL-U05 — v2 graph projection and truthful source identities", () => 
 			.items.filter(item => item.role === "entity")).toHaveLength(3);
 	});
 
+	it("preserves source IDs for internal entity/relation presence updates under collapse", () => {
+		const inspector = model();
+		const atActivation = projectView(inspector, {
+			kind: "graph", frameIndex: 4, collapsedGroupIds: ["back"],
+		});
+		const group = named(atActivation, "group", "Backend");
+		expect(group.source.entityIds).toEqual(["ledger", "worker"]);
+		expect(group.source.relationIds).toEqual(["task"]);
+		expect(group.source.eventIds).toEqual(["taskOn", "workerOn"]);
+		// The relation's current topology source is not an authored send
+		// or independently witnessed receive/acknowledgement.
+		const active = projectView(inspector, { kind: "graph", frameIndex: 4 });
+		const task = named(active, "relation", "Task");
+		expect(task.source.eventIds).toEqual(["taskOn"]);
+		expect(task.data).toMatchObject({
+			sentCurrent: 0, observedCurrent: 0,
+		});
+	});
+
 	it("maps concurrent distinct source links to one collapsed connector without losing IDs", () => {
 		const authored = distributedGraph();
 		authored.relations.push({
