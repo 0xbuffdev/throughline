@@ -202,8 +202,8 @@ the artifact or scan every step to resolve an event ID:
 | --- | --- |
 | `stateAt(frameIndex)` | Frozen snapshot at a strict zero-based frame index; `@initial` is index 0 |
 | `valueAt(frameIndex, entityId, path?)` | Known JSON, unknown whole-entity cell or distinct absent nested path |
-| `diff(from, to)` | Source-linked, ordered **explicit writes and topology events**, including same-value writes |
-| `history(entityId, path?)` | Explicit writes whose paths intersect the requested path (ancestor or descendant); no inferred persistence |
+| `diff(from, to)` | Forward-only (`0 <= from <= to < frameCount`) explicit writes and **presence** changes, including same-value writes |
+| `history(entityId, path?)` | Explicit overlapping writes, with **before/after evaluated at the requested path** (or the original event path when omitted); no inferred persistence |
 | `eventsFor(entityId)` | Explicit direct entity events plus messages and topology operations on incident declared relations |
 | `transfersFor(relationId)` | Only authored `message` events, including lone received/processed phases |
 | `dependenciesOf(eventId)` | Only declared `dependsOn` event references from earlier steps |
@@ -211,12 +211,24 @@ the artifact or scan every step to resolve an event ID:
 | `eventById(eventId)` / `claimsForEvent(eventId)` | Exact authored event and explicit citing claims; `reviewed` is editorial, not independent scientific proof |
 | `relationsFor(entityId)` | Static declared incident relations; check `stateAt` for modeled presence at a frame |
 
-**Frame semantics:** `diff(from,to)` includes commits after `from` through
-`to`. Reverse requests compare those commits in reverse order, swap
-before/after facts and mark `direction:"backward"`; **they do not create an
-inverse event, causal edge or physical-time rollback**. An event's `frameIndex`
-always names its original authored commit. Same-step writes read the prior and
-post-commit snapshot, never an invented intermediate state.
+**Frame and result semantics:** `diff(from,to)` validates two existing
+zero-based frame indices and **requires `from <= to`**. It includes commits
+strictly after `from` through `to`, ordered by authored step and event
+order. `diff(from,from)` is empty; reverse ranges throw a typed
+`TraceQueryError` and are not an implicit undo feature.
+
+Every explicit write change and `HistoryEntry` includes `frameId` (the
+authored step ID), `frameIndex`, `eventId`, `originId` and `path` (the
+**original write target**). A presence change uses `kind:"presence"`,
+`frameId`, `eventId`, `target`, `targetId`, and boolean `before`/`after`
+fields. History path-filtering preserves the source event identity/path, but
+reads before/after from **the requested location** in adjacent immutable
+frames: a child write queried at its parent returns parent cells; a
+whole-parent write queried at a child returns the child's actual prior and
+committed values (including a transition to/from `absent`).
+Without a path, each history entry reports values at its original write
+target. Same-step writes always compare the preceding and committed frames,
+never imaginary intermediate states or inferred causal effects.
 
 **Nested paths:** unknown whole-entity cells stay unknown even for a nested
 query. Missing or incompatible keys/indices inside a known value return
