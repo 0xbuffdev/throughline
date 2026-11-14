@@ -18,13 +18,14 @@ or application-specific runtime.
 ## Schema-2 foundation (implementation in progress)
 
 The accepted architecture replaces domain-tagged fences with one `thl` authoring
-surface and a schema-2 evidence-aware artifact. **TL-U02 added the v2 model/validator, and TL-U03 adds the pure
-`compileArtifact` deterministic atomic replay with immutable checkpoints.**
+surface and a schema-2 evidence-aware artifact. **TL-U02 added strict v2 validation, TL-U03 added deterministic atomic replay,
+and TL-U04 adds the indexed pure `inspectTrace` semantic query API.**
 The existing v1 `compile`, Markdown and React implementations remain until
 later migration tickets; do not use the v2 artifact directly with the v1 player.
 
-See [schema-2 validation, replay and migration](docs/schema-v2.md) for the current
-implemented boundary and the deferred replay/authoring work.
+See [schema-2 validation, replay and inspection](docs/schema-v2.md) for the
+implemented pure v2 boundary and later authoring/view work. No v1 compatibility
+shim is introduced.
 
 ## Features
 
