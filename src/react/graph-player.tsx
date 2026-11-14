@@ -85,7 +85,7 @@ function GraphDiagram({
 					</g>
 				);
 			})}
-			{/* Lines are painted behind cards. Only explicitly authored sends
+			{/* Lines are painted behind cards. Only explicit modeled sends
 			    mark a current/traversed connector. Observed receive/processed
 			    phases never acquire a sent class or motion on this path. */}
 			{links.map(item => {
@@ -488,7 +488,7 @@ export function ThroughlineGraphPlayer({
 				<details id={captionId} className="thl-v2-caption" open>
 					<summary>{step?.label ?? "Initial state"} — Step {frameIndex + 1}/{trace.frames.length}</summary>
 					<p>{step?.note ?? view.summary}</p>
-					{events.length > 0 && <ol aria-label="Authored step evidence">
+					{events.length > 0 && <ol aria-label="Declared step evidence">
 						{events.slice(0, 80).map(item =>
 							<li key={item.id} data-source-event-ids={item.source.eventIds?.join(" ")}>
 								{item.description}
