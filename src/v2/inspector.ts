@@ -69,6 +69,17 @@ function intersects(left: Path, right: Path): boolean {
 }
 
 /**
+ * Inspector instances are produced from compiler-owned traces, not from a
+ * JSON-looking duck type. View projection never trusts external functions.
+ */
+const ownedInspectors = new WeakSet<object>();
+
+export function assertOwnedInspector(input: TraceInspector): void {
+	if (input === null || typeof input !== "object" || !ownedInspectors.has(input))
+		reject("$.inspector", "untrusted trace inspector; recompile and inspect a validated artifact");
+}
+
+/**
  * Build one private index over an immutable compiler-produced trace.
  *
  * No JSON blob claiming to be a CompiledTrace may be inspected. The caller
@@ -222,7 +233,7 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 		return event;
 	};
 
-	return Object.freeze({
+	const inspector: TraceInspector = Object.freeze({
 		frameCount: frames.length,
 		stateAt: frameAt,
 		valueAt(frameIndex: number, entityId: Id, path: Path = []): QueryCell {
@@ -283,4 +294,6 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 			return frozenRelations.get(entityId)!;
 		},
 	});
+	ownedInspectors.add(inspector);
+	return inspector;
 }
