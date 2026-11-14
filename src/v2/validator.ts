@@ -108,13 +108,22 @@ function detachJson(
 			if (!desc || !desc.enumerable || !("value" in desc))
 				fail(path + "[" + i + "]", "array entry must be an own data value");
 			budget.visit(path + "[" + i + "]");
-			copy.push(detachJson(desc.value, path + "[" + i + "]", depth + 1, budget, ancestors));
+			// Define own numeric properties: array assignment/push may also
+			// trigger poisoned inherited numeric setters.
+			Object.defineProperty(copy, key, {
+				value: detachJson(desc.value, path + "[" + i + "]", depth + 1, budget, ancestors),
+				enumerable: true,
+				writable: true,
+				configurable: true,
+			});
 		}
 		ancestors.delete(input);
 		return copy;
 	}
 
-	const copy: RecordValue = {};
+	// Null-prototype data records never invoke inherited accessors on assignment
+	// and cannot inherit host-defined toJSON methods.
+	const copy: RecordValue = Object.create(null) as RecordValue;
 	for (const key of keys) {
 		if (typeof key !== "string") fail(path, "symbol keys are not JSON data");
 		budget.visit(path + "." + key);
@@ -428,7 +437,7 @@ function inspect(input: unknown, budget: Budget): VisualArtifact {
 		fail("$.schemaVersion", "unsupported artifact schema; expected 2");
 	const data = detachJson(input, "$", 0, budget, new WeakSet());
 	const validated = validateStructured(data);
-	const json = JSON.stringify(validated);
+	const json = encodeJson(validated);
 	if (new TextEncoder().encode(json).byteLength > ARTIFACT_LIMITS.artifactBytes)
 		fail("$", "serialized artifact exceeds 4 MiB UTF-8");
 	freezeJson(validated);
@@ -542,18 +551,27 @@ export function parseArtifactJson(source: string): VisualArtifact {
 	return inspect(parsed, budget);
 }
 
-function canonical(value: unknown): unknown {
-	if (Array.isArray(value)) return value.map(canonical);
-	if (value && typeof value === "object") {
-		const object: RecordValue = {};
-		for (const key of Object.keys(value).sort())
-			object[key] = canonical((value as RecordValue)[key]);
-		return object;
+/**
+ * Encode already-validated JSON data without passing objects/arrays to
+ * JSON.stringify: even ordinary arrays inherit Object.prototype.toJSON.
+ * Primitive encoding is safe; key sorting provides canonical object order.
+ */
+function encodeJson(value: unknown): string {
+	if (value === null || typeof value !== "object")
+		return JSON.stringify(value);
+	if (Array.isArray(value)) {
+		const entries: string[] = [];
+		for (let i = 0; i < value.length; i++)
+			entries.push(encodeJson(value[i]));
+		return "[" + entries.join(",") + "]";
 	}
-	return value;
+	const entries: string[] = [];
+	for (const key of Object.keys(value).sort())
+		entries.push(JSON.stringify(key) + ":" + encodeJson((value as RecordValue)[key]));
+	return "{" + entries.join(",") + "}";
 }
 
 /** Stable key-ordered UTF-8-safe JSON. Frames are compiler output, never input. */
 export function serializeArtifact(input: VisualArtifact): string {
-	return JSON.stringify(canonical(validateArtifact(input)));
+	return encodeJson(validateArtifact(input));
 }
