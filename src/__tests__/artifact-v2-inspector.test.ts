@@ -251,6 +251,9 @@ describe("TL-U04 — pure indexed semantic queries", () => {
 
 	it("evaluates a parent-record replacement at descendant requested paths", () => {
 		const source = authored();
+		// This isolated one-event artifact must not retain claims whose
+		// evidence IDs referred to the checkout fixture's removed steps.
+		source.claims = [];
 		source.steps = [{
 			id: "replace", label: "Replace parent record",
 			events: [{
