@@ -207,17 +207,27 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 		[relation.id, { relation, index }] as const));
 	const events = request.frameIndex > 0 ? artifact.steps[request.frameIndex - 1].events : [];
 	const sentInStep = new Map<Id, Id[]>();
-	const relationEvents = new Map<Id, Id[]>();
+	const messageEvents = new Map<Id, Id[]>();
+	const relationSourceEvents = new Map<Id, Id[]>();
 	for (const event of events) {
+		const relationId = event.type === "message" ? event.relationId
+			: event.type === "topology" && event.target === "relation"
+				? event.targetId : undefined;
+		if (!relationId) continue;
+		// A relation-topology operation is source evidence on its link, but
+		// it is never a message phase and must not count as a send/receipt.
+		const sources = relationSourceEvents.get(relationId) ?? [];
+		sources.push(event.id);
+		relationSourceEvents.set(relationId, sources);
 		if (event.type !== "message") continue;
 		if (event.phase === "sent") {
-			const list = sentInStep.get(event.relationId) ?? [];
+			const list = sentInStep.get(relationId) ?? [];
 			list.push(event.id);
-			sentInStep.set(event.relationId, list);
+			sentInStep.set(relationId, list);
 		}
-		const list = relationEvents.get(event.relationId) ?? [];
-		list.push(event.id);
-		relationEvents.set(event.relationId, list);
+		const messages = messageEvents.get(relationId) ?? [];
+		messages.push(event.id);
+		messageEvents.set(relationId, messages);
 	}
 	const ancestorIds = (group?: Id): Id[] => {
 		const chain: Id[] = [];
@@ -258,11 +268,13 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 			representative.get(rel.from) === groupId(index) &&
 			representative.get(rel.to) === groupId(index)) : [];
 		const interiorIds = interior.map((r) => r.id);
-		const interiorEventIds = interior.flatMap((r) => relationEvents.get(r.id) ?? []);
-		const activeMemberEvents = collapsedHere ? events.filter((e) =>
-			(e.type === "write" || e.type === "observation" ||
-				(e.type === "topology" && e.target === "entity")) &&
-			"entityId" in e && memberIds.includes(e.entityId)).map(e => e.id) : [];
+		const interiorEventIds = interior.flatMap(r => relationSourceEvents.get(r.id) ?? []);
+		const memberSet = new Set(memberIds);
+		const activeMemberEvents = collapsedHere ? events.filter(event =>
+			(event.type === "write" || event.type === "observation")
+				? memberSet.has(event.entityId)
+				: event.type === "topology" && event.target === "entity"
+					? memberSet.has(event.targetId) : false).map(event => event.id) : [];
 		items.push(item({
 			id: groupId(index),
 			role: "group",
@@ -313,7 +325,7 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 			}),
 		}));
 	}
-	type EdgeAccum = { from: Id; to: Id; relations: Id[]; allEvents: Id[]; sent: Id[] };
+	type EdgeAccum = { from: Id; to: Id; relations: Id[]; allEvents: Id[]; nonSentMessages: number; sent: Id[] };
 	const mapped = new Map<string, EdgeAccum>();
 	for (const [index, relation] of artifact.relations.entries()) {
 		if (!visibleRelationIds.has(relation.id)) continue;
@@ -324,12 +336,14 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 		const key = aggregated ? from + ">" + to : "source:" + index;
 		let edge = mapped.get(key);
 		if (!edge) {
-			edge = { from, to, relations: [], allEvents: [], sent: [] };
+			edge = { from, to, relations: [], allEvents: [], nonSentMessages: 0, sent: [] };
 			mapped.set(key, edge);
 		}
 		edge.relations.push(relation.id);
-		edge.allEvents.push(...(relationEvents.get(relation.id) ?? []));
+		edge.allEvents.push(...(relationSourceEvents.get(relation.id) ?? []));
 		edge.sent.push(...(sentInStep.get(relation.id) ?? []));
+		edge.nonSentMessages += (messageEvents.get(relation.id)?.length ?? 0) -
+			(sentInStep.get(relation.id)?.length ?? 0);
 	}
 	for (const edge of mapped.values()) {
 		const only = edge.relations.length === 1
@@ -353,7 +367,7 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 			fromItemId: edge.from, toItemId: edge.to,
 			data: Object.freeze({
 				sentCurrent: edge.sent.length,
-				observedCurrent: edge.allEvents.length - edge.sent.length,
+				observedCurrent: edge.nonSentMessages,
 				aggregated: edge.relations.length > 1 ||
 					edge.from.startsWith("group_") || edge.to.startsWith("group_"),
 			}),
