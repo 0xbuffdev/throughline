@@ -12,7 +12,7 @@ import {
 	type SemanticEvent,
 	type StateChange,
 	type StateSnapshot,
-	type TopologyChange,
+	type PresenceChange,
 	type TraceInspector,
 	type WriteChange,
 } from "./model.js";
@@ -66,23 +66,6 @@ function intersects(left: Path, right: Path): boolean {
 	for (let i = 0; i < Math.min(left.length, right.length); i++)
 		if (left[i] !== right[i]) return false;
 	return true;
-}
-
-function reverseChange(change: StateChange): StateChange {
-	if (change.kind === "write") {
-		return Object.freeze({
-			...change,
-			direction: "backward" as const,
-			before: change.after,
-			after: change.before,
-		});
-	}
-	return Object.freeze({
-		...change,
-		direction: "backward" as const,
-		beforePresent: change.afterPresent,
-		afterPresent: change.beforePresent,
-	});
 }
 
 /**
@@ -155,7 +138,7 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 			} else if (event.type === "write") {
 				const change: WriteChange = Object.freeze({
 					kind: "write",
-					direction: "forward",
+					frameId: frames[frameIndex].id,
 					frameIndex,
 					stepId: step.id,
 					eventId: event.id,
@@ -171,17 +154,17 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 				const previous = event.target === "entity" ?
 					previousEntities : previousRelations;
 				const next = event.target === "entity" ? nextEntities : nextRelations;
-				const change: TopologyChange = Object.freeze({
-					kind: "topology",
-					direction: "forward",
+				const change: PresenceChange = Object.freeze({
+					kind: "presence",
+					frameId: frames[frameIndex].id,
 					frameIndex,
 					stepId: step.id,
 					eventId: event.id,
 					originId: event.originId,
 					target: event.target,
 					targetId: event.targetId,
-					beforePresent: previous.has(event.targetId),
-					afterPresent: next.has(event.targetId),
+					before: previous.has(event.targetId),
+					after: next.has(event.targetId),
 				});
 				changes.push(change);
 			}
@@ -251,17 +234,11 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 		diff(from: number, to: number): readonly StateChange[] {
 			frameAt(from);
 			frameAt(to);
+			if (from > to)
+				reject("$.fromIndex", "diff requires fromIndex <= toIndex");
 			const result: StateChange[] = [];
-			if (to > from) {
-				for (let i = from + 1; i <= to; i++)
-					result.push(...changesByFrame[i]);
-			} else if (to < from) {
-				// Reverse is an analytical comparison, never a new authored
-				// event or a physical rollback. Preserve original source IDs.
-				for (let i = from; i > to; i--)
-					for (let j = changesByFrame[i].length - 1; j >= 0; j--)
-						result.push(reverseChange(changesByFrame[i][j]));
-			}
+			for (let i = from + 1; i <= to; i++)
+				result.push(...changesByFrame[i]);
 			return Object.freeze(result);
 		},
 		history(entityId: Id, path?: Path): readonly HistoryEntry[] {
@@ -269,7 +246,16 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 			const writes = frozenWrites.get(entityId)!;
 			if (path === undefined) return writes;
 			assertQueryPath(path);
-			return Object.freeze(writes.filter((entry) => intersects(entry.path, path)));
+			// Filtering alone would incorrectly report values at the event
+			// target. Instead evaluate the *requested* location in the prior
+			// and committed frames, retaining the authored event path/IDs.
+			return Object.freeze(writes
+				.filter((entry) => intersects(entry.path, path))
+				.map((entry) => Object.freeze({
+					...entry,
+					before: readCell(frames[entry.frameIndex - 1].snapshot.values[entityId], path),
+					after: readCell(frames[entry.frameIndex].snapshot.values[entityId], path),
+				})));
 		},
 		eventsFor(entityId: Id): readonly SemanticEvent[] {
 			entityAt(entityId);
