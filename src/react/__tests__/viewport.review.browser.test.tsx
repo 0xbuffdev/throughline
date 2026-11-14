@@ -63,6 +63,8 @@ it("centers selectable entities at left, right, top and bottom edges at 1x zoom"
   const screen = await render(<ThroughlinePlayer trace={dense} />);
   await expect.poll(() => view()[2]).toBeLessThan(720);
   await openPlayerPanel(screen, "View");
+  await expect.poll(() => view()[3]).toBeGreaterThan(900);
+  await expect.poll(() => Math.abs(svg().getBoundingClientRect().height - Number.parseFloat(svg().style.height))).toBeLessThan(1);
   await expect.poll(() => view()[2]).toBe(Math.floor(svg().getBoundingClientRect().width));
   const ids = ["n0", "n1", "n30", "n31"];
   const positions = ids.map(worldCenter);
