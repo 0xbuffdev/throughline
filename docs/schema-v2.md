@@ -293,20 +293,34 @@ nodes and links. The source step's `message` phase `sent` alone marks a
 connector as a currently authored send. `received`, `acknowledged` and
 `processed` are independently listed evidence, not inferred sends. Neither
 messages nor observations write canonical cells. A historical workflow trail
-marks only authored **sent** events in or before the selected frame, not
-fabricated responses or persistence.
+marks only explicit **sent** phases in or before the selected frame, not
+fabricated responses or persistence. Each event's declared `originId` and
+origin kind (authored, computed, simulated, observed or AI-proposed) are shown
+as **provenance metadata**, not independently verified truth. An
+observation-family event or presence change is not automatically “observed”
+or “authored”; its declared origin is a separate fact.
 
 **Static nested groups:** Groups are declared in the validated artifact.
 `collapsedGroupIds` is presentation-only: hidden member nodes are replaced
-by a local summary whose provenance contains every contributing present
-source entity/group and internal relation/event ID. Parallel outward
-relations collapse to one visual connector but retain **all** source relation
-IDs. Internal links are never drawn as invented group self-loops. Expanding
-restores original source nodes; no topology event or data mutation is emitted.
+by a local summary whose provenance retains the contributing present
+source entity/group and internal relation/event IDs, **plus source IDs and
+event IDs for absent entities or relations explicitly affected at the
+current step** (for example, a topology removal). The summary's
+`data.count` still counts only *currently present* members; removed
+members/links remain absent from the drawn graph. Group source event IDs
+retain the authored event-list ordering independently of event origin kind.
+Parallel outward relations collapse to one visual connector but retain
+**all** source relation IDs. Internal links are never drawn as invented
+group self-loops. Expanding restores original source nodes; no topology
+event or data mutation is emitted.
+
 Layout is based on declared identities independently of modeled presence,
 so seeking never reparents or repositions an entity merely because the trace
-frame changes. The pure edge router is reused from the existing layout
-module; there is no adapter through legacy `Program.version:1`.
+frame changes. **Ancestor panels are painted before their descendants,
+regardless of declaration order**, with stable sibling ordering, to avoid
+opaque parent backgrounds covering child labels. The pure edge router is
+reused from the existing layout module; there is no adapter through legacy
+`Program.version:1`.
 
 **Fallback while building all three views:** Explicit `graph` uses the
 implemented source-linked graph; graph-incompatible requests and unsupported
@@ -330,7 +344,8 @@ a new compatibility API**; migrate internal examples/MDX in TL-U08–TL-U10.
 
 Regression coverage includes distributed checkout (isolated receives,
 processed-without-sent evidence, explicit settlement write, preactivation
-and removal), nested group identity, collapse/aggregation provenance,
+and removal), child-before-parent declarations, exact source IDs of
+removed constituents under collapse, mixed-origin event descriptions,
 cross-frame immutable seeking and invalid trusted objects. Chromium,
 Firefox, WebKit, mobile widths, keyboard/selection and packed Node/React SSR
 are release evidence gates on the source PR, not substitute claims of human
