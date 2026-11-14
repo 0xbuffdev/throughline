@@ -2,6 +2,7 @@ import {
 	ARTIFACT_LIMITS,
 	ARTIFACT_SCHEMA_VERSION,
 	type Cell,
+	type Path,
 	type VisualArtifact,
 } from "./model.js";
 
@@ -220,6 +221,14 @@ function pathSegments(input: unknown, path: string): void {
 			fail(at, "expected a plain record key or nonnegative safe array index");
 		}
 	}
+}
+
+/** Shared path vocabulary for artifact writes and pure inspector queries. */
+export function assertQueryPath(input: unknown): asserts input is Path {
+	const segments = array(input, "$.path");
+	if (segments.length > ARTIFACT_LIMITS.jsonDepth)
+		fail("$.path", "query path exceeds maximum depth 32");
+	pathSegments(segments, "$.path");
 }
 
 function timestamp(input: unknown, path: string): void {
