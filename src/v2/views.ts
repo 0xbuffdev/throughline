@@ -1,6 +1,6 @@
 import { inspectedTrace } from "./inspector.js";
 import type {
-	Cell, Id, SemanticEvent, SourceIds, TraceInspector, ViewDescriptor,
+	Cell, Id, Origin, SemanticEvent, SourceIds, TraceInspector, ViewDescriptor,
 	ViewItem, ViewKind, ViewRequest, VisualArtifact,
 } from "./model.js";
 import { TraceQueryError } from "./inspector.js";
@@ -110,40 +110,57 @@ function eventSource(event: SemanticEvent, artifact: VisualArtifact): Readonly<S
 	});
 }
 
-/** Evidence *labels*, not inferred effects or state updates. */
-function eventDescription(event: SemanticEvent): string {
+/** Event type is modeled semantics; origin kind is distinct provenance. */
+function eventDescription(event: SemanticEvent, origin: Origin): string {
+	let meaning: string;
 	switch (event.type) {
 		case "message":
-			return "Explicit " + event.phase + " message evidence " + event.id +
+			meaning = "Explicit " + event.phase + " message evidence " + event.id +
 				" on relation " + event.relationId +
 				". No other message phase or destination persistence is implied.";
+			break;
 		case "observation":
-			return "Observed event " + event.id + " on " + event.entityId +
-				"; this observation does not mutate modeled state.";
+			meaning = "Observation-family event " + event.id + " on " + event.entityId +
+				"; this event does not mutate modeled state.";
+			break;
 		case "write":
-			return "Explicit write " + event.id + " to " + event.entityId +
+			meaning = "Explicit modeled write " + event.id + " to " + event.entityId +
 				"; the atomic step commits this change.";
+			break;
 		case "topology":
-			return "Authored presence " + event.id + ": " + event.target +
+			meaning = "Modeled presence change " + event.id + ": " + event.target +
 				" " + event.targetId + (event.present ? " present" : " absent") + ".";
+			break;
 	}
+	// The origin is author-declared metadata, even when its kind is
+	// "observed". Do not upgrade a simulated or AI-proposed fact into a
+	// verified observation or relabel it "authored" because of its type.
+	return meaning + " Declared origin " + origin.id + " (" + origin.kind +
+		"); provenance is not independent verification.";
 }
 
 function eventItems(events: readonly SemanticEvent[], artifact: VisualArtifact,
 	indexByEventId: ReadonlyMap<Id, number>): ViewItem[] {
-	return events.map((event) => item({
-		id: eventId(indexByEventId.get(event.id)!),
-		role: "event",
-		label: event.type === "message" ? event.phase + " · " + event.id : event.type + " · " + event.id,
-		description: eventDescription(event),
-		source: eventSource(event, artifact),
-		data: Object.freeze({
-			type: event.type,
-			...(event.type === "message" ? {
-				phase: event.phase, messageId: event.messageId, relationId: event.relationId,
-			} : {}),
-		}),
-	}));
+	const origins = new Map(artifact.origins.map(origin => [origin.id, origin] as const));
+	return events.map((event) => {
+		// A validated artifact requires every event's origin to exist.
+		const origin = origins.get(event.originId)!;
+		return item({
+			id: eventId(indexByEventId.get(event.id)!),
+			role: "event",
+			label: event.type === "message" ? event.phase + " · " + event.id : event.type + " · " + event.id,
+			description: eventDescription(event, origin),
+			source: eventSource(event, artifact),
+			data: Object.freeze({
+				type: event.type,
+				originId: origin.id,
+				originKind: origin.kind,
+				...(event.type === "message" ? {
+					phase: event.phase, messageId: event.messageId, relationId: event.relationId,
+				} : {}),
+			}),
+		});
+	});
 }
 
 function cellDescription(cell: Cell): string {
