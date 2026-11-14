@@ -7,7 +7,7 @@ import "../src/styles/throughline.css";
 import "./style.css";
 
 type Theme = "auto" | "light" | "dark";
-type Viewport = "desktop" | "mobile";
+type Viewport = "desktop" | "tablet" | "mobile";
 
 const examples = EXAMPLES.map((example) => ({
 	...example,
@@ -78,6 +78,7 @@ function App() {
 							onChange={(event) => setViewport(event.currentTarget.value as Viewport)}
 						>
 							<option value="desktop">Responsive desktop</option>
+							<option value="tablet">768px tablet</option>
 							<option value="mobile">375px mobile</option>
 						</select>
 					</label>
@@ -111,15 +112,9 @@ function App() {
 					<pre><code>{source}</code></pre>
 				</details>
 				<p className="preview-footnote">
-					Use the player controls to step, pan, zoom, collapse groups, inspect state
-					and switch outcomes. Narration is available in every example:
-					select Narrate captions to hear the authored explanation.
-					Play waits for speech to finish before advancing. The separate
-					step-tone sound control is still available: select the speaker
-					icon to unmute, then Play or step forward to hear short synthesized tones.
-					It starts muted and does not narrate the workflow. Resize the browser or
-					choose the 375px view to find layout problems. Changes to the source reload
-					this local preview.
+					Open Player options to jump to a step, enable narration or turn on step tones.
+					With narration enabled, playback advances when the spoken caption finishes.
+					Use the width selector to review tablet and mobile embeds.
 				</p>
 			</div>
 		</main>

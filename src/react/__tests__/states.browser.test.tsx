@@ -5,6 +5,7 @@ import { compile } from "../../domains/registry.js";
 import { EXAMPLES } from "../../examples.js";
 import { ThroughlinePlayer } from "../index.js";
 import "../../styles/throughline.css";
+import { openPlayerPanel, seekFrame } from "./player-actions.js";
 
 const checkout = compile(EXAMPLES.find((example) => example.id === "distributed-checkout")!.source);
 const sendAt = checkout.frames.findIndex((frame) => frame.label === "Send first charge request");
@@ -19,22 +20,21 @@ const edgeAnimation = () => getComputedStyle(chargeLink().querySelector(".thl-ed
 it("animates a send only when it is reached by one forward step", async () => {
 	expect(sendAt).toBeGreaterThan(1);
 	const screen = await render(<ThroughlinePlayer trace={checkout} />);
-	const timeline = screen.getByRole("slider", { name: "Timeline" });
 
 	// A jump straight onto the send frame settles without animating.
-	await timeline.fill(String(sendAt));
+	await seekFrame(screen, sendAt);
 	expect(chargeLink().classList.contains("thl-transferred")).toBe(true);
 	expect(chargeLink().classList.contains("thl-animate")).toBe(false);
 	expect(edgeAnimation()).toBe("none");
 
 	// Even an adjacent timeline seek is a seek, not explicit Step forward.
-	await timeline.fill(String(sendAt - 1));
-	await timeline.fill(String(sendAt));
+	await seekFrame(screen, sendAt - 1);
+	await seekFrame(screen, sendAt);
 	expect(chargeLink().classList.contains("thl-animate")).toBe(false);
 	expect(edgeAnimation()).toBe("none");
 
 	// Stepping forward onto it animates the same connector path.
-	await timeline.fill(String(sendAt - 1));
+	await seekFrame(screen, sendAt - 1);
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(chargeLink().classList.contains("thl-animate")).toBe(true);
 	expect(chargeLink().querySelectorAll("path")).toHaveLength(1);
@@ -49,7 +49,7 @@ it("animates a send only when it is reached by one forward step", async () => {
 	expect(chargeLink().classList.contains("thl-animate")).toBe(true);
 
 	// Rewinding onto a send frame does not replay it.
-	await timeline.fill(String(sendAt + 1));
+	await seekFrame(screen, sendAt + 1);
 	await screen.getByRole("button", { name: "Step back" }).click();
 	expect(chargeLink().classList.contains("thl-transferred")).toBe(true);
 	expect(chargeLink().classList.contains("thl-animate")).toBe(false);
@@ -58,7 +58,7 @@ it("animates a send only when it is reached by one forward step", async () => {
 
 it("paints the link carrying the current send above every other link", async () => {
 	const screen = await render(<ThroughlinePlayer trace={checkout} />);
-	await screen.getByRole("slider", { name: "Timeline" }).fill(String(sendAt));
+	await seekFrame(screen, sendAt);
 	const links = [...document.querySelectorAll(".thl-link")];
 	expect(links.at(-1)).toBe(chargeLink());
 	expect(links.filter((link) => link.classList.contains("thl-transferred")).at(0)).toBe(links.at(-1));
@@ -67,13 +67,12 @@ it("paints the link carrying the current send above every other link", async () 
 it("flashes a changed value only for a forward single step", async () => {
 	expect(changedAt).toBeGreaterThan(1);
 	const screen = await render(<ThroughlinePlayer trace={checkout} />);
-	const timeline = screen.getByRole("slider", { name: "Timeline" });
-	await timeline.fill("0");
-	await timeline.fill(String(changedAt));
+	await seekFrame(screen, 0);
+	await seekFrame(screen, changedAt);
 	expect(document.querySelector(".thl-cell.thl-changed")).not.toBeNull();
 	expect(document.querySelector(".thl-cell.thl-animate")).toBeNull();
 
-	await timeline.fill(String(changedAt - 1));
+	await seekFrame(screen, changedAt - 1);
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(document.querySelector(".thl-cell.thl-changed.thl-animate")).not.toBeNull();
 });
@@ -126,6 +125,7 @@ it("shows selection and keyboard focus as outer rings, not dashes or authored fo
 		"  focus a",
 		"```",
 	].join("\n"))} />);
+	await openPlayerPanel(screen);
 	await screen.getByRole("combobox", { name: "Select entity" }).selectOptions("a");
 	const selected = document.querySelector<SVGRectElement>('[data-node="a"] .thl-ring.thl-ring-selected')!;
 	expect(selected).not.toBeNull();

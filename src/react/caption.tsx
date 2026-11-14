@@ -10,7 +10,6 @@ interface PlayerCaptionProps {
 	guidance?: ThroughlineGuidance;
 	onSeek: (step: number) => void;
 	id: string;
-	total: number;
 }
 export function PlayerCaption({
 	frame,
@@ -18,7 +17,6 @@ export function PlayerCaption({
 	guidance,
 	onSeek,
 	id,
-	total,
 }: PlayerCaptionProps): React.JSX.Element {
 	return (
 		// The explanation follows the transport bar. Unbounded authored notes
@@ -31,12 +29,9 @@ export function PlayerCaption({
 						<span className="thl-caption-teaser">{frame.state.notes.join(" ")}</span>
 					)}
 				</span>
-				<span className="thl-caption-trailing">
-					<span className="thl-step-count">Step {frame.index + 1} of {total}</span>
-					<span className="thl-caption-expand">
-						<span>Details</span>
-						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-					</span>
+				<span className="thl-caption-expand">
+					<span>Details</span>
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
 				</span>
 			</summary>
 			<div className="thl-caption-content">

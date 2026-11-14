@@ -9,10 +9,10 @@ import { BASE_STEP_MS, stepDelayMs } from "../seek.js";
 import type { SonificationOptions } from "../sonify.js";
 import { PlayerCaption } from "./caption.js";
 import { PlayerGuidanceControls, validateGuidance, type ThroughlineGuidance } from "./guidance.js";
-import { PlayerControls } from "./controls.js";
+import { PlayerControls, PlayerOptions } from "./controls.js";
 import { narrationText } from "./narration-text.js";
 import { useNarration } from "./use-narration.js";
-import { ViewportScene } from "./viewport.js";
+import { useViewport } from "./viewport.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
 import { useSound } from "./use-sound.js";
 
@@ -59,7 +59,7 @@ export function ThroughlinePlayer({
 	const progress = useMemo(() => traceProgress(trace, state.step), [trace, state.step]);
 	// Motion is presentation-only and decided when the step changes: only a
 	// forward single step animates. Seeks, rewinds and replaced traces show the
-	// settled frame at once, so scrubbing the timeline never replays transfers.
+	// settled frame at once, so a direct jump never replays transfers.
 	// The decision is latched per step so unrelated re-renders cannot restart
 	// or cancel an animation in progress.
 	const [motion, setMotion] = useState({ trace, step: state.step, animate: false });
@@ -142,6 +142,18 @@ export function ThroughlinePlayer({
 				...causal.map((item) => "Authored explanation: " + item.title + "."),
 			].filter(Boolean).join(" ")
 		: "No steps to display.";
+	const viewport = useViewport({
+		trace,
+		frame,
+		previous: trace.frames[state.step - 1],
+		layout,
+		progress,
+		animate: motion.animate,
+		availableWidth: width,
+		fullscreen,
+		summary,
+		captionId,
+	});
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: one focusable group owns scene stepping without changing native control keys.
 		<div
@@ -158,7 +170,7 @@ export function ThroughlinePlayer({
 			onKeyDown={onKeyDown}
 		>
 			<p id={keyboardHelpId} className="thl-sr-only">
-				Focus this player to use Left and Right arrows to step, Home and End to seek, and Space to play or pause. Focus the diagram to pan with arrow keys, zoom with plus or minus, fit with zero, and select entities from the navigation menu. Controls also work independently.
+				Focus this player to use Left and Right arrows to step, Home and End to seek, and Space to play or pause. Focus the diagram to pan with arrow keys, zoom with plus or minus, fit with zero, and select entities from Player options. Controls also work independently.
 			</p>
 			<p role="status" aria-atomic="true" className="thl-sr-only">
 				{summary}
@@ -169,60 +181,49 @@ export function ThroughlinePlayer({
 					{fullscreenError}
 				</p>
 			)}
-			{title && <h2 className="thl-title">{title}</h2>}
-			{/* This measured stage must exist even for empty traces so ResizeObserver
-			    stays connected through empty/populated trace replacements. */}
-			<div className="thl-stage" ref={sceneRef}>
-				<ViewportScene
-					trace={trace}
-					frame={frame}
-					previous={trace.frames[state.step - 1]}
-					layout={layout}
-					progress={progress}
-					animate={motion.animate}
-					availableWidth={width}
-					summary={summary}
-					captionId={captionId}
-					caption={frame && (
+			{(title || frame) && (
+				<header className="thl-header">
+					{title && <h2 className="thl-title">{title}</h2>}
+					{frame && (
+						<PlayerOptions
+							state={state}
+							dispatch={dispatch}
+							chapterControls={guidance?.chapters?.length ? (onSeek) => (
+								<PlayerGuidanceControls trace={trace} frame={frame} guidance={guidance} onSeek={onSeek} />
+							) : undefined}
+							diagramControls={viewport.options}
+							narration={narration ? {
+								enabled: narrating,
+								available: voice.available,
+								toggle: voice.toggle,
+							} : undefined}
+							sound={sonification ? { enabled: sound, toggle: () => setSound((enabled) => !enabled) } : undefined}
+							fullscreen={{ active: fullscreen, available: fullscreenAvailable, toggle: toggleFullscreen }}
+						/>
+					)}
+				</header>
+			)}
+			<div className="thl-stage">
+				<div className="thl-viewport">
+					{viewport.tools}
+					{/* Keep the measured canvas mounted through empty/populated trace replacements. */}
+					<div className="thl-canvas" ref={sceneRef}>{viewport.scene}</div>
+				</div>
+				{frame && (
+					<>
+						<div className="thl-bottom">
+							<PlayerControls state={state} dispatch={dispatch} />
+						</div>
 						<PlayerCaption
 							frame={frame}
 							trace={trace}
 							guidance={guidance}
 							onSeek={(step) => dispatch({ type: "step", to: step })}
 							id={captionId}
-							total={trace.frames.length}
 						/>
-					)}
-					chapterControls={frame && guidance && (
-						<PlayerGuidanceControls
-							trace={trace}
-							frame={frame}
-							guidance={guidance}
-							onSeek={(step) => dispatch({ type: "step", to: step })}
-						/>
-					)}
-					controls={frame && (
-						<PlayerControls
-							state={state}
-							dispatch={dispatch}
-							narration={narration ? {
-								enabled: narrating,
-								available: voice.available,
-								toggle: voice.toggle,
-							} : undefined}
-							sound={
-								sonification
-									? { enabled: sound, toggle: () => setSound((enabled) => !enabled) }
-									: undefined
-							}
-							fullscreen={{
-								active: fullscreen,
-								available: fullscreenAvailable,
-								toggle: toggleFullscreen,
-							}}
-						/>
-					)}
-				/>
+						{viewport.selection}
+					</>
+				)}
 			</div>
 		</div>
 	);

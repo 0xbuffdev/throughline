@@ -25,7 +25,7 @@ export function usePlayer(trace: Trace, externalClock = false): {
 		initialSeek,
 	);
 	// Track how a frame was reached without extending the public seek state.
-	// Timeline seeks (even an adjacent one) never count as forward playback.
+	// Direct seeks (even to the next frame) never count as forward playback.
 	const lastAction = useRef<SeekAction | null>(null);
 	const [seekRevision, bumpSeekRevision] = useState(0);
 	const dispatch = useCallback<React.Dispatch<SeekAction>>((action) => {

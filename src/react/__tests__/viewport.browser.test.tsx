@@ -4,6 +4,7 @@ import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
 import { ThroughlinePlayer } from "../index.js";
 import "../../styles/throughline.css";
+import { closePlayerPanel, openPlayerPanel } from "./player-actions.js";
 
 const source = [
 	"```thl flow",
@@ -32,13 +33,17 @@ it("keeps overview until following is enabled and gives manual actions precedenc
 	const follow = screen.getByRole("button", { name: "Follow active entity" });
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(view()).toEqual(original);
+	await openPlayerPanel(screen);
 	await follow.click();
 	await expect.element(follow).toHaveAttribute("aria-pressed", "true");
+	await closePlayerPanel(screen);
 	const atAlpha = view();
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(view()).not.toEqual(atAlpha);
 	await screen.getByRole("button", { name: "Zoom in" }).click();
+	await openPlayerPanel(screen);
 	await expect.element(follow).toHaveAttribute("aria-pressed", "false");
+	await closePlayerPanel(screen);
 	const manual = view();
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(view()).toEqual(manual);
@@ -66,14 +71,18 @@ it("supports keyboard pan and zoom on the scene while the player still owns step
 it("selects and inspects entities, respecting authored visibility and replacing traces", async () => {
 	const trace = compile(source);
 	const screen = await render(<ThroughlinePlayer trace={trace} />);
+	await openPlayerPanel(screen);
 	await userEvent.selectOptions(screen.getByRole("combobox", { name: "Select entity" }).element(), "b");
 	await expect.element(screen.getByText(/Selected: Beta/)).toBeVisible();
 	expect(document.querySelector('[data-node="b"] .thl-selected')).not.toBeNull();
+	await screen.getByRole("button", { name: "Player options", exact: true }).click();
 	await screen.getByRole("button", { name: "Zoom in" }).click();
 	await screen.rerender(<ThroughlinePlayer trace={compile(source)} />);
 	await expect.element(screen.getByText(/Selected: Beta/)).not.toBeInTheDocument();
+	await openPlayerPanel(screen);
 	await expect.element(screen.getByRole("button", { name: "Follow active entity" })).toHaveAttribute("aria-pressed", "false");
 	expect(view()[2]).toBeGreaterThan(0);
+	await closePlayerPanel(screen);
 	await screen.getByRole("button", { name: "Fit to view" }).click();
 	const newOverview = view();
 	expect(newOverview[0]).toBe(0);

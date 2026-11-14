@@ -5,6 +5,7 @@ import { compile } from "../../domains/registry.js";
 import { EXAMPLES } from "../../examples.js";
 import { ThroughlinePlayer } from "../index.js";
 import "../../styles/throughline.css";
+import { closePlayerPanel, openPlayerPanel, seekFrame, stepCount } from "./player-actions.js";
 
 it("keeps authored tree and column lane metadata through the React projection", async () => {
 	const trace = compile([
@@ -66,8 +67,7 @@ it("resets safely when replacing a trace with fewer frames", async () => {
 	const screen = await render(
 		<ThroughlinePlayer trace={compile(EXAMPLES[0].source)} />,
 	);
-	const timeline = screen.getByRole("slider", { name: "Timeline" });
-	await timeline.fill(String(compile(EXAMPLES[0].source).frames.length - 1));
+	await seekFrame(screen, compile(EXAMPLES[0].source).frames.length - 1);
 	await screen.rerender(
 		<ThroughlinePlayer trace={compile('```thl flow\nnode a "A" = 14\n```')} />,
 	);
@@ -93,12 +93,12 @@ it("fits a phone without shrinking text or overflowing its controls", async () =
 		<ThroughlinePlayer trace={compile(EXAMPLES[0].source)} />,
 	);
 	await expect
-		.poll(() => document.querySelector("svg")?.getAttribute("width"))
+		.poll(() => document.querySelector(".thl-scene")?.getAttribute("width"))
 		.toBe("100%");
 	await expect
 		.poll(() =>
 			Number(
-				document.querySelector("svg")?.getAttribute("viewBox")?.split(" ")[2],
+				document.querySelector(".thl-scene")?.getAttribute("viewBox")?.split(" ")[2],
 			),
 		)
 		.toBeLessThan(375);
@@ -162,8 +162,10 @@ it("keeps keyboard stepping on the player surface and audio explicitly optional"
 		<ThroughlinePlayer trace={trace} sonification={{ onTone }} />,
 	);
 	expect(onTone).not.toHaveBeenCalled();
+	await openPlayerPanel(screen);
 	await screen.getByRole("button", { name: "Sonify trace" }).click();
 	expect(onTone).toHaveBeenCalledTimes(1);
+	await closePlayerPanel(screen);
 	screen.getByRole("group", { name: "Visualization player" }).element().focus();
 	await userEvent.keyboard("{ArrowRight}");
 	await expect
@@ -187,8 +189,7 @@ it.each(["reconciliation", "distributed-checkout"] as const)(
 		const example = EXAMPLES.find((candidate) => candidate.id === id)!;
 		const trace = compile(example.source);
 		const screen = await render(<ThroughlinePlayer trace={trace} />);
-		const timeline = screen.getByRole("slider", { name: "Timeline" });
-		await timeline.fill(String(trace.frames.length - 1));
+		await seekFrame(screen, trace.frames.length - 1);
 		await expect
 			.element(screen.getByRole("status"))
 			.toHaveTextContent(`Step ${trace.frames.length} of ${trace.frames.length}`);
@@ -206,7 +207,6 @@ it("renders the checkout receipt only after persistence and restores it when see
 	)!.source;
 	const trace = compile(source);
 	const screen = await render(<ThroughlinePlayer trace={trace} />);
-	const timeline = screen.getByRole("slider", { name: "Timeline" });
 	const frameIndex = (label: string): number => {
 		const index = trace.frames.findIndex((frame) => frame.label === label);
 		expect(index).toBeGreaterThan(0);
@@ -219,7 +219,7 @@ it("renders the checkout receipt only after persistence and restores it when see
 	const receiptTitle = () =>
 		document.querySelector('[data-node="receipt"] > title')?.textContent;
 
-	await timeline.fill(String(received));
+	await seekFrame(screen, received);
 	await expect.poll(renderedReceipt).toBe("unconfirmed");
 	await expect.poll(receiptTitle).toBe("Payment record: unconfirmed");
 	expect(
@@ -228,11 +228,11 @@ it("renders the checkout receipt only after persistence and restores it when see
 		),
 	).toBe(true);
 
-	await timeline.fill(String(persisted));
+	await seekFrame(screen, persisted);
 	await expect.poll(renderedReceipt).toBe("paid: pay-ord-1042");
 	await expect.poll(receiptTitle).toBe("Payment record: paid: pay-ord-1042 (focus)");
 
-	await timeline.fill(String(received));
+	await seekFrame(screen, received);
 	await expect.poll(renderedReceipt).toBe("unconfirmed");
 	await expect.poll(receiptTitle).toBe("Payment record: unconfirmed");
 });
@@ -241,7 +241,6 @@ it("renders only the current tree and commit plan after reconciliation commits",
 	const source = EXAMPLES.find((example) => example.id === "reconciliation")!.source;
 	const trace = compile(source);
 	const screen = await render(<ThroughlinePlayer trace={trace} />);
-	const timeline = screen.getByRole("slider", { name: "Timeline" });
 	const reused = trace.frames.findIndex((frame) => frame.label === "Reuse key a");
 	const committed = trace.frames.findIndex(
 		(frame) => frame.label === "Commit the planned tree",
@@ -253,13 +252,13 @@ it("renders only the current tree and commit plan after reconciliation commits",
 			title.textContent?.includes("a → reuse"),
 		),
 	).toBe(false);
-	await timeline.fill(String(reused));
+	await seekFrame(screen, reused);
 	await expect.poll(() =>
 		[...document.querySelectorAll(".thl-link title")].some((title) =>
 			title.textContent?.includes("a → reuse"),
 		),
 	).toBe(true);
-	await timeline.fill(String(committed));
+	await seekFrame(screen, committed);
 	await expect.poll(() =>
 		[...document.querySelectorAll("[data-node]")].map((node) =>
 			node.getAttribute("data-node"),
@@ -272,7 +271,7 @@ it("renders only the current tree and commit plan after reconciliation commits",
 	).toEqual(["current → a", "current → committedC"]);
 });
 
-it("keeps the reference player hierarchy, optional title, and one caption step count", async () => {
+it("keeps the reference player hierarchy, optional title, and one transport step count", async () => {
 	const trace = compile(EXAMPLES[0].source);
 	const screen = await render(
 		<ThroughlinePlayer
@@ -298,10 +297,10 @@ it("keeps the reference player hierarchy, optional title, and one caption step c
 	expect(controls.getBoundingClientRect().bottom).toBeLessThanOrEqual(
 		caption.getBoundingClientRect().top,
 	);
-	expect(count.textContent).toBe(`Step 1 of ${trace.frames.length}`);
-	// The step count stays in the compact disclosure heading, after controls.
-	expect(count.getBoundingClientRect().right).toBeLessThanOrEqual(caption.getBoundingClientRect().right + 1);
-	expect(count.getBoundingClientRect().top).toBeGreaterThanOrEqual(caption.getBoundingClientRect().top);
+	expect(stepCount(screen)?.textContent).toBe(`Step 1 of ${trace.frames.length}`);
+	expect(controls.contains(count)).toBe(true);
+	expect(player.querySelectorAll(".thl-step-count")).toHaveLength(1);
+	expect(screen.getByRole("slider").query()).toBeNull();
 	expect((caption as HTMLDetailsElement).open).toBe(false);
 	expect(getComputedStyle(player).borderTopWidth).toBe("0px");
 	expect(getComputedStyle(caption).borderTopWidth).toBe("0px");
@@ -311,6 +310,7 @@ it("keeps the reference player hierarchy, optional title, and one caption step c
 
 	await screen.rerender(<ThroughlinePlayer trace={trace} theme="light" />);
 	expect(player.querySelector(".thl-title")).toBeNull();
+	await openPlayerPanel(screen);
 	await expect
 		.element(screen.getByRole("button", { name: "Maximize player" }))
 		.toBeInTheDocument();
@@ -373,15 +373,18 @@ it("enters and exits fullscreen with the real browser event contract", async () 
 
 	try {
 		document.dispatchEvent(new Event("fullscreenchange"));
+		await openPlayerPanel(screen);
 		const maximize = screen.getByRole("button", { name: "Maximize player" });
 		await expect.element(maximize).toBeEnabled();
 		await maximize.click();
 		expect(request).toHaveBeenCalledOnce();
+		await openPlayerPanel(screen);
 		await expect
 			.element(screen.getByRole("button", { name: "Minimize player" }))
 			.toBeEnabled();
 		await screen.getByRole("button", { name: "Minimize player" }).click();
 		expect(exit).toHaveBeenCalledOnce();
+		await openPlayerPanel(screen);
 		await expect
 			.element(screen.getByRole("button", { name: "Maximize player" }))
 			.toBeEnabled();
@@ -390,6 +393,7 @@ it("enters and exits fullscreen with the real browser event contract", async () 
 		document.dispatchEvent(new Event("fullscreenchange"));
 		active = null;
 		document.dispatchEvent(new Event("fullscreenchange"));
+		await openPlayerPanel(screen);
 		await expect
 			.element(screen.getByRole("button", { name: "Maximize player" }))
 			.toBeEnabled();
@@ -414,6 +418,7 @@ it("disables fullscreen controls where the host forbids the API", async () => {
 			value: false,
 		});
 		document.dispatchEvent(new Event("fullscreenchange"));
+		await openPlayerPanel(screen);
 		await expect
 			.element(screen.getByRole("button", { name: "Maximize player" }))
 			.toBeDisabled();
@@ -433,6 +438,7 @@ it("keeps sound controllers alongside fullscreen at narrow widths", async () => 
 		<ThroughlinePlayer trace={trace} sonification={{ onTone: vi.fn() }} />,
 	);
 	const player = document.querySelector(".thl") as HTMLElement;
+	await openPlayerPanel(screen);
 	const sound = screen.getByRole("button", { name: "Sonify trace" });
 	await expect.element(sound).toHaveAttribute("aria-pressed", "false");
 	await sound.click();
@@ -508,7 +514,7 @@ it("shows a decorative playback speed chevron without replacing the native selec
 	await expect.element(speed).toHaveValue("0.5");
 });
 
-it("advertises keyboard shortcuts and leaves native slider keys available", async () => {
+it("keeps keyboard shortcuts and validates keyboard step jumps", async () => {
 	const { userEvent } = await import("vitest/browser");
 	const trace = compile(
 		'```thl flow\nnode n "Number" = 0\nstep "One"\n set n = 1\nstep "Two"\n set n = 2\n```',
@@ -534,11 +540,20 @@ it("advertises keyboard shortcuts and leaves native slider keys available", asyn
 	await userEvent.keyboard(" ");
 	await expect.element(screen.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
 
-	const slider = screen.getByRole("slider", { name: "Timeline" });
-	slider.element().focus();
-	await userEvent.keyboard("{End}");
+	const options = screen.getByRole("button", { name: "Player options" });
+	options.element().focus();
+	await userEvent.keyboard("{Enter}");
+	const step = screen.getByRole("spinbutton", { name: "Step number" });
+	await expect.element(step).toHaveValue(2);
+	await step.fill("4");
+	await userEvent.keyboard("{Enter}");
+	await expect.element(step).toBeVisible();
+	expect(stepCount(screen)?.textContent).toBe("Step 2 of 3");
+	await step.fill("3");
+	await userEvent.keyboard("{Enter}");
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 3");
-	expect(document.activeElement).toBe(slider.element());
+	expect(step.query()).toBeNull();
+	expect(document.activeElement).toBe(options.element());
 });
 
 it("resets an in-flight playback interval and speed on unrelated trace replacement", async () => {
@@ -557,10 +572,7 @@ it("resets an in-flight playback interval and speed on unrelated trace replaceme
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 2");
 	await expect.element(screen.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
 	await expect.element(screen.getByRole("combobox", { name: "Playback speed" })).toHaveValue("1");
-	await expect.element(screen.getByRole("slider", { name: "Timeline" })).toHaveAttribute(
-		"aria-valuetext",
-		"Step 1 of 2",
-	);
+	expect(stepCount(screen)?.textContent).toBe("Step 1 of 2");
 	await screen.rerender(<ThroughlinePlayer trace={{ version: 1, frames: [] }} />);
 	await expect.element(screen.getByRole("status")).toHaveTextContent("No steps to display.");
 	await screen.rerender(<ThroughlinePlayer trace={first} />);
@@ -584,6 +596,7 @@ it("reports refused fullscreen requests without preventing further interaction",
 		Object.defineProperty(document, "exitFullscreen", { configurable: true, value: vi.fn() });
 		Object.defineProperty(player, "requestFullscreen", { configurable: true, value: request });
 		document.dispatchEvent(new Event("fullscreenchange"));
+		await openPlayerPanel(screen);
 		await screen.getByRole("button", { name: "Maximize player" }).click();
 		expect(request).toHaveBeenCalledOnce();
 		await expect.element(screen.getByRole("alert")).toHaveTextContent(

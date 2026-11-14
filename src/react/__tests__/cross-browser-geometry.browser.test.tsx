@@ -16,17 +16,18 @@ it("keeps all desktop, tablet and phone toolbar controls inside their bounds wit
 	await page.viewport(1600, 900);
 	await render(<ThroughlinePlayer trace={trace} guidance={CHECKOUT_GUIDANCE} />);
 	const player = document.querySelector<HTMLElement>(".thl")!;
-	const bottom = player.querySelector<HTMLElement>(".thl-bottom")!;
-	const controls = () => [...bottom.querySelectorAll<HTMLElement>("button, select, input")];
+	const controls = () => [...player.querySelectorAll<HTMLElement>(
+		".thl-header > button, .thl-viewport-tools button, .thl-bottom :is(button, select)",
+	)];
 
 	for (const [width, height] of [[1600, 900], [960, 850], [375, 850], [320, 750]] as const) {
 		await page.viewport(width, height);
 		await expect.poll(() => Math.round(document.documentElement.clientWidth)).toBe(width);
 		await expect.poll(() => player.scrollWidth <= player.clientWidth).toBe(true);
 
-		const boundary = bottom.getBoundingClientRect();
+		const boundary = player.getBoundingClientRect();
 		const interactive = controls();
-		expect(interactive.length).toBeGreaterThan(8);
+		expect(interactive.length).toBeGreaterThanOrEqual(8);
 		const rects = interactive.map((element) => ({
 			name: element.getAttribute("aria-label") ?? element.tagName.toLowerCase(),
 			rect: element.getBoundingClientRect(),

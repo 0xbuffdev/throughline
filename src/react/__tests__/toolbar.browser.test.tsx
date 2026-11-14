@@ -6,6 +6,7 @@ import { compile } from "../../domains/registry.js";
 import { CHECKOUT_GUIDANCE, CHECKOUT_SCENARIOS } from "../../examples.js";
 import { ThroughlinePlayer } from "../index.js";
 import "../../styles/throughline.css";
+import { openPlayerPanel, seekFrame } from "./player-actions.js";
 
 const checkout = compile(CHECKOUT_SCENARIOS[2].source);
 const pageTop = (element: Element) => element.getBoundingClientRect().top + window.scrollY;
@@ -14,57 +15,71 @@ const centerY = (element: Element) => {
 	return rect.top + rect.height / 2;
 };
 
-it("forms one aligned compact toolbar on wide screens and adapts by container width", async () => {
+it("uses the embed width to arrange chapter, viewport and playback controls", async () => {
 	await page.viewport(1600, 900);
-	const screen = await render(<ThroughlinePlayer trace={checkout} guidance={CHECKOUT_GUIDANCE} />);
+	const longChapterTitle = "Recover from a lost payment acknowledgement using the same idempotency key";
+	const guidance = {
+		...CHECKOUT_GUIDANCE,
+		chapters: CHECKOUT_GUIDANCE.chapters.map((chapter) =>
+			chapter.id === "retry" ? { ...chapter, title: longChapterTitle } : chapter
+		),
+	};
+	const screen = await render(
+		<div style={{ width: 1400 }}>
+			<ThroughlinePlayer trace={checkout} title="Checkout recovery" guidance={guidance} />
+		</div>,
+	);
 	const player = document.querySelector<HTMLElement>(".thl")!;
-	const bottom = player.querySelector<HTMLElement>(".thl-bottom")!;
-	const chapter = screen.getByRole("combobox", { name: "Chapter" }).element();
-	const entity = screen.getByRole("combobox", { name: "Select entity" }).element();
+	const host = player.parentElement!;
+	const scene = player.querySelector(".thl-scene")!;
+	const bottom = player.querySelector(".thl-bottom")!;
 	const play = screen.getByRole("button", { name: "Play", exact: true }).element();
 	const zoom = screen.getByRole("button", { name: "Zoom in" }).element();
-	const timeline = screen.getByRole("slider", { name: "Timeline" }).element();
-	expect(Math.abs(centerY(chapter) - centerY(entity))).toBeLessThan(3);
-	expect(Math.abs(centerY(chapter) - centerY(play))).toBeLessThan(3);
-	expect(Math.abs(centerY(chapter) - centerY(timeline))).toBeLessThan(3);
-	const toolbarBounds = bottom.getBoundingClientRect();
-	expect(toolbarBounds.height).toBeLessThan(55);
-	// A compact bar must still enclose native form controls in every engine.
-	for (const control of bottom.querySelectorAll<HTMLElement>("button, select, input")) {
-		const rect = control.getBoundingClientRect();
-		const name = control.getAttribute("aria-label") ?? control.tagName;
-		expect(rect.top, name + " escapes toolbar top").toBeGreaterThanOrEqual(toolbarBounds.top - 1);
-		expect(rect.bottom, name + " escapes toolbar bottom").toBeLessThanOrEqual(toolbarBounds.bottom + 1);
-	}
-	expect(zoom.getBoundingClientRect().width).toBe(34);
-	expect(getComputedStyle(zoom.querySelector("svg")!).width).toBe("14px");
-	// Native select widgets are 34px in Chromium/Firefox and 42px in WebKit.
-	// Constrain the allowable size while the toolbar-height and bounds checks
-	// above enforce the actual compact, unclipped layout contract.
-	const chapterHeight = chapter.getBoundingClientRect().height;
-	expect(chapterHeight).toBeGreaterThanOrEqual(34);
-	expect(chapterHeight).toBeLessThanOrEqual(42);
-	expect(getComputedStyle(chapter).borderTopLeftRadius).toBe("2px");
-	expect(getComputedStyle(chapter).paddingLeft).toBe("8px");
-
-	await page.viewport(960, 850);
-	await expect.poll(() => player.getBoundingClientRect().width).toBeLessThan(1000);
-	expect(pageTop(bottom)).toBeGreaterThan(pageTop(player.querySelector(".thl-scene")!));
-	expect(centerY(play)).toBeGreaterThan(centerY(chapter));
-	expect(player.scrollWidth).toBeLessThanOrEqual(player.clientWidth);
-
-	await page.viewport(375, 850);
-	await expect.poll(() => player.getBoundingClientRect().width).toBeLessThan(400);
-	expect(zoom.getBoundingClientRect().width).toBe(40);
-	expect(chapter.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
-	expect(entity.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
-	expect(bottom.getBoundingClientRect().height).toBeLessThan(210);
-	expect(player.scrollWidth).toBeLessThanOrEqual(player.clientWidth);
-	const bounds = bottom.getBoundingClientRect();
-	for (const element of bottom.querySelectorAll<HTMLElement>("button, select, input")) {
-		const rect = element.getBoundingClientRect();
-		expect(rect.left, element.getAttribute("aria-label") ?? element.tagName).toBeGreaterThanOrEqual(bounds.left - 1);
-		expect(rect.right, element.getAttribute("aria-label") ?? element.tagName).toBeLessThanOrEqual(bounds.right + 1);
+	const speed = screen.getByRole("combobox", { name: "Playback speed" }).element();
+	const count = player.querySelector(".thl-step-count")!;
+	const options = screen.getByRole("button", { name: "Player options", exact: true });
+	expect(player.querySelectorAll(".thl-header > button")).toHaveLength(1);
+	expect(screen.getByRole("slider").query()).toBeNull();
+	await openPlayerPanel(screen);
+	const chapter = screen.getByRole("combobox", { name: "Chapter" }).element() as HTMLSelectElement;
+	const chapterNav = chapter.closest(".thl-chapter-nav")!;
+	const chevron = chapterNav.querySelector(".thl-chapter-chevron")!;
+	expect(chevron.getAttribute("aria-hidden")).toBe("true");
+	expect(getComputedStyle(chevron).pointerEvents).toBe("none");
+	expect(getComputedStyle(chapter).appearance).toBe("none");
+	await screen.getByRole("combobox", { name: "Chapter" }).selectOptions("retry");
+	expect(chapter).not.toBeVisible();
+	expect(document.activeElement).toBe(options.element());
+	await openPlayerPanel(screen);
+	await screen.getByRole("combobox", { name: "Select entity" }).selectOptions("worker");
+	const panel = screen.getByRole("group", { name: "Player options", exact: true }).element();
+	expect(panel.querySelector(".thl-view-options")).not.toBeNull();
+	chapter.focus();
+	for (const width of [1400, 768, 375, 300]) {
+		host.style.width = width + "px";
+		await expect.poll(() => player.getBoundingClientRect().width).toBe(width);
+		const bounds = panel.getBoundingClientRect();
+		const chapterBounds = chapter.getBoundingClientRect();
+		expect(chapterBounds.right).toBeLessThan(bounds.right);
+		expect(bounds.left).toBeGreaterThanOrEqual(0);
+		expect(bounds.right).toBeLessThanOrEqual(window.innerWidth);
+		expect(document.activeElement).toBe(chapter);
+		expect(chapter.selectedOptions[0].textContent).toBe(longChapterTitle);
+		expect(pageTop(bottom)).toBeGreaterThan(pageTop(scene));
+		expect(Math.abs(centerY(play) - centerY(count))).toBeLessThan(3);
+		expect(player.querySelector(".thl-step-count-full")?.textContent).toBe("Step 10 of 17");
+		expect(player.querySelector('[data-node="worker"] .thl-selected')).not.toBeNull();
+		expect(player.scrollWidth).toBeLessThanOrEqual(player.clientWidth);
+		if (width >= 768) {
+			expect(zoom.getBoundingClientRect().left).toBeGreaterThanOrEqual(scene.getBoundingClientRect().right);
+			expect(Math.abs(centerY(play) - centerY(speed))).toBeLessThan(3);
+		} else {
+			expect(zoom.getBoundingClientRect().bottom).toBeLessThanOrEqual(scene.getBoundingClientRect().top);
+			expect(zoom.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
+			expect(chapter.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
+			expect(screen.getByRole("button", { name: "Restart chapter" }).element().getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
+			await expect.element(screen.getByText("10 / 17", { exact: true })).toBeVisible();
+		}
 	}
 });
 
@@ -87,31 +102,42 @@ it("keeps transport next to the diagram while long authored details change and e
 	const toolbar = player.querySelector<HTMLElement>(".thl-bottom")!;
 	const caption = player.querySelector<HTMLDetailsElement>(".thl-caption")!;
 	const body = player.querySelector<HTMLElement>(".thl-caption-content")!;
-	const timeline = screen.getByRole("slider", { name: "Timeline" });
+	const teaser = () => caption.querySelector(".thl-caption-teaser")!;
+	const note = () => body.querySelector(".thl-caption-note")!;
 	const barTop = pageTop(toolbar);
 	const sceneBottom = scene.getBoundingClientRect().bottom + window.scrollY;
 	expect(caption.open).toBe(false);
 	expect(barTop).toBeGreaterThanOrEqual(sceneBottom - 1);
 	expect(caption.getBoundingClientRect().top + window.scrollY).toBeGreaterThanOrEqual(barTop);
 
-	await timeline.fill("2");
+	await seekFrame(screen, 2);
 	expect(caption.open).toBe(false);
-	expect(player.querySelector(".thl-caption-teaser")?.textContent).toBe(longNote);
+	expect(teaser().textContent).toBe(longNote);
+	expect(teaser().getBoundingClientRect().height).toBeGreaterThan(0);
+	expect(note()).not.toBeVisible();
 	expect(pageTop(toolbar)).toBeCloseTo(barTop, 0);
 	expect(caption.getBoundingClientRect().height).toBeLessThan(65);
 
 	await screen.getByText("Details", { exact: true }).click();
 	expect(caption.open).toBe(true);
-	await expect.element(screen.getByText(longNote, { exact: true }).last()).toBeVisible();
+	expect(teaser()).not.toBeVisible();
+	expect(note()).toBeVisible();
+	expect(note().textContent).toBe(longNote);
 	expect(body.scrollHeight).toBeGreaterThan(body.clientHeight);
 	expect(body.getBoundingClientRect().height).toBeLessThanOrEqual(193);
 	expect(pageTop(toolbar)).toBeCloseTo(barTop, 0);
 
-	await timeline.fill("3");
+	await seekFrame(screen, 3);
 	expect(caption.open).toBe(true);
+	expect(teaser()).not.toBeVisible();
+	expect(note()).toBeVisible();
+	expect(note().textContent).toBe("Done.");
 	expect(pageTop(toolbar)).toBeCloseTo(barTop, 0);
 	await screen.getByText("Details", { exact: true }).click();
 	expect(caption.open).toBe(false);
+	expect(teaser().getBoundingClientRect().height).toBeGreaterThan(0);
+	expect(teaser().textContent).toBe("Done.");
+	expect(note()).not.toBeVisible();
 });
 
 it("keeps native keyboard disclosure and detailed state inspection accessible", async () => {
@@ -137,12 +163,12 @@ it("keeps a modest visible gap between an optional title, the scene and its cont
 	const trace = compile(CHECKOUT_SCENARIOS[2].source);
 	const screen = await render(<ThroughlinePlayer title="Checkout workflow" trace={trace} />);
 	const title = document.querySelector<HTMLElement>(".thl-title")!;
-	const scene = document.querySelector<SVGSVGElement>(".thl-scene")!;
+	const viewport = document.querySelector<HTMLElement>(".thl-viewport")!;
 	const toolbar = document.querySelector<HTMLElement>(".thl-bottom")!;
-	const titleGap = scene.getBoundingClientRect().top - title.getBoundingClientRect().bottom;
-	const controlsGap = toolbar.getBoundingClientRect().top - scene.getBoundingClientRect().bottom;
+	const titleGap = viewport.getBoundingClientRect().top - title.getBoundingClientRect().bottom;
+	const controlsGap = toolbar.getBoundingClientRect().top - viewport.getBoundingClientRect().bottom;
 	expect(titleGap).toBeGreaterThanOrEqual(10);
-	expect(titleGap).toBeLessThanOrEqual(16);
+	expect(titleGap).toBeLessThanOrEqual(26);
 	expect(controlsGap).toBeGreaterThanOrEqual(14);
 	expect(controlsGap).toBeLessThanOrEqual(24);
 	await screen.rerender(<ThroughlinePlayer trace={trace} />);

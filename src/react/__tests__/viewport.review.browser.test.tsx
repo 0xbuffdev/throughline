@@ -4,6 +4,7 @@ import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
 import { ThroughlinePlayer } from "../index.js";
 import "../../styles/throughline.css";
+import { openPlayerPanel } from "./player-actions.js";
 
 const svg = (): SVGSVGElement => document.querySelector<SVGSVGElement>(".thl-scene")!;
 const view = (): number[] => svg().getAttribute("viewBox")!.split(" ").map(Number);
@@ -61,6 +62,10 @@ it("centers selectable entities at left, right, top and bottom edges at 1x zoom"
   await page.viewport(375, 900);
   const screen = await render(<ThroughlinePlayer trace={dense} />);
   await expect.poll(() => view()[2]).toBeLessThan(720);
+  await openPlayerPanel(screen);
+  await expect.poll(() => view()[3]).toBeGreaterThan(900);
+  await expect.poll(() => Math.abs(svg().getBoundingClientRect().height - Number.parseFloat(svg().style.height))).toBeLessThan(1);
+  await expect.poll(() => view()[2]).toBe(Math.floor(svg().getBoundingClientRect().width));
   const ids = ["n0", "n1", "n30", "n31"];
   const positions = ids.map(worldCenter);
   expect(positions[0].x).toBeLessThan(positions[1].x);

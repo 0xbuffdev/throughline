@@ -115,7 +115,7 @@ interface PlayerGuidanceProps {
 	onSeek: (step: number) => void;
 }
 
-/** The chapter controls are positioned in the footer; explanations stay in the caption. */
+/** Chapter controls for the player options panel. */
 export function PlayerGuidanceControls({
 	frame,
 	guidance,
@@ -127,20 +127,25 @@ export function PlayerGuidanceControls({
 	if (!chapters.length) return null;
 	return (
 		<div className="thl-chapter-nav" role="group" aria-label="Chapter navigation">
-			<label htmlFor={chapterSelectId}>Chapter</label>
-			<select
-				id={chapterSelectId}
-				value={chapter?.id ?? ""}
-				onChange={(event) => {
-					const selected = chapters.find((item) => item.id === event.currentTarget.value);
-					if (selected) onSeek(selected.start);
-				}}
-			>
-				<option value="" disabled>Choose a chapter</option>
-				{chapters.map((item) => (
-					<option key={item.id} value={item.id}>{item.title}</option>
-				))}
-			</select>
+			<span className="thl-chapter-control">
+				<label htmlFor={chapterSelectId}>Chapter</label>
+				<select
+					id={chapterSelectId}
+					value={chapter?.id ?? ""}
+					onChange={(event) => {
+						const selected = chapters.find((item) => item.id === event.currentTarget.value);
+						if (selected) onSeek(selected.start);
+					}}
+				>
+					<option value="" disabled>Choose a chapter</option>
+					{chapters.map((item) => (
+						<option key={item.id} value={item.id}>{item.title}</option>
+					))}
+				</select>
+				<svg className="thl-chapter-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+					<path d="m3.5 6 4.5 4 4.5-4" />
+				</svg>
+			</span>
 			{chapter && (
 				<button type="button" aria-label="Restart chapter" title="Restart chapter" onClick={() => onSeek(chapter.start)}>
 					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 1 2.4 5.7M4 6v6h6" /></svg>

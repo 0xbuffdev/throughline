@@ -188,19 +188,68 @@ try {
 	assert.match(await page.getByRole("status").textContent(), /Step 3 of 3/);
 
 	// Use a real Chromium touch-enabled context, not a synthetic input event.
-	const timeline = page.getByRole("slider", { name: "Timeline" });
-	const bounds = await timeline.boundingBox();
-	assert(bounds && bounds.width > 0, "Hydrated timeline has no touch target");
-	await timeline.tap({
-		position: { x: Math.max(4, Math.floor(bounds.width * 0.02)), y: Math.floor(bounds.height / 2) },
+	assert.equal(await page.getByRole("slider").count(), 0, "Player must be slider-free");
+	await page.getByRole("button", { name: "Player options" }).tap();
+	await page.getByRole("spinbutton", { name: "Step number" }).fill("1");
+	await page.getByRole("button", { name: "Go to step" }).tap();
+	assert.match(await page.getByRole("status").textContent(), /Step 1 of 3/);
+	// Exercise the native fullscreen layout in a real Chromium document.
+	const options = page.getByRole("button", { name: "Player options" });
+	await options.tap();
+	await page.getByRole("button", { name: "Maximize player" }).tap();
+	await page.waitForFunction(() => document.fullscreenElement?.classList.contains("thl"));
+
+	const fullscreenBounds = () => player.evaluate((element) => {
+		const header = element.querySelector(".thl-header").getBoundingClientRect();
+		const svg = element.querySelector(".thl-scene");
+		const scene = svg.getBoundingClientRect();
+		const bar = element.querySelector(".thl-bottom").getBoundingClientRect();
+		const caption = element.querySelector(".thl-caption").getBoundingClientRect();
+		const { x, y, width, height } = svg.viewBox.baseVal;
+		const center = new DOMPoint(x + width / 2, y + height / 2).matrixTransform(svg.getScreenCTM());
+		const padding = Number.parseFloat(getComputedStyle(element).paddingBottom);
+		return {
+			width: element.clientWidth,
+			height: element.clientHeight,
+			scrollHeight: element.scrollHeight,
+			windowWidth: innerWidth,
+			windowHeight: innerHeight,
+			headerTop: header.top,
+			sceneHeight: scene.height,
+			sceneBottom: scene.bottom,
+			centerX: center.x,
+			centerY: center.y,
+			sceneCenterY: scene.top + scene.height / 2,
+			barTop: bar.top,
+			captionBottom: caption.bottom,
+			padding,
+		};
 	});
-	await page.waitForFunction(
-		() => document.querySelector('[role="status"]')?.textContent?.includes("Step 1 of 3"),
-	);
-	assert.equal(await timeline.inputValue(), "0", "Touch seeking must select the first frame");
+	const closed = await fullscreenBounds();
+	assert.equal(closed.width, closed.windowWidth, "Fullscreen should fill the browser width");
+	assert.equal(closed.height, closed.windowHeight, "Fullscreen should fill the browser height");
+	assert.equal(closed.scrollHeight, closed.height, "Fullscreen should fit without page scrolling");
+	assert.equal(closed.headerTop, closed.padding, "Header should sit at the top");
+	assert.equal(closed.captionBottom, closed.height - closed.padding, "Caption should sit at the bottom");
+	assert(closed.sceneHeight > closed.height / 2, "Scene should fill the available height");
+	assert(closed.sceneBottom <= closed.barTop, "Scene should fit above the controls");
+	assert(Math.abs(closed.centerX - closed.width / 2) < 1, "Diagram should be centered horizontally");
+	assert(Math.abs(closed.centerY - closed.sceneCenterY) < 1, "Diagram should be centered vertically");
+
+	await page.getByText("Details", { exact: true }).tap();
+	const expanded = await fullscreenBounds();
+	assert(expanded.barTop < closed.barTop, "Expanded details should move the controls up");
+	assert(expanded.sceneHeight < closed.sceneHeight, "Expanded details should shrink the scene");
+	assert.equal(expanded.headerTop, closed.headerTop, "Expanded details should keep the header in place");
+	assert.equal(expanded.captionBottom, closed.captionBottom, "Expanded details should grow above the bottom edge");
+
+	await options.tap();
+	await page.getByRole("button", { name: "Minimize player" }).tap();
+	await page.waitForFunction(() => document.fullscreenElement === null);
+
 	assert.deepEqual(errors, [], "Hydration or browser console errors were emitted");
 
-	console.log("Packed Vite React consumer passed SSR hydration, CSS, keyboard, touch timeline, mobile and export checks.");
+	console.log("Packed Vite React consumer passed SSR hydration, CSS, keyboard, touch step navigation, fullscreen, mobile and export checks.");
 } finally {
 	await context?.close();
 	await browser?.close();

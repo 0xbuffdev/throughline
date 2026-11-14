@@ -8,17 +8,17 @@ Markdown integration. The core compiler can also be used without React.
 
 Import the optional stylesheet once in the host application. The player
 accepts an optional `title` (omitted when absent), and `light`, `dark` or
-`auto` themes. The borderless, pale-light/charcoal-dark shell centers the
-visualization above a caption with an exact `Step N of M` indicator and a
-bottom control bar. Playback is **step-based**: there is no invented media
-time. The optional state inspector and authored causal explanations remain in the caption; chapter navigation and all player navigation/transport controls sit below it.
+`auto` themes. **Player options** in the header groups chapter
+selection, step jumps, diagram navigation, and display and audio settings.
+Below the diagram, Previous, Play/Pause and Next sit alongside the step count
+and speed selector. The caption and its optional inspector follow playback.
 
 The shell, group boxes, nodes, cells and form inputs use a compact default
 `--thl-radius: 0.125rem` (2px at a 16px root font size), with 0.5rem inner
 spacing and 1.5rem player padding. Node strokes default to
 `--thl-node-border-width: 1.25px`. Icon-only buttons have no visible boxes,
-but retain at least 2.5rem interactive targets and visible keyboard focus.
- Host overrides are scoped to the
+with visible keyboard focus and 2.5rem interactive targets on narrow embeds.
+Host overrides are scoped to the
 player; for example, with `className="my-trace"` and a stylesheet loaded
 after the package CSS:
 
@@ -46,7 +46,7 @@ its root (1500ms at 1x, 750ms at 2x) and the draw and flash durations derive
 from it. A host can override `--thl-draw-ms` and `--thl-flash-ms` on `.thl`
 like any other token.
 
-The bottom-right **Maximize player** button enters native browser fullscreen
+**Maximize player** in Player options enters native browser fullscreen
 and changes to **Minimize player** while active, including when fullscreen
 changes via Esc. It is disabled where the API is unavailable or blocked.
 Sound controls appear only when the host supplies `sonification`. The
@@ -57,19 +57,20 @@ stepping, and complete custom stylesheets must retain accessibility.
 
 Focus the **Visualization player** to use Left/Right arrows for stepping,
 Home/End to jump to the first/last step, and Space to play or pause. Native
-buttons, the labeled timeline slider and the playback-speed selector keep
+buttons, the step-number input and the playback-speed selector keep
 their own keyboard interactions; shortcuts do not steal keystrokes from
 focused controls. Each frame has an accessible text summary. **Inspect
 state** is a native disclosure exposing complete visible values.
 
 Playback starts paused at the first frame. Changing to a different trace
 object resets the step, playback and speed; passing a stable trace object
-during ordinary renders avoids unnecessary resets. The timeline describes
-**steps**, not elapsed media time. At narrow widths the controls rearrange
-without a separate horizontal scroll area. Motion is declared only under
+during ordinary renders avoids unnecessary resets. To skip to a frame, open
+**Player options**, enter the number shown in the counter and choose
+**Go to step**. Frame numbers start at 1, which includes the initial state.
+A direct jump pauses playback and displays the target frame. Motion is declared only under
 `prefers-reduced-motion: no-preference` and plays only when a step is reached
 by one forward step (play, or Step forward): the sending arrow draws, its
-arrowhead lands, then a changed value flashes. Seeking the timeline,
+arrowhead lands, then a changed value flashes. Jumping to a step,
 rewinding or replacing the trace shows the settled frame immediately.
 
 Sound is off by default, and the host must provide a `sonification` option
@@ -80,6 +81,9 @@ number of frames; rerendering with the same trace does not replay audio.
 A refused fullscreen request is
 announced to assistive technology; playback remains available in-page.
 Browser support and host policies determine whether fullscreen can start.
+In fullscreen the header stays at the top, the diagram is centered in the
+available space, and playback controls sit at the bottom above the caption.
+Expanding Details moves the controls up and gives the diagram a smaller area.
 
 ## Trace reader compatibility
 
@@ -93,21 +97,14 @@ For the reader's trust boundary, see [architecture](architecture.md).
 
 ## Responsive controls and step detail
 
-The optional title has 0.75rem of space before the visualization, and the
-footer adds a small 0.25rem offset after the stage's existing gap. These
-separations keep the graph distinct from both its heading and controls.
+Fit and zoom sit beside the diagram on wide embeds and above it in a
+short row on narrow embeds. The controls adapt to the player's own width,
+including inside a narrow article column on a wide screen. The step count
+uses a compact form on phones and retains its full screen-reader text.
 
-
-The React player keeps the navigation and transport immediately beneath
-the diagram in one aligned toolbar on wide layouts. Container queries
-reflow the toolbar into two rows at intermediate widths and compact
-touch-sized controls at mobile widths. Desktop icons render at 14px,
-while the icon-button hit area stays 34px, increasing to 40px on
-mobile. Native selects use 0.125rem corners and 0.5rem padding.
-
-The authored caption now follows the toolbar as a native **Details**
-disclosure. Its closed header shows the step title, a single-line
-preview of the note, and the step counter. Open Details to read the
+The authored caption follows the transport as a native **Details**
+disclosure. Its closed header shows the step title and a single-line
+preview of the note. Open Details to read the
 complete note, transfers, optional causal evidence, and the state
 inspector. The detailed content has its own bounded scroll area so
 long author-provided explanations cannot push the controls away
@@ -179,10 +176,11 @@ get an authored-progress count with the current step.
 
 ## Guided viewport navigation
 
-The React player opens with a fit-to-view overview. The compact bottom toolbar
-provides Zoom in, Zoom out (1× to 4×), Fit to view, a native Select entity menu,
-and an explicit Follow active entity toggle. Selecting an entity in the diagram
-or menu centers it and exposes its value as text; this never changes the trace.
+The React player opens with a fit-to-view overview. Use **Zoom in**,
+**Zoom out** (1× to 4×), and **Fit to view** beside or above the diagram.
+Under **Player options → Diagram**, use **Select entity** or toggle
+**Follow active entity**. Selecting an entity in the diagram or menu centers
+it and shows its value as text. These actions affect the view only.
 
 - Mouse: drag to pan; wheel over the SVG to zoom about the pointer. Wheel
   scrolling remains native at the zoom bounds and Ctrl/Meta+wheel is reserved
@@ -201,8 +199,8 @@ following alongside the existing playback reset. Resizing the host can change
 layout geometry, but cannot mutate frames. Hidden entities remain unselectable.
 
 The viewport operates only on SVG viewBox presentation state, without a new
-trace schema, group hierarchy or inferred events. Its physical SVG height
-follows the stable trace-wide layout's aspect ratio so sparse scenes do not
+trace schema, group hierarchy or inferred events. In an embedded player, the
+SVG height follows the stable trace-wide layout's aspect ratio so sparse scenes do not
 reserve a tall blank viewport. Very dense scenes are capped at 960px; Fit
 to view still preserves the complete graph's aspect ratio, and zoom, pan
 and selection expose smaller mobile details. The height responds smoothly
@@ -227,8 +225,9 @@ step "Send"
   send request = "hello"
 ~~~
 
-The group toolbar can drill into a group, collapse it into a summary, expand it,
-and return through the breadcrumb trail to overview. Collapsing never changes
+The group controls under **Player options → Diagram** let you drill into a
+group, collapse it into a summary, expand it, and return to the overview
+through the breadcrumb trail. Collapsing never changes
 authored `hide`/`show`, entity values, trace frames or event history.
 The summary counts only authored-visible entities. Boundary links retain all
 source relation IDs in accessible SVG tooltips and transfer annotations.
@@ -334,11 +333,10 @@ this plugin does not make arbitrary MDX content safe to execute.
 ## Guided explanations and scenario comparison
 
 Guidance is **optional, host-authored presentation data**, not compiled trace
-metadata. Chapters identify inclusive, zero-based frame ranges. Selecting a
-chapter seeks to its first frame and pauses playback. The **Restart chapter**
-button returns to the beginning of the current chapter (including while
-playing). Causal explanations
-show the author's **Trigger**, **Observed event**, **State change**,
+metadata. Chapters identify inclusive, zero-based frame ranges. Under
+**Player options → Navigation**, selecting a chapter seeks to its first frame
+and pauses playback. **Restart chapter** returns to the beginning of the
+current chapter and pauses playback. Causal explanations show the author's **Trigger**, **Observed event**, **State change**,
 **Consequence**, and references to real compiled events. Chronology alone
 never establishes causation.
 

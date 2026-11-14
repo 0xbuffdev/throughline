@@ -25,7 +25,7 @@ build pipelines or other offline ESM environments without React or a DOM.
    scene from these frames and lays out nodes/links for the available
    width. Controls seek among precompiled frames instead of re-running
    authoring code. The optional title, centered diagram, borderless
-   caption with step count, bottom controls and inspector disclosure
+   playback controls, step count, caption and inspector disclosure
    form the presentation shell. Browser fullscreen enters and exits for
    this player element when supported; seeking never invents timing.
 
@@ -89,26 +89,23 @@ coordinate with arbitrary third-party scripts using speechSynthesis and
 cannot guarantee browser/OS voice isolation. Some voices may use
 browser-managed remote services.
 
-## Footer layout and bounded explanations
+## Responsive player shell
 
-The optional narration and step-tone controls share responsive rules.
-Dual-audio players use a dedicated utilities row at player content widths up
-to 360px; **all** players use the generic three-row fallback at content
-widths up to 300px, regardless of whether audio features are offered.
-Both breakpoints use the measured player container rather than the viewport,
-preserving accessible controls in narrow embedded layouts.
+`ThroughlinePlayer` composes one header, measured diagram,
+transport and caption. The viewport owns camera and selection state and
+supplies the diagram and its view controls. One native popover groups
+chapter and step navigation, diagram controls, and display and audio options.
+Container queries move viewport tools above the diagram in narrow embeds,
+shorten the visual step count, and reflow transport controls as needed.
+Fullscreen gives the SVG the flexible space between the header and the
+playback and caption area. The SVG keeps the viewBox centered as Details opens.
 
-The React player composes its navigation, chapter selection, timeline,
-and transport in one bottom bar adjacent to the diagram. Container
-queries use the player container's width, not global browser size,
-to split this bar into predictable rows at narrow widths; visual icon
-sizes do not reduce keyboard and touch target areas. The authored
-caption is a native details disclosure *after* the transport bar.
-Collapsed by default, its summary remains visible with the step
-title, note preview and count; the full explanation, evidence and
-inspector are reachable without moving the controls. The expanded
-body is bounded and independently scrollable, and the SVG references
-its caption summary for descriptive accessibility.
+The transport displays the current step and total, and **Go to step** uses
+the same reducer action as chapter navigation. The native details
+disclosure follows the transport. The closed summary shows the step title
+and note preview. The expanded body contains the full note, evidence and
+inspector in a bounded scrolling area. The SVG references the caption
+summary for descriptive accessibility.
 
 ## Accumulated authored playback progress
 
@@ -251,18 +248,18 @@ live status, reduced-motion preferences and SSR/hydration behavior
 are covered by browser and packed-consumer tests.
 
 Focus on the player group enables ArrowLeft/ArrowRight, Home/End and
-Space without intercepting events from focused native buttons, timeline
-range input, speed selector or the details inspector. Current-frame
+Space without intercepting events from focused native buttons, step-number
+input, speed selector or the details inspector. Current-frame
 announcements use a screen-reader status and the scene has a textual
 description. A distinct alert reports refused fullscreen requests; failures
 do not disable in-page playback. An unrelated trace object resets step,
-speed and playing state; the reducer and timer lifecycle keep the timeline
+speed and playing state; the reducer and timer lifecycle keep playback state
 separate from immutable frame data.
 
-The named player stage stays mounted across empty/filled trace replacements
+The measured diagram container stays mounted across empty/filled trace replacements
 so ResizeObserver can keep the SVG responsive. The scoped CSS disables
 transfer animations for reduced-motion users, and controls reflow for a
-375px viewport. Existing packed-consumer checks exercise React 19 SSR and
+narrow player container. Existing packed-consumer checks exercise React 19 SSR and
 client hydration, while browser tests cover keyboard, inspector, fullscreen,
 reduced-motion styles and replacement regressions.
 
