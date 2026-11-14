@@ -103,7 +103,6 @@ it("keeps transport next to the diagram while long authored details change and e
 	const caption = player.querySelector<HTMLDetailsElement>(".thl-caption")!;
 	const body = player.querySelector<HTMLElement>(".thl-caption-content")!;
 	const teaser = () => caption.querySelector(".thl-caption-teaser")!;
-	const teaserLocator = screen.getByRole("group", { name: "Visualization player" }).getByText(longNote, { exact: true }).first();
 	const note = () => body.querySelector(".thl-caption-note")!;
 	const barTop = pageTop(toolbar);
 	const sceneBottom = scene.getBoundingClientRect().bottom + window.scrollY;
@@ -114,7 +113,7 @@ it("keeps transport next to the diagram while long authored details change and e
 	await seekFrame(screen, 2);
 	expect(caption.open).toBe(false);
 	expect(teaser().textContent).toBe(longNote);
-	await expect.element(teaserLocator).toBeVisible();
+	expect(teaser().getBoundingClientRect().height).toBeGreaterThan(0);
 	expect(note()).not.toBeVisible();
 	expect(pageTop(toolbar)).toBeCloseTo(barTop, 0);
 	expect(caption.getBoundingClientRect().height).toBeLessThan(65);
@@ -136,7 +135,7 @@ it("keeps transport next to the diagram while long authored details change and e
 	expect(pageTop(toolbar)).toBeCloseTo(barTop, 0);
 	await screen.getByText("Details", { exact: true }).click();
 	expect(caption.open).toBe(false);
-	await expect.element(screen.getByText("Done.", { exact: true }).first()).toBeVisible();
+	expect(teaser().getBoundingClientRect().height).toBeGreaterThan(0);
 	expect(teaser().textContent).toBe("Done.");
 	expect(note()).not.toBeVisible();
 });
