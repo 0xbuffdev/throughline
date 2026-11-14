@@ -150,9 +150,9 @@ describe("TL-U02 — schema-2 structural contract", () => {
 
 	it("rejects unknown event vocabulary, malformed paths, references and clocks", () => {
 		invalid((v) => { (v.steps[0].events[0] as { type: string }).type = "send"; });
-		invalid((v) => { (v.steps[0].events[0] as { path: (string | number)[] }).path = ["__proto__"]; });
-		invalid((v) => { (v.steps[0].events[0] as { path: (string | number)[] }).path = [-1]; });
-		invalid((v) => { (v.steps[0].events[0] as { path: (string | number)[] }).path = [1.5]; });
+		invalid((v) => { (v.steps[0].events[0] as unknown as { path: (string | number)[] }).path = ["__proto__"]; });
+		invalid((v) => { (v.steps[0].events[0] as unknown as { path: (string | number)[] }).path = [-1]; });
+		invalid((v) => { (v.steps[0].events[0] as unknown as { path: (string | number)[] }).path = [1.5]; });
 		invalid((v) => { (v.steps[0].events[0] as { value: unknown }).value = { status: "unknown" }; });
 		invalid((v) => { v.steps[0].events[0].dependsOn = ["sent"]; });
 		invalid((v) => { v.steps[1].events[0].dependsOn = ["observation"]; });
