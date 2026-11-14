@@ -141,8 +141,10 @@ try {
 		'const artifact = { schemaVersion: 2, id: "counter", origins: [{ id: "author", kind: "authored" }], entities: [{ id: "counter", label: "Counter" }], relations: [], initialState: { counter: { status: "known", value: 0 } }, steps: [{ id: "increment", label: "Increment", events: [{ id: "write", originId: "author", type: "write", entityId: "counter", path: [], value: { status: "known", value: 1 } }] }] };',
 		'const compiled = compileArtifact(artifact);',
 		'assert.deepEqual(compiled.frames.map(frame => frame.id), ["@initial", "increment"]);',
-		'assert.deepEqual(compiled.frames[0].snapshot.values.counter, { status: "known", value: 0 });',
-		'assert.deepEqual(compiled.frames[1].snapshot.values.counter, { status: "known", value: 1 });',
+		'assert.equal(compiled.frames[0].snapshot.values.counter.status, "known");',
+		'assert.equal(compiled.frames[0].snapshot.values.counter.value, 0);',
+		'assert.equal(compiled.frames[1].snapshot.values.counter.status, "known");',
+		'assert.equal(compiled.frames[1].snapshot.values.counter.value, 1);',
 		'assert.throws(() => compileArtifact({ schemaVersion: 2, frames: [] }), /required property/);',
 	].join("\n");
 	run("node", ["--input-type=module", "-e", core], consumer);
