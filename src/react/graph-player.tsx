@@ -10,7 +10,7 @@ import { encodeJson } from "../v2/validator.js";
 import { layoutGraph, layoutGraphView } from "../v2/graph-layout.js";
 import { inspectTrace } from "../v2/inspector.js";
 import type {
-	Cell, CompiledTrace, Id, TraceInspector, ViewDescriptor, ViewItem, ViewKind,
+	Cell, CompiledTrace, Id, ViewDescriptor, ViewItem,
 } from "../v2/model.js";
 import { projectView } from "../v2/views.js";
 import { PlayerControls, PlayerOptions } from "./controls.js";
@@ -49,22 +49,21 @@ function itemCell(item: ViewItem): Cell | null {
 
 /** One semantic view descriptor, with no special-case v1 domain knowledge. */
 function GraphDiagram({
-	view, geometry, inspector, selectedId, onSelect, onExpand, visitedAt, animate,
+	view, geometry, frameIndex, selectedId, onSelect, onExpand, visitedAt, participants, animate,
 }: {
 	view: ViewDescriptor;
 	geometry: ReturnType<typeof layoutGraphView>;
-	inspector: TraceInspector;
+	frameIndex: number;
 	selectedId: Id | null;
 	onSelect: (id: Id) => void;
 	onExpand: (id: Id) => void;
 	visitedAt: ReadonlyMap<Id, number>;
+	participants: ReadonlySet<Id>;
 	animate: boolean;
 }): React.JSX.Element {
 	const entityItems = view.items.filter(item => item.role === "entity");
 	const groups = view.items.filter(item => item.role === "group");
 	const links = view.items.filter(item => item.role === "relation");
-	const frameIndex = view.frameId === "@initial" ? 0
-		: inspector.frameById(view.frameId);
 	return (
 		<>
 			{groups.map(item => {
@@ -161,8 +160,7 @@ function GraphDiagram({
 				const focused = data(item, "focused") === true;
 				const changed = data(item, "changed") === true;
 				const selected = id === selectedId;
-				const participating = inspector.eventsFor(id).some(event =>
-					event.type === "message" && event.phase === "sent");
+				const participating = participants.has(id);
 				return (
 					<g key={item.id} role="button" tabIndex={0}
 						data-node={id} data-source-entity-ids={id}
@@ -310,6 +308,16 @@ export function ThroughlineGraphPlayer({
 			}
 		return seen;
 	}, [trace]);
+	const participants = useMemo(() => {
+		const present = new Set<Id>();
+		for (const relation of trace.artifact.relations) {
+			if ((firstSent.get(relation.id) ?? Infinity) <= state.step) {
+				present.add(relation.from);
+				present.add(relation.to);
+			}
+		}
+		return present;
+	}, [firstSent, state.step, trace]);
 	const manual = (next: Camera) => setCamera(constrainCamera(layout, next));
 	const fit = () => manual(fitCamera(layout));
 	const zoom = (factor: number) => manual(zoomCamera(layout, effectiveCamera, factor));
@@ -452,12 +460,12 @@ export function ThroughlineGraphPlayer({
 							onPointerCancel={() => { dragging.current = null; }}>
 							<title>{title ?? trace.artifact.title ?? "Throughline graph"}</title>
 							<desc>{view.summary}</desc>
-							<GraphDiagram view={view} geometry={geometry} inspector={inspector}
+							<GraphDiagram view={view} geometry={geometry} frameIndex={state.step}
 								selectedId={selectedId}
 								onSelect={setSelectedId}
 								onExpand={id => setCollapsed(current =>
 									current.filter(item => item !== id))}
-								visitedAt={firstSent} animate={motion.animate} />
+								visitedAt={firstSent} participants={participants} animate={motion.animate} />
 						</svg> : <StateFallback view={view}
 							selectedId={selectedId} onSelect={setSelectedId} />}
 					</div>
