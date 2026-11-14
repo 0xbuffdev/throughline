@@ -34,11 +34,17 @@ export {
 	ARTIFACT_SCHEMA_VERSION,
 } from "./v2/model.js";
 export type {
+	CausalEvidence,
 	Cell,
 	Claim,
 	CompiledFrame,
 	CompiledTrace,
+	HistoryEntry,
 	StateSnapshot,
+	StateChange,
+	TopologyChange,
+	TraceInspector,
+	WriteChange,
 	Entity as V2Entity,
 	EventBase,
 	Group,
@@ -47,6 +53,7 @@ export type {
 	Origin,
 	OriginKind,
 	Path,
+	QueryCell,
 	Relation as V2Relation,
 	SemanticEvent,
 	Step,
@@ -62,3 +69,6 @@ export {
 
 /** Pure schema-2 atomic replay; no legacy domain compatibility layer. */
 export { compileArtifact, ArtifactCompilationError } from "./v2/compiler.js";
+
+/** Pure indexed schema-2 queries with no React, network or legacy adapter. */
+export { inspectTrace, TraceQueryError } from "./v2/inspector.js";
