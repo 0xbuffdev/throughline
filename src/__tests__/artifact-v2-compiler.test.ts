@@ -1,9 +1,12 @@
+import { createHash } from "node:crypto";
+import { cpus } from "node:os";
 import { describe, expect, it } from "vitest";
 import {
 	ArtifactCompilationError,
 	ArtifactValidationError,
 	ARTIFACT_LIMITS,
 	compileArtifact,
+	serializeArtifact,
 	type Cell,
 	type SemanticEvent,
 	type VisualArtifact,
@@ -391,4 +394,88 @@ describe("TL-U03 — deterministic semantic frames", () => {
 		source.initialState.worker = { status: "known", value: [NaN] };
 		expect(() => compileArtifact(source)).toThrow(ArtifactValidationError);
 	});
+});
+
+
+describe("TL-U03 — compiler resource-boundary regression", () => {
+	it("batches 10,000 disjoint writes into one 200,000-element array copy", () => {
+		// This valid, near-limit input previously performed approximately
+		// 2 billion array-element definitions (n*m). The accepted v2 limits
+		// permit it; each touched container must be copied only once.
+		const arrayLength = 200_000;
+		const writeCount = ARTIFACT_LIMITS.events;
+		const source = authored();
+		source.entities = [{ id: "worker", label: "Worker" }];
+		source.relations = [];
+		source.initialState = {
+			worker: { status: "known", value: Array(arrayLength).fill(0) },
+		};
+		source.steps = [{
+			id: "batch", label: "Independent indexed writes", events:
+				Array.from({ length: writeCount }, (_, i) =>
+					write("put" + i, "worker", [i * 19], { status: "known", value: i + 1 })),
+		}];
+		const fixtureSHA256 = createHash("sha256")
+			.update(serializeArtifact(source)).digest("hex");
+		const start = performance.now();
+		const trace = compileArtifact(source);
+		const elapsedMs = performance.now() - start;
+
+		expect(trace.frames.map((frame) => frame.id)).toEqual(["@initial", "batch"]);
+		const before = trace.frames[0].snapshot.values.worker;
+		const after = trace.frames[1].snapshot.values.worker;
+		expect(before.status).toBe("known");
+		expect(after.status).toBe("known");
+		if (before.status !== "known" || after.status !== "known") return;
+		const original = before.value as number[];
+		const result = after.value as number[];
+		expect(result).toHaveLength(arrayLength);
+		expect(original[0]).toBe(0);
+		expect(original[arrayLength - 1]).toBe(0);
+		expect(result[0]).toBe(1);
+		expect(result[19]).toBe(2);
+		expect(result[19 * (writeCount - 1)]).toBe(writeCount);
+		expect(result[1]).toBe(0);
+		expect(result[arrayLength - 1]).toBe(0);
+		expect(Object.isFrozen(result)).toBe(true);
+
+		// Report a real named-hardware measurement rather than inventing a
+		// portability-sensitive wall-clock SLA. CI retains the benchmark log.
+		console.info("TL-U03 boundary benchmark:", JSON.stringify({
+			fixtureSHA256,
+			arrayLength,
+			writeCount,
+			node: process.version,
+			platform: process.platform,
+			cpu: cpus()[0]?.model ?? "unknown",
+			compileMs: Number(elapsedMs.toFixed(1)),
+		}));
+	}, 60_000);
+
+	it("rejects 2,001 expanded frames when ID string values push work over 8M", () => {
+		// With 200 entities and 1,000 present relations, each frame consumes
+		// 1,200 extra units for the ID string primitives. Counting only array
+		// slots wrongly accepts this input (~7.2M instead of >9.6M units).
+		const source = authored();
+		source.entities = Array.from({ length: ARTIFACT_LIMITS.entities },
+			(_, i) => ({ id: "entity" + i, label: "Entity " + i }));
+		source.relations = Array.from({ length: ARTIFACT_LIMITS.relations },
+			(_, i) => ({ id: "relation" + i, from: "entity0", to: "entity1" }));
+		source.initialState = Object.fromEntries(source.entities.map((entity) => [
+			entity.id, { status: "known", value: [0, 0, 0] },
+		])) as Record<string, Cell>;
+		source.steps = Array.from({ length: ARTIFACT_LIMITS.steps },
+			(_, i) => ({ id: "empty" + i, label: "No operations", events: [] }));
+
+		try {
+			compileArtifact(source);
+		} catch (error) {
+			expect(error).toBeInstanceOf(ArtifactCompilationError);
+			const rejection = error as ArtifactCompilationError;
+			expect(rejection.path).toMatch(/^frames\\[\\d+\\]$/);
+			expect(rejection.message).toMatch(/expanded trace exceeds 8,000,000 traversal units/);
+			return;
+		}
+		throw new Error("The 8M budget must count array slots AND their string values");
+	}, 60_000);
 });
