@@ -183,6 +183,14 @@ export function ThroughlinePlayer({
 			{(title || frame) && (
 				<header className="thl-header">
 					{title && <h2 className="thl-title">{title}</h2>}
+					{frame && guidance?.chapters?.length ? (
+						<PlayerGuidanceControls
+							trace={trace}
+							frame={frame}
+							guidance={guidance}
+							onSeek={(step) => dispatch({ type: "step", to: step })}
+						/>
+					) : null}
 					{viewport.options}
 					{frame && (
 						<PlayerOptions
@@ -200,14 +208,6 @@ export function ThroughlinePlayer({
 				</header>
 			)}
 			<div className="thl-stage">
-				{frame && guidance?.chapters?.length ? (
-					<PlayerGuidanceControls
-						trace={trace}
-						frame={frame}
-						guidance={guidance}
-						onSeek={(step) => dispatch({ type: "step", to: step })}
-					/>
-				) : null}
 				<div className="thl-viewport">
 					{viewport.tools}
 					{/* Keep the measured canvas mounted through empty/populated trace replacements. */}

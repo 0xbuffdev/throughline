@@ -17,16 +17,31 @@ const centerY = (element: Element) => {
 
 it("uses the embed width to arrange chapter, viewport and playback controls", async () => {
 	await page.viewport(1600, 900);
+	const longChapterTitle = "Recover from a lost payment acknowledgement using the same idempotency key";
+	const guidance = {
+		...CHECKOUT_GUIDANCE,
+		chapters: CHECKOUT_GUIDANCE.chapters.map((chapter) =>
+			chapter.id === "retry" ? { ...chapter, title: longChapterTitle } : chapter
+		),
+	};
 	const screen = await render(
 		<div style={{ width: 1400 }}>
-			<ThroughlinePlayer trace={checkout} title="Checkout recovery" guidance={CHECKOUT_GUIDANCE} />
+			<ThroughlinePlayer trace={checkout} title="Checkout recovery" guidance={guidance} />
 		</div>,
 	);
 	const player = document.querySelector<HTMLElement>(".thl")!;
 	const host = player.parentElement!;
 	const scene = player.querySelector(".thl-scene")!;
 	const bottom = player.querySelector(".thl-bottom")!;
-	const chapter = screen.getByRole("combobox", { name: "Chapter" }).element();
+	const chapter = screen.getByRole("combobox", { name: "Chapter" }).element() as HTMLSelectElement;
+	const chapterNav = chapter.closest(".thl-chapter-nav")!;
+	const restart = screen.getByRole("button", { name: "Restart chapter" }).element();
+	const view = screen.getByRole("button", { name: "View", exact: true }).element();
+	const options = screen.getByRole("button", { name: "Player options", exact: true }).element();
+	const chevron = chapterNav.querySelector(".thl-chapter-chevron")!;
+	expect(chevron.getAttribute("aria-hidden")).toBe("true");
+	expect(getComputedStyle(chevron).pointerEvents).toBe("none");
+	expect(getComputedStyle(chapter).appearance).toBe("none");
 	const play = screen.getByRole("button", { name: "Play", exact: true }).element();
 	const zoom = screen.getByRole("button", { name: "Zoom in" }).element();
 	const speed = screen.getByRole("combobox", { name: "Playback speed" }).element();
@@ -36,6 +51,7 @@ it("uses the embed width to arrange chapter, viewport and playback controls", as
 	await openPlayerPanel(screen, "View");
 	await screen.getByRole("combobox", { name: "Select entity" }).selectOptions("worker");
 	await screen.getByRole("button", { name: "View", exact: true }).click();
+	chapter.focus();
 	for (const width of [1400, 768, 375, 300]) {
 		host.style.width = width + "px";
 		await expect.poll(() => player.getBoundingClientRect().width).toBe(width);
@@ -45,10 +61,27 @@ it("uses the embed width to arrange chapter, viewport and playback controls", as
 		expect(player.querySelector(".thl-step-count-full")?.textContent).toBe("Step 10 of 17");
 		expect(player.querySelector('[data-node="worker"] .thl-selected')).not.toBeNull();
 		expect(player.scrollWidth).toBeLessThanOrEqual(player.clientWidth);
-		if (width < 1400) {
-			const chapterRow = chapter.closest(".thl-chapter-nav")!.getBoundingClientRect();
-			const bounds = player.getBoundingClientRect();
-			expect(chapterRow.left + chapterRow.width / 2).toBeCloseTo(bounds.left + bounds.width / 2, 0);
+		const chapterRow = chapterNav.getBoundingClientRect();
+		const viewBounds = view.getBoundingClientRect();
+		const optionsBounds = options.getBoundingClientRect();
+		expect(viewBounds.right).toBeLessThanOrEqual(optionsBounds.left);
+		expect(screen.getByRole("combobox", { name: "Chapter" }).element()).toBe(chapter);
+		expect(document.activeElement).toBe(chapter);
+		expect(chapter.selectedOptions[0].textContent).toBe(longChapterTitle);
+		if (width === 1400) {
+			expect(Math.abs(centerY(chapterNav) - centerY(view))).toBeLessThan(3);
+			expect(chapterRow.right).toBeLessThanOrEqual(viewBounds.left);
+			expect(chapter.getBoundingClientRect().width).toBeLessThanOrEqual(256);
+		} else {
+			expect(chapterRow.top).toBeGreaterThanOrEqual(viewBounds.bottom);
+			const headerBounds = player.querySelector(".thl-header")!.getBoundingClientRect();
+			if (width === 768) {
+				expect(chapterRow.left + chapterRow.width / 2).toBeCloseTo(headerBounds.left + headerBounds.width / 2, 0);
+			} else {
+				expect(chapterRow.width).toBeCloseTo(headerBounds.width, 0);
+				expect(restart.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
+				expect(chapter.getBoundingClientRect().right).toBeLessThanOrEqual(restart.getBoundingClientRect().left);
+			}
 		}
 		if (width >= 768) {
 			expect(zoom.getBoundingClientRect().left).toBeGreaterThanOrEqual(scene.getBoundingClientRect().right);

@@ -91,9 +91,11 @@ browser-managed remote services.
 
 ## Responsive player shell
 
-`ThroughlinePlayer` composes one header, chapter row, measured diagram,
+`ThroughlinePlayer` composes one header, measured diagram,
 transport and caption. The viewport owns camera and selection state and
-supplies the diagram and its view controls. Container queries move viewport
+supplies the diagram and its view controls. One native chapter selector
+moves from the header line before View to a second row as the embed narrows.
+Container queries also move viewport
 tools to a row above the diagram in narrow embeds, shorten the visual step
 count, and reflow transport controls as needed. Native popovers keep
 secondary controls available by keyboard and touch without duplicating them.

@@ -10,9 +10,11 @@ Import the optional stylesheet once in the host application. The player
 accepts an optional `title` (omitted when absent), and `light`, `dark` or
 `auto` themes. The header contains **View** for diagram navigation and
 **Player options** for direct step jumps, fullscreen and any enabled audio
-features. Authored chapters appear above the diagram. Below it, Previous,
-Play/Pause and Next sit alongside the step count and speed selector. The
-caption and its optional inspector follow playback.
+features. On wide embeds, the chapter selector and restart button appear
+immediately before **View**. They move to a centered second row at tablet
+widths, and the selector fills the available row on phones. Below the
+diagram, Previous, Play/Pause and Next sit alongside the step count and
+speed selector. The caption and its optional inspector follow playback.
 
 The shell, group boxes, nodes, cells and form inputs use a compact default
 `--thl-radius: 0.125rem` (2px at a 16px root font size), with 0.5rem inner
