@@ -176,10 +176,11 @@ get an authored-progress count with the current step.
 
 ## Guided viewport navigation
 
-The React player opens with a fit-to-view overview. The viewport controls
-provides Zoom in, Zoom out (1× to 4×), Fit to view, a native Select entity menu,
-and an explicit Follow active entity toggle. Selecting an entity in the diagram
-or menu centers it and exposes its value as text; this never changes the trace.
+The React player opens with a fit-to-view overview. Use **Zoom in**,
+**Zoom out** (1× to 4×), and **Fit to view** beside or above the diagram.
+Under **Player options → Diagram**, use **Select entity** or toggle
+**Follow active entity**. Selecting an entity in the diagram or menu centers
+it and shows its value as text. These actions affect the view only.
 
 - Mouse: drag to pan; wheel over the SVG to zoom about the pointer. Wheel
   scrolling remains native at the zoom bounds and Ctrl/Meta+wheel is reserved
@@ -198,8 +199,8 @@ following alongside the existing playback reset. Resizing the host can change
 layout geometry, but cannot mutate frames. Hidden entities remain unselectable.
 
 The viewport operates only on SVG viewBox presentation state, without a new
-trace schema, group hierarchy or inferred events. Its physical SVG height
-follows the stable trace-wide layout's aspect ratio so sparse scenes do not
+trace schema, group hierarchy or inferred events. In an embedded player, the
+SVG height follows the stable trace-wide layout's aspect ratio so sparse scenes do not
 reserve a tall blank viewport. Very dense scenes are capped at 960px; Fit
 to view still preserves the complete graph's aspect ratio, and zoom, pan
 and selection expose smaller mobile details. The height responds smoothly
@@ -224,8 +225,9 @@ step "Send"
   send request = "hello"
 ~~~
 
-The group toolbar can drill into a group, collapse it into a summary, expand it,
-and return through the breadcrumb trail to overview. Collapsing never changes
+The group controls under **Player options → Diagram** let you drill into a
+group, collapse it into a summary, expand it, and return to the overview
+through the breadcrumb trail. Collapsing never changes
 authored `hide`/`show`, entity values, trace frames or event history.
 The summary counts only authored-visible entities. Boundary links retain all
 source relation IDs in accessible SVG tooltips and transfer annotations.
@@ -331,11 +333,10 @@ this plugin does not make arbitrary MDX content safe to execute.
 ## Guided explanations and scenario comparison
 
 Guidance is **optional, host-authored presentation data**, not compiled trace
-metadata. Chapters identify inclusive, zero-based frame ranges. In **Player options**, selecting a
-chapter seeks to its first frame and pauses playback. The **Restart chapter**
-button returns to the beginning of the current chapter (including while
-playing). Causal explanations
-show the author's **Trigger**, **Observed event**, **State change**,
+metadata. Chapters identify inclusive, zero-based frame ranges. Under
+**Player options → Navigation**, selecting a chapter seeks to its first frame
+and pauses playback. **Restart chapter** returns to the beginning of the
+current chapter and pauses playback. Causal explanations show the author's **Trigger**, **Observed event**, **State change**,
 **Consequence**, and references to real compiled events. Chronology alone
 never establishes causation.
 

@@ -110,8 +110,8 @@ pnpm dev
 ~~~
 
 Open [http://localhost:5173](http://localhost:5173) to step through examples,
-compare scenarios and inspect responsive layouts. The playground is excluded
-from the published npm package.
+compare scenarios and inspect the player at desktop, tablet, and phone widths.
+The playground is excluded from the published npm package.
 
 ## How it works
 

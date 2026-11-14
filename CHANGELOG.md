@@ -12,12 +12,13 @@ program and trace schemas. Changes are grouped using
 - Reorganized the React player into a responsive header, chapter navigation,
   diagram, playback bar and caption. Existing scene tokens and corner sizes
   apply across embed widths. Player options groups chapter navigation,
-  diagram controls, and display and audio settings.
+  the former View controls, and display and audio settings.
 - Fullscreen centers the diagram between the header and bottom playback
   controls. Expanding Details makes room below the controls.
 - Replaced the timeline slider with a step counter and a **Go to step**
   action under Player options. Custom styles targeting the old timeline
   track and thumb can be removed.
+- Added a 768px tablet layout to the playground's viewport picker.
 
 ### Fixed
 
