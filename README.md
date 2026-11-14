@@ -18,14 +18,54 @@ or application-specific runtime.
 ## Schema-2 foundation (implementation in progress)
 
 The accepted architecture replaces domain-tagged fences with one `thl` authoring
-surface and a schema-2 evidence-aware artifact. **TL-U02 added strict v2 validation, TL-U03 added deterministic atomic replay,
-and TL-U04 adds the indexed pure `inspectTrace` semantic query API.**
-The existing v1 `compile`, Markdown and React implementations remain until
-later migration tickets; do not use the v2 artifact directly with the v1 player.
+surface and a schema-2 evidence-aware artifact. **TL-U02 added strict
+validation; TL-U03 added deterministic atomic replay; TL-U04 added indexed
+`inspectTrace` queries; TL-U05 adds pure `projectView` and an accessible
+native `ThroughlineGraphPlayer`.**
 
-See [schema-2 validation, replay and inspection](docs/schema-v2.md) for the
-implemented pure v2 boundary and later authoring/view work. No v1 compatibility
-shim is introduced.
+The existing `compile` / `ThroughlinePlayer` Markdown route is still schema 1
+until the later authoring/player migration tickets. New v2 consumers must call
+`compileArtifact` with a validated v2 object and use the dedicated v2
+`ThroughlineGraphPlayer`. **No compatibility shim converts one trace to the
+other.** The sequence projection, full Inspect UI and single unqualified `thl`
+fence are separately reviewed future tickets.
+
+See [schema-2 validation, replay, inspection and graph player](docs/schema-v2.md)
+for the implemented v2 boundary and precise source/evidence semantics.
+
+### Native v2 graph player
+
+~~~tsx
+import { compileArtifact } from "@0xbuff/throughline";
+import { ThroughlineGraphPlayer } from "@0xbuff/throughline/react";
+import "@0xbuff/throughline/styles/throughline.css";
+
+const artifact = {
+  schemaVersion: 2 as const,
+  id: "example",
+  origins: [{ id: "author", kind: "authored" as const }],
+  entities: [{ id: "left", label: "Left" }, { id: "right", label: "Right" }],
+  relations: [{ id: "link", from: "left", to: "right" }],
+  initialState: {
+    left: { status: "known" as const, value: 0 },
+    right: { status: "unknown" as const },
+  },
+  steps: [{
+    id: "sent", label: "Request sent",
+    events: [{
+      id: "send", type: "message" as const, originId: "author",
+      relationId: "link", messageId: "request", phase: "sent" as const,
+    }],
+  }],
+};
+const trace = compileArtifact(artifact);
+export function Example() {
+  return <ThroughlineGraphPlayer trace={trace} title="Explicit message evidence" />;
+}
+~~~
+
+The graph renders the `sent` connector only at the authored step. It does not
+invent a receive, acknowledgement, processing event or destination write.
 
 ## Features
 
