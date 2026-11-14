@@ -133,7 +133,7 @@ try {
 	);
 	const core = [
 		'import assert from "node:assert/strict";',
-		'import { compile, ProgramError, compileArtifact } from "@0xbuff/throughline";',
+		'import { compile, ProgramError, compileArtifact, inspectTrace } from "@0xbuff/throughline";',
 		'import { EXAMPLES } from "@0xbuff/throughline/examples";',
 		'assert(Array.isArray(EXAMPLES) && EXAMPLES.length > 0);',
 		'assert(compile(EXAMPLES[0].source).frames.length > 0);',
@@ -145,6 +145,14 @@ try {
 		'assert.equal(compiled.frames[0].snapshot.values.counter.value, 0);',
 		'assert.equal(compiled.frames[1].snapshot.values.counter.status, "known");',
 		'assert.equal(compiled.frames[1].snapshot.values.counter.value, 1);',
+		'const inspector = inspectTrace(compiled);',
+		'assert.equal(inspector.valueAt(0, "counter").value, 0);',
+		'assert.equal(inspector.valueAt(1, "counter").value, 1);',
+		'assert.deepEqual(inspector.diff(0, 1).map(change => change.eventId), ["write"]);',
+		'assert.deepEqual(inspector.history("counter").map(change => change.eventId), ["write"]);',
+		'assert.deepEqual(inspector.dependenciesOf("write"), []);',
+		'assert.equal(inspector.causalEvidenceOf("write").status, "unmodeled");',
+		'assert.throws(() => inspectTrace(JSON.parse(JSON.stringify(compiled))), /untrusted compiled trace/);',
 		'assert.throws(() => compileArtifact({ schemaVersion: 2, frames: [] }), /required property|unexpected property/);',
 	].join("\n");
 	run("node", ["--input-type=module", "-e", core], consumer);
@@ -152,7 +160,7 @@ try {
 	writeFileSync(
 		join(consumer, "index.ts"),
 		[
-			'import { compile, compileArtifact, type Trace, type VisualArtifact, type CompiledTrace } from "@0xbuff/throughline";',
+			'import { compile, compileArtifact, inspectTrace, type Trace, type VisualArtifact, type CompiledTrace, type TraceInspector, type QueryCell, type StateChange, type SemanticEvent } from "@0xbuff/throughline";',
 			'import { EXAMPLES } from "@0xbuff/throughline/examples";',
 			'const trace: Trace = compile(EXAMPLES[0]!.source);',
 			'const frames: number = trace.frames.length;',
@@ -160,6 +168,12 @@ try {
 			'const model: VisualArtifact = { schemaVersion: 2, id: "counter", origins: [{ id: "author", kind: "authored" }], entities: [{ id: "counter", label: "Counter" }], relations: [], initialState: { counter: { status: "known", value: 0 } }, steps: [{ id: "increment", label: "Increment", events: [{ id: "write", type: "write", originId: "author", entityId: "counter", path: [], value: { status: "known", value: 1 } }] }] };',
 			'const compiled: CompiledTrace = compileArtifact(model);',
 			'if (compiled.frames[1]?.id !== "increment") throw new Error("Missing schema-2 frame");',
+			'const inspector: TraceInspector = inspectTrace(compiled);',
+			'const cell: QueryCell = inspector.valueAt(1, "counter");',
+			'if (cell.status !== "known" || cell.value !== 1) throw new Error("Incorrect query state");',
+			'const changes: readonly StateChange[] = inspector.diff(0, 1);',
+			'const dependencies: readonly SemanticEvent[] = inspector.dependenciesOf("write");',
+			'if (changes.length !== 1 || dependencies.length !== 0) throw new Error("Incorrect query evidence");',
 		].join("\n"),
 	);
 	writeFileSync(
