@@ -268,3 +268,350 @@ describe("TL-U02 — strict serialized artifact boundary", () => {
 			.toThrow(/required property|unexpected property/);
 	});
 });
+
+
+function expectRejectedAt(
+	input: VisualArtifact,
+	path: string,
+	detail: RegExp,
+): void {
+	try {
+		validateArtifact(input);
+	} catch (error) {
+		expect(error).toBeInstanceOf(ArtifactValidationError);
+		const rejection = error as ArtifactValidationError;
+		expect(rejection.path).toBe(path);
+		expect(rejection.message).toMatch(detail);
+		return;
+	}
+	throw new Error("Expected artifact rejection at " + path);
+}
+
+describe("TL-U02 / IR-01 — exhaustive structural rejection matrix", () => {
+	const collectionCases: {
+		name: string;
+		mutate: (artifact: VisualArtifact) => void;
+		path: string;
+		reason: RegExp;
+	}[] = [
+		{
+			name: "entities",
+			mutate: (v) => {
+				v.entities = Array.from({ length: ARTIFACT_LIMITS.entities + 1 },
+					(_, i) => ({ id: "entity" + i, label: "Entity " + i }));
+			},
+			path: "$.entities",
+			reason: /exceeds maximum 200/,
+		},
+		{
+			name: "relations",
+			mutate: (v) => {
+				v.relations = Array.from({ length: ARTIFACT_LIMITS.relations + 1 },
+					(_, i) => ({ id: "relation" + i, from: "worker", to: "provider" }));
+			},
+			path: "$.relations",
+			reason: /exceeds maximum 1000/,
+		},
+		{
+			name: "groups",
+			mutate: (v) => {
+				v.groups = Array.from({ length: ARTIFACT_LIMITS.groups + 1 },
+					(_, i) => ({ id: "group" + i, label: "Group " + i }));
+			},
+			path: "$.groups",
+			reason: /exceeds maximum 200/,
+		},
+		{
+			name: "steps",
+			mutate: (v) => {
+				v.steps = Array.from({ length: ARTIFACT_LIMITS.steps + 1 },
+					(_, i) => ({ id: "step" + i, label: "Step", events: [] }));
+			},
+			path: "$.steps",
+			reason: /exceeds maximum 2000/,
+		},
+		{
+			name: "events",
+			mutate: (v) => {
+				v.steps[0].events = Array.from({ length: ARTIFACT_LIMITS.events + 1 },
+					(_, i) => ({
+						id: "event" + i, originId: "author", type: "observation" as const,
+						entityId: "worker", value: { status: "known" as const, value: null },
+					}));
+			},
+			path: "$.steps[0].events",
+			reason: /more than 10,000 events/,
+		},
+		{
+			name: "claims",
+			mutate: (v) => {
+				v.claims = Array.from({ length: ARTIFACT_LIMITS.claims + 1 },
+					(_, i) => ({
+						id: "claim" + i, text: "Unverified", kind: "assumption" as const,
+						originId: "author", evidenceEventIds: [], review: "unreviewed" as const,
+					}));
+			},
+			path: "$.claims",
+			reason: /exceeds maximum 1000/,
+		},
+	];
+
+	it.each(collectionCases)("rejects over-limit $name at the declared collection", ({ mutate, path, reason }) => {
+		const input = base();
+		mutate(input);
+		expectRejectedAt(input, path, reason);
+	});
+
+	const referenceCases: {
+		name: string;
+		mutate: (artifact: VisualArtifact) => void;
+		path: string;
+		reason: RegExp;
+	}[] = [
+		{
+			name: "group parentId",
+			mutate: (v) => { v.groups![1].parentId = "undeclared"; },
+			path: "$.groups",
+			reason: /undeclared parent for service: undeclared/,
+		},
+		{
+			name: "entity groupId",
+			mutate: (v) => { v.entities[0].groupId = "undeclared"; },
+			path: "$.entities[0].groupId",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "relation from",
+			mutate: (v) => { v.relations[0].from = "undeclared"; },
+			path: "$.relations[0].from",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "relation to",
+			mutate: (v) => { v.relations[0].to = "undeclared"; },
+			path: "$.relations[0].to",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "step focusEntityIds",
+			mutate: (v) => { v.steps[0].focusEntityIds = ["undeclared"]; },
+			path: "$.steps[0].focusEntityIds[0]",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "write entityId",
+			mutate: (v) => {
+				const event = v.steps[0].events[0];
+				if (event.type !== "write") throw Error("unexpected reference fixture");
+				event.entityId = "undeclared";
+			},
+			path: "$.steps[0].events[0].entityId",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "topology entity targetId",
+			mutate: (v) => {
+				v.steps[0].events.push({ id: "topoEntity", type: "topology",
+					target: "entity", targetId: "undeclared", present: true, originId: "author" });
+			},
+			path: "$.steps[0].events[2].targetId",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "topology relation targetId",
+			mutate: (v) => {
+				v.steps[0].events.push({ id: "topoRelation", type: "topology",
+					target: "relation", targetId: "undeclared", present: false, originId: "author" });
+			},
+			path: "$.steps[0].events[2].targetId",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "message relationId",
+			mutate: (v) => {
+				const event = v.steps[0].events[1];
+				if (event.type !== "message") throw Error("unexpected reference fixture");
+				event.relationId = "undeclared";
+			},
+			path: "$.steps[0].events[1].relationId",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "observation entityId",
+			mutate: (v) => {
+				const event = v.steps[1].events[1];
+				if (event.type !== "observation") throw Error("unexpected reference fixture");
+				event.entityId = "undeclared";
+			},
+			path: "$.steps[1].events[1].entityId",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "write originId",
+			mutate: (v) => { v.steps[0].events[0].originId = "undeclared"; },
+			path: "$.steps[0].events[0].originId",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "observation originId",
+			mutate: (v) => { v.steps[1].events[1].originId = "undeclared"; },
+			path: "$.steps[1].events[1].originId",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "event dependsOn",
+			mutate: (v) => { v.steps[1].events[1].dependsOn = ["undeclared"]; },
+			path: "$.steps[1].events[1].dependsOn[0]",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "event dependsOn self/same-step",
+			mutate: (v) => { v.steps[1].events[1].dependsOn = ["received"]; },
+			path: "$.steps[1].events[1].dependsOn[0]",
+			reason: /undeclared reference: received/,
+		},
+		{
+			name: "event dependsOn future step",
+			mutate: (v) => { v.steps[0].events[0].dependsOn = ["received"]; },
+			path: "$.steps[0].events[0].dependsOn[0]",
+			reason: /undeclared reference: received/,
+		},
+		{
+			name: "claim originId",
+			mutate: (v) => { v.claims![0].originId = "undeclared"; },
+			path: "$.claims[0].originId",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "claim evidenceEventIds",
+			mutate: (v) => { v.claims![0].evidenceEventIds = ["undeclared"]; },
+			path: "$.claims[0].evidenceEventIds[0]",
+			reason: /undeclared reference: undeclared/,
+		},
+		{
+			name: "missing initialState entry",
+			mutate: (v) => { delete v.initialState.provider; },
+			path: "$.initialState.provider",
+			reason: /missing initial cell/,
+		},
+		{
+			name: "undeclared initialState key",
+			mutate: (v) => { v.initialState.undeclared = { status: "known", value: 1 }; },
+			path: "$.initialState.undeclared",
+			reason: /unexpected property/,
+		},
+	];
+
+	it.each(referenceCases)("rejects invalid $name with an exact diagnostic path", ({ mutate, path, reason }) => {
+		const input = base();
+		mutate(input);
+		expectRejectedAt(input, path, reason);
+	});
+
+	const duplicates: {
+		name: string;
+		mutate: (artifact: VisualArtifact) => void;
+		path: string;
+		reason: RegExp;
+	}[] = [
+		{
+			name: "origins",
+			mutate: (v) => { v.origins.push({ id: "author", kind: "authored" }); },
+			path: "$.origins[2].id",
+			reason: /duplicate identifier: author/,
+		},
+		{
+			name: "groups",
+			mutate: (v) => { v.groups!.push({ id: "app", label: "Duplicate" }); },
+			path: "$.groups[2].id",
+			reason: /duplicate group ID/,
+		},
+		{
+			name: "entities",
+			mutate: (v) => { v.entities.push({ id: "worker", label: "Duplicate" }); },
+			path: "$.entities[2].id",
+			reason: /duplicate identifier: worker/,
+		},
+		{
+			name: "relations",
+			mutate: (v) => { v.relations.push({ id: "channel", from: "worker", to: "provider" }); },
+			path: "$.relations[1].id",
+			reason: /duplicate identifier: channel/,
+		},
+		{
+			name: "steps",
+			mutate: (v) => { v.steps.push({ id: "dispatch", label: "Duplicate", events: [] }); },
+			path: "$.steps[2].id",
+			reason: /duplicate identifier: dispatch/,
+		},
+		{
+			name: "events",
+			mutate: (v) => { v.steps[1].events[1].id = "sent"; },
+			path: "$.steps[1].events[1].id",
+			reason: /duplicate event ID: sent/,
+		},
+		{
+			name: "claims",
+			mutate: (v) => { v.claims!.push({ ...v.claims![0] }); },
+			path: "$.claims[1].id",
+			reason: /duplicate identifier: assumption/,
+		},
+	];
+
+	it.each(duplicates)("rejects duplicate IDs within the $name namespace", ({ mutate, path, reason }) => {
+		const input = base();
+		mutate(input);
+		expectRejectedAt(input, path, reason);
+	});
+});
+
+describe("TL-U02 — inherited prototype behavior regression", () => {
+	it("never invokes inherited setters or toJSON hooks during validation, sizing or serialization", () => {
+		const input = base();
+		input.initialState.worker = {
+			status: "known",
+			value: { harmless: 23, nested: [5, { more: true }] },
+		};
+		const oldSetter = Object.getOwnPropertyDescriptor(Object.prototype, "harmless");
+		const oldToJson = Object.getOwnPropertyDescriptor(Object.prototype, "toJSON");
+		let inheritedSetterCalls = 0;
+		let inheritedToJsonCalls = 0;
+		let validated: VisualArtifact | undefined;
+		let serialized: string | undefined;
+		let decoded: VisualArtifact | undefined;
+		try {
+			Object.defineProperty(Object.prototype, "harmless", {
+				configurable: true,
+				set() { inheritedSetterCalls++; },
+			});
+			Object.defineProperty(Object.prototype, "toJSON", {
+				configurable: true,
+				value() { inheritedToJsonCalls++; return "poisoned"; },
+			});
+			validated = validateArtifact(input);
+			serialized = serializeArtifact(validated);
+			decoded = parseArtifactJson(serialized);
+		} finally {
+			if (oldSetter) Object.defineProperty(Object.prototype, "harmless", oldSetter);
+			else Reflect.deleteProperty(Object.prototype, "harmless");
+			if (oldToJson) Object.defineProperty(Object.prototype, "toJSON", oldToJson);
+			else Reflect.deleteProperty(Object.prototype, "toJSON");
+		}
+		expect(inheritedSetterCalls).toBe(0);
+		expect(inheritedToJsonCalls).toBe(0);
+		expect(validated?.initialState.worker).toEqual(input.initialState.worker);
+		expect(decoded?.initialState.worker).toEqual(input.initialState.worker);
+		expect(serialized).toContain('"harmless":23');
+		expect(serialized).toContain('"nested":[5,{"more":true}]');
+	});
+
+	it("preserves valid own record keys named toJSON without invoking them", () => {
+		const input = base();
+		input.initialState.worker = {
+			status: "known",
+			value: { toJSON: "plain inert JSON field", constructorName: "accepted" },
+		};
+		const parsed = parseArtifactJson(serializeArtifact(input));
+		expect(parsed.initialState.worker).toEqual(input.initialState.worker);
+	});
+});
