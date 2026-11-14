@@ -1,6 +1,5 @@
 import type * as React from "react";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import type { Trace } from "../model.js";
 import {
 	BASE_STEP_MS,
 	initialSeek,
@@ -10,7 +9,7 @@ import {
 	stepDelayMs,
 } from "../seek.js";
 
-export function usePlayer(trace: Trace, externalClock = false): {
+export function usePlayer(trace: { readonly frames: readonly unknown[] }, externalClock = false): {
 	state: SeekState;
 	dispatch: React.Dispatch<SeekAction>;
 	lastAction: SeekAction | null;
