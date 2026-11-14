@@ -254,7 +254,6 @@ export function compileArtifact(input: VisualArtifact): CompiledTrace {
 	for (const [stepIndex, step] of artifact.steps.entries()) {
 		const stepSource = "$.steps[" + stepIndex + "]";
 		const pendingWrites: { event: Extract<SemanticEvent, { type: "write" }>; source: string }[] = [];
-		const pendingTopology: { target: "entity" | "relation"; targetId: Id; present: boolean }[] = [];
 		const topologyByTarget = new Map<string, boolean>();
 		const writesByEntity = new Map<Id, TargetNode>();
 		const nextEntities = new Set(presentEntities);
@@ -282,9 +281,6 @@ export function compileArtifact(input: VisualArtifact): CompiledTrace {
 					if (previous !== undefined && previous !== event.present)
 						reject(source, "contradictory topology updates in the same atomic step");
 					topologyByTarget.set(key, event.present);
-					pendingTopology.push({
-						target: event.target, targetId: event.targetId, present: event.present,
-					});
 					if (event.target === "entity") {
 						if (event.present) nextEntities.add(event.targetId);
 						else nextEntities.delete(event.targetId);
@@ -334,7 +330,7 @@ export function compileArtifact(input: VisualArtifact): CompiledTrace {
 
 		// Topology is modeled existence, not renderer collapse or focus.
 		// No mutations escape on a failed step; the current snapshot is intact.
-		if (pendingTopology.length) {
+		if (topologyByTarget.size) {
 			presentEntities = nextEntities;
 			presentRelations = nextRelations;
 		}
