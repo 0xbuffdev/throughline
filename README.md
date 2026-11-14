@@ -15,6 +15,17 @@ operation, a recursive call or a system workflow. Throughline does not
 execute arbitrary code or require an account, server, network connection
 or application-specific runtime.
 
+## Schema-2 foundation (implementation in progress)
+
+The accepted architecture replaces domain-tagged fences with one `thl` authoring
+surface and a schema-2 evidence-aware artifact. **TL-U02 adds the pure v2
+model, strict JSON reader, deterministic serialization and structural validator.**
+The existing v1 `compile`, Markdown and React implementations remain until
+later migration tickets; do not use the v2 artifact directly with the v1 player.
+
+See [schema-2 validation and migration](docs/schema-v2.md) for the current
+implemented boundary and the deferred replay/authoring work.
+
 ## Features
 
 - **Author in Markdown:** write a `thl` code fence with explicit, named steps.

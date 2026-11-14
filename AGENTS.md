@@ -27,8 +27,8 @@ full release candidate. Never misrepresent skipped or failed checks.
 
 - `src/index.ts`, `src/compiler.ts`, `src/dsl.ts`, `src/model.ts`,
   `src/tracer.ts`: the core parser, validation, types, and trace compiler.
-- `src/domains/`: the five supported domains: `flow`, `bindings`,
-  `binary`, `matrix`, and `callstack`.
+- `src/domains/`: the legacy v1 supported domains: `flow`, `bindings`,
+  `binary`, `matrix`, and `callstack`, pending TL-U08 migration.
 - `src/remark/`: optional mdast validation plugin; keep React out and preserve
   host-owned source positions.
 - `src/layout/`, `src/layout.ts`, `src/scene.ts`: React-independent
@@ -59,10 +59,13 @@ Do not add undocumented deep imports or wildcard exports. The core
 compiler must never depend on React, browser globals, or host-specific
 code. Keep `react` and `react-dom` as optional peer dependencies.
 
-`Program.version` and `Trace.version` are schema version `1`, not the
-npm package version. Review compatibility and update documentation and
-regression tests when changing public types, grammar, trace semantics,
-diagnostics, limits, CSS selectors, theming, or playback behavior.
+The accepted future contract is schema-2 `VisualArtifact` (see
+`docs/schema-v2.md` and context Specification 0004 §§10–13).
+`Program.version` and `Trace.version` are current legacy schema-1 source
+implementation, not a compatibility guarantee. There are no existing v1 users
+whose migration must block the accepted redesign. Keep v1 stable within an
+individual incremental PR only to avoid leaving the repository untestable;
+replace and remove legacy public APIs with the reviewed TL-U03–TL-U10 work.
 Preserve deterministic compilation and stable seeking through frames.
 
 ## Implementation and security rules
