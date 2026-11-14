@@ -133,22 +133,31 @@ try {
 	);
 	const core = [
 		'import assert from "node:assert/strict";',
-		'import { compile, ProgramError } from "@0xbuff/throughline";',
+		'import { compile, ProgramError, compileArtifact } from "@0xbuff/throughline";',
 		'import { EXAMPLES } from "@0xbuff/throughline/examples";',
 		'assert(Array.isArray(EXAMPLES) && EXAMPLES.length > 0);',
 		'assert(compile(EXAMPLES[0].source).frames.length > 0);',
 		'assert.throws(() => compile("not a thl block"), ProgramError);',
+		'const artifact = { schemaVersion: 2, id: "counter", origins: [{ id: "author", kind: "authored" }], entities: [{ id: "counter", label: "Counter" }], relations: [], initialState: { counter: { status: "known", value: 0 } }, steps: [{ id: "increment", label: "Increment", events: [{ id: "write", originId: "author", type: "write", entityId: "counter", path: [], value: { status: "known", value: 1 } }] }] };',
+		'const compiled = compileArtifact(artifact);',
+		'assert.deepEqual(compiled.frames.map(frame => frame.id), ["@initial", "increment"]);',
+		'assert.deepEqual(compiled.frames[0].snapshot.values.counter, { status: "known", value: 0 });',
+		'assert.deepEqual(compiled.frames[1].snapshot.values.counter, { status: "known", value: 1 });',
+		'assert.throws(() => compileArtifact({ schemaVersion: 2, frames: [] }), /required property/);',
 	].join("\n");
 	run("node", ["--input-type=module", "-e", core], consumer);
 
 	writeFileSync(
 		join(consumer, "index.ts"),
 		[
-			'import { compile, type Trace } from "@0xbuff/throughline";',
+			'import { compile, compileArtifact, type Trace, type VisualArtifact, type CompiledTrace } from "@0xbuff/throughline";',
 			'import { EXAMPLES } from "@0xbuff/throughline/examples";',
 			'const trace: Trace = compile(EXAMPLES[0]!.source);',
 			'const frames: number = trace.frames.length;',
 			'if (frames < 1) throw new Error("Missing trace frames");',
+			'const model: VisualArtifact = { schemaVersion: 2, id: "counter", origins: [{ id: "author", kind: "authored" }], entities: [{ id: "counter", label: "Counter" }], relations: [], initialState: { counter: { status: "known", value: 0 } }, steps: [{ id: "increment", label: "Increment", events: [{ id: "write", type: "write", originId: "author", entityId: "counter", path: [], value: { status: "known", value: 1 } }] }] };',
+			'const compiled: CompiledTrace = compileArtifact(model);',
+			'if (compiled.frames[1]?.id !== "increment") throw new Error("Missing schema-2 frame");',
 		].join("\n"),
 	);
 	writeFileSync(
