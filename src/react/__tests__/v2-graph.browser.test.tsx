@@ -33,8 +33,11 @@ it("plays a source-linked checkout without pretending received or processed mean
 	expect(link("request")?.classList.contains("thl-transferred")).toBe(false);
 	expect(document.querySelector('[data-node="gateway"] .thl-v2-value')?.textContent)
 		.toContain("Unknown");
-	expect(document.querySelector('[data-node="ledger"] .thl-v2-value')?.textContent)
-		.toContain("settled");
+	// Truncated graph labels are not full-state evidence; inspect the
+	// selected source entity to verify the actual persistent value.
+	await screen.getByRole("button", { name: "Select Ledger" }).click();
+	expect(document.querySelector(".thl-v2-selection pre")?.textContent)
+		.toContain('"settled":false');
 	await next.click(); // ledger write + processed, no second sent
 	expect(link("settlement")?.getAttribute("data-sent-current")).toBe("0");
 	expect(link("settlement")?.classList.contains("thl-transferred")).toBe(false);
@@ -67,6 +70,9 @@ it("collapses and expands nested groups without losing relation/event provenance
 	expect(document.querySelector('[data-node="gateway"]')).toBeNull();
 	expect(link("settlement")?.getAttribute("data-source-relation-ids")).toBe("settlement");
 	expect(link("request")).toBeUndefined();
+	// The options popover is intentionally layered over the diagram: close it
+	// before using the graphical group-summary button.
+	await screen.getByRole("button", { name: "Player options" }).click();
 	await screen.getByRole("button", { name: "Expand group Frontend" }).click();
 	expect(document.querySelector('[data-node="gateway"]')).not.toBeNull();
 	expect(link("request")?.getAttribute("data-sent-current")).toBe("1");
@@ -105,6 +111,9 @@ it("presents a truthful table fallback and source-linked values without changing
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 7");
 	expect(document.querySelector('[data-source-event-ids="sent"]')).not.toBeNull();
+	// Clicking outside the native popover dismisses it; reopen the options
+	// for a view change, as an actual user would.
+	await screen.getByRole("button", { name: "Player options" }).click();
 	await userEvent.selectOptions(
 		screen.getByRole("combobox", { name: "Visualization view" }).element(),
 		"graph",
