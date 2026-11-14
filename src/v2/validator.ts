@@ -560,15 +560,19 @@ function encodeJson(value: unknown): string {
 	if (value === null || typeof value !== "object")
 		return JSON.stringify(value);
 	if (Array.isArray(value)) {
-		const entries: string[] = [];
+		let output = "[";
 		for (let i = 0; i < value.length; i++)
-			entries.push(encodeJson(value[i]));
-		return "[" + entries.join(",") + "]";
+			output += (i ? "," : "") + encodeJson(value[i]);
+		return output + "]";
 	}
-	const entries: string[] = [];
-	for (const key of Object.keys(value).sort())
-		entries.push(JSON.stringify(key) + ":" + encodeJson((value as RecordValue)[key]));
-	return "{" + entries.join(",") + "}";
+	let output = "{";
+	let first = true;
+	for (const key of Object.keys(value).sort()) {
+		output += (first ? "" : ",") + JSON.stringify(key) + ":" +
+			encodeJson((value as RecordValue)[key]);
+		first = false;
+	}
+	return output + "}";
 }
 
 /** Stable key-ordered UTF-8-safe JSON. Frames are compiler output, never input. */
