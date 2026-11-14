@@ -156,6 +156,7 @@ it("restarts same-frame narration, including after the old utterance completed",
 	const screen = await render(<ThroughlinePlayer trace={trace} narration guidance={guidance} />);
 	await openPlayerPanel(screen, "Player options");
 	await screen.getByRole("button", { name: "Narrate captions" }).click();
+	await screen.getByRole("button", { name: "Player options" }).click();
 	const restart = screen.getByRole("button", { name: "Restart chapter" });
 	const old = speech.voices[0].onend;
 	await restart.click();

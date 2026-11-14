@@ -186,7 +186,7 @@
 }
 .thl-canvas { grid-column: 1; grid-row: 1; min-width: 0; }
 .thl-group-controls { flex-wrap: wrap; }
-.thl-chapter-nav { justify-self: start; }
+.thl-chapter-nav { align-self: flex-start; max-width: 100%; }
 .thl-viewport-tools button,
 .thl-group-controls button,
 .thl-chapter-nav button {
@@ -245,7 +245,7 @@
 }
 .thl-view-options > select { width: 100%; }
 .thl-group-controls select { flex: 1 1 6.5rem; max-width: 8rem; }
-.thl-chapter-nav select { max-width: min(100%, 18rem); }
+.thl-chapter-nav select { max-width: 18rem; }
 .thl-group-controls .thl-breadcrumb button {
 	width: auto;
 	height: auto;
@@ -646,7 +646,7 @@
 }
 /* Measure the embed, so a narrow article column gets the phone layout too. */
 @container (max-width: 900px) {
-	.thl-chapter-nav { justify-self: center; }
+	.thl-chapter-nav { align-self: center; }
 }
 @container (max-width: 560px) {
 	.thl-viewport { grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
