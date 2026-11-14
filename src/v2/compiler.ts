@@ -34,47 +34,46 @@ function dataRecord<T>(): Record<string, T> {
 }
 
 /**
- * The validated artifact is deeply frozen. Copy-on-write can therefore share
- * unchanged cells and subtrees without exposing a mutable alias in any frame.
+ * Apply an already-checked disjoint write trie with a single copy of each
+ * touched container. The input subtree is immutable (validated and frozen);
+ * no intermediate arrays or records are cloned m times for m sibling writes.
+ *
+ * Work is proportional to the sizes of touched containers plus the number of
+ * path nodes, not array length multiplied by the number of indexed writes.
  */
-function replaceNested(
-	root: JsonValue,
-	path: Path,
-	value: JsonValue,
-	source: string,
-): JsonValue {
-	const replace = (current: JsonValue, index: number): JsonValue => {
-		const segment = path[index];
-		const at = source + ".path[" + index + "]";
-		const final = index === path.length - 1;
-		if (typeof segment === "number") {
-			if (!Array.isArray(current))
-				reject(at, "array index requires an existing known array parent");
-			if (segment >= current.length || !has(current, segment))
-				reject(at, "array index is out of bounds; array growth is not supported");
-			const next = final ? value : replace(current[segment], index + 1);
-			const copy: JsonValue[] = new Array(current.length);
-			for (let i = 0; i < current.length; i++)
-				Object.defineProperty(copy, String(i), {
-					value: i === segment ? next : current[i],
-					enumerable: true,
-					configurable: true,
-					writable: true,
-				});
-			Object.freeze(copy);
-			return copy;
+function applyNestedBatch(current: JsonValue, target: TargetNode): JsonValue {
+	if (target.write !== undefined) {
+		// Root/whole-entity writes are handled by the caller. Nested leaves
+		// were checked to be known before being placed into the trie.
+		if (target.write.status !== "known")
+			reject("$", "nested write unexpectedly contains an unknown value");
+		return target.write.value;
+	}
+	if (Array.isArray(current)) {
+		const copy: JsonValue[] = new Array(current.length);
+		for (let i = 0; i < current.length; i++) {
+			const child = target.descendants.get("n:" + i);
+			Object.defineProperty(copy, String(i), {
+				value: child ? applyNestedBatch(current[i], child) : current[i],
+				enumerable: true,
+				configurable: true,
+				writable: true,
+			});
 		}
-		if (current === null || typeof current !== "object" || Array.isArray(current))
-			reject(at, "record key requires an existing known record parent");
-		if (!has(current, segment))
-			reject(at, "record key is absent; implicit creation is not supported");
-		const previous = current as Record<string, JsonValue>;
-		const next = final ? value : replace(previous[segment], index + 1);
+		Object.freeze(copy);
+		return copy;
+	}
+	if (current !== null && typeof current === "object") {
 		const copy = dataRecord<JsonValue>();
-		for (const key of Object.keys(previous)) copy[key] = key === segment ? next : previous[key];
+		for (const key of Object.keys(current)) {
+			const child = target.descendants.get("s:" + key);
+			const value = (current as Record<string, JsonValue>)[key];
+			copy[key] = child ? applyNestedBatch(value, child) : value;
+		}
 		return Object.freeze(copy);
-	};
-	return replace(root, 0);
+	}
+	// assertWritable checked every path against the same previous frame.
+	reject("$", "nested target is not a known compatible container");
 }
 
 function assertWritable(
@@ -106,19 +105,22 @@ function assertWritable(
 }
 
 type TargetNode = {
-	written: boolean;
+	write?: Cell;
 	descendants: Map<string, TargetNode>;
 };
 
 function targetNode(): TargetNode {
-	return { written: false, descendants: new Map() };
+	return { descendants: new Map() };
 }
 
-/** Prefix trie rejects same-step root/child and parent/child write overlap. */
-function reserveTarget(root: TargetNode, path: Path, source: string): void {
+/**
+ * The trie is the SSOT for a step's pending values and overlapping-path
+ * detection. Each leaf owns exactly one authored Cell.
+ */
+function reserveTarget(root: TargetNode, path: Path, value: Cell, source: string): void {
 	let node = root;
 	for (const segment of path) {
-		if (node.written)
+		if (node.write !== undefined)
 			reject(source + ".path", "overlapping writes in the same atomic step");
 		const key = (typeof segment === "number" ? "n:" : "s:") + segment;
 		let child = node.descendants.get(key);
@@ -128,9 +130,9 @@ function reserveTarget(root: TargetNode, path: Path, source: string): void {
 		}
 		node = child;
 	}
-	if (node.written || node.descendants.size)
+	if (node.write !== undefined || node.descendants.size)
 		reject(source + ".path", "overlapping writes in the same atomic step");
-	node.written = true;
+	node.write = value;
 }
 
 /**
@@ -165,9 +167,12 @@ class TraceBudget {
 	}
 
 	frame(frame: CompiledFrame): void {
-		let count = 1 + frame.eventIds.length;
-		count += 1 + frame.snapshot.presentEntityIds.length;
-		count += 1 + frame.snapshot.presentRelationIds.length;
+		// Each array element consumes two units: one visited slot and one
+		// visited string primitive. Reuse the same expansion rule for all
+		// compiler-owned ID arrays and canonical cell values.
+		let count = this.expanded(frame.eventIds);
+		count += this.expanded(frame.snapshot.presentEntityIds);
+		count += this.expanded(frame.snapshot.presentRelationIds);
 		for (const id of Object.keys(frame.snapshot.values))
 			count += 1 + this.expanded(frame.snapshot.values[id]);
 		this.charge(count, "frames[" + frame.index + "]");
@@ -253,7 +258,6 @@ export function compileArtifact(input: VisualArtifact): CompiledTrace {
 
 	for (const [stepIndex, step] of artifact.steps.entries()) {
 		const stepSource = "$.steps[" + stepIndex + "]";
-		const pendingWrites: { event: Extract<SemanticEvent, { type: "write" }>; source: string }[] = [];
 		const topologyByTarget = new Map<string, boolean>();
 		const writesByEntity = new Map<Id, TargetNode>();
 		const nextEntities = new Set(presentEntities);
@@ -271,8 +275,9 @@ export function compileArtifact(input: VisualArtifact): CompiledTrace {
 						targets = targetNode();
 						writesByEntity.set(event.entityId, targets);
 					}
-					reserveTarget(targets, event.path, source);
-					pendingWrites.push({ event, source });
+					if (event.path.length > 0 && event.value.status !== "known")
+						reject(source + ".value", "nested write requires a known JSON value");
+					reserveTarget(targets, event.path, event.value, source);
 					break;
 				}
 				case "topology": {
@@ -309,21 +314,21 @@ export function compileArtifact(input: VisualArtifact): CompiledTrace {
 		}
 
 		let committedValues = values;
-		if (pendingWrites.length) {
+		if (writesByEntity.size > 0) {
 			const nextValues = dataRecord<Cell>();
 			for (const entity of artifact.entities) nextValues[entity.id] = values[entity.id];
-			for (const { event, source } of pendingWrites) {
-				if (!event.path.length) {
-					nextValues[event.entityId] = event.value;
+			for (const [entityId, target] of writesByEntity) {
+				if (target.write !== undefined) {
+					nextValues[entityId] = target.write;
 					continue;
 				}
-				const existing = nextValues[event.entityId];
-				if (existing.status === "unknown")
-					reject(source + ".path", "cannot patch a nested path of an unknown entity");
-				if (event.value.status !== "known")
-					reject(source + ".value", "nested write requires a known JSON value");
-				const updated = replaceNested(existing.value, event.path, event.value.value, source);
-				nextValues[event.entityId] = Object.freeze({ status: "known" as const, value: updated });
+				const previous = values[entityId];
+				if (previous.status !== "known")
+					reject("$", "nested target unexpectedly has unknown state");
+				nextValues[entityId] = Object.freeze({
+					status: "known" as const,
+					value: applyNestedBatch(previous.value, target),
+				});
 			}
 			committedValues = Object.freeze(nextValues);
 		}
