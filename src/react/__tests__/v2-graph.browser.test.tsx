@@ -79,6 +79,68 @@ it("collapses and expands nested groups without losing relation/event provenance
 	await expect.element(screen.getByText("Selected: Gateway")).toBeVisible();
 });
 
+it("paints parent panels first for valid child-before-parent group declarations", async () => {
+	const artifact = distributedGraph();
+	// The validator accepts this order: parent references resolve after
+	// every group has been parsed, independently of source declaration order.
+	artifact.groups = [
+		{ id: "back", label: "Backend", parentId: "system" },
+		{ id: "front", label: "Frontend", parentId: "system" },
+		{ id: "system", label: "Checkout" },
+	];
+	const screen = await render(
+		<ThroughlineGraphPlayer trace={compileArtifact(artifact)} />,
+	);
+	await expect.element(screen.getByRole("img",
+		{ name: "Source-linked graph at current frame" })).toBeVisible();
+	const groupPanels = () => [...document.querySelectorAll<SVGGElement>(
+		".thl-v2-diagram g[data-group]",
+	)].map(group => group.getAttribute("data-group"));
+	// SVG is paint-order sensitive: later opaque rects cover earlier ones.
+	expect(groupPanels()).toEqual(["system", "back", "front"]);
+	const root = document.querySelector<SVGGElement>('[data-group="system"] rect')!;
+	const child = document.querySelector<SVGGElement>('[data-group="back"] rect')!;
+	expect(root).not.toBeNull();
+	expect(child).not.toBeNull();
+	expect(Number(child.getAttribute("y"))).toBeGreaterThan(
+		Number(root.getAttribute("y")),
+	);
+	await screen.getByRole("button", { name: "Player options" }).click();
+	await screen.getByRole("button", { name: "Collapse Backend" }).click();
+	expect(groupPanels()).toEqual(["system", "back", "front"]);
+	expect(document.querySelector('[data-group-summary="back"]')).not.toBeNull();
+});
+
+it("retains source IDs of removed members in a collapsed graphical group summary", async () => {
+	const screen = await render(<ThroughlineGraphPlayer trace={trace()} />);
+	await screen.getByRole("button", { name: "Player options" }).click();
+	await screen.getByRole("button", { name: "Collapse Backend" }).click();
+	await screen.getByRole("button", { name: "Player options" }).click();
+	for (let index = 0; index < 6; index++)
+		await screen.getByRole("button", { name: "Step forward" }).click();
+	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 7 of 7");
+	const summary = document.querySelector<SVGGElement>('[data-group-summary="back"]');
+	expect(summary).not.toBeNull();
+	expect(summary?.getAttribute("data-source-entity-ids")).toBe("ledger worker");
+	expect(summary?.getAttribute("data-source-relation-ids")).toBe("task");
+	expect(summary?.getAttribute("data-source-event-ids")).toBe("taskOff workerOff");
+	expect(document.querySelector('[data-node="worker"]')).toBeNull();
+	expect(link("task")).toBeUndefined();
+});
+
+it("announces declared non-authored origins without upgrading modeled event evidence", async () => {
+	const artifact = distributedGraph();
+	artifact.steps[3].events[0].originId = "witness"; // declared observed
+	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(artifact)} />);
+	for (let index = 0; index < 4; index++)
+		await screen.getByRole("button", { name: "Step forward" }).click();
+	const evidence = screen.getByRole("list", { name: "Declared step evidence" });
+	await expect.element(evidence).toBeVisible();
+	await expect.element(screen.getByText(/Declared origin witness \(observed\)/)).toBeVisible();
+	expect(evidence.element().textContent).toContain("provenance is not independent verification");
+	expect(evidence.element().textContent).not.toContain("Authored presence");
+});
+
 it("supports keyboard stepping, zoom and pan independently of v2 model state", async () => {
 	const screen = await render(<ThroughlineGraphPlayer trace={trace()} />);
 	await expect.poll(() => viewBox()[2]).toBeLessThan(720);
