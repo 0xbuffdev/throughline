@@ -517,7 +517,7 @@ function rejectDuplicateJsonKeys(source: string, budget: Budget): void {
 			if (source.startsWith(token, cursor)) { cursor += token.length; return; }
 		}
 		const match = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/.exec(source.slice(cursor));
-		if (!match) syntax("expected JSON value");
+		if (!match) return syntax("expected JSON value");
 		if (!Number.isFinite(Number(match[0]))) syntax("nonfinite JSON number");
 		cursor += match[0].length;
 	};
