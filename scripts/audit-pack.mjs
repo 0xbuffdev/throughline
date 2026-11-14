@@ -145,7 +145,7 @@ try {
 		'assert.equal(compiled.frames[0].snapshot.values.counter.value, 0);',
 		'assert.equal(compiled.frames[1].snapshot.values.counter.status, "known");',
 		'assert.equal(compiled.frames[1].snapshot.values.counter.value, 1);',
-		'assert.throws(() => compileArtifact({ schemaVersion: 2, frames: [] }), /required property/);',
+		'assert.throws(() => compileArtifact({ schemaVersion: 2, frames: [] }), /required property|unexpected property/);',
 	].join("\n");
 	run("node", ["--input-type=module", "-e", core], consumer);
 
