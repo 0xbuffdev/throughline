@@ -155,7 +155,7 @@ describe("TL-U04 — pure indexed semantic queries", () => {
 			"debit", "repeat", "activate", "connect",
 		]);
 		expect(changes.map((item) => item.kind)).toEqual([
-			"write", "write", "topology", "topology",
+			"write", "write", "presence", "presence",
 		]);
 		expect(changes.map((item) => item.frameIndex)).toEqual([1, 1, 1, 1]);
 		expect(changes.map((item) => item.stepId)).toEqual([
