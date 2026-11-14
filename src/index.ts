@@ -24,3 +24,35 @@ export type {
 } from "./model.js";
 export { ProgramError } from "./model.js";
 export { type StepApi, type Tracer, tracer } from "./tracer.js";
+
+/**
+ * Schema-2 semantic artifact boundary (TL-U02). The v1 compiler/player
+ * migration is deliberately separate work in TL-U03–TL-U10.
+ */
+export {
+	ARTIFACT_LIMITS,
+	ARTIFACT_SCHEMA_VERSION,
+} from "./v2/model.js";
+export type {
+	Cell,
+	Claim,
+	Entity as V2Entity,
+	EventBase,
+	Group,
+	Id,
+	JsonValue,
+	Origin,
+	OriginKind,
+	Path,
+	Relation as V2Relation,
+	SemanticEvent,
+	Step,
+	ViewHint,
+	VisualArtifact,
+} from "./v2/model.js";
+export {
+	ArtifactValidationError,
+	parseArtifactJson,
+	serializeArtifact,
+	validateArtifact,
+} from "./v2/validator.js";
