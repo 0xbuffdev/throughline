@@ -38,6 +38,7 @@ export function layoutGraph(trace: CompiledTrace, availableWidth = 720): Layout 
 	const entityIndex = new Map(trace.artifact.entities.map((e, i) =>
 		[e.id, "node_" + i] as const));
 	const groupIndex = new Map(groups.map((g, i) => [g.id, "group_" + i] as const));
+	const groupById = new Map(groups.map(group => [group.id, group] as const));
 	const nodes: Layout["nodes"] = Object.create(null);
 	const panels: Layout["groups"] = [];
 	let y = PAD;
@@ -59,21 +60,29 @@ export function layoutGraph(trace: CompiledTrace, availableWidth = 720): Layout 
 	}
 
 	function arrangeGroup(id: Id, depth: number): void {
+		const group = groupById.get(id)!;
 		const start = y;
+		const x = PAD + Math.min(depth * 8, 24);
+		const w = width - x - PAD;
+		const itemId = groupIndex.get(id)!;
+		// Record the parent panel BEFORE visiting descendants. A valid
+		// artifact can declare children before parents, but the SVG painter
+		// must always draw ancestor backgrounds first. Preserve the authored
+		// sibling order by traversing each parent's declared child list.
+		const panel: Layout["groups"][number] = {
+			name: group.label,
+			id: itemId,
+			parentId: group.parentId ? groupIndex.get(group.parentId) : undefined,
+			x, y: start, w, h: 0,
+		};
+		panels.push(panel);
 		y += GROUP_HEADER;
 		arrangeMembers(byGroup.get(id) ?? [], depth + 1);
 		for (const child of byParent.get(id) ?? []) arrangeGroup(child, depth + 1);
 		y = Math.max(y, start + GROUP_HEADER + SUMMARY_HEIGHT + 12);
-		const x = PAD + Math.min(depth * 8, 24);
-		const w = width - x - PAD;
-		const height = y - start;
-		const itemId = groupIndex.get(id)!;
+		panel.h = y - start;
 		const summaryWidth = Math.min(172, Math.max(100, w - 16));
 		nodes[itemId] = box(x + 8, start + GROUP_HEADER, summaryWidth, SUMMARY_HEIGHT);
-		const group = groups.find(group => group.id === id)!;
-		panels.push({ name: group.label, id: itemId,
-			parentId: group.parentId ? groupIndex.get(group.parentId) : undefined,
-			x, y: start, w, h: height });
 		y += GAP;
 	}
 	arrangeMembers(byGroup.get(undefined) ?? [], 0);
