@@ -73,6 +73,13 @@ function intersects(left: Path, right: Path): boolean {
  * JSON-looking duck type. View projection never trusts external functions.
  */
 const ownedInspectors = new WeakSet<object>();
+const inspectedTraces = new WeakMap<object, CompiledTrace>();
+
+/** Internal trusted accessor: view projections reuse the exact validated artifact. */
+export function inspectedTrace(input: TraceInspector): CompiledTrace {
+	assertOwnedInspector(input);
+	return inspectedTraces.get(input)!;
+}
 
 export function assertOwnedInspector(input: TraceInspector): void {
 	if (input === null || typeof input !== "object" || !ownedInspectors.has(input))
@@ -295,5 +302,6 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 		},
 	});
 	ownedInspectors.add(inspector);
+	inspectedTraces.set(inspector, trace);
 	return inspector;
 }
