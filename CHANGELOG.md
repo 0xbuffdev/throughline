@@ -7,6 +7,16 @@ program and trace schemas. Changes are grouped using
 
 ## [Unreleased]
 
+### Added
+
+- Introduced the independently validated semantic schema-2 `VisualArtifact`,
+  strict duplicate-key JSON reader, deterministic serialization and
+  deeply detached/frozen validation boundary (TL-U02). This does **not**
+  yet migrate the v1 compiler, Markdown authoring or player.
+- Documented the accepted v2 trust, resource, evidence and no-compatibility
+  boundaries in `docs/schema-v2.md`.
+
+
 ### Changed
 
 - Reorganized the React player into a responsive header, chapter navigation,
