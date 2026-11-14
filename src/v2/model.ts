@@ -149,9 +149,13 @@ export type CompiledTrace = {
 /** Query-only state distinct from a known JSON null or unknown entity cell. */
 export type QueryCell = Cell | { readonly status: "absent" };
 
-export type WriteChange = {
-	readonly kind: "write";
-	readonly direction: "forward" | "backward";
+/**
+ * An authored write at a committed step. For a path-filtered history, `path`
+ * remains the original authored target, while before/after refer to the
+ * requested query path (Specification 0004 §12.2).
+ */
+export type HistoryEntry = {
+	readonly frameId: string;
 	readonly frameIndex: number;
 	readonly stepId: Id;
 	readonly eventId: Id;
@@ -162,23 +166,24 @@ export type WriteChange = {
 	readonly after: QueryCell;
 };
 
-export type TopologyChange = {
-	readonly kind: "topology";
-	readonly direction: "forward" | "backward";
+/** An explicit write remains a change even when old/new values are equal. */
+export type WriteChange = HistoryEntry & { readonly kind: "write" };
+
+/** Presence is modeled existence, never a renderer visibility toggle. */
+export type PresenceChange = {
+	readonly kind: "presence";
+	readonly frameId: string;
 	readonly frameIndex: number;
 	readonly stepId: Id;
 	readonly eventId: Id;
 	readonly originId: Id;
 	readonly target: "entity" | "relation";
 	readonly targetId: Id;
-	readonly beforePresent: boolean;
-	readonly afterPresent: boolean;
+	readonly before: boolean;
+	readonly after: boolean;
 };
 
-/** Every entry identifies an explicit event; unchanged-value writes still count. */
-export type StateChange = WriteChange | TopologyChange;
-/** History is authored write evidence, not inferred state changes. */
-export type HistoryEntry = WriteChange;
+export type StateChange = WriteChange | PresenceChange;
 
 export type CausalEvidence = {
 	readonly status: "explicit" | "unmodeled";
