@@ -114,6 +114,7 @@ export const ARTIFACT_SCHEMA_VERSION = 2 as const;
 export const ARTIFACT_LIMITS = Object.freeze({
 	artifactBytes: 4 * 1024 * 1024,
 	validationUnits: 1_000_000,
+	traceUnits: 8_000_000,
 	jsonDepth: 32,
 	entities: 200,
 	relations: 1_000,
@@ -122,3 +123,25 @@ export const ARTIFACT_LIMITS = Object.freeze({
 	events: 10_000,
 	claims: 1_000,
 });
+
+/**
+ * Compiled frames are derived state, never independently authored input.
+ * A snapshot is the committed state after the entire corresponding step.
+ */
+export type StateSnapshot = {
+	values: Readonly<Record<Id, Cell>>;
+	presentEntityIds: readonly Id[];
+	presentRelationIds: readonly Id[];
+};
+export type CompiledFrame = {
+	id: string;
+	index: number;
+	label: string;
+	eventIds: readonly Id[];
+	snapshot: Readonly<StateSnapshot>;
+};
+export type CompiledTrace = {
+	schemaVersion: 2;
+	artifact: Readonly<VisualArtifact>;
+	frames: readonly CompiledFrame[];
+};

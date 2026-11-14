@@ -9,6 +9,10 @@ program and trace schemas. Changes are grouped using
 
 ### Added
 
+- Added schema-2 `compileArtifact` with atomic step replay, copy-on-write
+  persistent values, exact event-ID frame checkpoints, modeled topology,
+  no-false-send/observation semantics and the 8M expanded-work ceiling (TL-U03).
+  The existing v1 authoring/player is not a compatibility target.
 - Introduced the independently validated semantic schema-2 `VisualArtifact`,
   strict duplicate-key JSON reader, deterministic serialization and
   deeply detached/frozen validation boundary (TL-U02). This does **not**

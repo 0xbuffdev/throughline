@@ -36,6 +36,9 @@ export {
 export type {
 	Cell,
 	Claim,
+	CompiledFrame,
+	CompiledTrace,
+	StateSnapshot,
 	Entity as V2Entity,
 	EventBase,
 	Group,
@@ -56,3 +59,6 @@ export {
 	serializeArtifact,
 	validateArtifact,
 } from "./v2/validator.js";
+
+/** Pure schema-2 atomic replay; no legacy domain compatibility layer. */
+export { compileArtifact, ArtifactCompilationError } from "./v2/compiler.js";

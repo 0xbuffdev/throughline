@@ -1,16 +1,17 @@
-# Schema-2 semantic artifact validation (TL-U02)
+# Schema-2 semantic artifact validation and deterministic replay (TL-U02–U03)
 
-This is the **accepted, independently validated data foundation**, not a claim
-that the existing v1 compiler, Markdown parser or React player uses v2 yet.
+The schema-2 validator and atomic deterministic compiler implement the accepted
+semantic foundation. The preexisting schema-1 Markdown parser and player are
+not v2 consumers; no backward-compatibility support is promised.
 Normative authority: Throughline Specification 0004 §§10–13 (maintainer-owned architecture record).
-TL-U03 compiles validated artifacts into frames, U04 adds indexed queries,
-and later tickets migrate views, examples and the single unqualified thl fence.
+TL-U04 adds indexed queries; later tickets migrate views, examples and the
+single unqualified `thl` fence.
 
 ## Public data boundary
 
 ```ts
 import {
-  validateArtifact, parseArtifactJson, serializeArtifact,
+  validateArtifact, parseArtifactJson, serializeArtifact, compileArtifact,
   type VisualArtifact
 } from "@0xbuff/throughline";
 
@@ -32,11 +33,13 @@ const source: VisualArtifact = {
 const validated = validateArtifact(source); // detached, deeply frozen
 const json = serializeArtifact(validated);   // deterministic, sorted object keys
 const decoded = parseArtifactJson(json);     // strict duplicate-key checking
+const trace = compileArtifact(decoded);      // detached, immutable derived frames
+console.log(trace.frames.map(frame => frame.id)); // ["@initial", "increment"]
 ```
 
 No resolver, network connection, rendering library or provider SDK participates
-in validation or serialization. The input is data only. This module does **not**
-compile steps; it does not imply that a message was received or state persisted.
+in validation or compilation. The input is inert data. `message` and
+`observation` events cannot change persistent modeled state.
 
 ## Structural and trust rules
 
@@ -76,6 +79,7 @@ compile steps; it does not imply that a message was received or state persisted.
 | --- | ---: |
 | Serialized artifact size | 4 MiB, UTF-8 |
 | Deterministic input traversal budget | 1,000,000 units |
+| Expanded compiled-trace budget | 8,000,000 units |
 | JSON nesting | 32 |
 | Entities / relations / groups | 200 / 1,000 / 200 |
 | Steps / events / claims | 2,000 / 10,000 / 1,000 |
@@ -100,14 +104,85 @@ The authoring and sidecar interface belongs to TL-U08/TL-U10. The future
 `serializeArtifact` canonically sorts object keys, preserving all array
 orders and authored event IDs. It is stable across object insertion order.
 This is an artifact JSON serialization guarantee, **not** a published
-cryptographic digest contract. Compiled traces may not be deserialized at
-this boundary; they must be recomputed from validated artifacts in TL-U03.
+cryptographic digest contract. Externally serialized compiled traces remain inadmissible. Call
+`compileArtifact` with a validated artifact (which is revalidated at the compiler
+boundary) to reconstruct frames deterministically.
+
+
+## TL-U03 — Replay, checkpoint and atomicity contract
+
+`compileArtifact(input: VisualArtifact): CompiledTrace` validates/detaches the
+complete input before touching its steps. Frame zero is `@initial`; every
+subsequent frame is the committed state after one **whole** ordered step. Each
+frame stores an immutable state snapshot and exactly that step's ordered event
+IDs, not fictitious intermediate states. The label/time/note/focus fields do
+not mutate the semantic state.
+
+Persistent state has known or unknown whole-entity cells. Root writes replace
+a cell; nested writes replace **existing** array elements or plain-record keys
+inside a known cell. Nested writes are path-copy-on-write and share frozen
+unchanged structure, so old frames remain unchanged even when a later step
+writes a matrix cell or nested stack record. Array growth, implicit record
+creation and unknown-cell partial patching are rejected.
+
+Within a step, writes are checked against the same previous snapshot. A
+prefix trie rejects overlapping paths on one entity (including root vs child),
+while a topology map rejects contradictory presence operations. The same
+write trie is the **single pending-write source**: disjoint updates commit in
+one copy-on-write traversal, cloning each affected array/record **once per
+step** rather than once per event. Presence is a property of declared entities
+and relations; `focusEntityIds` and UI collapse have no impact on presence.
+
+A `message` with phase `sent` requires its declared relation and both declared
+endpoints to be present **before and after** the atomic step; activating an
+endpoint within that step is not a send. `received`, `acknowledged` and
+`processed` are independently authored evidence and need not imply any earlier
+phase. Observations never persist data; only explicit `write` events do.
+References to causal predecessors remain explicit, earlier-step-only evidence
+validated by TL-U02. Wall timestamps do not reorder steps or establish duration.
+
+The compiler measures every expanded frame, charging each JSON primitive,
+property and array element *on every frame*, including unchanged shared values.
+For event IDs and modeled-presence ID arrays, the **array entry and its ID
+string primitive each consume one traversal unit**, exactly as for cell
+arrays. An immutable subtree's measured size may be memoized to bound runtime
+work, but the expanded cost still counts against the 8,000,000-unit ceiling.
+Compiled frames, cells, event IDs and snapshot presence arrays are frozen at
+the public boundary; a caller cannot mutate a past state or authored artifact.
+
+### Measured near-limit compilation (non-SLA evidence)
+
+The TL-U03 boundary regression validates a single atomic step containing
+**10,000 distinct indexed writes** into a known numeric array of **200,000
+entries**. The old per-event array copy performed approximately 2 billion
+element-definition operations. The batched version traverses the touched
+array only once during commit and preserves the unchanged initial frame.
+
+- **Fixture (canonical JSON SHA-256):**
+  `8e038de327785546936739f5b5309d4952ebc631e2ef0244ff68c0c6b6a09572`
+- **Execution:** `compileArtifact` completed in **950 ms** on the recorded
+  GitHub Actions Linux runner with an **AMD EPYC 7763 64-Core Processor**,
+  **Node.js v24.22.2**, on 2026-11-14.
+- **Reproduction:** `src/__tests__/artifact-v2-compiler.test.ts` boundary
+  regression; [CI run 43633490421](https://github.com/0xbuffdev/throughline/actions/runs/43633490421).
+  The test prints the machine, fixture digest and measured duration.
+- **Independent budget regression:** 200 present entities, 1,000 declared
+  present relations and 2,000 empty steps must **reject** because expanded
+  ID-string accounting pushes the trace beyond 8M units.
+
+This is one reproducible **observation**, not a portable time guarantee or a
+performance claim about different hardware, runtimes or input distributions.
+
+**Scope:** This source does not promise schema-1 compatibility, query indexes,
+graph/sequence/state-table projections or a v2 player. Those are separate
+reviewed implementation tickets TL-U04–TL-U10.
 
 ## Acceptance and deferred replay checks
 
 TL-U02 tests positive recursion/matrix/checkout-shaped artifacts and rejects
 broken cross-references, malformed and duplicate JSON, invalid paths, dates,
 cycles, unsafe input, depth/count/byte/work-limit breaches and mutation leaks.
-The tests **do not** claim IR-02–IR-09: atomic replay, source-aware queries,
-projections, browser accessibility, no-false-send scene behavior and packed
-consumers require their own source tickets and verification.
+TL-U03 adds atomic replay, no-false-persistence and endpoint-presence
+checks, deterministic checkpoint/mutation tests and expanded-budget rejection.
+Queries/projections and a v2 player remain TL-U04–TL-U10 work. Test and release
+evidence must be recorded from real CI, not assumed from this documentation.
