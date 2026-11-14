@@ -274,12 +274,16 @@ export function ThroughlineGraphPlayer({
 					(lastAction?.type === "step" && lastAction.animate === true)),
 		});
 	}
+	// On an identity change, usePlayer schedules its reset during render.
+	// Never send the former trace's higher frame index into a new, shorter
+	// immutable inspector while React completes that state transition.
+	const frameIndex = Math.min(state.step, trace.frames.length - 1);
 	const layout = useMemo(() => layoutGraph(trace, width), [trace, width]);
 	const view = useMemo(() => projectView(inspector, {
-		kind: viewKind, frameIndex: state.step,
+		kind: viewKind, frameIndex,
 		selectedEntityIds: selectedId ? [selectedId] : [],
 		collapsedGroupIds: collapsed,
-	}), [inspector, state.step, viewKind, selectedId, collapsed]);
+	}), [inspector, frameIndex, viewKind, selectedId, collapsed]);
 	const geometry = useMemo(() => layoutGraphView(layout, view), [layout, view]);
 	const effectiveCamera = constrainCamera(layout, camera ?? fitCamera(layout));
 	const visible = new Set(view.items.filter(item => item.role === "entity")
@@ -287,14 +291,14 @@ export function ThroughlineGraphPlayer({
 	const selected = selectedId
 		? trace.artifact.entities.find(entity => entity.id === selectedId)
 		: undefined;
-	const selectedValue = selected ? inspector.valueAt(state.step, selected.id) : null;
+	const selectedValue = selected ? inspector.valueAt(frameIndex, selected.id) : null;
 	const events = view.items.filter(item => item.role === "event");
-	const step = state.step ? trace.artifact.steps[state.step - 1] : undefined;
-	const summary = "Step " + (state.step + 1) + " of " + trace.frames.length +
+	const step = frameIndex ? trace.artifact.steps[frameIndex - 1] : undefined;
+	const summary = "Step " + (frameIndex + 1) + " of " + trace.frames.length +
 		": " + (step?.label ?? "Initial state") + ". " + view.summary;
 	const spoken = summary + (step?.note ? " " + step.note : "");
 	const voice = useNarration({
-		trace, step: state.step, text: spoken, seekRevision,
+		trace, step: frameIndex, text: spoken, seekRevision,
 		speed: state.speed, playing: state.playing,
 		enabled: narration && narrating, setEnabled: setNarrating,
 		dispatch, offered: narration,
@@ -311,13 +315,13 @@ export function ThroughlineGraphPlayer({
 	const participants = useMemo(() => {
 		const present = new Set<Id>();
 		for (const relation of trace.artifact.relations) {
-			if ((firstSent.get(relation.id) ?? Infinity) <= state.step) {
+			if ((firstSent.get(relation.id) ?? Infinity) <= frameIndex) {
 				present.add(relation.from);
 				present.add(relation.to);
 			}
 		}
 		return present;
-	}, [firstSent, state.step, trace]);
+	}, [firstSent, frameIndex, trace]);
 	const manual = (next: Camera) => setCamera(constrainCamera(layout, next));
 	const fit = () => manual(fitCamera(layout));
 	const zoom = (factor: number) => manual(zoomCamera(layout, effectiveCamera, factor));
@@ -440,6 +444,10 @@ export function ThroughlineGraphPlayer({
 							onKeyDown={keyboardDiagram}
 							onPointerDown={event => {
 								if (event.button !== 0) return;
+								// Source selection and collapse controls own their pointer
+								// sequence. Capturing it on the SVG would steal their click.
+								if ((event.target as Element).closest(
+									'[data-node], [data-group-summary]')) return;
 								dragging.current = { pointerId: event.pointerId,
 									x: event.clientX, y: event.clientY };
 								event.currentTarget.setPointerCapture(event.pointerId);
@@ -460,7 +468,7 @@ export function ThroughlineGraphPlayer({
 							onPointerCancel={() => { dragging.current = null; }}>
 							<title>{title ?? trace.artifact.title ?? "Throughline graph"}</title>
 							<desc>{view.summary}</desc>
-							<GraphDiagram view={view} geometry={geometry} frameIndex={state.step}
+							<GraphDiagram view={view} geometry={geometry} frameIndex={frameIndex}
 								selectedId={selectedId}
 								onSelect={setSelectedId}
 								onExpand={id => setCollapsed(current =>
@@ -474,7 +482,7 @@ export function ThroughlineGraphPlayer({
 					<PlayerControls state={state} dispatch={dispatch}/>
 				</div>
 				<details id={captionId} className="thl-v2-caption" open>
-					<summary>{step?.label ?? "Initial state"} — Step {state.step + 1}/{trace.frames.length}</summary>
+					<summary>{step?.label ?? "Initial state"} — Step {frameIndex + 1}/{trace.frames.length}</summary>
 					<p>{step?.note ?? view.summary}</p>
 					{events.length > 0 && <ol aria-label="Authored step evidence">
 						{events.slice(0, 80).map(item =>
