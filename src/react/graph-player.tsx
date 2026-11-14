@@ -63,12 +63,16 @@ function GraphDiagram({
 }): React.JSX.Element {
 	const entityItems = view.items.filter(item => item.role === "entity");
 	const groups = view.items.filter(item => item.role === "group");
+	const groupsById = new Map(groups.map(item => [item.id, item] as const));
 	const links = view.items.filter(item => item.role === "relation");
 	return (
 		<>
-			{groups.map(item => {
-				const rect = geometry.groups.find(group => group.id === item.id);
-				if (!rect) return null;
+			{/* Paint from the hierarchy layout's parent-first order, never
+			    the artifact declaration order used by source descriptors. An
+			    opaque ancestor panel otherwise obscures a child declared first. */}
+			{geometry.groups.map(rect => {
+				const item = rect.id && groupsById.get(rect.id);
+				if (!item) return null;
 				return (
 					<g key={item.id} data-group={item.source.groupIds?.[0]}
 						data-source-group-ids={item.source.groupIds?.join(" ")}
