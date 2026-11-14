@@ -61,7 +61,8 @@ function replaceNested(
 					configurable: true,
 					writable: true,
 				});
-			return Object.freeze(copy);
+			Object.freeze(copy);
+			return copy;
 		}
 		if (current === null || typeof current !== "object" || Array.isArray(current))
 			reject(at, "record key requires an existing known record parent");
