@@ -270,7 +270,7 @@ description. **Visual item IDs are local to a projection. Cross-frame or
 cross-view selection always uses the original semantic entity IDs.**
 
 ~~~ts
-const inspect = inspectTrace(compileArtifact(artifact));
+const inspect = inspectTrace(compileArtifact(source));
 const view = projectView(inspect, {
   kind: "graph",
   frameIndex: 1,
