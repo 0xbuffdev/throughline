@@ -248,6 +248,47 @@ describe("TL-U05 — v2 graph projection and truthful source identities", () => 
 			expect(value.x + value.w).toBeLessThanOrEqual(layout.width);
 	});
 
+	it("indexes auto-view eligibility once when many declared links have absent endpoints", () => {
+		// This legal shape defeats naive per-seek scans: 1,000 relation IDs
+		// remain modeled present, but every endpoint remains absent. Each
+		// frame would trigger another full relation-array linear search.
+		const stepCount = 1_200;
+		const fixture: VisualArtifact = {
+			schemaVersion: 2,
+			id: "absentEndpoints",
+			origins: [{ id: "author", kind: "authored" }],
+			entities: Array.from({ length: 150 }, (_, i) =>
+				({ id: "actor" + i, label: "Actor " + i, initiallyPresent: false })),
+			relations: Array.from({ length: 1_000 }, (_, i) =>
+				({ id: "relation" + i, from: "actor0", to: "actor1" })),
+			initialState: Object.fromEntries(Array.from({ length: 150 }, (_, i) =>
+				["actor" + i, { status: "known" as const, value: 0 }])),
+			steps: Array.from({ length: stepCount }, (_, i) =>
+				({ id: "empty" + i, label: "No modeled operation", events: [] })),
+		};
+		const fixtureSHA256 = createHash("sha256")
+			.update(serializeArtifact(fixture)).digest("hex");
+		const trace = compileArtifact(fixture);
+		const query = inspectTrace(trace);
+		expect(trace.frames).toHaveLength(stepCount + 1);
+		expect(query.stateAt(0).presentRelationIds).toHaveLength(1_000);
+		expect(query.stateAt(0).presentEntityIds).toHaveLength(0);
+
+		const started = performance.now();
+		for (const frameIndex of [0, 1, 600, 1200, 0, 1200]) {
+			const view = projectView(query, { frameIndex });
+			expect(view.kind).toBe("state-table");
+			expect(view.frameId).toBe(frameIndex === 0 ? "@initial" : "empty" + (frameIndex - 1));
+			expect(view.items.filter(item => item.role === "relation")).toHaveLength(0);
+		}
+		console.info("TL-U05 absent-endpoints view-index benchmark:", JSON.stringify({
+			fixtureSHA256, steps: stepCount, relations: 1_000, entities: 150,
+			runtime: process.version, platform: process.platform,
+			cpu: cpus()[0]?.model ?? "unknown",
+			firstBuildAndSixProjectionsMs: Number((performance.now() - started).toFixed(1)),
+		}));
+	}, 60_000);
+
 	it("benchmarks near-maximum graph routing with source-linked 1,000 relations", () => {
 		const source: VisualArtifact = {
 			schemaVersion: 2,
