@@ -1,4 +1,4 @@
-import { assertOwnedInspector } from "./inspector.js";
+import { inspectedTrace } from "./inspector.js";
 import type {
 	Cell, Id, SemanticEvent, SourceIds, TraceInspector, ViewDescriptor,
 	ViewItem, ViewKind, ViewRequest, VisualArtifact,
@@ -286,7 +286,6 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 		edge.allEvents.push(...(relationEvents.get(relation.id) ?? []));
 		edge.sent.push(...(sentInStep.get(relation.id) ?? []));
 	}
-	let edgeIndex = 0;
 	for (const edge of mapped.values()) {
 		const only = edge.relations.length === 1 ? artifact.relations.find(
 			(relation) => relation.id === edge.relations[0]) : undefined;
@@ -314,7 +313,6 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 					edge.from.startsWith("group_") || edge.to.startsWith("group_"),
 			}),
 		}));
-		edgeIndex++;
 	}
 	items.push(...eventItems(events, artifact, indexByEventId));
 	return descriptor("graph", request.frameIndex === 0
@@ -332,13 +330,12 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
  * an explicit diagnostic, never a fabricated graph.
  */
 export function projectView(inspector: TraceInspector, request: ViewRequest): ViewDescriptor {
-	assertOwnedInspector(inspector);
+	const { artifact, frames } = inspectedTrace(inspector);
 	if (!request || typeof request !== "object" || Array.isArray(request))
 		fail("$.request", "expected a view request");
 	// The inspector owns frozen compiled semantics. Querying this frame first
 	// gives the canonical typed frame-index failure behavior.
 	inspector.stateAt(request.frameIndex);
-	const artifact = inspector.artifact();
 	const entityIds = new Set(artifact.entities.map(e => e.id));
 	const groupIds = new Set(artifact.groups?.map(g => g.id) ?? []);
 	const selected = ids(request.selectedEntityIds, entityIds, "selectedEntityIds");
@@ -351,8 +348,12 @@ export function projectView(inspector: TraceInspector, request: ViewRequest): Vi
 	for (const step of artifact.steps)
 		for (const event of step.events) indexByEventId.set(event.id, n++);
 	const graphPossible = artifact.entities.length > 0 || (artifact.groups?.length ?? 0) > 0;
-	const graphLinks = artifact.relations.some((relation) =>
-		inspector.hasEverPresentRelation(relation.id));
+	const graphLinks = frames.some(frame =>
+		frame.snapshot.presentRelationIds.some(id => {
+			const relation = artifact.relations.find(rel => rel.id === id);
+			return relation && frame.snapshot.presentEntityIds.includes(relation.from) &&
+				frame.snapshot.presentEntityIds.includes(relation.to);
+		}));
 	const hasMessages = artifact.steps.some((step) =>
 		step.events.some((event) => event.type === "message"));
 	let preferred: ViewKind | undefined = request.kind;
