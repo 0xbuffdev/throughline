@@ -472,7 +472,7 @@ describe("TL-U03 — compiler resource-boundary regression", () => {
 		} catch (error) {
 			expect(error).toBeInstanceOf(ArtifactCompilationError);
 			const rejection = error as ArtifactCompilationError;
-			expect(rejection.path).toMatch(/^frames\\[\\d+\\]$/);
+			expect(rejection.path).toMatch(/^frames\[\d+\]$/);
 			expect(rejection.message).toMatch(/expanded trace exceeds 8,000,000 traversal units/);
 			return;
 		}
