@@ -59,6 +59,11 @@ export type {
 	Step,
 	ViewHint,
 	VisualArtifact,
+	SourceIds,
+	ViewDescriptor,
+	ViewItem,
+	ViewKind,
+	ViewRequest,
 } from "./v2/model.js";
 export {
 	ArtifactValidationError,
@@ -72,3 +77,6 @@ export { compileArtifact, ArtifactCompilationError } from "./v2/compiler.js";
 
 /** Pure indexed schema-2 queries with no React, network or legacy adapter. */
 export { inspectTrace, TraceQueryError } from "./v2/inspector.js";
+
+/** Renderer-independent, source-linked v2 graph/placeholder projection. */
+export { projectView } from "./v2/views.js";
