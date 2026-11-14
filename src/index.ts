@@ -42,7 +42,7 @@ export type {
 	HistoryEntry,
 	StateSnapshot,
 	StateChange,
-	TopologyChange,
+	PresenceChange,
 	TraceInspector,
 	WriteChange,
 	Entity as V2Entity,
