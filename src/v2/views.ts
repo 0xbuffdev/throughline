@@ -15,6 +15,48 @@ const aggregateId = (from: string, to: string): Id => "aggregate_" + from + "_" 
 function fail(path: string, reason: string): never {
 	throw new TraceQueryError(path, reason);
 }
+/**
+ * One trusted, immutable view-context index per compiled trace inspector.
+ * On repeated seeking, never rescan every historical frame to decide the
+ * graph fallback, and never repeat O(relations) searches for relation IDs.
+ */
+type ViewIndex = {
+	readonly artifact: VisualArtifact;
+	readonly indexByEventId: ReadonlyMap<Id, number>;
+	readonly graphPossible: boolean;
+	readonly graphLinks: boolean;
+	readonly hasMessages: boolean;
+};
+const viewIndexes = new WeakMap<TraceInspector, ViewIndex>();
+
+function viewIndex(inspector: TraceInspector): ViewIndex {
+	const cached = viewIndexes.get(inspector);
+	if (cached) return cached;
+	const { artifact, frames } = inspectedTrace(inspector);
+	const byId = new Map(artifact.relations.map(relation => [relation.id, relation] as const));
+	const indexByEventId = new Map<Id, number>();
+	let ordinal = 0;
+	for (const step of artifact.steps)
+		for (const event of step.events) indexByEventId.set(event.id, ordinal++);
+	const graphLinks = frames.some(frame => {
+		const presentEntities = new Set(frame.snapshot.presentEntityIds);
+		return frame.snapshot.presentRelationIds.some(id => {
+			const relation = byId.get(id);
+			return relation !== undefined && presentEntities.has(relation.from) &&
+				presentEntities.has(relation.to);
+		});
+	});
+	const result: ViewIndex = {
+		artifact,
+		indexByEventId,
+		graphPossible: artifact.entities.length > 0 || (artifact.groups?.length ?? 0) > 0,
+		graphLinks,
+		hasMessages: artifact.steps.some(step => step.events.some(event => event.type === "message")),
+	};
+	viewIndexes.set(inspector, result);
+	return result;
+}
+
 
 function ids(input: unknown, known: ReadonlySet<Id>, field: string): ReadonlySet<Id> {
 	if (input === undefined) return new Set();
@@ -160,6 +202,9 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 	const relations = artifact.relations.filter((relation) =>
 		presentRelations.has(relation.id) &&
 		presentEntities.has(relation.from) && presentEntities.has(relation.to));
+	const visibleRelationIds = new Set(relations.map(relation => relation.id));
+	const relationById = new Map(artifact.relations.map((relation, index) =>
+		[relation.id, { relation, index }] as const));
 	const events = request.frameIndex > 0 ? artifact.steps[request.frameIndex - 1].events : [];
 	const sentInStep = new Map<Id, Id[]>();
 	const relationEvents = new Map<Id, Id[]>();
@@ -271,7 +316,7 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 	type EdgeAccum = { from: Id; to: Id; relations: Id[]; allEvents: Id[]; sent: Id[] };
 	const mapped = new Map<string, EdgeAccum>();
 	for (const [index, relation] of artifact.relations.entries()) {
-		if (!relations.includes(relation)) continue;
+		if (!visibleRelationIds.has(relation.id)) continue;
 		const from = representative.get(relation.from)!;
 		const to = representative.get(relation.to)!;
 		if (from === to && from.startsWith("group_")) continue; // internal collapsed relations are in group provenance
@@ -287,16 +332,16 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 		edge.sent.push(...(sentInStep.get(relation.id) ?? []));
 	}
 	for (const edge of mapped.values()) {
-		const only = edge.relations.length === 1 ? artifact.relations.find(
-			(relation) => relation.id === edge.relations[0]) : undefined;
+		const only = edge.relations.length === 1
+			? relationById.get(edge.relations[0]) : undefined;
 		const id = edge.relations.length === 1 && edge.from.startsWith("node_") &&
 			edge.to.startsWith("node_")
-			? linkId(artifact.relations.indexOf(only!))
+			? linkId(only!.index)
 			: aggregateId(edge.from, edge.to);
 		items.push(item({
 			id,
 			role: "relation",
-			label: only?.label ?? (edge.relations.length === 1
+			label: only?.relation.label ?? (edge.relations.length === 1
 				? edge.relations[0] : edge.relations.length + " connections"),
 			description: edge.relations.length + " declared modeled connection(s), " +
 				edge.sent.length + " explicit sent event(s) at this frame. " +
@@ -330,7 +375,8 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
  * an explicit diagnostic, never a fabricated graph.
  */
 export function projectView(inspector: TraceInspector, request: ViewRequest): ViewDescriptor {
-	const { artifact, frames } = inspectedTrace(inspector);
+	const indexed = viewIndex(inspector);
+	const { artifact, indexByEventId, graphPossible, graphLinks, hasMessages } = indexed;
 	if (!request || typeof request !== "object" || Array.isArray(request))
 		fail("$.request", "expected a view request");
 	// The inspector owns frozen compiled semantics. Querying this frame first
@@ -343,19 +389,7 @@ export function projectView(inspector: TraceInspector, request: ViewRequest): Vi
 	if (request.kind !== undefined &&
 		!["graph", "sequence", "state-table"].includes(request.kind))
 		fail("$.kind", "unknown view kind");
-	const indexByEventId = new Map<Id, number>();
-	let n = 0;
-	for (const step of artifact.steps)
-		for (const event of step.events) indexByEventId.set(event.id, n++);
-	const graphPossible = artifact.entities.length > 0 || (artifact.groups?.length ?? 0) > 0;
-	const graphLinks = frames.some(frame =>
-		frame.snapshot.presentRelationIds.some(id => {
-			const relation = artifact.relations.find(rel => rel.id === id);
-			return relation && frame.snapshot.presentEntityIds.includes(relation.from) &&
-				frame.snapshot.presentEntityIds.includes(relation.to);
-		}));
-	const hasMessages = artifact.steps.some((step) =>
-		step.events.some((event) => event.type === "message"));
+
 	let preferred: ViewKind | undefined = request.kind;
 	if (!preferred) {
 		const supported = (artifact.views ?? [])
