@@ -5,5 +5,5 @@ export { ThroughlineEmbed, type ThroughlineEmbedProps } from "./embed.js";
 export { ThroughlineScenarios, type ThroughlineScenario, type ThroughlineScenariosProps } from "./scenarios.js";
 export type { ThroughlineGuidance, GuidedChapter, CausalLink, GuidanceEvidence } from "./guidance.js";
 
-/** Native schema-2 graph player; TL-U06 adds the sequence alternative. */
+/** Native schema-2 graph/sequence player with TL-U07 Explain/Inspect. */
 export { ThroughlineGraphPlayer, type ThroughlineGraphPlayerProps } from "./graph-player.js";
