@@ -33,6 +33,10 @@
 			"types": "./dist/examples.d.ts",
 			"default": "./dist/examples.js"
 		},
+		"./node": {
+			"types": "./dist/node/index.d.ts",
+			"default": "./dist/node/index.js"
+		},
 		"./styles/throughline.css": "./src/styles/throughline.css"
 	},
 	"scripts": {
@@ -48,7 +52,8 @@
 		"audit:browser": "node scripts/audit-browser.mjs",
 		"audit:licenses": "node scripts/audit-licenses.mjs",
 		"audit:frameworks": "node scripts/audit-frameworks.mjs",
-		"audit:markdown-hosts": "node scripts/audit-markdown-hosts.mjs"
+		"audit:markdown-hosts": "node scripts/audit-markdown-hosts.mjs",
+		"test:cli": "vitest run src/__tests__/cli.test.ts"
 	},
 	"files": [
 		"dist",
@@ -102,5 +107,8 @@
 		"react",
 		"developer-tools",
 		"education"
-	]
+	],
+	"bin": {
+		"thl": "./dist/cli/main.js"
+	}
 }
