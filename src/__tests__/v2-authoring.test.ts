@@ -59,6 +59,9 @@ describe("TL-U08 — one universal authoring contract", () => {
 			.toThrow(/THL_UNSUPPORTED_DOCUMENT/);
 		expect(() => parseThlBody('{"schemaVersion":1}')).toThrow(/unsupported artifact schema/);
 		expect(() => parseThlBody(" \n ")).toThrow(/THL_EMPTY/);
+		const withNestedDocumentVersion = counter();
+		withNestedDocumentVersion.initialState.counter = { status: "known", value: { documentVersion: 1 } };
+		expect(parseThlBody(JSON.stringify(withNestedDocumentVersion)).kind).toBe("artifact");
 	});
 
 	it("refuses unreviewed and stale materializations without invoking a provider", () => {
@@ -71,6 +74,7 @@ describe("TL-U08 — one universal authoring contract", () => {
 		expect(resolveThlBody(source, { ...options, manifest: manifestFor() }))
 			.toEqual(resolveThlBody(inline()));
 		expect(() => resolveThlBody(source, options)).toThrow(/THL_UNRESOLVED/);
+		expect(() => resolveThlBody(source)).toThrow(/THL_UNRESOLVED/);
 		expect(() => resolveThlBody(source, { ...options, manifest: manifestFor(source, counter(), "unreviewed") }))
 			.toThrow(/THL_UNREVIEWED/);
 		expect(() => resolveThlBody(source + " changed", { ...options, manifest: manifestFor() }))
