@@ -85,6 +85,7 @@ export { projectView } from "./v2/views.js";
 export { projectInspection } from "./v2/inspection.js";
 export type {
 	InspectionChapter, InspectionClaim, InspectionEvidence, InspectionFocus,
+	InspectionRecorded,
 	InspectionRelation, InspectionRequest, InspectionSelection, InspectionStateRow,
 	InspectionView,
 } from "./v2/inspection.js";
