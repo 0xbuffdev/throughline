@@ -71,7 +71,7 @@ describe("TL-U06 — pure indexed evidence-aware message sequence", () => {
 				type: "message", phase: "received", messageId: "order42",
 				frameIndex: 2, frameId: "seeOriginal", current: true,
 				originId: "observer", originKind: "observed",
-				missingPriorSent: false,
+				missingSentThroughStep: false,
 			},
 		});
 		expect(event(received, "originalProcessed").description)
@@ -118,6 +118,68 @@ describe("TL-U06 — pure indexed evidence-aware message sequence", () => {
 			!Array.isArray(row.data) && row.data.type === "message")).toHaveLength(3);
 	});
 
+	it("treats same-step reversed phases as a set, not physical chronology", () => {
+		const source: VisualArtifact = {
+			schemaVersion: 2,
+			id: "sameStepPhaseOrder",
+			origins: [{ id: "author", kind: "authored" }],
+			entities: [{ id: "sender", label: "Sender" }, { id: "recipient", label: "Recipient" }],
+			relations: [{ id: "wire", from: "sender", to: "recipient" }],
+			initialState: {
+				sender: { status: "known", value: 0 },
+				recipient: { status: "unknown", reason: "no modeled persistence" },
+			},
+			steps: [
+				{ id: "atom", label: "Atomic observation set", events: [
+					{ id: "beforeFuture", originId: "author", type: "message",
+						relationId: "wire", messageId: "later", phase: "received" },
+					{ id: "receivedFirst", originId: "author", type: "message",
+						relationId: "wire", messageId: "same", phase: "received" },
+					{ id: "sentSecond", originId: "author", type: "message",
+						relationId: "wire", messageId: "same", phase: "sent" },
+					{ id: "processedThird", originId: "author", type: "message",
+						relationId: "wire", messageId: "same", phase: "processed" },
+				] },
+				{ id: "later", label: "Later distinct send", events: [
+					{ id: "futureSent", originId: "author", type: "message",
+						relationId: "wire", messageId: "later", phase: "sent" },
+				] },
+			],
+		};
+		const inspector = inspect(source);
+		const atom = projectView(inspector, { kind: "sequence", frameIndex: 1 });
+		expect(items(atom, "event").map(row => row.source.eventIds?.[0]))
+			.toEqual(["beforeFuture", "receivedFirst", "sentSecond", "processedThird"]);
+		expect(event(atom, "receivedFirst").data).toMatchObject({
+			missingSentThroughStep: false, frameIndex: 1, phase: "received",
+		});
+		expect(event(atom, "processedThird").data).toMatchObject({
+			missingSentThroughStep: false, frameIndex: 1,
+		});
+		expect(event(atom, "receivedFirst").description).not.toContain("evidence gap");
+		expect(correlation(atom, "same").data).toMatchObject({
+			phases: { sent: 1, received: 1, acknowledged: 0, processed: 1 },
+		});
+		expect(event(atom, "beforeFuture").data).toMatchObject({
+			missingSentThroughStep: true,
+		});
+		expect(event(atom, "beforeFuture").description)
+			.toContain("No sent event was modeled through this atomic step");
+		const later = projectView(inspector, { kind: "sequence", frameIndex: 2 });
+		expect(event(later, "receivedFirst").data).toMatchObject({
+			missingSentThroughStep: false,
+		});
+		expect(event(later, "beforeFuture").data).toMatchObject({
+			missingSentThroughStep: true,
+		});
+		expect(event(later, "futureSent").data).toMatchObject({
+			missingSentThroughStep: false,
+		});
+		expect(inspector.valueAt(2, "recipient")).toEqual({
+			status: "unknown", reason: "no modeled persistence",
+		});
+	});
+
 	it("keeps distinct retry IDs, duplicate receipt evidence, isolated acknowledgements and source IDs", () => {
 		const query = inspect();
 		const sentRetry = projectView(query, { kind: "sequence", frameIndex: 5 });
@@ -150,7 +212,7 @@ describe("TL-U06 — pure indexed evidence-aware message sequence", () => {
 			phases: { sent: 0, received: 0, acknowledged: 1, processed: 0 },
 		});
 		expect(event(imported, "isolatedAck").data).toMatchObject({
-			phase: "acknowledged", missingPriorSent: true, frameIndex: 8,
+			phase: "acknowledged", missingSentThroughStep: true, frameIndex: 8,
 		});
 		expect(event(imported, "isolatedAck").description)
 			.toContain("not proof no send occurred");
@@ -247,6 +309,62 @@ describe("TL-U06 — pure indexed evidence-aware message sequence", () => {
 		expect(() => (correlation(a, "order42").source.eventIds as string[])
 			.push("invented")).toThrow(TypeError);
 	});
+
+	it("reuses indexed relations for 10,000 events over 1,000 declared links", () => {
+		// Pathological for an O(events * relations) .find(...) normalizer:
+		// every event carries a validated relation ID distributed across all
+		// 1,000 links. Duplicate sends stay separate explicit source events.
+		const relationCount = 1_000;
+		const stepCount = 2_000;
+		const eventCount = 10_000;
+		const artifact: VisualArtifact = {
+			schemaVersion: 2,
+			id: "distributedMessages",
+			origins: [{ id: "author", kind: "authored" }],
+			entities: [{ id: "a", label: "A" }, { id: "b", label: "B" }],
+			relations: Array.from({ length: relationCount }, (_, i) =>
+				({ id: "r" + i, from: "a", to: "b" })),
+			initialState: {
+				a: { status: "known", value: 0 },
+				b: { status: "unknown" },
+			},
+			steps: Array.from({ length: stepCount }, (_, i) => ({
+				id: "s" + i, label: "Step " + i,
+				events: Array.from({ length: 5 }, (_, j) => {
+					const ordinal = i * 5 + j;
+					const id = ordinal % relationCount;
+					return {
+						id: "e" + ordinal, originId: "author",
+						type: "message" as const, relationId: "r" + id,
+						messageId: "m" + id, phase: "sent" as const,
+					};
+				}),
+			})),
+		};
+		const fixtureSHA256 = createHash("sha256")
+			.update(serializeArtifact(artifact)).digest("hex");
+		const query = inspect(artifact);
+		const start = performance.now();
+		const projected = projectView(query, { frameIndex: stepCount });
+		const duration = Number((performance.now() - start).toFixed(1));
+		expect(projected.kind).toBe("sequence");
+		expect(items(projected, "event")).toHaveLength(eventCount);
+		expect(items(projected, "value")).toHaveLength(relationCount);
+		expect(correlation(projected, "m999").source.relationIds).toEqual(["r999"]);
+		expect(correlation(projected, "m999").source.eventIds).toHaveLength(10);
+		expect(event(projected, "e9999").source).toMatchObject({
+			entityIds: ["a", "b"], relationIds: ["r999"], eventIds: ["e9999"],
+		});
+		expect(correlation(projected, "m999").data).toMatchObject({
+			phases: { sent: 10, received: 0, acknowledged: 0, processed: 0 },
+		});
+		console.info("TL-U06 indexed multi-relation sequence benchmark:", JSON.stringify({
+			fixtureSHA256, events: eventCount, steps: stepCount, relations: relationCount,
+			node: process.version, platform: process.platform,
+			cpu: cpus()[0]?.model ?? "unknown",
+			projectTenThousandEventsAcrossOneThousandRelationsMs: duration,
+		}));
+	}, 60_000);
 
 	it("bounds projection on the accepted event ceiling without invented rows", () => {
 		const steps = ARTIFACT_LIMITS.steps;
