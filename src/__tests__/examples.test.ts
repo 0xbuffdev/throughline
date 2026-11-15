@@ -141,13 +141,18 @@ describe("TL-U09 — first-party schema-2 reference contract", () => {
 		expect(expected).toEqual([[19, 22], [43, 50]]);
 		expect(knownAt(trace, "cell11", "result")).toEqual(expected);
 		const outputEvents = inspector.history("result");
-		expect(outputEvents.map(e => [e.eventId, e.path, e.after]))
+		expect(outputEvents.map(e => [e.eventId, e.path]))
 			.toEqual([
-				["write00", [0, 0], { status: "known", value: 19 }],
-				["write01", [0, 1], { status: "known", value: 22 }],
-				["write10", [1, 0], { status: "known", value: 43 }],
-				["write11", [1, 1], { status: "known", value: 50 }],
+				["write00", [0, 0]], ["write01", [0, 1]],
+				["write10", [1, 0]], ["write11", [1, 1]],
 			]);
+		for (const [stepId, row, col, expectedCell] of [
+			["cell00", 0, 0, 19], ["cell01", 0, 1, 22],
+			["cell10", 1, 0, 43], ["cell11", 1, 1, 50],
+		] as const) {
+			expect(inspector.valueAt(frameIndex(trace, stepId), "result", [row, col]))
+				.toEqual({ status: "known", value: expectedCell });
+		}
 		expect(inspector.history("left")).toEqual([]);
 		expect(inspector.history("right")).toEqual([]);
 	});
