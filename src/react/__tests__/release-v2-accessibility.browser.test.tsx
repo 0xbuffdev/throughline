@@ -69,8 +69,8 @@ it("preserves labeled timeline navigation, explicit evidence and inspect control
 		.toBeVisible();
 	expect(element.scrollWidth).toBeLessThanOrEqual(element.clientWidth + 2);
 	// Audio is opt-in; no source fixture enables narration or sonification.
-	expect(screen.getByRole("button", { name: "Sonify trace" }).query()).toBeNull();
-	expect(screen.getByRole("button", { name: "Narrate captions" }).query()).toBeNull();
+	expect(document.querySelectorAll('button[aria-label="Sonify trace"]')).toHaveLength(0);
+	expect(document.querySelectorAll('button[aria-label="Narrate captions"]')).toHaveLength(0);
 }, 30_000);
 
 it("keeps original source IDs and a readable state equivalent when views switch", async () => {
