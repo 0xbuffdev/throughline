@@ -23,6 +23,7 @@ and render it with the optional native React player.
   trust boundaries.
 - [Reference authoring](authoring.md): building typed, evidence-grounded examples.
 - [Release-quality gate](release-quality.md): measured v2 performance, security, browser evidence and manual accessibility checklist.
+- [v0.2.0 release candidate notes](release-notes-v0.2.0.md): intended breaking schema-2 contract; not yet published.
 - [Release procedure](releasing.md): exact verification commands, signing,
   staged publication and post-release checks.
 - [v0.1.0 release notes](release-notes-v0.1.0.md) and
