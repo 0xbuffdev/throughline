@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
 	artifactSha256, compileArtifact, inspectTrace, parseArtifactJson, projectView,
 	resolveThlBody, serializeArtifact, sha256Text, validateArtifact,
-	type CompiledTrace, type SemanticEvent, type VisualArtifact,
+	type Cell, type CompiledTrace, type SemanticEvent, type ViewDescriptor,
+	type VisualArtifact,
 } from "../index.js";
 import { EXAMPLES } from "../examples.js";
 
@@ -28,6 +29,54 @@ const knownAt = (trace: CompiledTrace, stepId: string, entityId: string) => {
 	if (cell.status !== "known") throw new Error("Expected known " + entityId);
 	return cell.value;
 };
+
+
+function atStep(trace: CompiledTrace, stepId: string, kind: "graph" | "sequence" | "state-table"): ViewDescriptor {
+	return projectView(inspectTrace(trace), { kind, frameIndex: frameIndex(trace, stepId) });
+}
+
+/** The same exact compiled cell must be present in graph and state-table. */
+function expectProjectedCell(
+	view: ViewDescriptor, kind: "graph" | "state-table",
+	entityId: string, cell: Cell,
+): void {
+	expect(view.kind).toBe(kind);
+	const role = kind === "graph" ? "entity" : "value";
+	const item = view.items.find(item => item.role === role &&
+		item.source.entityIds?.includes(entityId));
+	expect(item, kind + ": missing " + entityId).toBeDefined();
+	expect((item?.data as { cell?: Cell } | undefined)?.cell)
+		.toEqual(cell);
+}
+
+function expectEvent(view: ViewDescriptor, eventId: string, type: string, phase?: string): void {
+	const hits = view.items.filter(item => item.role === "event" &&
+		item.source.eventIds?.includes(eventId));
+	expect(hits, view.kind + ": " + eventId).toHaveLength(1);
+	const data = hits[0].data as { type?: string; phase?: string };
+	expect(data.type).toBe(type);
+	expect(data.phase).toBe(phase);
+}
+
+function correlation(view: ViewDescriptor, messageId: string) {
+	expect(view.kind).toBe("sequence");
+	const matches = view.items.filter(item => item.role === "value" &&
+		(item.data as { messageId?: string } | undefined)?.messageId === messageId);
+	expect(matches, "correlation for " + messageId).toHaveLength(1);
+	return matches[0]!;
+}
+
+function expectPhases(
+	view: ViewDescriptor, messageId: string,
+	sent: number, received: number, acknowledged: number, processed: number,
+	eventIds: readonly string[],
+): void {
+	const item = correlation(view, messageId);
+	expect((item.data as { phases?: unknown }).phases).toEqual({
+		sent, received, acknowledged, processed,
+	});
+	expect(item.source.eventIds).toEqual(eventIds);
+}
 
 describe("TL-U09 — first-party schema-2 reference contract", () => {
 	it("ships four unique domain-neutral typed artifacts and matched static baselines", () => {
@@ -143,6 +192,150 @@ describe("TL-U09 — first-party schema-2 reference contract", () => {
 		expect(inspector.diff(0, trace.frames.length - 1).map(change => change.eventId))
 			.toEqual(allEvents(artifact).filter(event => event.type === "write" || event.type === "topology")
 				.map(event => event.id));
+	});
+
+
+	it.each([
+		["factorial", "return4", "result", { status: "known", value: 24 }, "factorialResult"],
+		["matrix", "cell11", "result", { status: "known", value: [[19, 22], [43, 50]] }, "write11"],
+		["binary", "finalCarry", "sum", { status: "known", value: [1, 0, 0, 0, 1] }, "leadingCarry"],
+	] as const)("projects %s final modeled results and exact authored evidence in graph, table and history",
+		(id, stepId, entityId, expected, eventId) => {
+			const { trace } = reference(id);
+			const history = inspectTrace(trace).history(entityId);
+			expect(history.some(entry => entry.eventId === eventId)).toBe(true);
+			for (const kind of ["graph", "state-table"] as const) {
+				const view = atStep(trace, stepId, kind);
+				expectProjectedCell(view, kind, entityId, expected);
+				expectEvent(view, eventId, "write");
+				expect(view.items.length).toBeGreaterThan(0);
+			}
+			const fallback = atStep(trace, stepId, "sequence");
+			expect(fallback.kind).toBe("state-table");
+			expect(fallback.diagnostics?.join(" ")).toMatch(/requires an explicit message/);
+			expectProjectedCell(fallback, "state-table", entityId, expected);
+			expectEvent(fallback, eventId, "write");
+			expect(fallback.items.some(item => item.role === "event" &&
+				(item.data as { type?: string })?.type === "message")).toBe(false);
+		});
+
+	it("retains checkout sent, received and processed facts across sequence, graph, table and history", () => {
+		const { trace, example } = reference("checkout");
+		const inspector = inspectTrace(trace);
+		// At first charge send: graph must show exactly one active send,
+		// table must carry that event, and sequence may not invent receipt.
+		const firstGraph = atStep(trace, "sendCharge", "graph");
+		const firstTable = atStep(trace, "sendCharge", "state-table");
+		const firstSequence = atStep(trace, "sendCharge", "sequence");
+		expectEvent(firstGraph, "chargeFirstSent", "message", "sent");
+		expectEvent(firstTable, "chargeFirstSent", "message", "sent");
+		expectEvent(firstSequence, "chargeFirstSent", "message", "sent");
+		const edge = firstGraph.items.find(item => item.role === "relation" &&
+			item.source.relationIds?.includes("charge"));
+		expect(edge).toBeDefined();
+		expect(edge?.source.eventIds).toEqual(["chargeFirstSent"]);
+		expect((edge?.data as { sentCurrent?: number }).sentCurrent).toBe(1);
+		expectPhases(firstSequence, "paymentFirst", 1, 0, 0, 0, ["chargeFirstSent"]);
+		for (const kind of ["graph", "state-table"] as const) {
+			expectProjectedCell(atStep(trace, "sendCharge", kind), kind,
+				"provider", { status: "known", value: { chargedKeys: [], count: 0 } });
+			expectProjectedCell(atStep(trace, "sendCharge", kind), kind,
+				"outcome", { status: "unknown", reason: "no acknowledged provider result at worker" });
+		}
+
+		// The fictional provider records a modeled receipt+processing and
+		// separate state write. No worker acknowledgement is synthesized.
+		for (const kind of ["graph", "state-table", "sequence"] as const) {
+			const view = atStep(trace, "providerCharge", kind);
+			expectEvent(view, "chargeFirstReceived", "message", "received");
+			expectEvent(view, "chargeFirstProcessed", "message", "processed");
+			expectEvent(view, "providerCharged", "write");
+		}
+		expectPhases(atStep(trace, "providerCharge", "sequence"),
+			"paymentFirst", 1, 1, 0, 1,
+			["chargeFirstSent", "chargeFirstReceived", "chargeFirstProcessed"]);
+		const processedGraph = atStep(trace, "providerCharge", "graph");
+		const processedEdge = processedGraph.items.find(item => item.role === "relation" &&
+			item.source.relationIds?.includes("charge"));
+		expect((processedEdge?.data as { sentCurrent?: number }).sentCurrent).toBe(0);
+		expect((processedEdge?.data as { observedCurrent?: number }).observedCurrent).toBe(2);
+		expect(inspector.history("provider").map(item => item.eventId))
+			.toEqual(["providerCharged", "providerDedup"]);
+		for (const kind of ["graph", "state-table"] as const)
+			expectProjectedCell(atStep(trace, "providerCharge", kind), kind,
+				"provider", { status: "known", value: { chargedKeys: ["pay-ord-1042"], count: 1 } });
+
+		// A timeout is a standalone write, not a message phase or a
+		// positive finding that a reply was lost.
+		const timeoutSeq = atStep(trace, "timeout", "sequence");
+		const timeoutGraph = atStep(trace, "timeout", "graph");
+		const timeoutTable = atStep(trace, "timeout", "state-table");
+		for (const view of [timeoutSeq, timeoutGraph, timeoutTable]) {
+			expectEvent(view, "workerTimeout", "write");
+			expect(view.items.some(item => item.role === "event" &&
+				(item.data as { messageId?: string } | undefined)?.messageId === "timeout"))
+				.toBe(false);
+		}
+		expectPhases(timeoutSeq, "paymentFirst", 1, 1, 0, 1,
+			["chargeFirstSent", "chargeFirstReceived", "chargeFirstProcessed"]);
+		for (const kind of ["graph", "state-table"] as const) {
+			const view = kind === "graph" ? timeoutGraph : timeoutTable;
+			expectProjectedCell(view, kind, "outcome",
+				{ status: "unknown", reason: "no acknowledged provider result at worker" });
+			expectProjectedCell(view, kind, "receipt",
+				{ status: "known", value: { status: "unconfirmed" } });
+			expectProjectedCell(view, kind, "order",
+				{ status: "known", value: { status: "awaiting_payment" } });
+		}
+		expect(inspector.history("outcome")).toHaveLength(1);
+		expect(inspector.history("outcome")[0].eventId).toBe("outcomeConfirmed");
+
+		// Retry is a distinct message ID but the exact same idempotency
+		// key, and only the simulated provider's explicit write can dedup.
+		const retrySeq = atStep(trace, "deduplicate", "sequence");
+		expectPhases(retrySeq, "paymentRetry", 1, 1, 0, 1,
+			["chargeRetrySent", "chargeRetryReceived", "chargeRetryProcessed"]);
+		for (const kind of ["graph", "state-table", "sequence"] as const)
+			expectEvent(atStep(trace, "deduplicate", kind), "providerDedup", "write");
+
+		// Sent reply before receipt: the worker is still uncertain, then
+		// only explicit writes advance outcome, receipt and order.
+		const pendingReply = atStep(trace, "sendReply", "sequence");
+		expectPhases(pendingReply, "confirmedResult", 1, 0, 0, 0, ["resultSent"]);
+		for (const kind of ["graph", "state-table"] as const)
+			expectProjectedCell(atStep(trace, "sendReply", kind), kind,
+				"outcome", { status: "unknown", reason: "no acknowledged provider result at worker" });
+		const receivedReply = atStep(trace, "receiveReply", "sequence");
+		expectPhases(receivedReply, "confirmedResult", 1, 1, 0, 0,
+			["resultSent", "resultReceived"]);
+		for (const [stepId, eventId, entityId, expected] of [
+			["receiveReply", "outcomeConfirmed", "outcome", { status: "approved", key: "pay-ord-1042" }],
+			["persistReceipt", "receiptPaid", "receipt", { status: "paid", key: "pay-ord-1042" }],
+			["markOrder", "orderPaid", "order", { status: "paid" }],
+			["customerReceives", "customerConfirmed", "customer", { checkoutStatus: "confirmed" }],
+		] as const) {
+			expect(inspector.history(entityId).some(item => item.eventId === eventId)).toBe(true);
+			for (const kind of ["graph", "state-table", "sequence"] as const) {
+				const view = atStep(trace, stepId, kind);
+				expectEvent(view, eventId, "write");
+				if (kind !== "sequence")
+					expectProjectedCell(view, kind, entityId, { status: "known", value: expected });
+			}
+		}
+		// Send/receipt/processed have exact IDs and totals; there are NO
+		// acknowledgements, invented deliveries, or synthetic writes.
+		const finalSeq = atStep(trace, "customerReceives", "sequence");
+		const authored = example.artifact.steps.flatMap(step => step.events);
+		expect(finalSeq.items.filter(item => item.role === "event")
+			.flatMap(item => item.source.eventIds ?? []))
+			.toEqual(authored.map(event => event.id));
+		expect(finalSeq.items.filter(item => item.role === "event" &&
+			(item.data as { phase?: string } | undefined)?.phase === "acknowledged"))
+			.toHaveLength(0);
+		expect(finalSeq.items.filter(item => item.role === "event").length)
+			.toBe(authored.length);
+		expect(inspector.diff(0, trace.frames.length - 1).length)
+			.toBe(authored.filter(event => event.type === "write" || event.type === "topology").length);
 	});
 
 	it("factorial stack depth, return chain and final result match factorial(4)", () => {
