@@ -3,10 +3,10 @@ import {
 } from "../v2/authoring.js";
 import { parseStrictJsonData } from "../v2/validator.js";
 import { TrustedContentRoot, TrustedFileError } from "./files.js";
-import { scanMarkdownFences, type MarkdownFence } from "./markdown.js";
+import { scanMarkdownFences, type MarkdownFence, type MarkdownFormat } from "./markdown.js";
 
 export { TrustedContentRoot, TrustedFileError, scanMarkdownFences };
-export type { MarkdownFence };
+export type { MarkdownFence, MarkdownFormat };
 
 export type NodeHostOptions = Readonly<{
 	/** Trusted repository/content root. All sidecar paths resolve within it. */
