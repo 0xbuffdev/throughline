@@ -86,7 +86,18 @@ if (ownPath === fileURLToPath(import.meta.url)) {
 	]);
 	assert.equal(packument.versions?.[manifest.version]?.version, manifest.version,
 		"Published version is absent in the npm packument");
-	const archive = await get(metadata.dist?.tarball, true);
+	// Validate before downloading, not merely after checksum verification:
+	// malicious or corrupted registry metadata must not turn this tool into
+	// an arbitrary remote fetch primitive.
+	assert(typeof metadata.dist?.tarball === "string",
+		"Published npm version must advertise a tarball");
+	const permittedTarball = new URL(metadata.dist.tarball);
+	assert.equal(permittedTarball.origin, REGISTRY,
+		"Refusing to fetch a non-npm registry tarball URL");
+	assert.equal(permittedTarball.pathname,
+		"/@0xbuff/throughline/-/throughline-" + manifest.version + ".tgz",
+		"Refusing a substituted registry tarball path");
+	const archive = await get(permittedTarball.href, true);
 	const verified = verifyPublishedRegistryRelease({
 		manifest, metadata, distTags: packument["dist-tags"],
 		archive, expectedSha256: manifest.sha256,
