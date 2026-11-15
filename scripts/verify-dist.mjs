@@ -90,20 +90,29 @@ assert.match(help.stdout, /thl materialize/);
 const pure = readFileSync(resolve(root, "dist/index.js"), "utf8");
 assert(!pure.includes("node:fs") && !pure.includes("node:crypto"),
 	"Core root must not import CLI filesystem or crypto dependencies");
-const { compile } = await load("index.js");
-assert.equal(typeof compile, "function");
-const trace = compile("```thl binary\na = 1\nb = 1\n```");
-assert.deepEqual(
-	trace.frames.at(-1)?.state.entities.find((entity) => entity.id === "sum")
-		?.value,
-	[1, 0],
-);
+const core = await load("index.js");
+assert.equal(typeof core.compile, "undefined", "Old domain compiler is not exported");
+assert.equal(typeof core.SUPPORTED_DOMAINS, "undefined", "Old domain router not public");
+assert.equal(typeof core.compileArtifact, "function");
+const exampleArtifact = {
+	schemaVersion: 2, id: "counter",
+	origins: [{ id: "author", kind: "authored" }],
+	entities: [{ id: "counter", label: "Counter" }], relations: [],
+	initialState: { counter: { status: "known", value: 0 } },
+	steps: [{ id: "increment", label: "Increment", events: [
+		{ id: "write", originId: "author", type: "write",
+			entityId: "counter", path: [], value: { status: "known", value: 1 } },
+	] }],
+};
+const trace = core.compileArtifact(exampleArtifact);
+assert.deepEqual(trace.frames.map(frame => frame.id), ["@initial", "increment"]);
+assert.deepEqual(core.inspectTrace(trace).valueAt(1, "counter"), { status: "known", value: 1 });
 const { remarkThroughline } = await load("remark/index.js");
 assert.equal(typeof remarkThroughline, "function");
 const { EXAMPLES } = await load("examples.js");
 assert(Array.isArray(EXAMPLES) && EXAMPLES.length === 4);
 assert(EXAMPLES.every(example => example.artifact.schemaVersion === 2 &&
 	Array.isArray(example.questions) && example.questions.length >= 3));
-const { ThroughlinePlayer } = await load("react/index.js");
-assert.equal(typeof ThroughlinePlayer, "function");
+const react = await load("react/index.js");
+assert.deepEqual(Object.keys(react).sort(), ["ThroughlineEmbed", "ThroughlineGraphPlayer"].sort());
 console.log("Throughline build exports, declarations, maps and smoke checks passed.");
