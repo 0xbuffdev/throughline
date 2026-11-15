@@ -62,7 +62,7 @@ const artifact = {
 };
 const trace = compileArtifact(artifact);
 export function Example() {
-  return <ThroughlineGraphPlayer trace={trace} title="Explicit message evidence" />;
+  return <ThroughlineGraphPlayer trace={trace} initialView="graph" title="Explicit message evidence" />;
 }
 ~~~
 
@@ -71,8 +71,10 @@ invent a receive, acknowledgement, processing event or destination write.
 
 ### Native v2 message sequence
 
-The native v2 player now supports a source-linked **Sequence** option under
-Player options. It can also start in sequence mode:
+The native v2 player defaults to the highest-priority compatible validated
+artifact view hint, or automatically selects Sequence when modeled message
+events exist. It also supports a manual **Sequence** option under Player options.
+A caller can explicitly override the initial view:
 
 ~~~tsx
 // `trace` is a compiler-owned CompiledTrace (schema 2).
@@ -86,6 +88,11 @@ Retries require explicit source events (with distinct event IDs); an explicit
 timeout remains a state write or observation, never a fifth message phase.
 The four-phase summary and accessible chronological text table expose the
 declared origin, relation and event IDs without inventing network results.
+Within one atomic step, event-array order is for display only: a received
+phase placed before a modeled sent in the **same step** is not a missing-send
+gap. The correlation display uses fixed 120-card pages even for thousands
+of distinct IDs; the full source-linked summaries remain accessible through
+earlier/newer page controls.
 Switching to Graph or State table retains the current frame and selected
 semantic entity. The pure `projectView` auto-choice is stable across frames
 and prioritizes implemented compatible author hints.
