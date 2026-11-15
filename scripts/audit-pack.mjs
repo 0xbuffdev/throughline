@@ -273,6 +273,23 @@ try {
 	);
 	run("node", ["node_modules/typescript/bin/tsc", "-p", "."], consumer);
 
+	// Copy the EXACT public user-guide quickstart into an independently packed
+	// Node-only consumer. Typecheck it against the installed declarations, then
+	// run the same syntax as ESM (the snippet intentionally needs no TS erasure).
+	const guide = readFileSync(join(root, "docs", "user-guide.md"), "utf8");
+	const snippet = guide.match(/For a \\*\\*standalone programmatic\\*\\* example[\\s\\S]*?~~~ts\\n([\\s\\S]*?)\\n~~~/)?.[1];
+	assert(snippet, "Missing complete documented standalone programmatic quickstart");
+	writeFileSync(join(consumer, "guide-quickstart.ts"), snippet + "\\n");
+	run("node", [
+		"node_modules/typescript/bin/tsc", "--strict", "--noEmit", "--skipLibCheck",
+		"--module", "NodeNext", "--moduleResolution", "NodeNext",
+		"--target", "ES2022", "guide-quickstart.ts",
+	], consumer);
+	writeFileSync(join(consumer, "guide-quickstart.mjs"), snippet + "\\n");
+	assert.match(run("node", ["guide-quickstart.mjs"], consumer),
+		/status: ['"]known['"], value: 24/,
+		"Documented quickstart must execute through the packed schema-2 public exports");
+
 	// Run an independent real Remark parser without React. The adapter itself
 	// adds no runtime dependency to core or the published package.
 	run("npm", ["install", ...flags, "--no-save", "unified@11.0.5", "remark-parse@11.0.0", "remark-stringify@11.0.0"], consumer);
