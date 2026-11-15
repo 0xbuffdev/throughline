@@ -105,7 +105,7 @@ function checkFile(
 	manifest: SidecarManifest | undefined, io: CliIO,
 ): number {
 	const markdown = root.read(relative);
-	const fences = scanMarkdownFences(markdown);
+	const fences = scanMarkdownFences(markdown, { format: relative.endsWith(".mdx") ? "mdx" : "md" });
 	let checked = 0;
 	for (const fence of fences) {
 		if (fence.lang !== "thl") continue;
@@ -156,7 +156,7 @@ function materialize(root: TrustedContentRoot, args: Arguments, io: CliIO): void
 		!Number.isSafeInteger(Number(ordinalRaw)))
 		usage("--ordinal must be a zero-based safe integer");
 	const ordinal = Number(ordinalRaw);
-	const fences = scanMarkdownFences(root.read(document));
+	const fences = scanMarkdownFences(root.read(document), { format: document.endsWith(".mdx") ? "mdx" : "md" });
 	const fence = fences.find(f => f.lang === "thl" && f.ordinal === ordinal);
 	if (!fence)
 		throw new ThroughlineCliError("THL_UNRESOLVED",
