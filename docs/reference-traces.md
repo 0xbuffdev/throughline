@@ -4,7 +4,7 @@ Throughline's four first-party references are **schema-2 authored artifacts**.
 They are teaching models, not executable source programs, telemetry or
 scientific proof. Their canonical data and matched prose/questions live in
 [src/reference](../src/reference) and are exported through
-\`@0xbuff/throughline/examples\`.
+`@0xbuff/throughline/examples`.
 
 All four pass the same strict artifact validator, deterministic replay compiler,
 indexed history queries and source-preserving view projections. No domain-tag
@@ -26,10 +26,10 @@ state-table rather than fabricating messages.
 
 | Reference | Truth anchor | Primary default view | Key source evidence |
 | --- | --- | --- | --- |
-| [Factorial](../src/reference/factorial.ts) | 4! = 24; stack depth rises to 4, then unwinds to 0 | Graph | \`push1\`, \`return1\`, \`value2\`, \`value6\`, \`factorialResult\` |
-| [Matrix multiplication](../src/reference/matrix.ts) | [[1,2],[3,4]] × [[5,6],[7,8]] = [[19,22],[43,50]] | State table | \`write00\`, \`write01\`, \`write10\`, \`write11\` |
-| [Binary addition](../src/reference/binary.ts) | 1011₂ + 0110₂ = 10001₂ = 17₁₀ | State table | \`sumBit0\`–\`sumBit3\`, \`leadingCarry\`, \`decimalSum\` |
-| [Distributed checkout](../src/reference/checkout.ts) | Unknown worker outcome until an explicit reply; one charge **only under the fictional idempotent-provider assumption** | Sequence | \`chargeFirstSent\`, \`providerCharged\`, \`workerTimeout\`, \`providerDedup\`, \`resultReceived\`, \`receiptPaid\`, \`orderPaid\` |
+| [Factorial](../src/reference/factorial.ts) | 4! = 24; stack depth rises to 4, then unwinds to 0 | Graph | `push1`, `return1`, `value2`, `value6`, `factorialResult` |
+| [Matrix multiplication](../src/reference/matrix.ts) | [[1,2],[3,4]] × [[5,6],[7,8]] = [[19,22],[43,50]] | State table | `write00`, `write01`, `write10`, `write11` |
+| [Binary addition](../src/reference/binary.ts) | 1011₂ + 0110₂ = 10001₂ = 17₁₀ | State table | `sumBit0`–`sumBit3`, `leadingCarry`, `decimalSum` |
+| [Distributed checkout](../src/reference/checkout.ts) | Unknown worker outcome until an explicit reply; one charge **only under the fictional idempotent-provider assumption** | Sequence | `chargeFirstSent`, `providerCharged`, `workerTimeout`, `providerDedup`, `resultReceived`, `receiptPaid`, `orderPaid` |
 
 ### Factorial — what is actually modeled
 
@@ -40,8 +40,8 @@ These are author-defined mathematical frames, **not observations of JavaScript,
 Rust or a particular engine's physical stack**.
 
 A matched question asks for the base-case return and points directly to
-\`return1\`. Another asks for the final factorial value and cites
-\`value24\` and \`factorialResult\`.
+`return1`. Another asks for the final factorial value and cites
+`value24` and `factorialResult`.
 
 ### Matrix — what is actually modeled
 
@@ -49,10 +49,10 @@ The left operand A is [[1,2],[3,4]] and the right operand B is
 [[5,6],[7,8]]. Each of the four output cells receives an explicit
 nested write after its row–column dot product has been authored.
 The result is [[19,22],[43,50]]. Both inputs remain unchanged.
-The references' \`terms\` state records pairwise products at each cell.
+The references' `terms` state records pairwise products at each cell.
 
-A matched question asks why C[0][0] equals 19 and cites \`terms00\`
-and \`write00\`. No view performs matrix multiplication, and the zero
+A matched question asks why C[0][0] equals 19 and cites `terms00`
+and `write00`. No view performs matrix multiplication, and the zero
 initialization is a teaching choice, not a runtime allocation claim.
 
 ### Binary — what is actually modeled
@@ -61,8 +61,8 @@ Unsigned 4-bit addends 1011 and 0110 are added from right to left.
 Each step writes the corresponding bit and carry-out; a final event
 writes the leading carry and decimal result. The full **5-bit** answer
 is 10001, or 17. This is not signed arithmetic or a real-time hardware
-simulation. The question on the first carry cites \`sumBit1\` and
-\`carryBit1\`.
+simulation. The question on the first carry cites `sumBit1` and
+`carryBit1`.
 
 ### Distributed checkout — what is actually modeled
 
@@ -86,7 +86,7 @@ processing event and persistence write has a separate evidence ID.
 
 For example, the question *"Can the worker classify this payment as
 declined after the timeout?"* has the expected answer *"No; the
-outcome remains unknown"* and cites \`workerTimeout\`.
+outcome remains unknown"* and cites `workerTimeout`.
 
 ## Verify the artifacts independently
 
