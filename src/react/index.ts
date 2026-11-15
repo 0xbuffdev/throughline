@@ -1,9 +1,3 @@
-export type { SonificationEvent, SonificationOptions } from "../sonify.js";
-export { ThroughlinePlayer, type ThroughlinePlayerProps } from "./player.js";
+/** Native schema-2 React entry. No v1 trace or domain-player compatibility. */
 export { ThroughlineEmbed, type ThroughlineEmbedProps } from "./embed.js";
-
-export { ThroughlineScenarios, type ThroughlineScenario, type ThroughlineScenariosProps } from "./scenarios.js";
-export type { ThroughlineGuidance, GuidedChapter, CausalLink, GuidanceEvidence } from "./guidance.js";
-
-/** Native schema-2 graph/sequence player with TL-U07 Explain/Inspect. */
 export { ThroughlineGraphPlayer, type ThroughlineGraphPlayerProps } from "./graph-player.js";
