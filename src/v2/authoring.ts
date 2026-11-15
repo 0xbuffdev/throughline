@@ -11,7 +11,7 @@ export type ThlBody =
 export type AuthoringErrorCode =
 	| "THL_EMPTY" | "THL_INTENT_LIMIT" | "THL_UNICODE" | "THL_SYNTAX"
 	| "THL_UNSUPPORTED_DOCUMENT" | "THL_PATH" | "THL_MANIFEST"
-	| "THL_UNRESOLVED" | "THL_UNREVIEWED" | "THL_DIGEST";
+	| "THL_UNRESOLVED" | "THL_UNREVIEWED" | "THL_DIGEST" | "THL_LOADER";
 
 export class ThroughlineAuthoringError extends Error {
 	constructor(public readonly code: AuthoringErrorCode, message: string) {
@@ -197,7 +197,14 @@ export function resolveThlBody(body: string, options: MaterializationOptions = {
 			reject("THL_DIGEST", "source body hash differs from reviewed sidecar");
 		if (entry.review !== "reviewed")
 			reject("THL_UNREVIEWED", "sidecar entry is unreviewed; editorial approval is required");
-		const source = options.loadArtifact(entry.artifactPath);
+		let source: unknown;
+		// An explicitly trusted loader is host code and may throw with local
+		// paths, credentials, or other private details. Never propagate it.
+		try {
+			source = options.loadArtifact(entry.artifactPath);
+		} catch {
+			reject("THL_LOADER", "trusted artifact loader failed; review the host configuration");
+		}
 		artifact = typeof source === "string" ? parseArtifactJson(source) : validateArtifact(source);
 		if (artifactSha256(artifact) !== entry.artifactSha256)
 			reject("THL_DIGEST", "canonical artifact hash differs from reviewed sidecar");
