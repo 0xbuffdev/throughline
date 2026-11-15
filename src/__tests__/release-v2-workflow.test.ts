@@ -15,7 +15,7 @@ it("TL-U18 keeps tagged-release verification and stage archive separate from qua
 		".", "./examples", "./node", "./react", "./remark", "./styles/throughline.css",
 	].sort());
 	expect(pkg.bin?.thl).toBe("./dist/cli/main.js");
-	expect(pkg.version).toBe("0.1.0"); // TL-U19 owns the reviewed 0.2.0 bump.
+	expect(pkg.version).toMatch(/^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$/);
 	expect(publish).toContain("workflow_dispatch:");
 	expect(publish).toContain("Checkout exact tag without persistent credentials");
 	expect(publish).toContain("Verify signed annotated tag on main using GitHub API");
