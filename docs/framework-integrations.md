@@ -87,8 +87,11 @@ const artifact = resolveThlBody(proseBody, {
 ~~~
 
 A wrong source hash, mismatched canonical artifact hash, missing entry or
-unreviewed entry always fails closed. The creation/check CLI and filesystem
-integration are scheduled separately under TL-U10.
+unreviewed entry always fails closed. A trusted loader throwing an error produces
+the stable `THL_LOADER` diagnostic; arbitrary host exception messages and
+private loader paths are never included in the user-facing error. The
+creation/check CLI and filesystem integration are scheduled separately under
+TL-U10.
 
 ## Remark and MDX
 
@@ -99,11 +102,38 @@ position where known. It verifies the complete document before any MDX mutation.
 
 ~~~ts
 import { remarkThroughline } from "@0xbuff/throughline/remark";
+import { relative, isAbsolute, sep } from "node:path";
 
-const plugin = [remarkThroughline, { mode: "mdx" }];
-// A host building prose may additionally pass manifest, document and
-// loadArtifact. An inline JSON fence does not need them.
+// This is host build tooling, not imported by the pure Throughline engine.
+// Choose the trusted repository root that defines manifest document paths.
+const repositoryRoot = "/trusted/repository/root";
+function documentForFile(absoluteFilePath: string): string {
+  const path = relative(repositoryRoot, absoluteFilePath);
+  if (!path || path === ".." || path.startsWith(".." + sep) || isAbsolute(path)) {
+    throw new Error("VFile path is outside the configured repository root");
+  }
+  return path.split(sep).join("/");
+}
+
+const plugin = [remarkThroughline, {
+  mode: "mdx",
+  documentForFile, // maps every VFile path to the exact sidecar document key
+  manifest,        // reviewed, host-loaded manifest
+  loadArtifact,    // trusted, content-root-confined synchronous loader
+}];
+// For one specific file, document: "content/docs/checkout.mdx" may replace
+// documentForFile. Inline JSON needs neither loader nor document mapping.
 ~~~
+
+Remark receives the host's real VFile. Its path is commonly absolute, while
+sidecar document keys must remain repository-relative POSIX paths. Do **not**
+remove an assumed prefix, use the system working directory implicitly, or
+loosen the path validator. A trusted host config either supplies an explicit
+relative `document` for a single file, uses a validated already-relative VFile
+path, or supplies `documentForFile` for a multi-document build. Missing or
+unsafe mappings fail with `THL_PATH` and the known fence line/ordinal without
+printing a private absolute path. The callback must be provided by the trusted
+host, not by authored Markdown, and must not follow untrusted symlink paths.
 
 In explicit MDX mode each valid fence becomes a registered ThroughlineEmbed
 element with **one inert, literal artifactJson string attribute**. No authored
