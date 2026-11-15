@@ -135,8 +135,9 @@ try {
 		'import assert from "node:assert/strict";',
 		'import { compile, ProgramError, compileArtifact, inspectTrace, projectView, projectInspection } from "@0xbuff/throughline";',
 		'import { EXAMPLES } from "@0xbuff/throughline/examples";',
-		'assert(Array.isArray(EXAMPLES) && EXAMPLES.length > 0);',
-		'assert(compile(EXAMPLES[0].source).frames.length > 0);',
+		'assert(Array.isArray(EXAMPLES) && EXAMPLES.length === 4);',
+		'assert(EXAMPLES.every(example => example.artifact.schemaVersion === 2 && example.questions.length >= 3));',
+		'assert(compileArtifact(EXAMPLES[0].artifact).frames.length > 2);',
 		'assert.throws(() => compile("not a thl block"), ProgramError);',
 		'const artifact = { schemaVersion: 2, id: "counter", origins: [{ id: "author", kind: "authored" }], entities: [{ id: "counter", label: "Counter" }], relations: [], initialState: { counter: { status: "known", value: 0 } }, steps: [{ id: "increment", label: "Increment", events: [{ id: "write", originId: "author", type: "write", entityId: "counter", path: [], value: { status: "known", value: 1 } }] }] };',
 		'const compiled = compileArtifact(artifact);',
@@ -216,7 +217,7 @@ try {
 		[
 			'import { compile, compileArtifact, inspectTrace, projectView, projectInspection, type Trace, type VisualArtifact, type CompiledTrace, type TraceInspector, type QueryCell, type StateChange, type HistoryEntry, type PresenceChange, type SemanticEvent, type ViewRequest, type ViewDescriptor, type ViewItem, type ViewKind, type InspectionRequest, type InspectionView, type InspectionRecorded } from "@0xbuff/throughline";',
 			'import { EXAMPLES } from "@0xbuff/throughline/examples";',
-			'const trace: Trace = compile(EXAMPLES[0]!.source);',
+			'const trace: CompiledTrace = compileArtifact(EXAMPLES[0]!.artifact);',
 			'const frames: number = trace.frames.length;',
 			'if (frames < 1) throw new Error("Missing trace frames");',
 			'const model: VisualArtifact = { schemaVersion: 2, id: "counter", origins: [{ id: "author", kind: "authored" }], entities: [{ id: "counter", label: "Counter" }], relations: [], initialState: { counter: { status: "known", value: 0 } }, steps: [{ id: "increment", label: "Increment", events: [{ id: "write", type: "write", originId: "author", entityId: "counter", path: [], value: { status: "known", value: 1 } }] }] };',
@@ -271,6 +272,23 @@ try {
 		}),
 	);
 	run("node", ["node_modules/typescript/bin/tsc", "-p", "."], consumer);
+
+	// Copy the EXACT public user-guide quickstart into an independently packed
+	// Node-only consumer. Typecheck it against the installed declarations, then
+	// run the same syntax as ESM (the snippet intentionally needs no TS erasure).
+	const guide = readFileSync(join(root, "docs", "user-guide.md"), "utf8");
+	const snippet = guide.match(/For a \*\*standalone programmatic\*\* example[\s\S]*?~~~ts\n([\s\S]*?)\n~~~/)?.[1];
+	assert(snippet, "Missing complete documented standalone programmatic quickstart");
+	writeFileSync(join(consumer, "guide-quickstart.ts"), snippet + "\n");
+	run("node", [
+		"node_modules/typescript/bin/tsc", "--strict", "--noEmit", "--skipLibCheck",
+		"--module", "NodeNext", "--moduleResolution", "NodeNext",
+		"--target", "ES2022", "guide-quickstart.ts",
+	], consumer);
+	writeFileSync(join(consumer, "guide-quickstart.mjs"), snippet + "\n");
+	assert.match(run("node", ["guide-quickstart.mjs"], consumer),
+		/status: ['"]known['"], value: 24/,
+		"Documented quickstart must execute through the packed schema-2 public exports");
 
 	// Run an independent real Remark parser without React. The adapter itself
 	// adds no runtime dependency to core or the published package.

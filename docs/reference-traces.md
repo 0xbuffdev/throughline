@@ -1,100 +1,114 @@
-# Reference traces
+# Reference traces and comprehension baselines
 
-The public `EXAMPLES` export contains two hand-authored `thl flow` teaching
-fixtures. They compile to version-1 traces; they do not execute React or a
-payment service. The examples are deliberately small enough to inspect while
-exercising connected state, transfers, visibility and backward seeking.
+Throughline's four first-party references are **schema-2 authored artifacts**.
+They are teaching models, not executable source programs, telemetry or
+scientific proof. Their canonical data and matched prose/questions live in
+[src/reference](../src/reference) and are exported through
+`@0xbuff/throughline/examples`.
 
-## Keyed React reconciliation
+All four pass the same strict artifact validator, deterministic replay compiler,
+indexed history queries and source-preserving view projections. No domain-tag
+router, network connection, AI provider or specialized matrix/stack renderer
+is needed.
 
-**Scenario:** An unordered list changes from children keyed `a, b` to
-children keyed `a, c`. Both roots are the same `ul` element type.
+## How to read a reference
 
-1. Compare the roots before revealing any child-match link.
-2. In the `Reuse key a` step, reveal the match for child `a` (same parent,
-   stable key and compatible element type).
-3. Retain `a`, plan removal of `b`, and prepare insertion of `c` in
-   the temporary work-in-progress illustration. The current tree remains
-   unchanged while the changes are planned.
-4. At commit, hide old `b`, retire the temporary work-in-progress nodes and
-   links, and show committed `c`. The retained `a` is not replaced.
+A reference pairs **one typed VisualArtifact** with a static explanation,
+at least three comprehension questions, expected answers, exact supporting
+event IDs and explicit caveats. The static explanation is a comparison baseline,
+not a measured claim that the animated player improves learning outcomes.
 
-**Identity representation:** `added` denotes the proposed child in the
-temporary work-in-progress view; `committedC` denotes that same logical
-key `c` after it becomes a current-tree child. They are **illustrative
-phase-specific nodes**, not two simultaneously mounted React children or
-a claim about internal Fiber identity. The commit removes the WIP view
-altogether, leaving just current `a`, committed `c`, their root and the
-commit plan. The `a` entity retains its identity and value.
+All steps are *whole atomic commits*. A drawn link can express a declared
+relationship, but it cannot write state or imply message delivery. Source IDs
+connect visible items and history records to the exact authored evidence.
+For a no-message reference, the sequence request falls back to an honest
+state-table rather than fabricating messages.
 
-**Accuracy boundary:** This is a simplified keyed-children explanation,
-not a complete simulation of React Fiber or an assertion about its
-scheduler. Matching a key alone does not guarantee reuse if the parent
-or element type changes. See [React's list key guidance](https://react.dev/learn/rendering-lists)
-and [state preservation guidance](https://react.dev/learn/preserving-and-resetting-state).
+| Reference | Truth anchor | Primary default view | Key source evidence |
+| --- | --- | --- | --- |
+| [Factorial](../src/reference/factorial.ts) | 4! = 24; stack depth rises to 4, then unwinds to 0 | Graph | `push1`, `return1`, `value2`, `value6`, `factorialResult` |
+| [Matrix multiplication](../src/reference/matrix.ts) | [[1,2],[3,4]] × [[5,6],[7,8]] = [[19,22],[43,50]] | State table | `write00`, `write01`, `write10`, `write11` |
+| [Binary addition](../src/reference/binary.ts) | 1011₂ + 0110₂ = 10001₂ = 17₁₀ | State table | `sumBit0`–`sumBit3`, `leadingCarry`, `decimalSum` |
+| [Distributed checkout](../src/reference/checkout.ts) | Unknown worker outcome until an explicit reply; one charge **only under the fictional idempotent-provider assumption** | Sequence | `chargeFirstSent`, `providerCharged`, `workerTimeout`, `providerDedup`, `resultReceived`, `receiptPaid`, `orderPaid` |
 
-### Questions and expected explanations
+### Factorial — what is actually modeled
 
-| Question | Expected explanation |
-| --- | --- |
-| What makes key `a` eligible for reuse? | Its key, parent and element type match in this example. |
-| When is the old `b` removed? | In the commit beat, not while preparing the work-in-progress plan. |
-| Is the new `c` already in the current tree during planning? | No. It is first shown as work in progress and later as a committed child. |
-| Why do the two phases use different node IDs for `c`? | They represent one logical keyed child at different points in the illustration. The WIP representation is retired when the committed representation appears. |
+The trace pushes factorial(4), factorial(3), factorial(2), then factorial(1).
+The base case returns 1. Explicit return writes yield 2, then 6, then 24
+while the modeled call stack empties. The maximum depth is four frames.
+These are author-defined mathematical frames, **not observations of JavaScript,
+Rust or a particular engine's physical stack**.
 
-## Distributed checkout: timeout, retry and recovery
+A matched question asks for the base-case return and points directly to
+`return1`. Another asks for the final factorial value and cites
+`value24` and `factorialResult`.
 
-**Scenario:** The checkout API persists a pending order and queues a
-payment attempt. The provider supports idempotency for the stable
-`pay-ord-1042` key. The provider records the first charge, but its
-acknowledgement is lost. The worker times out without knowing the result,
-resends using the same key, receives the prior result and only then
-persists payment confirmation, marks the order paid and notifies the
-customer.
+### Matrix — what is actually modeled
 
-The fixture deliberately distinguishes four things:
+The left operand A is [[1,2],[3,4]] and the right operand B is
+[[5,6],[7,8]]. Each of the four output cells receives an explicit
+nested write after its row–column dot product has been authored.
+The result is [[19,22],[43,50]]. Both inputs remain unchanged.
+The references' `terms` state records pairwise products at each cell.
 
-- `send` only annotates a directed message/command; a matching `set`
-  models separately observed persistence.
-- A request timeout gives the **worker an unknown outcome**, not proof
-  that the provider failed or succeeded.
-- A repeated idempotency key is safe in **this authored provider scenario**.
-  It is not a promise that arbitrary payment providers deduplicate requests.
-- The local payment record, order state and customer-facing status advance
-  only at their explicit confirmation steps.
+A matched question asks why C[0][0] equals 19 and cites `terms00`
+and `write00`. No view performs matrix multiplication, and the zero
+initialization is a teaching choice, not a runtime allocation claim.
 
-### Questions and expected explanations
+### Binary — what is actually modeled
 
-| Question | Expected explanation |
-| --- | --- |
-| Is the order already saved when the checkout request arrives? | No; the `Persist pending order` beat first records it. |
-| Is the provider confirmed to have charged when the worker first sends a request? | No; sending does not persist the provider state. |
-| What can the worker conclude from the timeout? | The outcome is unknown; payment must not be marked failed or paid solely from timeout. |
-| Why is there one charge after retry? | The scenario explicitly assumes a provider that deduplicates the repeated idempotency key. |
-| When does the customer see success? | After the worker receives confirmation, records payment, updates the order and reports recovery. |
+Unsigned 4-bit addends 1011 and 0110 are added from right to left.
+Each step writes the corresponding bit and carry-out; a final event
+writes the leading carry and decimal result. The full **5-bit** answer
+is 10001, or 17. This is not signed arithmetic or a real-time hardware
+simulation. The question on the first carry cites `sumBit1` and
+`carryBit1`.
 
-## Evidence and compatibility boundaries
+### Distributed checkout — what is actually modeled
 
-At the observed **v0.0.2** implementation baseline:
+A customer submits checkout. An order is explicitly saved as pending,
+a payment job is queued/delivered, and the worker sends a charge.
+The **fictional** provider is separately modeled as receiving and
+processing that charge with one stored idempotency key.
 
-- `validateProgram` accepts JSON values nested through depth **32**
-  (starting at the value itself) and rejects depth **33**.
-  `createBudget` has a separate maximum traversal depth of **64**.
-  The validator is the effective smaller ceiling for program values;
-  a budget accounting limit is **not** a promise that depth-64 program
-  values are valid. Regression tests pin both behaviors independently.
-- `validateProgram` rejects unsupported `Program.version`; compilation
-  emits `Trace.version = 1`.
-- **Reader compatibility boundary:** `ThroughlinePlayer` rejects unsupported `Trace.version` and missing `frames` arrays before reading playback state. This does not completely validate arbitrary untrusted, serialized snapshot content; the host must validate externally supplied trace data.
+The worker still has an **unknown** outcome because it has no modeled
+reply. Its timeout is a state write, **not** proof of decline and **not**
+proof that a specific packet was lost. A distinct retry message uses
+the same idempotency key. The fictional provider's one-charge behavior
+is an explicit assumption in the trace, not a guarantee about real
+payment processors.
 
-The test suites cover deterministic compilation, seeking, relation endpoints
-and browser-player rendering.
+A later explicit reply send and receipt permits the worker's outcome to
+become known. The local payment receipt and order do not become paid
+until their separate writes, and the customer becomes confirmed only
+after an explicit received notification. Each send, receipt, provider
+processing event and persistence write has a separate evidence ID.
 
-## Changes since v0.0.2
+For example, the question *"Can the worker classify this payment as
+declined after the timeout?"* has the expected answer *"No; the
+outcome remains unknown"* and cites `workerTimeout`.
 
-The v0.0.2 player used flat layouts without nested collapse, pan/zoom,
-follow-active navigation or scene projection. Version 0.1.0 adds those
-presentation features while keeping the trace schema at version 1.
+## Verify the artifacts independently
 
-These teaching questions are examples for comprehension testing, not
-measured participant-study results.
+~~~ts
+import { compileArtifact, inspectTrace, projectView, serializeArtifact } from "@0xbuff/throughline";
+import { EXAMPLES } from "@0xbuff/throughline/examples";
+
+for (const example of EXAMPLES) {
+  const trace = compileArtifact(example.artifact);
+  const history = inspectTrace(trace);
+  const canonical = serializeArtifact(trace.artifact);
+  const last = trace.frames.length - 1;
+  const table = projectView(history, { kind: "state-table", frameIndex: last });
+  console.log(example.id, trace.frames.length, table.summary, canonical.length);
+}
+~~~
+
+The normative [truth tests](../src/__tests__/examples.test.ts) independently
+check multiplication and addition math, factorial returns and stack depth,
+checkout uncertainty, payment persistence order, source-event provenance,
+deterministic canonical JSON and no fabricated events across views.
+
+**What is not claimed:** human comprehension improvement, behavior of React
+internals or real payment providers, missing network telemetry as proof of
+packet loss, or a matrix/stack-specific renderer before its own review.

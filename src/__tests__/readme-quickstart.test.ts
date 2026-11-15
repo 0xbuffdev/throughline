@@ -1,38 +1,32 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { compile } from "../index.js";
+import { compileArtifact, inspectTrace, resolveThlBody } from "../index.js";
+import { EXAMPLES } from "../examples.js";
 
-describe("public documentation examples", () => {
-	it("compiles the exact hierarchy fence in the user guide", () => {
+describe("public documentation — schema-2 quick start", () => {
+	it("compiles the exact unqualified thl JSON from the user guide offline", () => {
 		const guide = readFileSync(new URL("../../docs/user-guide.md", import.meta.url), "utf8");
-		const section = guide.split("## Hierarchical groups and drill-down")[1]?.split("## Supported domains")[0];
+		const section = guide.split("## Direct JSON quick start")[1]?.split("## Read the four reference models")[0];
 		expect(section).toBeDefined();
-		const source = section?.match(/~~~thl flow\n[\s\S]*?\n~~~/)?.[0];
+		const source = section?.match(/~~~thl\n([\s\S]*?)\n~~~/)?.[1];
 		expect(source).toBeDefined();
-		const trace = compile(source!);
-		expect(trace.version).toBe(1);
-		expect(trace.frames).toHaveLength(2);
-		expect(trace.groups?.find((group) => group.id === "worker")?.parentId).toBe("system");
-		expect(trace.frames[1].state.transfers.map((transfer) => transfer.relation)).toEqual(["request"]);
+		const trace = compileArtifact(resolveThlBody(source!));
+		expect(trace.schemaVersion).toBe(2);
+		expect(trace.frames.map(frame => frame.id)).toEqual(["@initial", "increment"]);
+		expect(inspectTrace(trace).valueAt(0, "counter")).toEqual({ status: "known", value: 0 });
+		expect(inspectTrace(trace).valueAt(1, "counter")).toEqual({ status: "known", value: 1 });
+		expect(inspectTrace(trace).history("counter").map(entry => entry.eventId))
+			.toEqual(["counterWrite"]);
 	});
 
-	it("compiles the documented counter example to two frames", () => {
-		const source = [
-			"```thl flow",
-			'node counter "Counter" = 0',
-			'step "Increment"',
-			"  set counter = 1",
-			"  focus counter",
-			'  note "Counter now holds one."',
-			"```",
-		].join("\n");
-		const trace = compile(source);
-
-		expect(trace.version).toBe(1);
-		expect(trace.frames).toHaveLength(2);
-		expect(
-			trace.frames[1]?.state.entities.find((entity) => entity.id === "counter")
-				?.value,
-		).toBe(1);
+	it("documents precisely the same four typed examples exported in the package", () => {
+		const guide = readFileSync(new URL("../../docs/user-guide.md", import.meta.url), "utf8");
+		expect(EXAMPLES.map(example => example.id))
+			.toEqual(["factorial", "matrix", "binary", "checkout"]);
+		for (const example of EXAMPLES) {
+			expect(guide.toLowerCase()).toContain(example.id);
+			expect(compileArtifact(example.artifact).frames.length).toBeGreaterThan(2);
+		}
+		expect(guide).not.toMatch(/~~~thl (?:flow|bindings|binary|matrix|callstack)/);
 	});
 });

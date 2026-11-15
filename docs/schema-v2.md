@@ -1,13 +1,25 @@
-# Schema-2 runtime, Explain/Inspect and universal authoring (TL-U02–U08)
+# Schema-2 runtime, Explain/Inspect and universal authoring and references (TL-U02–U09)
 
 The schema-2 validator, deterministic compiler and indexed inspector implement
 the pure semantic foundation. TL-U05 adds the native graph projection and React
 player; TL-U06 adds the source-linked sequence projection, accessible evidence
 timeline and deterministic all-three-view selection without a v1 adapter.
 TL-U07 delivers Explain/Inspect, and TL-U08 introduces a schema-2-only,
-single-fence Markdown/MDX bridge. Historical schema-1 source remains separate
-until U09/U10 remove the unused scaffolding; it is not a compatibility promise.
+single-fence Markdown/MDX bridge. TL-U09 adds independently checked factorial,
+matrix, binary and hypothetical checkout artifacts with source-cited static
+comprehension baselines. Historical schema-1 source remains internal test
+scaffolding pending U10 cleanup; it is not a compatibility promise.
 Normative authority: Throughline Specification 0004 §§10–13 (maintainer-owned architecture record).
+
+## First-party semantic truth references
+
+The public `@0xbuff/throughline/examples` catalog now provides exactly four
+schema-2 typed artifacts with matched static explanations, comprehension
+questions, evidence event IDs and scope caveats. The same strict validation,
+atomic replay, index queries and source-preserving projections apply to all
+four, without domain-tagged parsing or false inference. See the
+[reference explanations](reference-traces.md) and
+[reference truth tests](../src/__tests__/examples.test.ts).
 
 ## Public data boundary
 

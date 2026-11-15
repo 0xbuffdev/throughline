@@ -79,7 +79,9 @@ assert.deepEqual(
 const { remarkThroughline } = await load("remark/index.js");
 assert.equal(typeof remarkThroughline, "function");
 const { EXAMPLES } = await load("examples.js");
-assert(Array.isArray(EXAMPLES) && EXAMPLES.length > 0);
+assert(Array.isArray(EXAMPLES) && EXAMPLES.length === 4);
+assert(EXAMPLES.every(example => example.artifact.schemaVersion === 2 &&
+	Array.isArray(example.questions) && example.questions.length >= 3));
 const { ThroughlinePlayer } = await load("react/index.js");
 assert.equal(typeof ThroughlinePlayer, "function");
 console.log("Throughline build exports, declarations, maps and smoke checks passed.");

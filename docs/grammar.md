@@ -1,107 +1,94 @@
-# Throughline grammar reference — `thl flow`
+# Universal `thl` source contract
 
-Source of truth for hand-authored traces. AI lesson authors write this;
-`compile` parses and validates it into snapshots. A host can call this during
-its build or at runtime.
-Parameterized domains (`bindings`, `binary`, `matrix`, `callstack`) are
-documented in `catalog.md`; they compile to this same grammar.
+Throughline recognizes exactly one Markdown code-fence language: `thl`.
+The info string contains no domain name or additional metadata. Two
+mutually exclusive data branches are selected by the first non-whitespace
+character of the code body.
 
-## Fence
+## Direct schema-2 JSON
 
-    ```thl flow
-    node input "Vector" in "Memory" as array = [1,2,3]
-    step "Load"
-      focus input
-      note "Vector in memory"
-    ```
+If the body begins with `{`, it must be a complete strict
+`VisualArtifact` JSON object. It validates and compiles offline.
 
-- Info string names the domain: ```` ```thl flow ````.
-- Everything between the fences is the program. Surrounding prose carries
-  the concept; the fence carries only state and beats.
-- Blank lines and `#` comment lines are ignored.
+~~~thl
+{
+  "schemaVersion": 2,
+  "id": "counter",
+  "origins": [{ "id": "author", "kind": "authored" }],
+  "entities": [{ "id": "counter", "label": "Counter" }],
+  "relations": [],
+  "initialState": {
+    "counter": { "status": "known", "value": 0 }
+  },
+  "steps": [{
+    "id": "increment",
+    "label": "Increment",
+    "events": [{
+      "id": "counterWrite",
+      "originId": "author",
+      "type": "write",
+      "entityId": "counter",
+      "path": [],
+      "value": { "status": "known", "value": 1 }
+    }]
+  }]
+}
+~~~
 
-## Statements
+A `VisualArtifact` declares semantic facts, not frames or animations:
 
-| Statement | Syntax | Notes |
-| --- | --- | --- |
-| `group` | `group "<name>" [id <group-id> [under <parent-id>]] as <row\|column\|tree>` | Optional explicit identity/parent forms a static hierarchy; existing flat groups are unchanged. |
-| `node` | `node <id> "<label>" [in "<lane>"] [as <view>] [hidden] [= <json>]` | Declares an entity. Missing value defaults to `null`. |
-| `link` | `link <id> <from> -> <to> ["<label>"] [hidden]` | Declares a directed edge between two node ids. |
-| `step` | `step "<label>"` | Opens a beat. Every `set`/`focus`/`send`/`note` after it belongs to it until the next `step`. |
-| `set` | `set <target> = <json>` | Writes a JSON value into an entity or a position inside it. |
-| `focus` | `focus [<target>, ...]` | Highlights entities/positions for this beat. Comma- or space-separated; may be empty. |
-| `send` | `send <relation> [= <json>]` | Highlights a directed transfer along a link; payload appears in the caption. Value optional. |
-| `note` | `note "<text>"` | Caption for this beat. |
-| `show` / `hide` | `show node <id>` / `hide link <id>` | Changes persistent visibility; either verb accepts `node` or `link`. |
+- **Origins** distinguish authored, computed, simulated, observed and
+  AI-proposed data. An origin declaration is not proof of an external event.
+- **Entities** and **relations** define named semantic objects and
+  directed edges. Groups organize the objects without changing state.
+- **Initial state** gives each entity a known JSON cell or an unknown cell
+  with an optional reason. Known `null` is different from unknown.
+- **Steps** commit named events atomically. An explicit `write` changes
+  state. A `topology` event changes modeled presence. `message`
+  phases (sent, received, acknowledged and processed) are independent
+  evidence and never automatically write. An `observation` is
+  non-persistent evidence.
+- **Claims** may cite declared event IDs, including transparent assumptions
+  or unreviewed statements. The compiler checks references, not scientific
+  truth. View hints may prefer graph, sequence or state-table projections.
 
-A hierarchical group may use `group "Backend" id backend under system as tree`,
-with a parent declared later as `group "System" id system as column`.
-The `id` is a stable ASCII identifier; `under` requires `id` and names
-an explicitly identified parent group, not a node. Each name and ID must be
-unique; missing parents, parent cycles and depth beyond 32 are rejected. Nodes
-continue to use `in "Display name"` for their **single immediate group**.
-Ancestors contain their descendants by reference only. No group declarations
-are required for implicit legacy lanes. Nesting is metadata, not authored
-visibility or a step event.
+The source rejects duplicate decoded object keys, unsupported versions,
+invalid references, cyclic groups, illegal state writes, contradictory
+topology changes, invalid UTF-16/JSON values and resource-limit
+violations. A malformed JSON-looking body is **never** reinterpreted
+as prose or executable code.
 
-Groups, nodes, and links must come before the first `step`. Events before any
-`step` fail the build.
+## Inert descriptive intent
 
-## Targets and values
+If the body does not begin with an opening brace, it is inert
+descriptive text:
 
-- Target: an entity id, optionally followed by positions: `arr`, `arr[3]`,
-  `grid[1][2]`, `cfg.mode`. Writes to impossible paths (indexing a
-  non-array, `.key` on a non-record, out-of-range index) fail the build
-  at compile time. `focus` targets only need a known entity id — a
-  position that never resolves simply never highlights. Arrays may grow
-  by exactly one (`arr[len]` appends); records may gain keys.
-- Value: finite JSON. Quote strings (`"emit"`); arrays and objects are
-  supported. `NaN`/`Infinity` are rejected.
-- Views (per node, `as <view>`): `auto`, `text`, `number`, `array`,
-  `stack`, `matrix`, `bits`, `record`. Unknown views fail the build.
-- Lanes (per node, `in "<lane>"`): free-form grouping string rendered as
-  a group header (e.g. `"Memory"`, `"Output"`).
+~~~thl
+Explain factorial(4). Show the explicit call-stack push and return steps.
+~~~
 
-## Frames
+No runtime executes that text. Published builds require a reviewed,
+content-root-confined schema-2 sidecar artifact bound to the document
+path, zero-based `thl` ordinal, normalized-LF source SHA-256 and
+canonical artifact SHA-256. Unresolved, stale or unreviewed intent
+fails closed. No AI provider, remote service or heuristic diagram
+is required by the pure engine.
 
-Compilation emits frame 0 (`Initial state`, entity initial values) plus
-one frame per `step`. Seeking is a snapshot lookup, never recompute.
+The Remark/MDX host only accepts unqualified `thl` code nodes and
+emits inert literal artifact data after all blocks have validated.
+See [framework integration](framework-integrations.md) and
+[reference authoring](authoring.md) for details.
 
-- `set` updates the entity value for this and later frames; the beat's
-  `changed` list carries the raw target strings (e.g. `input[1]`).
-- `focus` and `set` targets together form the beat's `active` list.
-- `send` adds a transfer for this beat only.
-- `note` appends to the beat's caption lines.
-- `show` / `hide` changes visibility for this and later frames. Hidden nodes
-  retain their values and identities; links with hidden endpoints are omitted.
-  Declare future objects with `hidden`, then show them when they appear.
-  Conflicting visibility writes and transfers along hidden links or endpoints
-  fail compilation. Changes within a step are applied together.
+## Representation limits
 
-## Two staging rules (learned the hard way)
+The validator caps serialized artifacts at 4 MiB UTF-8, JSON nesting
+at 32, entities and groups at 200 each, relations at 1,000, steps at
+2,000, events at 10,000 and claims at 1,000. Additional validation
+and expanded-trace work budgets apply. The source-intent ceiling is
+262,144 UTF-16 units.
 
-1. **One idea per beat.** Square *then* add; carry *then* land. Fusing
-   two state changes into one step fuses their highlights and captions,
-   and a same-value write (e.g. `1² = 1` over `1`) shows no change highlight — only
-   the focus ring. Split beats stay legible.
-2. **`send` does not mutate.** The edge highlights the transfer, but the
-   destination keeps its old value until a `set` writes it. To show state
-   sync, pair them across beats (`send feed = 4` on the Add beat, or a
-   `Carry` beat with only `send` followed by a `Land` beat with `set`).
-
-## Limits
-
-200 entities, 1000 relations, 2000 steps, 10000 events per program.
-Overlapping writes to the same target (or its parent/child path) inside
-one step fail: split into separate steps.
-
-## Errors (line-aware, fail the build)
-
-    Line 2: Unknown view "sparkle". Use auto, text, number, array, stack, matrix, bits, record.
-    Line 4: Invalid target "a..x". Use an id, optionally followed by [index] or .key.
-    Line 5: Conflicting writes to "a[1]" in one step; split into separate steps.
-
-`ProgramError` carries diagnostics with source lines where available.
-Compiling a block throws on invalid syntax or state. A host build must invoke
-the compiler to reject invalid content before publication; the Academy also
-has a render-time error panel for malformed content.
+This is the **schema-2 contract**. No old `thl flow`,
+`thl binary`, `thl matrix`, `thl callstack` or `thl bindings`
+routing or compatibility layer is provided in the new authoring
+surface. For the full accepted semantic definition, read
+[the schema-2 runtime guide](schema-v2.md).

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compile } from "../domains/registry.js";
-import { CHECKOUT_GUIDANCE, CHECKOUT_SCENARIOS } from "../examples.js";
+import { CHECKOUT_GUIDANCE, CHECKOUT_SCENARIOS } from "../legacy-examples.js";
 import { validateGuidance } from "../react/guidance.js";
 
 const recovery = compile(CHECKOUT_SCENARIOS[2].source);
