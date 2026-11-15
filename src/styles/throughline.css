@@ -969,3 +969,190 @@
 	opacity: 0.5;
 	cursor: not-allowed;
 }
+
+
+/* TL-U07 Explain/Inspect: intentional textual alternatives to graph/sequence.
+   Inert text and controls only; UI never owns semantic state. */
+.thl-v2 .thl-v2-mode {
+	display: flex;
+	gap: 0.45rem;
+	padding: 0.45rem 0.7rem;
+	align-items: center;
+	border-block: 1px solid var(--thl-line);
+	background: var(--thl-surface);
+}
+.thl-v2 .thl-v2-mode button {
+	border: 1px solid var(--thl-line);
+	background: var(--thl-control-bg);
+	color: var(--thl-text);
+	font: inherit;
+	font-size: 0.875rem;
+	min-height: 2.45rem;
+	padding: 0.45rem 0.9rem;
+	border-radius: var(--thl-radius);
+}
+.thl-v2 .thl-v2-mode button[aria-pressed="true"] {
+	outline: 2px solid var(--thl-change);
+	outline-offset: -2px;
+	font-weight: 700;
+}
+.thl-v2 .thl-v2-inspect {
+	display: grid;
+	gap: 1rem;
+	padding: 0.85rem;
+	min-width: 0;
+	max-width: 100%;
+	max-height: min(75vh, 48rem);
+	overflow: auto;
+	background: var(--thl-surface);
+	color: var(--thl-text);
+	align-content: start;
+	overflow-wrap: anywhere;
+}
+.thl-v2 .thl-v2-inspect-header,
+.thl-v2 .thl-v2-inspect-section {
+	display: grid;
+	align-content: start;
+	gap: 0.6rem;
+	min-width: 0;
+	padding: 0.75rem;
+	border: 1px solid var(--thl-line);
+	border-radius: var(--thl-radius);
+}
+.thl-v2 .thl-v2-inspect h3,
+.thl-v2 .thl-v2-inspect h4,
+.thl-v2 .thl-v2-inspect h5 { margin: 0; font-weight: 700; }
+.thl-v2 .thl-v2-inspect h3 { font-size: 1.05rem; }
+.thl-v2 .thl-v2-inspect h4 { font-size: 1rem; }
+.thl-v2 .thl-v2-inspect h5 { font-size: 0.925rem; }
+.thl-v2 .thl-v2-inspect p { line-height: 1.5; margin: 0; }
+.thl-v2 .thl-v2-inspect-limit {
+	color: var(--thl-muted);
+	font-size: 0.85rem;
+}
+.thl-v2 .thl-v2-inspect form,
+.thl-v2 .thl-v2-inspect label {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+	align-items: center;
+	max-width: 100%;
+	font-size: 0.875rem;
+}
+.thl-v2 .thl-v2-inspect form { align-items: end; }
+.thl-v2 .thl-v2-inspect input,
+.thl-v2 .thl-v2-inspect select {
+	border: 1px solid var(--thl-line);
+	background: var(--thl-control-bg);
+	color: inherit;
+	font: inherit;
+	font-size: 0.875rem;
+	padding: 0.45rem;
+	min-height: 2.5rem;
+	max-width: 100%;
+}
+.thl-v2 .thl-v2-inspect input[type="number"] { width: 5.5rem; }
+.thl-v2 .thl-v2-inspect input[type="text"] { width: min(18rem, 100%); }
+.thl-v2 .thl-v2-inspect select { max-width: min(24rem, 100%); }
+.thl-v2 .thl-v2-inspect button {
+	border: 1px solid var(--thl-line);
+	border-radius: var(--thl-radius);
+	color: inherit;
+	background: var(--thl-control-bg);
+	font: inherit;
+	font-size: 0.875rem;
+	padding: 0.4rem 0.6rem;
+	min-height: 2.5rem;
+	max-width: 100%;
+	overflow-wrap: anywhere;
+}
+.thl-v2 .thl-v2-inspect button:disabled { opacity: 0.45; cursor: not-allowed; }
+.thl-v2 .thl-v2-inspect table {
+	width: 100%;
+	min-width: 0;
+	border-collapse: collapse;
+	table-layout: fixed;
+	font-size: 0.8rem;
+}
+.thl-v2 .thl-v2-inspect th,
+.thl-v2 .thl-v2-inspect td {
+	border-bottom: 1px solid var(--thl-line);
+	padding: 0.45rem;
+	vertical-align: top;
+	text-align: start;
+	overflow-wrap: anywhere;
+}
+.thl-v2 .thl-v2-inspect caption {
+	padding: 0.5rem 0;
+	color: var(--thl-muted);
+	font-size: 0.8rem;
+	text-align: start;
+}
+.thl-v2 .thl-v2-inspect ul,
+.thl-v2 .thl-v2-inspect ol {
+	padding-inline-start: 1.25rem;
+	margin-block: 0.2rem;
+}
+.thl-v2 .thl-v2-inspect li { margin-block: 0.35rem; }
+.thl-v2 .thl-v2-inspect code {
+	font-size: 0.83rem;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.thl-v2 .thl-v2-inspect details > summary { cursor: pointer; }
+.thl-v2 .thl-v2-inspect-focus {
+	border-inline-start: 3px solid var(--thl-change);
+	padding-inline-start: 0.7rem;
+	display: grid;
+	gap: 0.5rem;
+}
+.thl-v2 .thl-v2-inspect-pager {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+	flex-wrap: wrap;
+	font-size: 0.875rem;
+}
+@media (max-width: 530px) {
+	.thl-v2 .thl-v2-inspect { padding: 0.4rem; }
+	.thl-v2 .thl-v2-inspect-section { padding: 0.4rem; }
+	.thl-v2 .thl-v2-inspect th,
+	.thl-v2 .thl-v2-inspect td { padding: 0.35rem 0.25rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.thl-v2 .thl-v2-inspect * { transition: none !important; animation: none !important; }
+}
+
+/* Reviewed TL-U07: exact JSON is rendered in 1,024-code-unit user-revealed
+   segments; claims and independently nested citations stay in bounded pages. */
+.thl-v2 .thl-v2-inspect-value,
+.thl-v2 .thl-v2-inspect-recorded,
+.thl-v2 .thl-v2-inspect-exact {
+	display: grid;
+	gap: 0.4rem;
+	min-width: 0;
+	max-width: 100%;
+	overflow-wrap: anywhere;
+}
+.thl-v2 .thl-v2-inspect-value > code {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.thl-v2 .thl-v2-inspect-value button { justify-self: start; }
+.thl-v2 .thl-v2-inspect-exact,
+.thl-v2 .thl-v2-inspect-recorded {
+	padding: 0.5rem;
+	border: 1px solid var(--thl-line);
+	border-radius: var(--thl-radius);
+}
+.thl-v2 .thl-v2-inspect-exact pre {
+	margin: 0;
+	max-width: 100%;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	font-size: 0.8rem;
+}
+.thl-v2 .thl-v2-inspect-claim {
+	border-bottom: 1px solid var(--thl-line);
+	padding-block: 0.5rem;
+}

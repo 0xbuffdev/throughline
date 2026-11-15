@@ -1,4 +1,4 @@
-# Schema-2 semantic runtime and graph/sequence views (TL-U02–U06)
+# Schema-2 runtime, graph/sequence views and Explain/Inspect (TL-U02–U07)
 
 The schema-2 validator, deterministic compiler and indexed inspector implement
 the pure semantic foundation. TL-U05 adds the native graph projection and React
@@ -14,7 +14,7 @@ Normative authority: Throughline Specification 0004 §§10–13 (maintainer-owne
 ```ts
 import {
   validateArtifact, parseArtifactJson, serializeArtifact, compileArtifact,
-  inspectTrace, projectView,
+  inspectTrace, projectView, projectInspection,
   type VisualArtifact
 } from "@0xbuff/throughline";
 
@@ -436,8 +436,106 @@ case and one **10,000-event / 1,000-relation / 1,000-correlated-message** case.
 The projector reuses the inspector-local `relationsById` index for source
 normalization across graph, sequence and fallback views, eliminating
 per-event linear relation scans. Results are evidence for those runners,
-never portable render/latency SLAs. The full history/diff/claim
-navigation UI remains TL-U07.
+never portable render/latency SLAs. TL-U07 adds the guided Inspect UI
+and its pure, source-linked inspection projection.
+
+## TL-U07 — Explain / Inspect and guided evidence navigation
+
+The pure `projectInspection(inspector, request)` function projects one
+compiler-owned validated trace and frame into a deeply immutable,
+renderer-independent `InspectionView`. It calls the accepted indexed
+`stateAt`, `valueAt`, `history`, `diff`, `transfersFor`,
+`causalEvidenceOf` and `claimsForEvent` APIs without interpreting
+event order as causal evidence or rebuilding state from messages.
+
+~~~ts
+const q = inspectTrace(compileArtifact(source));
+const investigated = projectInspection(q, {
+  frameIndex: 1,
+  compareFromIndex: 0,
+  entityId: "counter",
+  path: [],
+  eventId: "write1",
+});
+console.log(investigated.chapter.frameId);  // "increment"
+console.log(investigated.changes[0]?.eventId); // "write1"
+console.log(investigated.selected?.after);  // { status:"known", value:1 }
+~~~
+
+The projected fields have distinct responsibilities:
+
+- **Chapter and time:** the authored step label/note, frame ID/index and,
+  when present, the declared logical tick or wall timestamp. Neither step
+  order nor wall timestamp alone establishes physical duration or cause.
+- **Before / current:** modeled entity presence and values at the selected
+  frame and an explicitly requested earlier comparison frame. The
+  comparison is forward-only. Unknown whole cells, missing known-value
+  paths and known JSON `null` are different outcomes.
+- **Exact changes and path history:** `diff(from,to)` returns all authored
+  **write and presence events**, including same-value writes, in their
+  original authored order. `history(entityId,path)` includes overlapping
+  parent/child writes with before/after values evaluated at the **requested**
+  path while retaining each event's original path and ID. Neither is a
+  fabricated net-value deep comparison.
+- **Relation transfers:** source-linked explicit message phases from
+  `transfersFor`, filtered through the selected frame. A send is never
+  automatically receipt, persistence, acknowledgement, processing or
+  a failure result. No transfers means no modeled evidence, not evidence
+  of failure or of delivery.
+- **Focused evidence:** a selected event shows the exact source IDs,
+  declaring origin kind, step, and only `dependsOn` references from earlier
+  steps. If none exist, say **no explicit causal dependency modeled**.
+  Editor-reviewed causal/explanatory claims stay editorial; references to
+  later events are counted as **not yet in scope** and excluded from
+  their modeled evidence until the relevant frame. A claim with all
+  references in scope is still not independently verified.
+- **Recorded evidence values:** `InspectionEvidence.recorded` identifies
+  an explicit `{kind:"observation", value: Cell}` or
+  `{kind:"message-payload", value: JsonValue}`. These are immutable source
+  data from the exact event (including known `null` and explicit null
+  message payloads). Observation cells **do not** commit modeled entity
+  state. Message payloads never imply another delivery phase, persistence,
+  or truth beyond their authored provenance. If there is no authored
+  payload, `recorded` is absent rather than fabricated.
+- **Bounded source navigation:** the pure inspector memoizes source
+  event descriptors per validated trace so many claims citing the same
+  evidence share one immutable descriptor. The React UI displays at
+  most **12 editorial claims per page**, and at most **12 cited-event
+  controls per displayed claim**; each pagination is independent and
+  reversible, with totals and original IDs retained. Explicit causal
+  dependency controls are also paged. No 1,000-claim artifact can
+  mount all of its cited-event buttons at once.
+
+The browser player exposes **Explain** and **Inspect** as focusable buttons,
+with the same playback step and selected entity across both modes.
+Inspect includes previous/current tables, a forward comparison-frame
+control, a safe **JSON path array** input (parsed as data; never evaluated),
+ordered change/history tables, explicit relation-phase links and an
+event/claim drill-down that can seek to a referenced source step.
+History, changes, transfer and current-step event rows are displayed
+in bounded page windows. Every known value in the before/current, diff,
+history and snapshot tables has a short 150-code-unit preview and,
+if truncated, a button to examine exact canonical JSON in **1,024-code-unit
+segments**, including differences beyond the preview. Segment navigation
+is keyboard accessible, never silently omits suffixes, and prevents
+mounting a 4 MiB value at once. Focused observation/payload values use
+the same safe disclosure. Authored JSON is rendered as inert React text,
+not as parsed HTML or executable code. The interactive inspection content remains
+keyboard/touch accessible, responsive and inert in SSR. The existing
+Graph/Sequence/State-table projection semantics do not change.
+
+The `projectInspection` trust boundary rejects forged/JSON-cloned
+inspectors. Invalid paths are delegated to the canonical typed query
+validator; a request to inspect an event **after** the selected frame is
+rejected. Its internal event-origin/frame index is built once per trusted
+inspector and cannot mutate the authored artifact. Regression evidence
+covers checkout, unknown and absent nested paths, known `null`, exact
+parent-record replacements, same-value writes, topology, editorial claims,
+future-reference limitations, browser keyboard/mobile and near-limit
+2,000-step/10,000-event/1,000-relation inspection, plus an independent
+claim-dense fixture with 1,000 claims × 100 explicitly cited events and
+browser pagination tests. Benchmarks are runner observations, not
+latency/memory SLAs or comprehension-study results.
 
 ## Acceptance and deferred replay checks
 
@@ -446,7 +544,7 @@ broken cross-references, malformed and duplicate JSON, invalid paths, dates,
 cycles, unsafe input, depth/count/byte/work-limit breaches and mutation leaks.
 TL-U03 adds atomic replay, no-false-persistence and endpoint-presence
 checks, deterministic checkpoint/mutation tests and expanded-budget rejection.
-TL-U05 added the graph and native v2 player; TL-U06 added sequence
-and deterministic auto-view selection. Full Inspect/history UI, unified
-authoring and packed-host migration remain TL-U07–TL-U10 work. Test and release evidence must be recorded from real CI,
+TL-U05 added graph/player, TL-U06 added sequence/auto-choice, and TL-U07
+adds pure Explain/Inspect and guided evidence navigation. Unified authoring
+and packed-host migration remain TL-U08–TL-U10 work. Test and release evidence must be recorded from real CI,
 not assumed from documentation alone.

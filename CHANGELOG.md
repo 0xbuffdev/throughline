@@ -9,6 +9,17 @@ program and trace schemas. Changes are grouped using
 
 ### Added
 
+- Added TL-U07 pure `projectInspection` for typed source-linked chapter
+  context, previous/current state, exact explicit `diff`, nested-path
+  `history`, modeled relation transfers, origin-labeled causal
+  dependencies and editorial claims with future-evidence limits. Native
+  schema-2 React players now have accessible Explain/Inspect switching,
+  safe path queries and source-event navigation without mutating modeled
+  state or inferring receipt, persistence or causality. Review hardening
+  exposes explicit observation cells and optional message payloads as
+  non-persistent evidence, provides exact chunked JSON disclosure after
+  truncated state previews, and limits rendered claims to 12 per page
+  with independent 12-source-citation pages and paged dependencies.
 - Added TL-U06 pure source-linked message-sequence projection with
   deterministic graph/sequence/state-table auto-choice, explicit four-phase
   message-ID correlations and a bounded, accessible React evidence timeline.

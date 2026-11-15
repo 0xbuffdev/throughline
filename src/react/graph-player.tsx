@@ -17,6 +17,7 @@ import { PlayerControls, PlayerOptions } from "./controls.js";
 import { useNarration } from "./use-narration.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
 import { SequenceView } from "./sequence-view.js";
+import { InspectPanel } from "./inspect-panel.js";
 
 export type ThroughlineGraphPlayerProps = {
 	/** Only a compiler-owned, immutable schema-2 trace is accepted. */
@@ -243,7 +244,7 @@ function StateFallback({ view, selectedId, onSelect }: {
  * into v1 Program/Trace or accepts a compatibility adapter.
  *
  * Graph, sequence and state-table share the SAME indexed inspector, source
- * IDs and playback frame. Full Inspect/history navigation remains TL-U07.
+ * IDs and playback frame, including the native Explain/Inspect interface.
  */
 export function ThroughlineGraphPlayer({
 	trace, title, className, theme = "auto", narration = false, initialView,
@@ -260,6 +261,7 @@ export function ThroughlineGraphPlayer({
 	const [selectedId, setSelectedId] = useState<Id | null>(null);
 	const [collapsed, setCollapsed] = useState<readonly Id[]>([]);
 	const [viewKind, setViewKind] = useState<ViewKind | undefined>(initialView);
+	const [inspectionMode, setInspectionMode] = useState<"explain" | "inspect">("explain");
 	const [camera, setCamera] = useState<Camera | null>(null);
 	const [fullscreen, setFullscreen] = useState(false);
 	const [fullscreenError, setFullscreenError] = useState<string | null>(null);
@@ -269,6 +271,7 @@ export function ThroughlineGraphPlayer({
 		setCollapsed([]);
 		setCamera(null);
 		setViewKind(initialView);
+		setInspectionMode("explain");
 		setNarrating(false);
 	}
 	useEffect(() => {
@@ -435,9 +438,16 @@ export function ThroughlineGraphPlayer({
 							Boolean(document.fullscreenEnabled), toggle: toggleFullscreen,
 					}}/>
 			</header>
+
+			<div className="thl-v2-mode" role="group" aria-label="Explain or inspect">
+				<button type="button" aria-pressed={inspectionMode === "explain"}
+					onClick={() => setInspectionMode("explain")}>Explain</button>
+				<button type="button" aria-pressed={inspectionMode === "inspect"}
+					onClick={() => setInspectionMode("inspect")}>Inspect</button>
+			</div>
 			<div className="thl-stage">
 				<div className="thl-viewport">
-					{view.kind === "graph" && <div className="thl-viewport-tools" role="group" aria-label="Graph camera controls">
+					{inspectionMode === "explain" && view.kind === "graph" && <div className="thl-viewport-tools" role="group" aria-label="Graph camera controls">
 						<button type="button" aria-label="Zoom in"
 							disabled={view.kind !== "graph"} onClick={() => zoom(1.25)}>+</button>
 						<button type="button" aria-label="Zoom out"
@@ -446,7 +456,12 @@ export function ThroughlineGraphPlayer({
 							disabled={view.kind !== "graph"} onClick={fit}>Fit</button>
 					</div>}
 					<div className="thl-canvas" ref={canvasRef}>
-						{view.kind === "graph" ? <svg ref={svgRef}
+
+						{inspectionMode === "inspect" ?
+							<InspectPanel trace={trace} inspector={inspector} frameIndex={frameIndex}
+								selectedEntityId={selectedId} onSelectEntity={setSelectedId}
+								onSeek={to => dispatch({ type: "step", to })} />
+							: view.kind === "graph" ? <svg ref={svgRef}
 							className="thl-scene thl-v2-diagram"
 							width="100%" height="100%" viewBox={cameraViewBox(layout, effectiveCamera)}
 							role="img" tabIndex={0} aria-label="Source-linked graph at current frame"
