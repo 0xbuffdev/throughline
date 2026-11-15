@@ -544,6 +544,23 @@ function rejectDuplicateJsonKeys(source: string, budget: Budget): void {
 	if (cursor !== source.length) syntax("unexpected trailing content");
 }
 
+/**
+ * Parse bounded JSON data without losing duplicate keys. The Node-only sidecar
+ * loader uses this lexical gate before the manifest's exact shape validator.
+ * This is deliberately not the public artifact-deserialization entry point.
+ */
+export function parseStrictJsonData(source: string): unknown {
+	if (typeof source !== "string") fail("$", "expected strict JSON text");
+	if (new TextEncoder().encode(source).byteLength > ARTIFACT_LIMITS.artifactBytes)
+		fail("$", "JSON input exceeds 4 MiB UTF-8");
+	rejectDuplicateJsonKeys(source, new Budget());
+	try {
+		return JSON.parse(source) as unknown;
+	} catch {
+		return fail("$", "invalid JSON text");
+	}
+}
+
 /** Parse serialized artifacts, rejecting duplicate JSON keys before decoding. */
 export function parseArtifactJson(source: string): VisualArtifact {
 	if (typeof source !== "string") fail("$", "expected JSON text");
