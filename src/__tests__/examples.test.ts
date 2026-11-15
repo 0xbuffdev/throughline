@@ -38,7 +38,7 @@ function atStep(trace: CompiledTrace, stepId: string, kind: "graph" | "sequence"
 /** The same exact compiled cell must be present in graph and state-table. */
 function expectProjectedCell(
 	view: ViewDescriptor, kind: "graph" | "state-table",
-	entityId: string, cell: Cell,
+	entityId: string, cell: unknown,
 ): void {
 	expect(view.kind).toBe(kind);
 	const role = kind === "graph" ? "entity" : "value";
