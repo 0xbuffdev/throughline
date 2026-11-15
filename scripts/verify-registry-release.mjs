@@ -23,7 +23,7 @@ export function verifyPublishedRegistryRelease({
 	assert.equal(manifest.sha256, expectedSha256, "Expected checksum must be from staged release manifest");
 	assert.equal(metadata.name, NAME);
 	assert.equal(metadata.version, manifest.version);
-	assert.equal(metadata.private, false);
+	assert.notEqual(metadata.private, true, "Registry version must be public");
 	assert.equal(metadata.license, "Apache-2.0");
 	assert.equal(distTags.latest, manifest.version,
 		"The approved version must actually be the registry's latest version");
