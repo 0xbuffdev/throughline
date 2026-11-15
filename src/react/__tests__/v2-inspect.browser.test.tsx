@@ -4,6 +4,7 @@ import { render } from "vitest-browser-react";
 import { compileArtifact } from "../../v2/compiler.js";
 import { distributedGraph } from "../../__tests__/v2-graph-fixture.js";
 import { retryCheckout } from "../../__tests__/v2-sequence-fixture.js";
+import { claimHeavyInspection } from "../../__tests__/v2-claims-fixture.js";
 import { ThroughlineGraphPlayer } from "../graph-player.js";
 import "../../styles/throughline.css";
 
@@ -156,3 +157,169 @@ it("responds to keyboard seeking at mobile widths with truthful empty evidence",
 		.toBeVisible();
 	expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
 });
+
+it("shows exact before/after values after a shared 150-character preview", async () => {
+	const prefix = "A".repeat(2399);
+	const source = {
+		schemaVersion: 2 as const, id: "longRoot",
+		origins: [{ id: "author", kind: "authored" as const }],
+		entities: [{ id: "value", label: "Long value" }],
+		relations: [],
+		initialState: { value: { status: "known" as const, value: prefix + "x" } },
+		steps: [{ id: "replace", label: "Replace root string", events: [{
+			id: "longWrite", type: "write" as const, originId: "author",
+			entityId: "value", path: [],
+			value: { status: "known" as const, value: prefix + "y" },
+		}] }],
+	};
+	const screen = await render(<ThroughlineGraphPlayer
+		trace={compileArtifact(source)} initialView="state-table"/>);
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	await screen.getByRole("button", exact("Inspect")).click();
+	const table = screen.getByRole("table", { name: "Authored changes, in frame/event order" });
+	await expect.element(table).toBeVisible();
+	const row = table.getByRole("row", { name: /longWrite/ });
+	const previews = row.element().querySelectorAll(".thl-v2-inspect-value > code");
+	expect(previews).toHaveLength(2);
+	expect(previews[0].textContent).toBe(previews[1].textContent);
+	expect(previews[0].textContent).toContain("(truncated preview)");
+
+	await row.getByRole("button", { name: /Show exact before event longWrite/ }).click();
+	const before = screen.getByRole("region", { name: "Exact before event longWrite" });
+	await expect.element(before).toBeVisible();
+	expect(before.element().querySelector("pre")?.textContent?.length)
+		.toBeLessThanOrEqual(1024);
+	await before.getByRole("button", { name: "Next value segment" }).click();
+	await before.getByRole("button", { name: "Next value segment" }).click();
+	expect(before.element().querySelector("pre")?.textContent?.endsWith('x"')).toBe(true);
+	await expect.element(before.getByRole("button", { name: "Next value segment" }))
+		.toBeDisabled();
+
+	await row.getByRole("button", { name: /Show exact after event longWrite/ }).click();
+	const after = screen.getByRole("region", { name: "Exact after event longWrite" });
+	await after.getByRole("button", { name: "Next value segment" }).click();
+	await after.getByRole("button", { name: "Next value segment" }).click();
+	expect(after.element().querySelector("pre")?.textContent?.endsWith('y"')).toBe(true);
+	expect(after.element().querySelector("pre")?.textContent)
+		.not.toBe(before.element().querySelector("pre")?.textContent);
+	// The historical and selected-path cells use the exact same expansion
+	// component rather than a second, truncating data interpretation.
+	await expect.element(screen.getByRole("table", {
+		name: "Previous and current modeled state at requested path",
+	})).toHaveCount(0); // No entity has been selected yet
+	await userEvent.selectOptions(
+		screen.getByRole("combobox", { name: "Inspect entity" }).element(), "value",
+	);
+	const selection = screen.getByRole("table", {
+		name: "Previous and current modeled state at requested path",
+	});
+	await expect.element(selection).toBeVisible();
+	expect(selection.element().querySelectorAll(".thl-v2-inspect-value > code")).toHaveLength(2);
+});
+
+it("exposes the recorded timeout observation while leaving modeled client state unchanged", async () => {
+	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(retryCheckout())}/>);
+	for (let i = 0; i < 3; i++)
+		await screen.getByRole("button", { name: "Step forward" }).click();
+	await screen.getByRole("button", exact("Inspect")).click();
+	const source = screen.getByRole("region", {
+		name: "Recorded source data for event watchTimeout",
+	});
+	await expect.element(source).toBeVisible();
+	expect(source.element().getAttribute("data-source-event-ids")).toBe("watchTimeout");
+	expect(source.element().getAttribute("data-source-entity-ids")).toBe("client");
+	expect(source.element().textContent).toContain("no acknowledgement recorded yet");
+	expect(source.element().textContent).toContain("does not write or");
+	await userEvent.selectOptions(
+		screen.getByRole("combobox", { name: "Inspect entity" }).element(), "client",
+	);
+	await screen.getByRole("textbox", { name: "Inspect path" }).fill('["timeout"]');
+	await screen.getByRole("button", { name: "Inspect path" }).click();
+	const selected = screen.getByRole("table", {
+		name: "Previous and current modeled state at requested path",
+	});
+	expect(selected.element().textContent).toContain("Known: false");
+	expect(view()?.textContent).toContain("No explicit write or presence change");
+});
+
+it("reveals optional authored message payload, escaped as data, without claiming persistence", async () => {
+	const source = retryCheckout();
+	const event = source.steps[0]!.events[0]!;
+	if (event.type !== "message") throw new Error("invalid source fixture");
+	event.payload = {
+		note: "</script><script>injected()</script>",
+		long: "B".repeat(200) + "tail",
+	};
+	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)}/>);
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	await screen.getByRole("button", exact("Inspect")).click();
+	const recorded = screen.getByRole("region", {
+		name: "Recorded source data for event originalSent",
+	});
+	await expect.element(recorded).toBeVisible();
+	expect(recorded.element().getAttribute("data-source-relation-ids")).toBe("request");
+	expect(recorded.element().textContent).toContain("Payload:");
+	expect(recorded.element().textContent).toContain("does not prove receipt");
+	await recorded.getByRole("button", {
+		name: /Show exact message payload for event originalSent/,
+	}).click();
+	const exactValue = screen.getByRole("region", {
+		name: "Exact message payload for event originalSent",
+	});
+	expect(exactValue.element().querySelector("pre")?.textContent)
+		.toContain("</script><script>injected()</script>");
+	expect(view()?.querySelectorAll("script")).toHaveLength(0);
+	expect(view()?.textContent).toContain("No explicit write or presence change");
+});
+
+it("bounds 1,000 claims × 100 cited events with independent page windows and source seeking", async () => {
+	await page.viewport(390, 780);
+	const screen = await render(<ThroughlineGraphPlayer
+		trace={compileArtifact(claimHeavyInspection())} initialView="graph"/>);
+	screen.getByRole("group", { name: "Visualization player" }).element().focus();
+	await userEvent.keyboard("{End}");
+	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 101 of 101");
+	await screen.getByRole("button", exact("Inspect")).click();
+	const focused = screen.getByRole("region", { name: "Focused source event" });
+	await expect.element(focused).toBeVisible();
+	expect(focused.element().textContent).toContain("Editorial claims (1000)");
+	expect(focused.element().textContent).toContain("Showing 12 of 1000 authored claims");
+	const cards = () => focused.element().querySelectorAll<HTMLLIElement>(
+		".thl-v2-inspect-claim");
+	const cited = () => focused.element().querySelectorAll<HTMLButtonElement>(
+		".thl-v2-inspect-claim ul button[data-source-event-ids]");
+	expect(cards()).toHaveLength(12);
+	expect(cited()).toHaveLength(144);
+	expect([...cards()].every(card => card.querySelectorAll(
+		"ul button[data-source-event-ids]").length <= 12)).toBe(true);
+	expect(cards()[0]?.getAttribute("data-source-claim-id")).toBe("claim0");
+	expect(cards()[0]?.textContent).toContain("Modeled cited events: 100");
+
+	await focused.getByRole("button", { name: "Next cited events for claim0" }).click();
+	expect(cards()).toHaveLength(12);
+	expect(cited()).toHaveLength(144);
+	expect(cards()[0]?.querySelector('[data-source-event-ids="observation12"]'))
+		.not.toBeNull();
+	expect(cards()[0]?.querySelector('[data-source-event-ids="observation0"]')).toBeNull();
+
+	await focused.getByRole("button", { name: "Next claims page" }).click();
+	expect(cards()).toHaveLength(12);
+	expect(cited()).toHaveLength(144);
+	expect(cards()[0]?.getAttribute("data-source-claim-id")).toBe("claim12");
+	await focused.getByRole("button", { name: "Previous claims page" }).click();
+	expect(cards()).toHaveLength(12);
+	expect(cards()[0]?.getAttribute("data-source-claim-id")).toBe("claim0");
+	await focused.getByRole("button", { name: "Next claims page" }).click();
+	await focused.getByRole("button", { name: "Next cited events for claim12" }).click();
+	await focused.getByRole("button", {
+		name: "Inspect event observation12 (step 14)",
+	}).click();
+	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 14 of 101");
+	expect(focused.element().getAttribute("data-source-event-ids")).toBe("observation12");
+	expect(cards()).toHaveLength(12);
+	expect(cited().length).toBeLessThanOrEqual(144);
+	expect(view()?.textContent).toContain("1000");
+	expect(view()?.textContent).toContain("87 cited event(s) are not yet");
+	expect(document.querySelector(".thl-v2")!.scrollWidth)
+		.toBeLessThanOrEqual(document.querySelector(".thl-v2")!.clientWidth);
+}, 60_000);
