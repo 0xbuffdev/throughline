@@ -178,7 +178,7 @@ part of Inspect. Its exact model and provenance rules are documented in
 
 ## Features
 
-- **One \`thl\` fence:** strict, offline schema-2 JSON or reviewed prose
+- **One `thl` fence:** strict, offline schema-2 JSON or reviewed prose
   materialization with hash-bound provenance. No old domain tags or
   compatibility router in the new authoring surface.
 - **Evidence-aware steps:** explicit writes, modeled topology, independent
@@ -236,7 +236,7 @@ const json = serializeArtifact(trace.artifact); // canonical, deterministic JSON
 ~~~
 
 For a Markdown document, place this structured JSON inside an
-unqualified \`~~~thl\` fence. Remark/MDX validates it without AI, a
+unqualified `~~~thl` fence. Remark/MDX validates it without AI, a
 network service or a sidecar. Descriptive text instead requires
 explicit, reviewed materialization. Read
 [universal authoring](docs/grammar.md) and
@@ -301,7 +301,7 @@ pending the separately reviewed v1 cleanup tickets.
 - [User guide and player](docs/user-guide.md)
 - [Reference catalog](docs/catalog.md) and
   [static explanations and comprehension questions](docs/reference-traces.md)
-- [Universal \`thl\` grammar](docs/grammar.md) and
+- [Universal `thl` grammar](docs/grammar.md) and
   [typed reference authoring](docs/authoring.md)
 - [Framework integration guide](docs/framework-integrations.md)
 - [Semantic schema-2 runtime](docs/schema-v2.md)
