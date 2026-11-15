@@ -4,7 +4,7 @@ import { render } from "vitest-browser-react";
 import { compileProgram } from "../../compiler.js";
 import { compile } from "../../domains/registry.js";
 import { CHECKOUT_GUIDANCE, CHECKOUT_SCENARIOS } from "../../legacy-examples.js";
-import { ThroughlinePlayer } from "../index.js";
+import { ThroughlinePlayer } from "../player.js";
 import "../../styles/throughline.css";
 import { openPlayerPanel, seekFrame } from "./player-actions.js";
 
