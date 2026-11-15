@@ -84,9 +84,13 @@ unconditionally; malformed JSON cannot silently become prose.
 ### What check does
 
 The CLI walks `.md` and `.mdx` files in deterministic path order,
-discovers fenced code blocks without evaluating MDX, and validates each
-`thl` code node. Unrelated JavaScript, math and Mermaid remain
-ordinary Markdown. Unqualified fences alone are accepted; domain
+parses a **non-evaluating CommonMark/MDX syntax tree** (Remark with
+MDX syntax enabled for `.mdx` documents), then validates each actual
+`thl` code node in depth-first order. This includes fences under nested
+list items, blockquotes and JSX containers. Strings resembling `~~~thl`
+inside HTML comments, JavaScript code, MDX expressions or JSX attributes
+are not code nodes and never acquire ordinals. Unrelated JavaScript,
+math and Mermaid remain ordinary Markdown. Unqualified fences alone are accepted; domain
 metadata such as `thl flow` fails. Each success reports its document,
 one-based source line and column and zero-based `thl` ordinal;
 the final summary reports documents and validated blocks.
