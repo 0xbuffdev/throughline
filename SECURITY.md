@@ -1,26 +1,21 @@
 # Security policy
 
-## Supported versions
+Throughline processes authored artifacts and Markdown, so input validation and clear trust boundaries matter. The pure compiler does not execute the described code or contact a model provider. The Node host still accesses local files under a configured trusted root; applications remain responsible for securely handling the content they pass to it.
 
-Security fixes target the latest published Throughline version. Previous
-versions may not receive backports, especially before version 1.0.
+## Supported releases
 
-## Reporting vulnerabilities
+Security fixes normally target the **latest published npm release** of `@0xbuff/throughline`. Earlier releases may not receive backports, particularly before version 1.0. A source branch or release candidate does **not** become a supported npm version merely because its `package.json` has changed.
 
-Do not report exploitable vulnerabilities, credentials, or sensitive proof
-of concept details in public issues, pull requests or discussions.
+Check the installed version with `npm ls @0xbuff/throughline` and the registry's published version with `npm view @0xbuff/throughline version`.
 
-Use **Report a vulnerability** under the repository's
-[Security](https://github.com/0xbuffdev/throughline/security) tab to submit
-a private report when GitHub private vulnerability reporting is enabled.
-If that option is unavailable, open a brief issue asking for a confidential
-reporting channel **without including the vulnerability details**.
+## Report a vulnerability privately
 
-Include the affected package version, impact, reproduction steps and
-mitigations only through a private channel. Reports are triaged privately as capacity permits. No response-time or
-bug-bounty guarantee is offered.
+Please do not share active exploit details, credentials, private files, or sensitive proof-of-concept material in public GitHub issues, PRs or discussions.
 
-Security concerns include unsafe rendering of authored text, unintended code
-or network execution, resource-exhaustion limits, browser injection,
-information disclosure and package supply-chain compromise. For ordinary
-usage questions, see the [support procedure](CONTRIBUTING.md#support).
+Use the repository's [Security page](https://github.com/0xbuffdev/throughline/security) and choose **Report a vulnerability** if private vulnerability reporting is enabled. If that option is unavailable, open an issue requesting a private reporting route **without including technical exploit details**. Maintainers will provide an appropriate channel when available.
+
+A useful private report states the affected release or commit, impact, reproducing steps, expected and actual behavior, and any suggested mitigation. Do not include secrets unless the secure channel specifically supports them. We investigate as capacity permits, without guaranteed response or bounty.
+
+Relevant reports include unsafe Markdown/MDX handling, code or network execution, malicious file/path traversal, unbounded resource use, sensitive-information disclosure, browser injection, and supply-chain or release provenance failures.
+
+For non-security bugs and usage questions, follow [Contributing](CONTRIBUTING.md).

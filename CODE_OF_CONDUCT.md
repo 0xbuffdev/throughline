@@ -1,30 +1,17 @@
 # Code of Conduct
 
-Throughline aims to be a constructive, technically focused open-source
-project. These expectations apply to issues, pull requests, code reviews
-and other project-managed conversations.
+Throughline is maintained as an open-source project. We want its issue tracker, pull requests, code reviews and other project spaces to be constructive and welcoming.
 
-## Expected conduct
+## What we expect
 
-- Be respectful, specific and patient when discussing technical decisions.
-- Critique code and ideas rather than attacking people.
-- Welcome differing levels of experience and explain decisions clearly.
-- Respect privacy and avoid sharing another person's private information.
-- Avoid harassment, discrimination, threats, sexualized insults,
-  sustained disruption and deliberate misrepresentation.
+Be respectful and specific. Give feedback about code, documentation, assumptions and outcomes rather than attacking people. Welcome questions and differing experience levels. Disagree with evidence and explain trade-offs where possible. Respect privacy and avoid disclosing another person's confidential material.
 
-## Maintainer enforcement
+Harassment, discriminatory abuse, threats, personal attacks, unwanted sexual attention, sustained disruption and deliberate intimidation are not acceptable in project spaces.
 
-The sole maintainer may edit or hide inappropriate comments, close
-unproductive threads, reject contributions or restrict participation
-when necessary. Enforcement decisions should reflect the conduct,
-context and severity, and may be reconsidered on new information.
+## Scope and moderation
 
-For abusive behavior occurring on GitHub, use GitHub's **Report content**
-tools where applicable. If a report requires private context, do not
-post private evidence publicly; request a confidential contact method
-through a brief, non-sensitive repository issue. This is not an
-emergency response channel.
+This policy applies to participation in Throughline-maintained spaces, including GitHub issues, discussions and reviews. Maintainers may edit or hide harmful content, close or lock conversations, reject contributions, or limit participation when necessary. The response should take context, severity and repeated behavior into account.
 
-This policy addresses project interactions. For product-security
-vulnerabilities, use the separate [security policy](SECURITY.md).
+Use GitHub's **Report content** controls for platform-level abuse. For a report involving private details, request a confidential reporting method through a short issue without posting the details publicly. This process does not provide emergency support or guaranteed response times.
+
+Security vulnerabilities have a separate private reporting process in [SECURITY.md](SECURITY.md).

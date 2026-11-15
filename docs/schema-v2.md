@@ -1,15 +1,16 @@
-# Schema-2 runtime, Explain/Inspect and universal authoring and references (TL-U02–U09)
+# Schema 2: data model, replay and inspection
 
-The schema-2 validator, deterministic compiler and indexed inspector implement
-the pure semantic foundation. TL-U05 adds the native graph projection and React
-player; TL-U06 adds the source-linked sequence projection, accessible evidence
-timeline and deterministic all-three-view selection without a v1 adapter.
-TL-U07 delivers Explain/Inspect, and TL-U08 introduces a schema-2-only,
-single-fence Markdown/MDX bridge. TL-U09 adds independently checked factorial,
-matrix, binary and hypothetical checkout artifacts with source-cited static
-comprehension baselines. Historical schema-1 source remains internal test
-scaffolding pending U10 cleanup; it is not a compatibility promise.
-Normative authority: Throughline Specification 0004 §§10–13 (maintainer-owned architecture record).
+Throughline represents a process as explicit, authored state and events. A
+`VisualArtifact` defines entities, relationships, known and unknown values,
+ordered steps, and the origin of each statement. The compiler validates
+that model and produces deterministic, immutable frames. Inspectors answer
+what changed and what evidence supports it; Graph, Sequence and State-table
+views present the same facts without inventing activity.
+
+This reference describes the **schema-2 API in the v0.2.0 source candidate**,
+not an npm publication announcement. Schema-1 programs and domain-tagged
+fences are incompatible. For a first example, read the [README](../README.md)
+and [authoring guide](grammar.md).
 
 ## First-party semantic truth references
 
@@ -83,7 +84,7 @@ in validation or compilation. The input is inert data. `message` and
   `constructor`) or nonnegative safe integer indexes. Only root writes may
   set an unknown cell. Runtime nested-value compatibility, atomic write
   conflicts, sent-message endpoint presence and replay budgets belong to
-  the **TL-U03 compiler**.
+  the compiler.
 - Logical ticks are nonnegative safe integers. Wall timestamps have explicit
   offsets and parseable RFC 3339 calendar dates. Neither clock implies step
   duration or causal order.
@@ -115,7 +116,7 @@ checks are further bounded by the fixed structural ceilings. The limits are
 independent ceilings: approaching one can make another impossible to reach.
 
 
-## TL-U08 — Universal authoring trust boundary
+## Universal authoring and trust boundary
 
 The only recognized Markdown language is unqualified thl, with no metadata.
 The first non-whitespace character is the disjoint selector: an opening brace
@@ -155,9 +156,7 @@ requests. No resolver can silently self-approve its own content.
 The Remark bridge prevalidates the whole mdast. In explicit MDX mode it
 inserts only inert literal artifactJson for a host-registered ThroughlineEmbed
 React component, which parses and compiles into the native schema-2 player.
-No user text becomes an MDX expression. Unsupported ThroughlineDocument
-envelopes belong to TL-U21, not this milestone. Full CLI filesystem operations
-and packed publication gates belong to TL-U10. See
+No user text becomes an MDX expression. The future ThroughlineDocument envelope is not supported by the current schema-2 contract. The CLI handles trusted filesystem operations separately. See
 [framework integration and reviewed authoring](framework-integrations.md).
 
 ## Serialization and migration
@@ -166,22 +165,16 @@ Schema 2 is intentionally incompatible with v1 `Program.version: 1` and
 `Trace.version: 1`. The validator rejects v1 objects, externally supplied
 compiled frames and unknown versions. There is no implicit migration, coercion,
 legacy domain-tag compatibility or trust of an asserted `schemaVersion`.
-Source examples, authoring and the player migrate as separate reviewed work.
-The pure authoring and reviewed sidecar contract is implemented in TL-U08;
-filesystem CLI integration belongs to TL-U10. The future
-`ThroughlineDocument`/`VisualPlan` envelope is **not** a schema-2
-`VisualArtifact`; TL-U21 explicitly owns that optional fidelity layer.
+The public examples, authoring, CLI and React player use schema 2. The future `ThroughlineDocument`/`VisualPlan` envelope is **not** supported as a schema-2 `VisualArtifact` in this candidate. See [the migration guide](migration-v0.2.0.md).
 
 `serializeArtifact` canonically sorts object keys, preserving all array
 orders and authored event IDs. It is stable across object insertion order.
-TL-U08 additionally specifies SHA-256 over these canonical UTF-8 JSON bytes
-for reviewed sidecar artifact hashes. This is a documented **source-level
-contract**, not evidence that an unreleased package has been published. Externally serialized compiled traces remain inadmissible. Call
+Reviewed sidecars use SHA-256 over these canonical UTF-8 JSON bytes. This is a documented **source-level contract**, not evidence that this release candidate has been published. Externally serialized compiled traces remain inadmissible. Call
 `compileArtifact` with a validated artifact (which is revalidated at the compiler
 boundary) to reconstruct frames deterministically.
 
 
-## TL-U03 — Replay, checkpoint and atomicity contract
+## Atomic replay and immutable checkpoints
 
 `compileArtifact(input: VisualArtifact): CompiledTrace` validates/detaches the
 complete input before touching its steps. Frame zero is `@initial`; every
@@ -211,7 +204,7 @@ endpoint within that step is not a send. `received`, `acknowledged` and
 `processed` are independently authored evidence and need not imply any earlier
 phase. Observations never persist data; only explicit `write` events do.
 References to causal predecessors remain explicit, earlier-step-only evidence
-validated by TL-U02. Wall timestamps do not reorder steps or establish duration.
+validated at the artifact boundary. Wall timestamps do not reorder steps or establish duration.
 
 The compiler measures every expanded frame, charging each JSON primitive,
 property and array element *on every frame*, including unchanged shared values.
@@ -224,7 +217,7 @@ the public boundary; a caller cannot mutate a past state or authored artifact.
 
 ### Measured near-limit compilation (non-SLA evidence)
 
-The TL-U03 boundary regression validates a single atomic step containing
+A boundary regression validates a single atomic step containing
 **10,000 distinct indexed writes** into a known numeric array of **200,000
 entries**. The old per-event array copy performed approximately 2 billion
 element-definition operations. The batched version traverses the touched
@@ -245,11 +238,7 @@ array only once during commit and preserves the unchanged initial frame.
 This is one reproducible **observation**, not a portable time guarantee or a
 performance claim about different hardware, runtimes or input distributions.
 
-**Scope:** This source does not promise schema-1 compatibility, query indexes,
-graph/sequence/state-table projections or a v2 player. Those are separate
-reviewed implementation tickets TL-U04–TL-U10.
-
-## TL-U04 — Pure indexed semantic inspection
+## Indexed semantic inspection
 
 `inspectTrace(trace: CompiledTrace): TraceInspector` requires an **in-process,
 compiler-owned** trace. It rejects a JSON-deserialized, forged or reassembled
@@ -322,7 +311,7 @@ assertions, took **177.8 ms**. Reproduction:
 The fixture hash, hardware and observed timings are emitted by the test.
 This is measured evidence **on that runner**, not a cross-hardware latency SLA.
 
-## TL-U05 — Pure graph projection and native React player
+## Graph projection and the native React player
 
 The accepted `ViewRequest`, `ViewDescriptor`, `ViewItem` and `SourceIds`
 contracts are available from the root package. A projection is a deeply
@@ -393,7 +382,7 @@ ascending priority, tie-breaking `sequence > graph > state-table`; without
 a compatible hint, any authored message event chooses sequence, else a
 modeled-present graph link chooses graph, else state-table. Seeking never
 silently switches the automatically selected view.
-TL-U07 delivers full Inspect/history UI and guided evidence navigation.
+The separate Inspect panel also supports history and guided evidence navigation.
 
 **Native React:** `ThroughlineGraphPlayer` is exported solely from
 `@0xbuff/throughline/react`, consuming `CompiledTrace` directly. It reuses
@@ -403,8 +392,7 @@ Frame seeking, step captions, evidence listing, source-based selection,
 read-only group collapse, pan/zoom/fit, focusable keyboard controls and
 source-linked SVG descriptions are available. A separate v2 state table
 fallback is readable and never promotes observations to durable writes.
-The old `ThroughlinePlayer` remains a temporary schema-1 entrypoint, **not
-a new compatibility API**; migrate internal examples/MDX in TL-U08–TL-U10.
+The schema-1 `ThroughlinePlayer` is **not exported** in the v0.2.0 API; use `ThroughlineGraphPlayer` for the compiled schema-2 trace.
 
 Regression coverage includes distributed checkout (isolated receives,
 processed-without-sent evidence, explicit settlement write, preactivation
@@ -416,7 +404,7 @@ are release evidence gates on the source PR, not substitute claims of human
 understanding. Near-cap 200-entity/1000-relation layout tests record hardware
 and a fixture SHA-256; timings are observations, not portable SLAs.
 
-## TL-U06 — Cumulative, explicit message sequence evidence
+## Cumulative message-sequence evidence
 
 `projectView(inspector, { kind: "sequence", frameIndex })` now returns a
 pure, frozen `ViewDescriptor` backed by the **same compiler-owned inspector**
@@ -496,10 +484,9 @@ case and one **10,000-event / 1,000-relation / 1,000-correlated-message** case.
 The projector reuses the inspector-local `relationsById` index for source
 normalization across graph, sequence and fallback views, eliminating
 per-event linear relation scans. Results are evidence for those runners,
-never portable render/latency SLAs. TL-U07 adds the guided Inspect UI
-and its pure, source-linked inspection projection.
+never portable render/latency SLAs. The guided Inspect UI uses a pure, source-linked inspection projection.
 
-## TL-U07 — Explain / Inspect and guided evidence navigation
+## Explain and Inspect
 
 The pure `projectInspection(inspector, request)` function projects one
 compiler-owned validated trace and frame into a deeply immutable,
@@ -597,14 +584,14 @@ claim-dense fixture with 1,000 claims × 100 explicitly cited events and
 browser pagination tests. Benchmarks are runner observations, not
 latency/memory SLAs or comprehension-study results.
 
-## Acceptance and deferred replay checks
+## Verification
 
-TL-U02 tests positive recursion/matrix/checkout-shaped artifacts and rejects
-broken cross-references, malformed and duplicate JSON, invalid paths, dates,
-cycles, unsafe input, depth/count/byte/work-limit breaches and mutation leaks.
-TL-U03 adds atomic replay, no-false-persistence and endpoint-presence
-checks, deterministic checkpoint/mutation tests and expanded-budget rejection.
-TL-U05 added graph/player, TL-U06 added sequence/auto-choice, and TL-U07
-adds pure Explain/Inspect and guided evidence navigation. Unified authoring
-and packed-host migration remain TL-U08–TL-U10 work. Test and release evidence must be recorded from real CI,
-not assumed from documentation alone.
+The test suite checks valid models, malformed and duplicate-key JSON, unsafe
+paths and values, broken references, bounded work, atomic replay and immutable
+state. Browser coverage tests Graph, Sequence, State table and Inspect with
+keyboard and compact-layout behavior. Packed consumers verify the published
+export shape rather than relying on source-only imports.
+
+See [release-quality evidence](release-quality.md). Automated tests do not
+replace real human screen-reader acceptance, verified npm publication, or
+independent research into learning outcomes.

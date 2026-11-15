@@ -46,12 +46,16 @@ jobs:
         run: ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/publish.yml")'
       - name: Audit public-source boundaries and dependency licenses
         run: pnpm audit:source
+      - name: Check public documentation links and code fences
+        run: pnpm audit:docs
       - name: Typecheck
         run: pnpm typecheck
       - name: Typecheck local preview
         run: pnpm preview:typecheck
       - name: Bundle local preview
         run: pnpm preview:build
+      - name: TL-U19 offline release tooling and negative authorization checks
+        run: pnpm test:release-tooling
       - name: Compiler, release performance and hostile-input tests
         env:
           THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -96,6 +100,31 @@ jobs:
         run: pnpm audit:frameworks
       - name: Validate Markdown host consumers
         run: pnpm audit:markdown-hosts
+      - name: Package immutable TL-U19 candidate for human review (no npm publication)
+        env:
+          THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .release-artifacts
+          pnpm pack --out .release-artifacts/throughline.tgz
+          (cd .release-artifacts && sha256sum throughline.tgz > SHA256SUMS)
+          git rev-parse HEAD > .release-artifacts/RELEASE_COMMIT
+          export THL_RELEASE_TAG="v$(node -p "require('./package.json').version")"
+          node scripts/release-artifact.mjs create .release-artifacts
+          node scripts/release-artifact.mjs verify .release-artifacts
+      - name: Upload exact-source unsigned candidate archive for real TL-U18 testing
+        uses: actions/upload-artifact@v7
+        with:
+          name: throughline-v2-candidate-${{ github.run_id }}
+          path: |
+            .release-artifacts/throughline.tgz
+            .release-artifacts/SHA256SUMS
+            .release-artifacts/RELEASE_COMMIT
+            .release-artifacts/RELEASE_MANIFEST.json
+          if-no-files-found: error
+          retention-days: 30
+
 
       # The exact-head job above provides artifact hashes and benchmark evidence.
       # A PR's required CI must ALSO test the *proposed merge result*, because
@@ -130,9 +159,11 @@ jobs:
           set -euo pipefail
           ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/publish.yml")'
           pnpm audit:source
+          pnpm audit:docs
           pnpm typecheck
           pnpm preview:typecheck
           pnpm preview:build
+          pnpm test:release-tooling
           pnpm test:run
           node scripts/verify-release-evidence.mjs
           pnpm test:browser:run
@@ -142,3 +173,12 @@ jobs:
           pnpm audit:browser
           pnpm audit:frameworks
           pnpm audit:markdown-hosts
+          rm -rf .release-artifacts
+          mkdir -p .release-artifacts
+          pnpm pack --out .release-artifacts/throughline.tgz
+          (cd .release-artifacts && sha256sum throughline.tgz > SHA256SUMS)
+          git rev-parse HEAD > .release-artifacts/RELEASE_COMMIT
+          export THL_RELEASE_TAG="v$(node -p "require('./package.json').version")"
+          node scripts/release-artifact.mjs create .release-artifacts
+          node scripts/release-artifact.mjs verify .release-artifacts
+

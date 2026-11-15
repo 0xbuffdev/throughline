@@ -1,6 +1,6 @@
 {
 	"name": "@0xbuff/throughline",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Readable state over time, authored in Markdown. A deterministic trace compiler with an optional React player.",
 	"private": false,
 	"license": "Apache-2.0",
@@ -49,13 +49,17 @@
 		"test:browser:run": "vitest run --config vitest.browser.config.ts",
 		"audit:pack": "node scripts/audit-pack.mjs",
 		"audit:source": "node scripts/audit-source.mjs",
+		"audit:docs": "node scripts/audit-docs.mjs",
 		"audit:browser": "node scripts/audit-browser.mjs",
 		"audit:licenses": "node scripts/audit-licenses.mjs",
 		"audit:frameworks": "node scripts/audit-frameworks.mjs",
 		"audit:markdown-hosts": "node scripts/audit-markdown-hosts.mjs",
 		"test:cli": "vitest run src/__tests__/cli.test.ts",
 		"test:release-performance": "vitest run src/__tests__/release-v2-performance.test.ts",
-		"test:release-security": "vitest run src/__tests__/release-v2-security.test.ts"
+		"test:release-security": "vitest run src/__tests__/release-v2-security.test.ts",
+		"test:release-tooling": "node --test scripts/tests/release-verification.test.mjs",
+		"release:verify-registry": "node scripts/verify-registry-release.mjs",
+		"release:audit-registry": "node scripts/audit-registry.mjs"
 	},
 	"files": [
 		"dist",

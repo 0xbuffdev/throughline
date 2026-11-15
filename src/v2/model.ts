@@ -1,9 +1,8 @@
 /**
- * Throughline schema 2: authored semantic facts, not compiled frames or presentation.
+ * Schema-2 semantic model: explicit authored facts, not compiled frames or UI.
  *
- * Normative contract: context/repos/throughline/specs/0004-universal-visualization-engine.md
- * §10 (U-DEC-01–05). These types coexist with the v1 implementation only while
- * TL-U03–TL-U10 migrate the compiler, projections and authoring surfaces.
+ * The schema version is independent of npm package versions. Refer to
+ * docs/schema-v2.md for public semantics and validation boundaries.
  */
 export type JsonValue =
 	| null

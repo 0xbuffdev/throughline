@@ -6,9 +6,9 @@ from the viewer. Its source uses one `thl` code-fence language and one
 `VisualArtifact` schema, regardless of whether the subject is a stack,
 matrix, bit operation or distributed service.
 
-**Version note:** this describes the **unreleased schema-2 source**.
-Verify the installed package has the documented exports. A v0.1.0 npm
-install must not be assumed to expose this pre-release contract.
+**Version note:** this guide documents the **v0.2.0 schema-2 source candidate**.
+Verify v0.2.0 has actually been published and installed before using these APIs.
+The previously published v0.1.x package has an incompatible contract.
 
 ## Direct JSON quick start
 
@@ -142,9 +142,8 @@ paths, and loader failures produce stable diagnostics; no compiler
 call triggers AI or network access.
 
 See [universal fence grammar](grammar.md) and
-[framework integrations](framework-integrations.md). The
-filesystem-confined command-line materialization/check workflow
-is a separate release-gated implementation.
+[framework integrations](framework-integrations.md). The filesystem-confined `thl` CLI implements materialization and checking
+in the release candidate. It does not publish content or approve prose.
 
 ## Understanding evidence and limits
 

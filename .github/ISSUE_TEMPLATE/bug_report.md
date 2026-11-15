@@ -10,7 +10,7 @@ Describe the issue and its impact.
 
 ## Reproduction
 
-- Throughline package version:
+- Throughline package version (or source commit for a release candidate):
 - Node/browser version:
 - React version (if using the player):
 - Minimal `thl` input (remove private or sensitive data):
