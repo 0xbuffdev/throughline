@@ -1,9 +1,10 @@
 import {
 	artifactRelativePath, artifactSha256, parseIntentBlock, resolveThlBody,
-	sha256Text, ThroughlineAuthoringError, validateSidecarManifest,
+	ThroughlineAuthoringError, validateSidecarManifest,
 	type SidecarEntry, type SidecarManifest,
 } from "../v2/authoring.js";
 import { compileArtifact } from "../v2/compiler.js";
+import { sha256Text } from "../v2/sha256.js";
 import { ArtifactValidationError, parseArtifactJson } from "../v2/validator.js";
 import { TrustedContentRoot, TrustedFileError } from "../node/files.js";
 import { scanMarkdownFences } from "../node/markdown.js";
