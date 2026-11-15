@@ -38,7 +38,7 @@ it("preserves labeled timeline navigation, explicit evidence and inspect control
 	expect(element.getBoundingClientRect().width).toBeLessThanOrEqual(261);
 	expect(element.scrollWidth).toBeLessThanOrEqual(element.clientWidth + 2);
 	const back = screen.getByRole("button", { name: "Step back" });
-	expect(back.element().disabled).toBe(true);
+	expect(back.element().hasAttribute("disabled")).toBe(true);
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent(
 		"Step 2 of " + trace.frames.length);
@@ -46,7 +46,7 @@ it("preserves labeled timeline navigation, explicit evidence and inspect control
 	await userEvent.keyboard("{End}");
 	await expect.element(screen.getByRole("status")).toHaveTextContent(
 		"Step " + trace.frames.length + " of " + trace.frames.length);
-	expect(screen.getByRole("button", { name: "Step forward" }).element().disabled).toBe(true);
+	expect(screen.getByRole("button", { name: "Step forward" }).element().hasAttribute("disabled")).toBe(true);
 	await userEvent.keyboard("{Home}");
 	await expect.element(screen.getByRole("status")).toHaveTextContent(
 		"Step 1 of " + trace.frames.length);
