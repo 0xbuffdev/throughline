@@ -31,7 +31,7 @@ pnpm audit:frameworks
 pnpm audit:markdown-hosts
 ~~~
 
-Inspect the [release-quality evidence and manual accessibility checklist](release-quality.md) before authorizing a package release. Exact-head CI checks `v2-performance.json` and `v2-security.json`, and attaches them as GitHub Actions artifacts alongside Chromium, Firefox and WebKit browser evidence. The performance numbers are measured baselines, **not** unreviewed latency SLAs. The manual assistive-technology and real-browser zoom checks must be reported as performed or outstanding rather than silently passed.
+Inspect the [release-quality evidence and manual accessibility checklist](release-quality.md) before authorizing a package release. Exact-head CI checks `v2-performance.json` and `v2-security.json`, and attaches them as GitHub Actions artifacts alongside Chromium, Firefox and WebKit browser evidence. The performance numbers are measured baselines, **not** unreviewed latency SLAs. **Real screen-reader acceptance on a source- and tarball-SHA-bound candidate must be performed before TL-U18 can be closed.** Follow the [actual AT test-record instructions](qa/tl-u18-screen-reader-record.md); the current record is NOT PERFORMED. Real native-browser zoom and other device checks must be reported as performed or outstanding for the TL-U19 release review, never silently passed.
 
 For Firefox and WebKit verification, install the browser binaries and run
 `THROUGHLINE_QA_BROWSER=firefox pnpm test:browser:run` and
