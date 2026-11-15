@@ -1,5 +1,5 @@
 import {
-	closeSync, constants, fstatSync, fsyncSync, lstatSync, mkdirSync,
+	closeSync, constants, fstatSync, fsyncSync, lstatSync,
 	openSync, readFileSync, readdirSync, realpathSync, renameSync,
 	unlinkSync, writeFileSync,
 } from "node:fs";
@@ -134,8 +134,8 @@ export class TrustedContentRoot {
 	}
 
 	walkMarkdown(relativePath: string): readonly string[] {
-		const start = artifactRelativePath(relativePath);
-		const absolute = this.guarded(start);
+		const start = relativePath === "." ? "" : artifactRelativePath(relativePath);
+		const absolute = start ? this.guarded(start) : this.root;
 		const results: string[] = [];
 		let visited = 0;
 		const visit = (directory: string, relativeName: string): void => {
@@ -143,7 +143,7 @@ export class TrustedContentRoot {
 				.sort((a, b) => a.name.localeCompare(b.name, "en"))) {
 				if (++visited > 50_000) fault("THL_LIMIT", "directory traversal work limit exceeded");
 				if (entry.isDirectory() && EXCLUDED_DIRECTORIES.has(entry.name)) continue;
-				const child = relativeName + "/" + entry.name;
+				const child = relativeName ? relativeName + "/" + entry.name : entry.name;
 				const name = artifactRelativePath(child);
 				if (entry.isSymbolicLink()) fault("THL_PATH", "symbolic link forbidden in content tree: " + name);
 				const childPath = this.guarded(name);
