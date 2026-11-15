@@ -35,7 +35,7 @@ describe("TL-U08 Remark validation", () => {
 			code(json(), null, 10),
 		] };
 		const original = structuredClone(tree);
-		remarkThroughline()(tree, file);
+		remarkThroughline()(tree as { type: string; children: Node[] }, file);
 		expect(tree).toEqual(original);
 	});
 
@@ -62,17 +62,17 @@ describe("TL-U08 Remark validation", () => {
 			review: "reviewed" as const,
 		};
 		const tree: Node = { type: "root", children: [code(prompt, null, 15)] };
-		expect(() => remarkThroughline()(tree, file)).toThrow(/THL_UNRESOLVED/);
+		expect(() => remarkThroughline()(tree as { type: string; children: Node[] }, file)).toThrow(/THL_UNRESOLVED/);
 		const loaded: string[] = [];
 		const opts = { manifest: { version: 1, entries: [entry] },
 			loadArtifact: (path: string) => { loaded.push(path); return json(); } };
-		remarkThroughline(opts)(tree, file);
+		remarkThroughline(opts)(tree as { type: string; children: Node[] }, file);
 		expect(loaded).toEqual(["artifacts/demo.json"]);
 		expect(() => remarkThroughline({ ...opts, manifest: { version: 1,
-			entries: [{ ...entry, intentSha256: sha256Text("stale") }] } })(tree, file))
+			entries: [{ ...entry, intentSha256: sha256Text("stale") }] } })(tree as { type: string; children: Node[] }, file))
 			.toThrow(/THL_DIGEST/);
 		expect(() => remarkThroughline({ ...opts, manifest: { version: 1,
-			entries: [{ ...entry, review: "unreviewed" }] } })(tree, file))
+			entries: [{ ...entry, review: "unreviewed" }] } })(tree as { type: string; children: Node[] }, file))
 			.toThrow(/THL_UNREVIEWED/);
 	});
 
@@ -83,7 +83,7 @@ describe("TL-U08 Remark validation", () => {
 			code("{bad", null, 23),
 		] };
 		try {
-			remarkThroughline()(tree, file);
+			remarkThroughline()(tree as { type: string; children: Node[] }, file);
 			throw new Error("Expected error");
 		} catch (error) {
 			expect((error as Error).message).toMatch(/thl #1 in lessons\/demo.mdx/);
@@ -93,7 +93,7 @@ describe("TL-U08 Remark validation", () => {
 
 	it("does not invent positions and rejects unsupported options", () => {
 		const tree: Node = { type: "root", children: [{ type: "code", lang: "thl", value: "unresolved" }] };
-		try { remarkThroughline()(tree, file); }
+		try { remarkThroughline()(tree as { type: string; children: Node[] }, file); }
 		catch (error) {
 			expect(error).not.toHaveProperty("line");
 			expect(error).not.toHaveProperty("column");
