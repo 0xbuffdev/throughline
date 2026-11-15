@@ -1,285 +1,74 @@
 # Throughline architecture
 
-Throughline separates **authored programs**, **compiled snapshots**
-and **optional presentation**. This allows the compiler to run in Node
-build pipelines or other offline ESM environments without React or a DOM.
+Throughline turns authored, evidence-linked state changes into a deterministic timeline that readers can inspect. The source of truth is a **schema-2 `VisualArtifact`**, not a domain-specific language or executable program. Its compiler and inspection APIs work without React, a browser, an AI provider or a network connection.
 
-## Data flow
+The separately exported Node CLI and filesystem host add only build-time responsibilities. They cannot change the semantics of the core artifact. Nothing in this architecture supports the previous version-1 `Program` or `Trace` public APIs.
 
-1. **Source:** `parseThl` reads one `thl <domain>` block (optionally
-   surrounded by Markdown backtick/tilde fences). It preserves source
-   line positions for diagnostics; parsing an entire Markdown document
-   belongs to the host application.
-2. **Domain:** `compileAst` dispatches `flow` to the authored-program
-   parser. The four computed adapters parse small parameter languages
-   and build the same `Program` through a deterministic tracer.
-3. **Validation:** `validateProgram` checks version, entity and relation
-   identifiers, event shapes, finite JSON-like values, targets,
-   overlapping writes, visibility and limits. Errors are surfaced
-   as `ProgramError` with diagnostics.
-4. **Compilation:** `compileProgram` emits a version-1 `Trace` with frame
-   zero (the initial state) followed by an immutable snapshot for each
-   authored beat. Each frame records active/changed targets,
-   transfers, notes and any source information.
-5. **Presentation:** `ThroughlinePlayer` derives a deterministic SVG
-   scene from these frames and lays out nodes/links for the available
-   width. Controls seek among precompiled frames instead of re-running
-   authoring code. The optional title, centered diagram, borderless
-   playback controls, step count, caption and inspector disclosure
-   form the presentation shell. Browser fullscreen enters and exits for
-   this player element when supported; seeking never invents timing.
+## From source to a view
 
-## Pure scene projection
+1. **Author.** A `VisualArtifact` declares stable entity, relation, group and origin IDs, initial known or unknown cells, and ordered steps. Each step contains named write, topology, message or observation events. Prose, model comments and relations do not themselves cause state changes.
+2. **Validate.** `validateArtifact` or `parseArtifactJson` checks strict schema-2 data, uniqueness and references, topology, permissible JSON values and bounded size and work. Unsupported schema versions and malformed or duplicate-key JSON fail rather than being adapted.
+3. **Compile.** `compileArtifact` commits each modeled step atomically, beginning from an explicit initial frame. It produces immutable `CompiledTrace` frames; messages and observations are evidence only, never implicit writes.
+4. **Inspect.** `inspectTrace` serves indexed state-at-frame, entity history, source-event lookup, changes and declared causal dependencies. A missing acknowledgment stays missing; an unknown cell never becomes known because the diagram implies it.
+5. **Project.** `projectView` creates source-linked graph, sequence and state-table descriptors from that same compiled truth. `projectInspection` produces the Explain/Inspect data model. Projection cannot invent an event or mutate a trace. A sequence request without message evidence falls back to an honest state table.
+6. **Present.** `ThroughlineGraphPlayer` (`./react`) renders responsive views, playback and inspection. `ThroughlineEmbed` receives inert, validated `artifactJson` from Markdown/MDX and compiles it into the same player. The optional React 19 peer, CSS, browser narration and screen interactions belong here rather than in the core.
 
-The internal `projectScene(snapshot, groups, preferences)` function separates
-**compiled system state** from **presentation state**. Its overview projects all
-authored-visible entities and links, with deterministic node, edge and flat
-lane-group descriptors. Every node retains its original entity ID; every
-edge and transfer retains its authored relation ID. A `send` remains a transfer
-annotation, not evidence that the destination persisted the value.
+```text
+thl source (strict JSON or reviewed prose sidecar)
+              |
+   validation of VisualArtifact (schema 2)
+              |
+   compileArtifact — immutable CompiledTrace
+              |
+        inspectTrace
+          /       \
+    projectView   projectInspection
+          \       /
+        React 19 player / host-owned rendering
+```
 
-Focus mode selects explicitly chosen or focused entities, authored active
-targets, and endpoints of currently visible transfers. When every target is
-hidden or stale, the projection falls back to overview rather than blanking
-visible system state. Authored `hide`/`show` always takes precedence over
-presentation preferences, and hidden endpoints suppress their links.
+There is **one canonical artifact**. Graph, sequence, state-table, inspector, captions and comprehension text present that artifact; they do not supply alternative transition systems. Every meaningful result must be traceable to declared source events.
 
-View entities, relations, transfer payloads, groups, and descriptor arrays
-are detached from compiled snapshot objects and frozen, including nested JSON
-values. Projection copies only entities included in the view plus transfer
-annotations—not the trace history—and relies on compiler-enforced JSON
-depth/work budgets. The original snapshot remains mutable by neither
-projection nor selection, and may be shared across compiled frames. The
-React scene receives authored group layout preferences, preserving existing
-`tree` and `column` lane semantics; optional hierarchy and collapse
-are implemented in the later group-projection layer described below.
+## Universal Markdown and MDX authoring
 
-`projectLayout` filters the existing deterministic trace-wide fallback
-geometry by a projection, retaining the stable positions, viewBox, directions,
-cycles and self-loops across arbitrary seeking and selection. The React scene
-uses this internal boundary without adding a package export, trace schema,
-viewport control, or public selection API. Pan/zoom, automatic camera following and user-driven collapse are separate
-presentation layers above projection.
+A Markdown code node has exactly one recognized language: an **unqualified `thl` fence**. No `thl flow`, `thl matrix`, `thl binary`, `thl bindings` or `thl callstack` dispatch remains in the published interface.
 
-## Optional spoken explanation
+A body beginning with `{` is strict schema-2 JSON and validates offline without a manifest. Otherwise the body is inert descriptive intent: the host must supply a separately reviewed `VisualArtifact` with matching document-relative POSIX path, zero-based `thl` ordinal, normalized-LF intent SHA-256 and canonical artifact SHA-256. Invalid, missing, tampered or unreviewed sidecars fail closed. A malformed JSON-looking body is never reclassified as prose.
 
-The React-only narration controller synthesizes authored caption text
-(frame label, notes, guided chapter/causal content and explicit sends).
-No new trace event or compiler schema is introduced.
+`remarkThroughline` (`./remark`) consumes actual mdast `code` nodes in depth-first order. It validates all matching nodes before rewriting any. In `mode: "mdx"` it replaces them with inert `mdxJsxFlowElement` nodes containing **literal `artifactJson` attributes**, not executable expressions or imports. The host registers `ThroughlineEmbed` itself. Unrelated code blocks, math, Mermaid and other MDX elements remain host-owned.
 
-While narration is enabled, speech completion drives playback ticks
-instead of a fixed interval. Only the active utterance may advance
-the selected trace; seeking (including to the same step) and changed
-authored guidance invalidate stale callbacks. Pause/resume
-controls the voice, and unavailable or failed synthesis pauses the
-narration clock with an accessible error. When narration is disabled,
-the existing timed playback returns. Step tones remain independent.
+The standalone `thl` Node CLI reads the same code-node semantics using a non-evaluating Markdown/MDX syntax tree. `thl validate` checks a model file; `thl materialize` records exact intent/artifact digests as **unreviewed**; `thl check` validates every discovered `thl` node and requires a separately reviewed matching sidecar for prose. It cannot approve generated artifacts, execute source text or invoke an AI provider.
 
-Browser speechSynthesis is a shared page resource. Throughline maintains a
-per-engine, browser-local owner coordinator: the newest Throughline player
-to begin narration takes over the global speech queue, pauses/disables the
-previous player and announces displacement. Only the current owner may
-call global `cancel()`, `pause()` or `resume()`; a displaced player's later
-seek, toggle or unmount cannot cancel the new owner's speech. Deliberate
-cancellation detaches event handlers before calling the browser API, while
-unexpected `canceled`/`interrupted` errors trigger an accessible error
-and pause rather than advancing the timeline. After a natural speech end,
-ownership is released without global cancellation. This mechanism does not
-coordinate with arbitrary third-party scripts using speechSynthesis and
-cannot guarantee browser/OS voice isolation. Some voices may use
-browser-managed remote services.
+## Public package boundaries
 
-## Responsive player shell
-
-`ThroughlinePlayer` composes one header, measured diagram,
-transport and caption. The viewport owns camera and selection state and
-supplies the diagram and its view controls. One native popover groups
-chapter and step navigation, diagram controls, and display and audio options.
-Container queries move viewport tools above the diagram in narrow embeds,
-shorten the visual step count, and reflow transport controls as needed.
-Fullscreen gives the SVG the flexible space between the header and the
-playback and caption area. The SVG keeps the viewBox centered as Details opens.
-
-The transport displays the current step and total, and **Go to step** uses
-the same reducer action as chapter navigation. The native details
-disclosure follows the transport. The closed summary shows the step title
-and note preview. The expanded body contains the full note, evidence and
-inspector in a bounded scrolling area. The SVG references the caption
-summary for descriptive accessibility.
-
-## Accumulated authored playback progress
-
-The internal React-only `traceProgress(trace, step)` selector scans compiled
-active targets, explicit transfers and authored link-reveal events only
-through the selected frame. It returns sets of participating nodes,
-traversed relations and structurally revealed relations. Recomputing
-from the selected frame on seeking makes rewind deterministic; memoization
-by trace identity and timeline index avoids redundant work on resize.
-No new trace field, compiler event, parser rule or external dependency
-is introduced, and the compiler remains React-free.
-
-The player distinguishes **persistent participation**, **current focus
-and value changes**, and **a current explicit send**. It animates the
-actual directed SVG connector using a normalized path length and a
-new element key for each send frame. Consecutive sends can reanimate.
-There is no superimposed flow path. Only a forward single step carries
-`animate`; the player latches that decision per step so unrelated renders
-never restart or cancel it, and seeks and rewinds settle without replaying.
-Animations are declared only under `prefers-reduced-motion: no-preference`;
-an override cannot be relied on because the animated selectors are more
-specific. Durations derive from `--thl-step-ms`, which the player sets from
-the playback speed.
-
-Authored visibility always wins: hidden elements cannot be revived by
-presentation progress. A collapsed aggregate remains dashed and reports
-how many true constituent relation IDs have sent so far; it does not
-animate as a single fabricated transfer. Authored `show link` is styled
-as a structural reveal. Sending never claims destination acknowledgment,
-processing or persistence, even if both endpoints are tinted as
-participating entities.
-
-## Authored guidance and separate alternatives
-
-The React-only `ThroughlineGuidance` presentation contract is not serialized
-into a trace or used by the compiler. Validation checks bounded chapter ranges,
-real frame-event references and at least one authored state-changing event for
-each causal explanation. Causal prose remains author-supplied and is not
-deduced from temporal adjacency or `send` transfers. Current chapter and
-explanation titles are included in the screen-reader status, with all details
-and evidence in structured caption text.
-
-`ThroughlineScenarios` takes independent compiled traces with stable IDs
-and remounts the selected player on option changes. Timeline, camera,
-selection, chapter context, audio and inspector presentation reset without
-mutating any frame; there is no native branching graph. Root and Remark
-imports remain React-free; this API is optional and only on `./react`.
-No `Program` or `Trace` fields, grammar or domain behaviors change.
-
-## Public module boundaries
-
-| Module | Responsibility | React required? |
+| Import | Purpose | Dependencies |
 | --- | --- | --- |
-| `@0xbuff/throughline` | Parsing, validation, compilation, tracer and types | No |
-| `@0xbuff/throughline/remark` | Validate Markdown code nodes or emit literal MDX JSX nodes | No |
-| `@0xbuff/throughline/react` | Accessible player, memoized source embed and optional sonification | Yes, React 19 peer |
-| `@0xbuff/throughline/examples` | Public sample inputs | No |
-| `@0xbuff/throughline/styles/throughline.css` | Namespaced player CSS | No |
+| `@0xbuff/throughline` | Schema-2 validation, compilation, indexed queries, canonical hashing and projection | Pure TypeScript/ESM; no Node IO, React, DOM or network |
+| `@0xbuff/throughline/remark` | Read actual mdast nodes; validate or replace with literal MDX data | Host-provided Remark/MDX tree; no React |
+| `@0xbuff/throughline/node` | Trusted content-root mapping, safe artifact loading and strict manifest parsing | Node 24+ filesystem; parser packages are confined to this entry |
+| `@0xbuff/throughline/react` | `ThroughlineGraphPlayer` and `ThroughlineEmbed` | Optional React 19 peer |
+| `@0xbuff/throughline/examples` | Four typed schema-2 mathematical/engineering references with questions and evidence | Pure core only |
+| `@0xbuff/throughline/styles/throughline.css` | Explicitly imported, namespaced presentation styles | CSS |
+| `thl` (executable) | Offline validation, unreviewed materialization, and build-time check | Node 24+; not imported from the pure root |
 
-The Remark entry point inspects mdast code nodes, checks domain-only metadata,
-compiles bounded parser-owned bodies and maps ProgramError line diagnostics
-through the host VFile. Statement columns are verified against the
-original Markdown when available, accounting for blockquote/list prefixes.
-Diagnostics without precise source provenance remain file-level instead of
-pointing at an unrelated fence header or Markdown container marker. The
-default mode is validation-only and does not rewrite nodes. Opt-in
-`mdx` mode validates all matching fences before atomically replacing their
-code nodes with `mdxJsxFlowElement` nodes containing only a literal
-`source` string attribute. Invalid component names and source fail rather
-than being interpreted as expressions. The plugin imports no React/DOM,
-and the MDX host must register the component in its mapping. A document
-with many individual fences also needs host-level aggregate size limits.
+The published API intentionally **does not** export `parseThl`, `compileProgram`, domain-specific tracers or `ThroughlinePlayer`. Historical version-1 source and tests, where still present during cleanup, are internal regression scaffolding only. They are neither a supported import nor a conversion layer. The npm package version is separate from `VisualArtifact.schemaVersion = 2`.
 
-`ThroughlineEmbed` lives only in `./react`: `useMemo` compiles when its
-literal source changes and passes a stable trace to `ThroughlinePlayer`.
-SSR performs the same deterministic compilation as the browser, so this
-bridge does not claim to eliminate client-side compilation. Untrusted
-MDX documents may contain other executable expressions independent of
-Throughline's literal-only transform.
+## Trust and failure boundaries
 
-The root compiler does not fetch remote data or use runtime application
-services. External consumers import only the declared public exports;
-deep imports are deliberately unsupported.
+The pure validator rejects unsupported shapes, unsafe values, conflicting writes, invalid references and resource-budget overruns. A source `message:sent` is not evidence of `received`, `processed`, `acknowledged` or a persistent write. An authored claim cites explicit evidence, and assumptions stay marked as assumptions.
 
-## Group hierarchy and projection
+The Node host alone owns filesystem access. A trusted repository root determines allowed paths, while untrusted Markdown cannot choose a loader or root. The host verifies relative POSIX locators, rejects symlink traversal and reads files with bounded UTF-8 decoding. Materialized sidecar entries cannot be approved by the generating command; reviewed digests are verified again at check/build time. Diagnostics use stable codes and locations when available without reflecting host exception secrets. Markdown/MDX syntax parsing does not execute embedded JavaScript, JSX, HTML or prose.
 
-Optional `SceneGroup.id`/`parentId` metadata forms a static tree of uniquely
-identified groups. The authoring parser validates the graph before compilation,
-including forward-declared parents, duplicate identities, unknown parents and
-cycles. The historic flat layout remains unchanged when no parent references
-exist; nested traces re-pack their deterministic trace-wide node boxes into
-parent groups using the existing edge router.
+React is optional. Player seeking selects immutable compiled frames; switching layouts, collapsing groups, viewport navigation, playback and optional narration cannot change compiled truth. Controls preserve keyboard, reduced-motion and accessible-status behavior. Browser speech synthesis may be provided by the user's browser/OS; it is never a core inference or artifact-authoring service. SSR and hydration must agree on their initial markup; browser-only capability detection happens after mount.
 
-Collapse is presentation-only state in the React viewport and a pure option
-in `projectScene`. The projection maps only authored-visible descendants to
-a synthetic summary (which is not a real entity), deduplicates directed boundary
-links while retaining each real relation ID, and leaves `send` annotations
-separate from persistent `set` events. Original snapshots and values are
-neither frozen nor mutated by the projection. Group drill-down changes only
-camera and presentation state; replacing a trace resets group preferences.
+## Repository ownership and verification
 
-Hierarchy is an **additive** version-1 metadata extension, not a new domain or
-public entry point. Older readers can flatten optional metadata but cannot
-perform hierarchical collapse; old authoring parsers reject the new grammar.
-Consumers should coordinate deployment of the new hierarchy grammar with
-the installed compiler and player versions.
+- `src/v2/` owns validation, replay, source-linked queries, projection, authoring and hash contracts.
+- `src/remark/` owns the host-neutral mdast transform; `src/node/` owns Node-only safe file loading and CLI syntax-tree discovery; `src/cli/` owns command argument, diagnostic and review behavior.
+- `src/react/` owns the native player and inert-data embedding; `src/reference/` and `src/examples.ts` own public reference evidence; `src/styles/` owns presentation tokens.
+- `src/domains/` and other older files may remain only for non-public historical regression tests until their separately reviewed cleanup.
+- `scripts/` tests package exports, compiler integrity, real Node/MDX/React consumers, SSR/hydration, framework integrations, boundaries and licenses. A source-only unit test does not establish published runtime behavior.
 
-## Trace format and compatibility
+The npm archive must be checked from an **independent installation**, including its `thl` binary, Node-only consumer without React, optional Remark integration, React SSR/hydration and representative MDX hosts. No successful CI check authorizes publication: signed releases, staged package verification and documentation rollout remain separate maintainer-approved actions.
 
-`Program.version` and `Trace.version` are both `1`, not the npm package
-version. Each authored step yields one frame after the initial frame,
-with state values, visibility and relevant event annotations.
-
-A package upgrade that changes syntax, model types, trace meaning,
-diagnostics, controls or CSS selectors is potentially breaking even
-when the trace-schema version stays constant. Maintain fixtures,
-regression tests and release notes for such changes.
-
-## Work and validation limits
-
-- Maximum source: **262,144 UTF-16 code units**.
-- Program: **200 entities**, **1,000 relations**, **2,000 steps**,
-  **10,000 events**.
-- Program payload budget: **1,000,000 deterministic work units**.
-- Expanded trace budget: **8,000,000 deterministic work units**.
-- Reject unsupported or cyclic/non-JSON input values and conflicting
-  overlapping writes with explicit diagnostics.
-
-These are work/payload constraints, not exact memory or CPU
-measurements. The four computed adapters apply their own domain limits;
-see [the catalog](catalog.md).
-
-## Playback and accessibility
-
-The player uses SVG to render the active scene. It keeps entity identity
-stable across changes, reserves layout space for future values,
-supports responsive groups and bounded views of large values, and
-provides a textual inspector. Keyboard navigation, native inputs,
-live status, reduced-motion preferences and SSR/hydration behavior
-are covered by browser and packed-consumer tests.
-
-Focus on the player group enables ArrowLeft/ArrowRight, Home/End and
-Space without intercepting events from focused native buttons, step-number
-input, speed selector or the details inspector. Current-frame
-announcements use a screen-reader status and the scene has a textual
-description. A distinct alert reports refused fullscreen requests; failures
-do not disable in-page playback. An unrelated trace object resets step,
-speed and playing state; the reducer and timer lifecycle keep playback state
-separate from immutable frame data.
-
-The measured diagram container stays mounted across empty/filled trace replacements
-so ResizeObserver can keep the SVG responsive. The scoped CSS disables
-transfer animations for reduced-motion users, and controls reflow for a
-narrow player container. Existing packed-consumer checks exercise React 19 SSR and
-client hydration, while browser tests cover keyboard, inspector, fullscreen,
-reduced-motion styles and replacement regressions.
-
-Sonification is explicitly opted into by the caller and is not
-triggered merely by importing the package. A provided `sonification`
-option is required to display sound controls. A running oscillator is
-stopped and disconnected at most once when playback changes or when the
-trace object is replaced, including with an equal-length trace. Sound is
-not restarted by rerendering the same trace object. An already-ended
-voice does not break cleanup. Neither playback nor
-compilation records grades or authenticates learners.
-
-## Build and trust boundaries
-
-`tsdown` produces ESM, declarations and JavaScript source maps for
-the four JavaScript exports. The stylesheet is shipped separately.
-The source package uses one Node 24/pnpm CI job to run compiler and
-browser tests, inspect third-party dependency license files and
-install a packed tarball in independent Node, TypeScript, SSR and
-Vite/React consumers.
-
-Tests and package audits verify specific technical contracts; they do not
-replace source-rights, provenance or release authorization reviews.
+See [schema-2 semantic contract](schema-v2.md), [one-fence grammar](grammar.md), [CLI and human review](cli.md), [framework integration](framework-integrations.md), [reference explanations](reference-traces.md) and [release procedure](releasing.md).
