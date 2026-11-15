@@ -383,10 +383,14 @@ The sequence contains three kinds of source-linked items:
   observation and topology facts through the frame, preserving source
   event/entity/relation IDs, frame/step IDs, origin ID/kind and original
   authored order. Message rows point to their declared relation endpoints.
-  Non-message facts do not receive a message phase. When a non-`sent` phase
-  appears without an earlier modeled `sent` for that message ID, the row
-  flags an **evidence gap**, not proof no send occurred. The validator rejects
-  the same message ID on unrelated relations.
+  Non-message facts do not receive a message phase. A non-`sent` phase
+  is flagged as a **missing modeled send through that atomic step** only if
+  there is no modeled `sent` in an earlier **or the same** step for that
+  message ID. Within-step event-array order is display-only and implies
+  neither physical chronology nor causality. A later-step send does not
+  retroactively close the earlier evidence gap. This is never proof that
+  no send happened in the world. The validator rejects the same message ID
+  on unrelated relations.
 
 **Distributed retry example:** The reference test fixture
 `src/__tests__/v2-sequence-fixture.ts` explicitly models an initial send,
@@ -407,22 +411,32 @@ const afterRetry = projectView(inspector, { kind: "sequence", frameIndex: 7 });
 // retryCheckout() is the example artifact from the cited test fixture.
 ~~~
 
-**Native player:** `ThroughlineGraphPlayer` supports `initialView="sequence"`
-or a Sequence selection in Player options. Frame playback, keyboard seeking
+**Native player:** Without an explicit `initialView`, the initial request
+omits `kind`, allowing `projectView` to honor validated artifact view hints
+and stable automatic message selection. Manual choices (or an explicit
+`initialView="graph" | "sequence" | "state-table"`) take precedence.
+The visible View selection always reflects the resolved descriptor. Frame
+playback, keyboard seeking
 and selected **source entity ID** are shared with Graph and State table.
 The accessible sequence region includes actor selection, message-ID phase
 summaries and a literal event table with step, source event, message ID,
 declared endpoints, phase/evidence type and declared origin. The browser
 renders the latest 120 event rows initially and provides **Show earlier
-evidence** to progressively reveal all older rows; summaries count the
-complete modeled prefix. Render pagination does not prune the pure
-descriptor or invent evidence. The view remains readable on a narrow host,
+evidence** to progressively reveal all older rows. **Correlation summaries**
+are independently paginated in **fixed 120-card windows**, including after
+multiple older/newer page changes, while preserving exact phase counts and
+source IDs for each page. Neither pagination mechanism prunes the pure
+descriptor or invents evidence. The view remains readable on a narrow host,
 and HTML is React-escaped inert text, not executable content.
 
 The accepted resource ceiling remains 2,000 steps and 10,000 events.
-A pure near-limit benchmark records SHA-256, runner hardware, runtime and
-measurement for the full sequence descriptor; results are evidence for that
-runner, never a portable render/latency SLA. The full history/diff/claim
+Two pure near-limit benchmarks record SHA-256, runner hardware, runtime and
+measurement for the full sequence descriptor: one 10,000-event single-message
+case and one **10,000-event / 1,000-relation / 1,000-correlated-message** case.
+The projector reuses the inspector-local `relationsById` index for source
+normalization across graph, sequence and fallback views, eliminating
+per-event linear relation scans. Results are evidence for those runners,
+never portable render/latency SLAs. The full history/diff/claim
 navigation UI remains TL-U07.
 
 ## Acceptance and deferred replay checks
