@@ -161,6 +161,24 @@ it("TL-U18 emits a reproducible small/moderate/near-limit v2 performance matrix 
 				.toBeGreaterThan(0);
 		}
 
+		// No groups are collapsed and every declared endpoint is present.
+		// In this controlled fixture all modeled relations must yield exactly
+		// one source-linked descriptor, then exactly one routed edge. Checking
+		// only `.every(isFinite)` on an empty map would falsely report success.
+		const relationDescriptors = projections.result.graph.items
+			.filter(item => item.role === "relation");
+		const describedSources = relationDescriptors.flatMap(item =>
+			item.source.relationIds ?? []);
+		expect(relationDescriptors).toHaveLength(size.relations);
+		expect(describedSources).toEqual(authored.relations.map(rel => rel.id));
+		expect(new Set(describedSources).size).toBe(size.relations);
+		expect(new Set(relationDescriptors.map(item => item.id)).size)
+			.toBe(size.relations);
+		for (const item of relationDescriptors) {
+			expect(item.source.relationIds).toHaveLength(1);
+			expect(item.fromItemId).toBeTruthy();
+			expect(item.toItemId).toBeTruthy();
+		}
 		const geom = [];
 		for (const width of [260, 720]) {
 			const layout = sample(size.iterations, () => layoutGraph(trace, width));
@@ -177,11 +195,39 @@ it("TL-U18 emits a reproducible small/moderate/near-limit v2 performance matrix 
 			}
 			const projected = sample(size.iterations, () =>
 				layoutGraphView(measured, projections.result.graph));
-			expect(Object.values(projected.result.edges).every(edge =>
-				[...edge.from, ...edge.to, ...edge.label, edge.angle].every(Number.isFinite))).toBe(true);
+			const routed = projected.result.edges;
+			const routedIds = Object.keys(routed);
+			expect(routedIds.sort()).toEqual(relationDescriptors.map(item => item.id).sort());
+			expect(routedIds).toHaveLength(size.relations);
+			for (const descriptor of relationDescriptors) {
+				const edge = routed[descriptor.id];
+				expect(edge, "source-linked route missing: " + descriptor.id).toBeDefined();
+				const from = measured.nodes[descriptor.fromItemId!];
+				const to = measured.nodes[descriptor.toItemId!];
+				expect(from).toBeDefined();
+				expect(to).toBeDefined();
+				const finite = [...edge.from, ...edge.to, ...edge.label, edge.angle]
+					.every(Number.isFinite);
+				expect(finite, "non-finite geometry for " + descriptor.id).toBe(true);
+				expect(edge.d.startsWith("M")).toBe(true);
+				// Routing attaches to the actual labeled source and destination
+				// node rectangles. Endpoints never move outside the layout.
+				for (const [point, box] of [[edge.from, from], [edge.to, to]] as const) {
+					expect(point[0]).toBeGreaterThanOrEqual(box.x - 0.001);
+					expect(point[0]).toBeLessThanOrEqual(box.x + box.w + 0.001);
+					expect(point[1]).toBeGreaterThanOrEqual(box.y - 0.001);
+					expect(point[1]).toBeLessThanOrEqual(box.y + box.h + 0.001);
+				}
+				// Intentional routing bypasses may extend a little beyond
+				// an edge of the view, but not arbitrarily far outside it.
+				expect(edge.label[0]).toBeGreaterThanOrEqual(-48);
+				expect(edge.label[0]).toBeLessThanOrEqual(measured.width + 48);
+				expect(edge.label[1]).toBeGreaterThanOrEqual(-48);
+				expect(edge.label[1]).toBeLessThanOrEqual(measured.height + 48);
+			}
 			geom.push({ width, layout: stats(layout.times), projectedGeometry: stats(projected.times),
-				nodes: Object.keys(measured.nodes).length,
-				edges: Object.keys(projected.result.edges).length });
+				nodes: Object.keys(measured.nodes).length, sourceRelations: describedSources.length,
+				edges: routedIds.length });
 		}
 		// A determinism check uses *data*, never elapsed time, for the gate.
 		const mirror = inspectTrace(compileArtifact(authored));
