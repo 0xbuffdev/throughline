@@ -59,7 +59,7 @@ for (const filename of ["react/index.js", "remark/index.js", "examples.js", "nod
 		// is emitted into a separately mapped chunk.
 		const facade = readFileSync(resolve(root, "dist", filename), "utf8");
 		assert(
-			facade.length < 1024 && /\\b(?:export|from)\\b/.test(facade),
+			facade.length < 1024 && (facade.includes("export") || facade.includes("from")),
 			"Missing JavaScript source map or mapped facade: " + filename,
 		);
 	}
