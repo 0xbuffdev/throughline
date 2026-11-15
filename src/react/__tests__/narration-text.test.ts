@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { compile } from "../../domains/registry.js";
-import { CHECKOUT_GUIDANCE, EXAMPLES } from "../../examples.js";
+import { CHECKOUT_GUIDANCE, EXAMPLES } from "../../legacy-examples.js";
 import { narrationText } from "../narration-text.js";
 
 it("speaks only authored current-frame notes, chapters, evidence and explicit transfers", () => {
