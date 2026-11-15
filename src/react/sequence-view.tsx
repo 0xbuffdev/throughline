@@ -34,17 +34,21 @@ export function SequenceView({
 	onSelect: (id: Id) => void;
 }): React.JSX.Element {
 	const [maxVisible, setMaxVisible] = useState(PAGE_SIZE);
-	const [maxCorrelations, setMaxCorrelations] = useState(PAGE_SIZE);
+	const [correlationPage, setCorrelationPage] = useState(0);
 	const actors = view.items.filter(item => item.role === "entity");
 	const correlations = view.items.filter(item =>
 		item.role === "value" && field(item, "type") === "message-correlation");
 	const evidence = view.items.filter(item => item.role === "event");
 	const start = Math.max(0, evidence.length - maxVisible);
 	const mounted = evidence.slice(start);
-	// Render newest correlations by default so the active step's new
-	// message IDs remain accessible without mounting thousands of cards.
-	const correlationStart = Math.max(0, correlations.length - maxCorrelations);
-	const mountedCorrelations = correlations.slice(correlationStart);
+	// Fixed 120-item window, even after arbitrary navigation. Page zero
+	// shows the newest message IDs; earlier/later pages retain full source
+	// provenance without ever accumulating an unbounded DOM.
+	const totalPages = Math.max(1, Math.ceil(correlations.length / PAGE_SIZE));
+	const pageIndex = Math.min(correlationPage, totalPages - 1);
+	const correlationEnd = Math.max(0, correlations.length - pageIndex * PAGE_SIZE);
+	const correlationStart = Math.max(0, correlationEnd - PAGE_SIZE);
+	const mountedCorrelations = correlations.slice(correlationStart, correlationEnd);
 	const actorNames = new Map(actors.map(item => [item.id, item.label]));
 	const phases = ["sent", "received", "acknowledged", "processed"] as const;
 	return (
@@ -73,13 +77,19 @@ export function SequenceView({
 				<p>Only explicitly modeled phases are counted. An unmodeled
 					acknowledgement is not proof that one was lost.</p>
 				<p aria-live="polite">Showing {mountedCorrelations.length} of {correlations.length}
-					{" "}message ID(s); summaries remain source-linked and all older IDs
-					can be revealed.</p>
-				{correlations.length > mountedCorrelations.length && <button type="button"
-					onClick={() => setMaxCorrelations(count =>
-						Math.min(correlations.length, count + PAGE_SIZE))}>
-					Show earlier message IDs
-				</button>}
+					{" "}message ID(s), page {pageIndex + 1} of {totalPages}.
+					All source-linked summaries can be reached without increasing the DOM window.</p>
+				<div className="thl-v2-sequence-pages" role="group"
+					aria-label="Message correlation pages">
+					<button type="button" disabled={correlationStart === 0}
+						onClick={() => setCorrelationPage(index => Math.min(totalPages - 1, index + 1))}>
+						Show earlier message IDs
+					</button>
+					<button type="button" disabled={pageIndex === 0}
+						onClick={() => setCorrelationPage(index => Math.max(0, index - 1))}>
+						Show newer message IDs
+					</button>
+				</div>
 				<ul>{mountedCorrelations.map(item => {
 					const counts = field(item, "phases");
 					return <li key={item.id}
