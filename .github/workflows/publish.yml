@@ -9,7 +9,11 @@ on:
         type: string
         required: true
       confirmation:
-        description: "Enter STAGE-<tag>, for example STAGE-v0.0.2"
+        description: "Enter STAGE-<tag>, for example STAGE-v0.2.0"
+        type: string
+        required: true
+      acceptance_comment_id:
+        description: "Maintainer issue-comment ID proving real TL-U18 screen-reader acceptance against this source and exact tarball SHA"
         type: string
         required: true
 
@@ -34,11 +38,13 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
           CONFIRMATION: ${{ inputs.confirmation }}
+          ACCEPTANCE_COMMENT_ID: ${{ inputs.acceptance_comment_id }}
         run: |
           set -euo pipefail
           [[ "$GITHUB_REF" == "refs/heads/main" ]] || exit 1
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Use a signed vX.Y.Z tag"; exit 1; }
           [[ "$CONFIRMATION" == "STAGE-$RELEASE_TAG" ]] || { echo "Type STAGE-$RELEASE_TAG to proceed"; exit 1; }
+          [[ "$ACCEPTANCE_COMMENT_ID" =~ ^[1-9][0-9]{0,19}$ ]] || { echo "A real GitHub issue-comment ID is required for TL-U18 acceptance"; exit 1; }
 
       - name: Checkout exact tag without persistent credentials
         uses: actions/checkout@v6
@@ -63,7 +69,10 @@ jobs:
           [[ "$(jq -r '.object.type' <<< "$tag_data")" == "commit" ]] || exit 1
           [[ "$(jq -r '.object.sha' <<< "$tag_data")" == "$(git rev-parse HEAD)" ]] || exit 1
           git fetch origin main --no-tags
-          git merge-base --is-ancestor HEAD origin/main || { echo "Tagged commit is not on main"; exit 1; }
+          [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || {
+            echo "Stale tag: releases must be built from the currently reviewed main head"
+            exit 1
+          }
           git cat-file -e HEAD:.github/workflows/publish.yml
 
       - name: Bind release evidence to the exact checked-out signed tag commit
@@ -102,6 +111,20 @@ jobs:
 
       - name: Install frozen dependencies
         run: pnpm install --frozen-lockfile
+      - name: Refuse to reuse an already-published npm version
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { readFileSync } from "node:fs";
+          const version = JSON.parse(readFileSync("package.json", "utf8")).version;
+          const registryUrl = "https://registry.npmjs.org/@0xbuff%2fthroughline/" + version;
+          const result = await fetch(registryUrl, { redirect: "error", signal: AbortSignal.timeout(25000) });
+          if (result.status === 200) throw new Error("Refusing to restage published version " + version);
+          assert.equal(result.status, 404, "Cannot confirm registry version is available");
+          console.log("Published npm version is not registered: " + version +
+            " (an existing unpublished stage may still produce E409)");
+          NODE
       - name: Source and license boundary audit
         run: pnpm audit:source
       - name: Typecheck
@@ -110,6 +133,8 @@ jobs:
         run: |
           pnpm preview:typecheck
           pnpm preview:build
+      - name: Offline release workflow and verification regression suite
+        run: pnpm test:release-tooling
       - name: Compiler, release performance and hostile-input tests
         run: pnpm test:run
       - name: Verify exact-tag quality evidence
@@ -161,6 +186,23 @@ jobs:
           git rev-parse HEAD > release-artifacts/RELEASE_COMMIT
           (cd release-artifacts && sha256sum --check SHA256SUMS)
 
+      - name: Record immutable release manifest with source, tag and archive digest
+        env:
+          THL_RELEASE_TAG: ${{ inputs.tag }}
+        run: node scripts/release-artifact.mjs create release-artifacts
+
+      - name: Require human TL-U18 screen-reader acceptance for exact source and archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACCEPTANCE_COMMENT_ID: ${{ inputs.acceptance_comment_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$ACCEPTANCE_COMMENT_ID"             > release-artifacts/review-comment.json
+          node scripts/verify-release-approval.mjs             release-artifacts/RELEASE_MANIFEST.json             release-artifacts/review-comment.json "$ACCEPTANCE_COMMENT_ID"
+          printf '%s\n' "$ACCEPTANCE_COMMENT_ID" > release-artifacts/ACCEPTANCE_COMMENT_ID
+          rm release-artifacts/review-comment.json
+
       - name: Upload immutable release review artifact
         uses: actions/upload-artifact@v7
         with:
@@ -169,6 +211,8 @@ jobs:
             release-artifacts/throughline.tgz
             release-artifacts/SHA256SUMS
             release-artifacts/RELEASE_COMMIT
+            release-artifacts/RELEASE_MANIFEST.json
+            release-artifacts/ACCEPTANCE_COMMENT_ID
           if-no-files-found: error
           retention-days: 7
 
@@ -197,9 +241,13 @@ jobs:
 
       - name: Recheck checksum, release commit and archive manifest
         shell: bash
+        env:
+          THL_RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
           (cd release-artifacts && sha256sum --check SHA256SUMS)
+          export THL_SOURCE_SHA="$(git rev-parse HEAD)"
+          node scripts/release-artifact.mjs verify release-artifacts
           [[ "$(cat release-artifacts/RELEASE_COMMIT)" == "$(git rev-parse HEAD)" ]] || { echo "Tag changed since build"; exit 1; }
           node --input-type=module <<'NODE'
           import assert from "node:assert/strict";
@@ -215,6 +263,21 @@ jobs:
           assert.equal(pkg.publishConfig?.access, "public");
           assert.equal(pkg.license, "Apache-2.0");
           NODE
+
+      - name: Reverify live maintainer acceptance before protected staging
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_COMMENT_ID: ${{ inputs.acceptance_comment_id }}
+        run: |
+          set -euo pipefail
+          [[ "$(cat release-artifacts/ACCEPTANCE_COMMENT_ID)" == "$EXPECTED_COMMENT_ID" ]] || {
+            echo "Maintainer acceptance changed between verification and staging"
+            exit 1
+          }
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$EXPECTED_COMMENT_ID"             > acceptance-comment.json
+          node scripts/verify-release-approval.mjs             release-artifacts/RELEASE_MANIFEST.json             acceptance-comment.json "$EXPECTED_COMMENT_ID"
+          rm acceptance-comment.json
 
       # Avoid setup-node's registry-url input for tokenless OIDC:
       # it creates an .npmrc authToken placeholder and NODE_AUTH_TOKEN,
