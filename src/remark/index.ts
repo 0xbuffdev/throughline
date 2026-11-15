@@ -1,5 +1,5 @@
 import {
-	resolveThlBody, ThroughlineAuthoringError, type MaterializationOptions,
+	artifactRelativePath, resolveThlBody, ThroughlineAuthoringError, type MaterializationOptions,
 } from "../v2/authoring.js";
 import { ArtifactValidationError, serializeArtifact } from "../v2/validator.js";
 
@@ -22,7 +22,10 @@ type DiagnosticFile = {
 	fail: (reason: string, options?: { place?: Point; source?: string; ruleId?: string }) => never;
 };
 
-export type ThroughlineRemarkOptions = Pick<MaterializationOptions, "document" | "manifest" | "loadArtifact"> & (
+export type ThroughlineRemarkOptions = Pick<MaterializationOptions, "document" | "manifest" | "loadArtifact"> & {
+	/** Map a VFile path to its trusted repository-relative POSIX locator. */
+	documentForFile?: (filePath: string) => string;
+} & (
 	| { mode?: "validate" }
 	| { mode: "mdx"; componentName?: string }
 );
@@ -43,7 +46,7 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 	const mode = options.mode ?? "validate";
 	if ((mode !== "validate" && mode !== "mdx") ||
 		Object.keys(options).some(key => ![
-			"mode", "componentName", "document", "manifest", "loadArtifact",
+			"mode", "componentName", "document", "documentForFile", "manifest", "loadArtifact",
 		].includes(key)) ||
 		(mode !== "mdx" && "componentName" in options))
 		throw new TypeError('remarkThroughline expects { mode: "validate" | "mdx" } and optional trusted sidecar options');
@@ -57,11 +60,43 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 	return (tree: MarkdownRoot, file: DiagnosticFile): void => {
 		let ordinal = 0;
 		const changes: Array<{ siblings: readonly MarkdownNode[]; index: number; node: MarkdownNode }> = [];
-		const document = options.document ?? file?.path;
+		// VFile paths are often absolute. Never infer a repository-relative
+		// locator by stripping an arbitrary prefix or trusting process.cwd().
+		const mappedDocument = (): string => {
+			if (options.document !== undefined) return artifactRelativePath(options.document);
+			const filePath = file?.path;
+			if (options.documentForFile !== undefined) {
+				if (typeof filePath !== "string" || !filePath)
+					throw new ThroughlineAuthoringError("THL_PATH", "a VFile path is required for documentForFile");
+				let mapped: unknown;
+				try {
+					mapped = options.documentForFile(filePath);
+				} catch {
+					throw new ThroughlineAuthoringError("THL_PATH", "trusted document path mapping failed");
+				}
+				return artifactRelativePath(mapped as string);
+			}
+			if (typeof filePath !== "string" || !filePath)
+				throw new ThroughlineAuthoringError("THL_PATH", "prose requires a repository-relative document or documentForFile");
+			try {
+				return artifactRelativePath(filePath);
+			} catch (error) {
+				if (error instanceof ThroughlineAuthoringError && error.code === "THL_PATH")
+					throw new ThroughlineAuthoringError("THL_PATH", "absolute or unsafe VFile path; configure documentForFile with a trusted content-root mapping");
+				throw error;
+			}
+		};
 		const visit = (node: MarkdownNode, siblings?: readonly MarkdownNode[], index?: number): void => {
 			if (node.type === "code" && node.lang === "thl") {
 				const currentOrdinal = ordinal++;
 				const point = validPoint(node.position?.start) ? node.position?.start : undefined;
+				// An unsafe VFile path is never included verbatim in a diagnostic.
+				let document: string | undefined;
+				try {
+					document = artifactRelativePath((options.document ?? file?.path) as string);
+				} catch {
+					// JSON fences need no document and must still validate offline.
+				}
 				const fail = (code: string, reason: string): never =>
 					file.fail(
 						code + ": thl #" + currentOrdinal + (document ? " in " + document : "") + ": " + reason,
@@ -72,6 +107,11 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 				if (typeof node.value !== "string")
 					fail("THL_SYNTAX", "expected a thl body string");
 				try {
+					// Only prose requires a sidecar key. Direct JSON remains valid
+					// with a missing/absolute VFile path and no host mapping.
+					if ((node.value as string).trim() &&
+						!(node.value as string).trimStart().startsWith("{"))
+						document = mappedDocument();
 					const artifact = resolveThlBody(node.value as string, {
 						...(document !== undefined ? { document } : {}),
 						ordinal: currentOrdinal,
