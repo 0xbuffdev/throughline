@@ -74,10 +74,10 @@ function toDiagnostic(error: unknown): { code: string; message: string } {
 		if (error.name === "ArtifactCompilationError") {
 			code = /conflict|overlap|same.step/i.test(message)
 				? "THL_ARTIFACT_CONFLICT" : "THL_ARTIFACT_COMPILATION";
-		} else if (/schemaVersion|unsupported artifact schema/i.test(message)) {
-			code = "THL_ARTIFACT_VERSION";
 		} else if (/duplicate object key|invalid JSON|at offset|unexpected trailing content/i.test(message)) {
 			code = "THL_ARTIFACT_SYNTAX";
+		} else if (/schemaVersion|unsupported artifact schema/i.test(message)) {
+			code = "THL_ARTIFACT_VERSION";
 		} else if (/limit|maximum|exceed|4 MiB|depth|too many|budget/i.test(message)) {
 			code = "THL_ARTIFACT_LIMIT";
 		} else if (/undeclared|reference|unknown.*id|missing.*id|dependsOn/i.test(message)) {
@@ -114,7 +114,7 @@ function checkFile(
 		try {
 			if (fence.meta !== null)
 				throw new ThroughlineAuthoringError("THL_SYNTAX",
-					"only an unqualified thl language fence is supported");
+					"only an unqualified thl language fence is supported (no metadata or domain tags)");
 			// Canonical source truth: the LF-normalized mdast code-node body
 			// and a repository-relative, explicitly scoped document locator.
 			resolveThlBody(fence.body, {
