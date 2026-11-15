@@ -178,7 +178,7 @@ it("TL-U18 emits a reproducible small/moderate/near-limit v2 performance matrix 
 			const projected = sample(size.iterations, () =>
 				layoutGraphView(measured, projections.result.graph));
 			expect(Object.values(projected.result.edges).every(edge =>
-				[edge.from.x, edge.from.y, edge.to.x, edge.to.y].every(Number.isFinite))).toBe(true);
+				[...edge.from, ...edge.to, ...edge.label, edge.angle].every(Number.isFinite))).toBe(true);
 			geom.push({ width, layout: stats(layout.times), projectedGeometry: stats(projected.times),
 				nodes: Object.keys(measured.nodes).length,
 				edges: Object.keys(projected.result.edges).length });
