@@ -15,7 +15,7 @@ operation, a recursive call or a system workflow. Throughline does not
 execute arbitrary code or require an account, server, network connection
 or application-specific runtime.
 
-## Schema-2 foundation (implementation in progress)
+## Schema-2 engine and universal authoring (unreleased source)
 
 The accepted architecture replaces domain-tagged fences with one `thl` authoring
 surface and a schema-2 evidence-aware artifact. **TL-U02 added strict
@@ -23,18 +23,53 @@ validation; TL-U03 added deterministic atomic replay; TL-U04 added indexed
 `inspectTrace` queries; TL-U05 added source-linked graph projection
 and native `ThroughlineGraphPlayer`; TL-U06 adds the evidence-aware message
 sequence projection and accessible timeline; TL-U07 adds the pure
-`projectInspection` query and native Explain/Inspect interface.**
+`projectInspection` query and native Explain/Inspect interface; **TL-U08
+introduces one strict schema-2 `thl` fence with reviewed prose materialization.**
 
-The existing `compile` / `ThroughlinePlayer` Markdown route is still schema 1
-until the later authoring/player migration tickets. New v2 consumers must call
-`compileArtifact` with a validated v2 object and use the dedicated v2
-`ThroughlineGraphPlayer`. **No compatibility shim converts one trace to the
-other.** Sequence and graph now share the same player frame and source
-selection, including Inspect. The single unqualified `thl` fence and
-schema-2 host migration remain separate future tickets.
+**The new Remark/MDX `thl` route is schema 2 only**, with native
+`ThroughlineEmbed` using `artifactJson`. No domain-tagged fence or v1 source
+bridge is accepted by that route. Internal schema-1 code remains as temporary
+source scaffolding pending independent U09/U10 migration—not as a maintained
+compatibility contract. Pure consumers use `compileArtifact` and the dedicated
+`ThroughlineGraphPlayer`. Sequence, graph and Inspect share the same playback
+frame and source selection. The release requires the remaining acceptance gates.
 
 See [schema-2 validation, replay, graph and sequence views](docs/schema-v2.md)
 for the implemented v2 boundary and precise source/evidence semantics.
+
+### One domain-independent thl fence (TL-U08)
+
+The first non-whitespace character distinguishes validated JSON (`{`) from
+inert prose. For direct offline playback, author a schema-2 VisualArtifact:
+
+~~~thl
+{
+  "schemaVersion": 2,
+  "id": "counter",
+  "origins": [{ "id": "author", "kind": "authored" }],
+  "entities": [{ "id": "counter", "label": "Counter" }],
+  "relations": [],
+  "initialState": { "counter": { "status": "known", "value": 0 } },
+  "steps": [{
+    "id": "advance", "label": "Advance",
+    "events": [{
+      "id": "write", "originId": "author", "type": "write",
+      "entityId": "counter", "path": [],
+      "value": { "status": "known", "value": 1 }
+    }]
+  }]
+}
+~~~
+
+Use `parseThlBody` for the pure disjoint parser or `resolveThlBody`
+to obtain a compiled-valid artifact. The Markdown/MDX plugin validates JSON
+without any manifest and sends only literal artifact JSON to the registered
+React v2 component. A descriptive prose block instead **requires** a
+reviewed, hash-bound sidecar supplied by a trusted host; unresolved prose is a
+build error, not an AI call or a placeholder. Source hash = SHA-256 of
+normalized-LF mdast body. Artifact hash = SHA-256 of canonical validated
+JSON. No backward-compatibility parser is added. See
+[framework and Markdown integrations](docs/framework-integrations.md).
 
 ### Native v2 graph player
 
