@@ -10,12 +10,13 @@ import { encodeJson } from "../v2/validator.js";
 import { layoutGraph, layoutGraphView } from "../v2/graph-layout.js";
 import { inspectTrace } from "../v2/inspector.js";
 import type {
-	Cell, CompiledTrace, Id, ViewDescriptor, ViewItem,
+	Cell, CompiledTrace, Id, ViewDescriptor, ViewItem, ViewKind,
 } from "../v2/model.js";
 import { projectView } from "../v2/views.js";
 import { PlayerControls, PlayerOptions } from "./controls.js";
 import { useNarration } from "./use-narration.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
+import { SequenceView } from "./sequence-view.js";
 
 export type ThroughlineGraphPlayerProps = {
 	/** Only a compiler-owned, immutable schema-2 trace is accepted. */
@@ -237,8 +238,8 @@ function StateFallback({ view, selectedId, onSelect }: {
  * viewport mathematics, edge routing and CSS; never converts v2 semantic data
  * into v1 Program/Trace or accepts a compatibility adapter.
  *
- * The view may be Graph or the explicitly diagnosed fallback state/event
- * table. Sequence and full Inspect UI are separate TL-U06/TL-U07 work.
+ * Graph, sequence and state-table share the SAME indexed inspector, source
+ * IDs and playback frame. Full Inspect/history navigation remains TL-U07.
  */
 export function ThroughlineGraphPlayer({
 	trace, title, className, theme = "auto", narration = false,
@@ -254,7 +255,7 @@ export function ThroughlineGraphPlayer({
 	const [identity, setIdentity] = useState(trace);
 	const [selectedId, setSelectedId] = useState<Id | null>(null);
 	const [collapsed, setCollapsed] = useState<readonly Id[]>([]);
-	const [viewKind, setViewKind] = useState<"graph" | "state-table">("graph");
+	const [viewKind, setViewKind] = useState<ViewKind>("graph");
 	const [camera, setCamera] = useState<Camera | null>(null);
 	const [fullscreen, setFullscreen] = useState(false);
 	const [fullscreenError, setFullscreenError] = useState<string | null>(null);
@@ -290,13 +291,13 @@ export function ThroughlineGraphPlayer({
 	}), [inspector, frameIndex, viewKind, selectedId, collapsed]);
 	const geometry = useMemo(() => layoutGraphView(layout, view), [layout, view]);
 	const effectiveCamera = constrainCamera(layout, camera ?? fitCamera(layout));
-	const visible = new Set(view.items.filter(item => item.role === "entity")
-		.flatMap(item => item.source.entityIds ?? []));
+	const presentEntities = new Set(inspector.stateAt(frameIndex).presentEntityIds);
 	const selected = selectedId
 		? trace.artifact.entities.find(entity => entity.id === selectedId)
 		: undefined;
 	const selectedValue = selected ? inspector.valueAt(frameIndex, selected.id) : null;
-	const events = view.items.filter(item => item.role === "event");
+	const events = view.items.filter(item => item.role === "event" &&
+		(view.kind !== "sequence" || data(item, "current") === true));
 	const step = frameIndex ? trace.artifact.steps[frameIndex - 1] : undefined;
 	const summary = "Step " + (frameIndex + 1) + " of " + trace.frames.length +
 		": " + (step?.label ?? "Initial state") + ". " + view.summary;
@@ -367,8 +368,9 @@ export function ThroughlineGraphPlayer({
 		<>
 			<label className="thl-v2-field">View
 				<select aria-label="Visualization view" value={viewKind}
-					onChange={event => setViewKind(event.currentTarget.value as "graph" | "state-table")}>
+					onChange={event => setViewKind(event.currentTarget.value as ViewKind)}>
 					<option value="graph">Graph</option>
+					<option value="sequence">Sequence</option>
 					<option value="state-table">State table</option>
 				</select>
 			</label>
@@ -431,14 +433,14 @@ export function ThroughlineGraphPlayer({
 			</header>
 			<div className="thl-stage">
 				<div className="thl-viewport">
-					<div className="thl-viewport-tools" role="group" aria-label="Graph camera controls">
+					{view.kind === "graph" && <div className="thl-viewport-tools" role="group" aria-label="Graph camera controls">
 						<button type="button" aria-label="Zoom in"
 							disabled={view.kind !== "graph"} onClick={() => zoom(1.25)}>+</button>
 						<button type="button" aria-label="Zoom out"
 							disabled={view.kind !== "graph"} onClick={() => zoom(1 / 1.25)}>−</button>
 						<button type="button" aria-label="Fit to view"
 							disabled={view.kind !== "graph"} onClick={fit}>Fit</button>
-					</div>
+					</div>}
 					<div className="thl-canvas" ref={canvasRef}>
 						{view.kind === "graph" ? <svg ref={svgRef}
 							className="thl-scene thl-v2-diagram"
@@ -478,8 +480,11 @@ export function ThroughlineGraphPlayer({
 								onExpand={id => setCollapsed(current =>
 									current.filter(item => item !== id))}
 								visitedAt={firstSent} participants={participants} animate={motion.animate} />
-						</svg> : <StateFallback view={view}
-							selectedId={selectedId} onSelect={setSelectedId} />}
+						</svg> : view.kind === "sequence"
+							? <SequenceView view={view} selectedId={selectedId}
+								onSelect={setSelectedId} />
+							: <StateFallback view={view}
+								selectedId={selectedId} onSelect={setSelectedId} />}
 					</div>
 				</div>
 				<div className="thl-bottom">
@@ -494,14 +499,14 @@ export function ThroughlineGraphPlayer({
 								{item.description}
 							</li>)}
 						{events.length > 80 && <li>
-							{events.length - 80} additional authored event(s); use the typed inspector to query all sources.
+							{events.length - 80} additional declared event(s); use the typed inspector to query all sources.
 						</li>}
 					</ol>}
 				</details>
 				{selected && <section className="thl-v2-selection" aria-label="Selected entity">
 					<h3>Selected: {selected.label}</h3>
-					<p>{visible.has(selected.id) ? "Present in the graph" :
-						"Not currently visible in the graph; no presence is inferred."}</p>
+					<p>{presentEntities.has(selected.id) ? "Present in modeled state at this frame" :
+						"Not present in modeled state at this frame; no presence is inferred."}</p>
 					<pre>{selectedValue && selectedValue.status === "known"
 						? cellText(selectedValue) : selectedValue?.status === "unknown"
 							? "Unknown" + (selectedValue.reason ? ": " + selectedValue.reason : "")
