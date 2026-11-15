@@ -1,25 +1,25 @@
 # Throughline documentation
 
-Start with the [README](../README.md) to install Throughline, compile a trace
-and render it with the optional React player.
+Start with the [README](../README.md) to install Throughline, compile a typed schema-2 artifact
+and render it with the optional native React player.
 
 ## Using Throughline
 
-- [User guide](user-guide.md): player behavior, theme tokens, accessibility,
-  navigation, narration, scenarios, Remark and MDX.
-- [Flow grammar](grammar.md): source syntax, step operations, limits and
-  diagnostics.
-- [Domain catalog](catalog.md): flow, bindings, binary, matrix and callstack.
+- [User guide](user-guide.md): native schema-2 player, state/sequence/graph views, navigation,
+  evidence, provenance, Remark and MDX.
+- [Universal thl contract](grammar.md): strict JSON/prose syntax, event semantics,
+  limits and diagnostics.
+- [Reference catalog](catalog.md): factorial, matrix, binary and checkout.
 - [Framework integration](framework-integrations.md): Fumadocs, Next.js,
   Astro and other Markdown renderers.
-- [Reference traces](reference-traces.md): reconciliation and distributed
-  checkout examples.
+- [Reference traces](reference-traces.md): the four independently checked schema-2 teaching models
+  and matched comprehension questions.
 
 ## Development and releases
 
 - [Architecture](architecture.md): compiler, trace model, presentation and
   trust boundaries.
-- [Adapter authoring](authoring.md): building optional computed domains.
+- [Reference authoring](authoring.md): building typed, evidence-grounded examples.
 - [Release procedure](releasing.md): exact verification commands, signing,
   staged publication and post-release checks.
 - [v0.1.0 release notes](release-notes-v0.1.0.md) and
