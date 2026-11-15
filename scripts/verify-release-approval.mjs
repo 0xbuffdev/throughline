@@ -33,7 +33,7 @@ export function verifyReleaseApproval({ comment, manifest, id }) {
 	const fields = new Map();
 	for (const line of lines) {
 		if (!line) continue;
-		const match = /^([a-z-]+): (.+)$/.exec(line);
+		const match = /^([a-z][a-z0-9-]*): (.+)$/.exec(line);
 		assert(match, "Unexpected acceptance-record line: " + line.slice(0, 50));
 		assert(FIELDS.includes(match[1]), "Unknown release approval field");
 		assert(!fields.has(match[1]), "Duplicate release approval field");
