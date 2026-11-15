@@ -316,10 +316,10 @@ function App() {
 										const unwrapped = unwrapThlFence(pasted);
 										if (unwrapped !== pasted) {
 											event.preventDefault();
-											const target = event.currentTarget;
-											const next = source.slice(0, target.selectionStart) + unwrapped +
-												source.slice(target.selectionEnd);
-											edit(next);
+											// A complete fenced block is a whole document, not an inline fragment.
+											edit(unwrapped);
+											setCompiledSource(unwrapped);
+											setLoadedReferenceId(null);
 											setNotice("Pasted a thl fence as editable source.");
 										}
 									}}
