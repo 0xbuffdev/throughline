@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { compile } from "../domains/registry.js";
-import { EXAMPLES } from "../examples.js";
+import { EXAMPLES } from "../legacy-examples.js";
 import { composeTrace } from "../layout.js";
 import { routeEdges } from "../layout/edges.js";
 import type { Box } from "../layout/types.js";
