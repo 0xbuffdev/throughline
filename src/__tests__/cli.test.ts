@@ -4,6 +4,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import remarkMdx from "remark-mdx";
+import remarkParse from "remark-parse";
+import { unified } from "unified";
 import { runCli } from "../cli/commands.js";
 import { createNodeThroughlineHost, scanMarkdownFences, TrustedContentRoot } from "../node/index.js";
 import { resolveThlBody, sha256Text, type SidecarManifest } from "../index.js";
@@ -121,6 +124,133 @@ describe("TL-U10 CLI / source and sidecar boundary", () => {
 		writeFileSync(join(directory, "docs", "nested.mdx"), markdown);
 		const result = capture(["check", "docs/nested.mdx", "--root", directory]);
 		expect(result.err).toMatch(/THL_UNRESOLVED.*thl #0/);
+	});
+
+
+	it("finds deeply nested CommonMark code nodes in exact depth-first order; ignores HTML comments and code-like text", () => {
+		const input = [
+			"# Real Markdown", "",
+			"<!--", "~~~thl", "A comment is not a code node.", "~~~", "-->", "",
+			"- Parent", "  - Child", "",
+			"    ~~~thl", "    Explain the nested system.", "    ~~~", "",
+			"~~~javascript", "const fake = String.raw`~~~thl`;", "~~~", "",
+			"> ~~~thl", "> Explain the quoted system.", "> ~~~", "",
+			"~~~thl", "Explain the final system.", "~~~", "",
+			"    ~~~thl", "    Indented literal text, not a fence", "    ~~~",
+		].join("\n");
+		const nodes = scanMarkdownFences(input, { format: "md" });
+		expect(nodes.filter(node => node.lang === "thl")
+			.map(node => [node.ordinal, node.line, node.column, node.body]))
+			.toEqual([
+				[0, 12, 5, "Explain the nested system."],
+				[1, 20, 3, "Explain the quoted system."],
+				[2, 24, 1, "Explain the final system."],
+			]);
+		// Compare with an independent traversal of the parser's actual mdast.
+		const tree = unified().use(remarkParse).parse(input);
+		const expected: Array<{ value?: string; line?: number; column?: number }> = [];
+		const visit = (node: { type: string; children?: readonly unknown[];
+			lang?: string | null; value?: string;
+			position?: { start: { line: number; column: number } } }): void => {
+			if (node.type === "code" && node.lang === "thl")
+				expected.push({
+					value: node.value,
+					line: node.position?.start.line,
+					column: node.position?.start.column,
+				});
+			for (const child of node.children ?? [])
+				visit(child as typeof node);
+		};
+		visit(tree);
+		expect(nodes.filter(node => node.lang === "thl")
+			.map(node => ({ value: node.body, line: node.line, column: node.column })))
+			.toEqual(expected);
+
+		const directory = fixture();
+		writeFileSync(join(directory, "docs", "deep.md"), input);
+		const checked = capture(["check", "docs/deep.md", "--root", directory]);
+		expect(checked.status).toBe(1);
+		expect(checked.err).toMatch(/THL_UNRESOLVED.*docs\/deep.md:12:5 thl #0/);
+		const materialized = capture(["materialize", "--document", "docs/deep.md",
+			"--ordinal", "0", "--artifact", "artifacts/counter.json",
+			"--manifest", "manifest.json", "--root", directory]);
+		expect(materialized.status).toBe(0);
+		const saved = JSON.parse(readFileSync(join(directory, "manifest.json"), "utf8")) as SidecarManifest;
+		expect(saved.entries).toHaveLength(1);
+		expect(saved.entries[0].ordinal).toBe(0);
+		expect(saved.entries[0].intentSha256).toBe(sha256Text("Explain the nested system."));
+		const second = capture(["materialize", "--document", "docs/deep.md",
+			"--ordinal", "1", "--artifact", "artifacts/counter.json",
+			"--manifest", "manifest.json", "--root", directory]);
+		expect(second.status).toBe(0);
+		const updated = JSON.parse(readFileSync(join(directory, "manifest.json"), "utf8")) as SidecarManifest;
+		expect(updated.entries.map(entry => entry.ordinal)).toEqual([0, 1]);
+	});
+
+	it("uses a non-evaluating MDX AST; excludes expression-like fake fences and preserves nested JSX codes", () => {
+		const input = [
+			"# MDX", "",
+			"{/*", "~~~thl", "This is an MDX expression comment.", "~~~", "*/}", "",
+			"<Example title={'~~~thl'}>", "",
+			"  ~~~thl",
+			"  Explain the real JSX-child model.",
+			"  ~~~", "",
+			"</Example>", "",
+			"~~~thl",
+			"Explain another valid block.",
+			"~~~",
+		].join("\n");
+		const nodes = scanMarkdownFences(input, { format: "mdx" })
+			.filter(node => node.lang === "thl");
+		const tree = unified().use(remarkParse).use(remarkMdx).parse(input);
+		const expected: string[] = [];
+		const traverse = (node: { type: string; children?: readonly unknown[];
+			lang?: string | null; value?: string }): void => {
+			if (node.type === "code" && node.lang === "thl")
+				expected.push(node.value ?? "");
+			for (const child of node.children ?? [])
+				traverse(child as typeof node);
+		};
+		traverse(tree);
+		expect(nodes.map(node => node.body)).toEqual(expected);
+		expect(nodes.map(node => node.ordinal)).toEqual([0, 1]);
+		expect(nodes.map(node => node.body)).toEqual([
+			"Explain the real JSX-child model.",
+			"Explain another valid block.",
+		]);
+		const directory = fixture();
+		writeFileSync(join(directory, "docs", "jsx.mdx"), input);
+		const check = capture(["check", "docs/jsx.mdx", "--root", directory]);
+		expect(check.status).toBe(1);
+		expect(check.err).toMatch(/THL_UNRESOLVED.*docs\/jsx.mdx:11:3 thl #0/);
+	});
+
+	it("does not mistake Markdown HTML comments for unresolved prose", () => {
+		const directory = fixture();
+		const commented = [
+			"<!--", "~~~thl", "A fake comment fence.", "~~~", "-->", "",
+			"# A normal document",
+			"~~~js", "console.log('no code execution')", "~~~",
+		].join("\n");
+		writeFileSync(join(directory, "docs", "comments.md"), commented);
+		expect(scanMarkdownFences(commented, { format: "md" })
+			.some(node => node.lang === "thl")).toBe(false);
+		const check = capture(["check", "docs/comments.md", "--root", directory]);
+		expect(check.status).toBe(0);
+		expect(check.out).toMatch(/checked 1 document\(s\), 0 thl block\(s\)/);
+		const materialize = capture(["materialize", "--document", "docs/comments.md",
+			"--ordinal", "0", "--artifact", "artifacts/counter.json",
+			"--manifest", "manifest.json", "--root", directory]);
+		expect(materialize.status).toBe(1);
+		expect(materialize.err).toMatch(/THL_UNRESOLVED.*thl #0 does not exist/);
+	});
+
+	it("fails closed on malformed MDX syntax instead of silently reporting zero fences", () => {
+		const directory = fixture();
+		writeFileSync(join(directory, "docs", "broken.mdx"), "{not a valid mdx expression");
+		const check = capture(["check", "docs/broken.mdx", "--root", directory]);
+		expect(check.status).toBe(1);
+		expect(check.err).toMatch(/THL_SYNTAX.*invalid MDX syntax/);
 	});
 
 	it("rejects stale edits, mismatched artifact digests, duplicate locators and metadata", () => {
