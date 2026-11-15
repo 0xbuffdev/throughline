@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-	compile,
-	compileAst,
-	compileProgram,
-	ProgramError,
-	validateProgram,
-} from "../index.js";
+import { compile, compileAst } from "../domains/registry.js";
+import { compileProgram, validateProgram } from "../compiler.js";
+import { ProgramError } from "../model.js";
 import type { Program } from "../model.js";
 
 const program = (value: unknown) => ({
