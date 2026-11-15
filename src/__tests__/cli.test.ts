@@ -109,7 +109,7 @@ describe("TL-U10 CLI / source and sidecar boundary", () => {
 			"~~~mdx", "text", "~~~", "",
 			"> ~~~thl", "> Explain nested quote.", "> ~~~", "",
 			"- ~~~thl", "  Explain nested list.", "  ~~~", "",
-			"    ~~~thl", "    indented code, not a fence", "    ~~~", "",
+			"    ~~~thl", "    Continuation nested in the list.", "    ~~~", "",
 			"~~~thl binary", "meta is unsupported", "~~~", "",
 			"~~~mermaid", "graph TD", "~~~",
 		].join("\n");
@@ -117,7 +117,8 @@ describe("TL-U10 CLI / source and sidecar boundary", () => {
 		expect(nodes.filter(node => node.lang === "thl")
 			.map(node => [node.ordinal, node.body])).toEqual([
 			[0, "Explain nested quote."], [1, "Explain nested list."],
-			[2, "meta is unsupported"],
+			[2, "Continuation nested in the list."],
+			[3, "meta is unsupported"],
 		]);
 		expect(nodes.filter(node => node.lang === "mermaid")).toHaveLength(1);
 		const directory = fixture();
