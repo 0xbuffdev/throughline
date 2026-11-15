@@ -7,9 +7,11 @@ All notable changes to Throughline are recorded here. Package versions follow
 
 ## [Unreleased]
 
+## [0.2.0] — Schema-2 API and release tooling
+
 ### Release preparation
 
-- **TL-U19 v0.2.0 source candidate (not yet released):** advanced the source package version to `0.2.0` without creating a tag, publishing an npm package or deploying the documentation application. Added immutable archive identity (`RELEASE_MANIFEST.json`), exact-source/archived-bytes re-verification in the protected stage job, an explicit maintainer AT acceptance comment bound to the tested commit and tarball SHA-256, and guardrails against stale release tags and already-published versions. Added deterministic negative approval/manifest tests and a read-only post-publication registry verifier comparing registry and staged tarball hashes, provenance metadata, Node-only/CLI/React public imports and `npm audit signatures` in a fresh installed consumer. The TL-U18 human AT record remains **NOT PERFORMED**, and TL-U19 is **not complete** until human acceptance, authorized staging, human npm 2FA and actual registry/provenance proof. See [candidate release notes](docs/release-notes-v0.2.0.md).
+- **TL-U19 v0.2.0 versioned source preparation:** advanced the source package version to `0.2.0`; the source change itself neither signs a tag, publishes an npm package nor deploys the documentation application. Added immutable archive identity (`RELEASE_MANIFEST.json`), exact-source/archived-bytes re-verification in the protected stage job, an explicit maintainer AT acceptance comment bound to the tested commit and tarball SHA-256, and guardrails against stale release tags and already-published versions. Added deterministic negative approval/manifest tests and a read-only post-publication registry verifier comparing registry and staged tarball hashes, provenance metadata, Node-only/CLI/React public imports and `npm audit signatures` in a fresh installed consumer. Release authorization remains independent of source implementation: a real TL-U18 human AT record, explicitly approved signed tag, stage-only OIDC, human npm 2FA and actual registry/provenance proof are required before considering publication complete. See [candidate release notes](docs/release-notes-v0.2.0.md).
 
 ### Added
 
