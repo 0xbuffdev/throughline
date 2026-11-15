@@ -15,7 +15,7 @@ operation, a recursive call or a system workflow. Throughline does not
 execute arbitrary code or require an account, server, network connection
 or application-specific runtime.
 
-## Schema-2 engine and universal authoring (unreleased source)
+## Schema-2 engine and universal authoring (v0.2.0 source)
 
 The accepted architecture replaces domain-tagged fences with one `thl` authoring
 surface and a schema-2 evidence-aware artifact. TL-U02–U04 delivered
@@ -202,7 +202,7 @@ Before a schema-2 package can be published, the source release gate records SHA-
 
 ## Offline CLI and reviewed Markdown authoring
 
-The unreleased source now includes a standalone Node 24+ binary and a
+The v0.2.0 source includes a standalone Node 24+ binary and a
 Node-only trusted host entry. The commands accept only strict schema-2
 artifacts, plain `thl` fences and reviewed, SHA-256-bound prose sidecars:
 
@@ -234,15 +234,16 @@ optional peer; install React and React DOM in a rendering application:
 npm install react@^19 react-dom@^19
 ~~~
 
-**The schema-2 examples and interfaces described here are source-level,
-unreleased changes.** The source `package.json` has been prepared as a
-**v0.2.0 release candidate**, but versioning the source does **not** publish
-it. The previously released npm v0.1.0 package does not automatically include
-these APIs. Read the [v0.2.0 draft release notes](docs/release-notes-v0.2.0.md)
-and [release acceptance process](docs/releasing.md); TL-U19 still requires a
-human real-screen-reader acceptance record, a verified signed tag, explicit
-stage-only approval and final npm 2FA, independently installed registry tests
-and provenance verification. Do not assume npm v0.2.0 is available yet.
+**These schema-2 interfaces require package version 0.2.0 or newer.**
+The preceding npm v0.1.0 release has a different authoring and playback
+contract. A GitHub source version does **not** establish npm availability:
+check `npm view @0xbuff/throughline version`, install the explicit desired
+version and confirm the installed `package.json` before using this API.
+The v0.2.0 release procedure requires actual human accessibility evidence,
+a verified signed tag, protected stage-only OIDC, final npm 2FA, and
+independently installed registry/provenance tests. See the
+[v0.2.0 notes](docs/release-notes-v0.2.0.md) and
+[release acceptance process](docs/releasing.md).
 
 ## Quick start — use a typed reference
 
