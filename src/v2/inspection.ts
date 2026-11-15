@@ -1,6 +1,6 @@
 import { inspectedTrace, TraceQueryError } from "./inspector.js";
 import type {
-	Cell, Claim, HistoryEntry, Id, Origin, Path, QueryCell, Relation,
+	Cell, Claim, HistoryEntry, Id, JsonValue, Origin, Path, QueryCell, Relation,
 	SemanticEvent, SourceIds, StateChange, TraceInspector,
 } from "./model.js";
 
@@ -14,6 +14,11 @@ export type InspectionChapter = Readonly<{
 		{ kind: "wall"; iso8601: string }>;
 }>;
 
+/** Recorded source data is evidence, NOT a committed state transition. */
+export type InspectionRecorded =
+	| Readonly<{ kind: "observation"; value: Cell }>
+	| Readonly<{ kind: "message-payload"; value: JsonValue }>;
+
 export type InspectionEvidence = Readonly<{
 	eventId: Id;
 	event: SemanticEvent;
@@ -22,6 +27,8 @@ export type InspectionEvidence = Readonly<{
 	frameId: Id;
 	stepLabel: string;
 	source: Readonly<SourceIds>;
+	/** Explicit observed cell or authored message payload, if any. */
+	recorded?: InspectionRecorded;
 	description: string;
 }>;
 
@@ -99,6 +106,8 @@ export type InspectionView = Readonly<{
 type IndexedEvent = { readonly frameIndex: number; readonly frameId: Id; readonly label: string };
 type InspectIndex = Readonly<{
 	events: ReadonlyMap<Id, IndexedEvent>;
+	/** Private memoized immutable event descriptors; repeated claim IDs share data. */
+	evidence: Map<Id, InspectionEvidence>;
 	origins: ReadonlyMap<Id, Origin>;
 	relations: ReadonlyMap<Id, Relation>;
 }>;
@@ -115,7 +124,7 @@ function indexFor(inspector: TraceInspector): InspectIndex {
 				frameIndex: stepIndex + 1, frameId: step.id, label: step.label,
 			}));
 	const result: InspectIndex = {
-		events,
+		events, evidence: new Map(),
 		origins: new Map(artifact.origins.map(origin => [origin.id, origin] as const)),
 		relations: new Map(artifact.relations.map(relation => [relation.id, relation] as const)),
 	};
@@ -128,6 +137,8 @@ const ids = (values: readonly Id[]): readonly Id[] =>
 	freeze([...new Set(values)]);
 
 function evidenceFor(event: SemanticEvent, index: InspectIndex): InspectionEvidence {
+	const cached = index.evidence.get(event.id);
+	if (cached) return cached;
 	const frame = index.events.get(event.id)!;
 	const relationId = event.type === "message" ? event.relationId
 		: event.type === "topology" && event.target === "relation"
@@ -155,13 +166,23 @@ function evidenceFor(event: SemanticEvent, index: InspectIndex): InspectionEvide
 				: "Observation-family event for " + event.entityId +
 					"; this observation does not commit a state write.";
 	const origin = index.origins.get(event.originId)!;
-	return freeze({
+	const recorded: InspectionRecorded | undefined =
+		event.type === "observation"
+			? freeze({ kind: "observation" as const, value: event.value })
+			: event.type === "message" &&
+				Object.prototype.hasOwnProperty.call(event, "payload")
+				? freeze({ kind: "message-payload" as const, value: event.payload! })
+				: undefined;
+	const result = freeze({
 		eventId: event.id, event, origin,
 		frameIndex: frame.frameIndex, frameId: frame.frameId,
 		stepLabel: frame.label, source: freeze(source),
+		...(recorded ? { recorded } : {}),
 		description: text + " Declared origin " + origin.id + " (" + origin.kind +
 			"); this provenance label is not independent verification.",
 	});
+	index.evidence.set(event.id, result);
+	return result;
 }
 
 /**
