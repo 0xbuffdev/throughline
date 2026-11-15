@@ -24,6 +24,6 @@ export default defineConfig({
 	tsconfig: "./tsconfig.build.json",
 	deps: {
 		// Keep optional React outside the pure compiler and prevent private imports.
-		onlyImport: ["cn", "react", "react-dom", "node:fs", "node:path", "node:crypto"],
+		onlyImport: ["cn", "react", "react-dom", "node:fs", "node:path", "node:crypto", "remark-parse", "remark-mdx", "unified"],
 	},
 });
