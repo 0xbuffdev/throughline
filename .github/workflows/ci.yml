@@ -45,12 +45,38 @@ jobs:
         run: pnpm preview:typecheck
       - name: Bundle local preview
         run: pnpm preview:build
-      - name: Compiler tests
+      - name: Compiler, release performance and hostile-input tests
+        env:
+          THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: pnpm test:run
+      - name: Verify exact-source TL-U18 security and performance evidence
+        env:
+          THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/verify-release-evidence.mjs
+      - name: Upload checked TL-U18 measured evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: throughline-v2-quality-${{ github.run_id }}
+          path: |
+            .release-evidence/v2-performance.json
+            .release-evidence/v2-security.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Install browser
         run: pnpm exec playwright install --with-deps chromium
       - name: Browser tests
         run: pnpm test:browser:run
+      - name: Record verified Chromium browser evidence
+        env:
+          THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/record-browser-evidence.mjs chromium
+      - name: Upload checked Chromium browser evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: throughline-v2-chromium-${{ github.run_id }}
+          path: .release-evidence/v2-browser-chromium.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Build distributable
         run: pnpm build
       - name: Check runtime and peer dependency notices
