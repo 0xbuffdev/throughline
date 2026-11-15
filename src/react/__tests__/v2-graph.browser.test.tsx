@@ -16,7 +16,7 @@ const viewBox = (): number[] => (document.querySelector(".thl-v2-diagram")
 	?.getAttribute("viewBox") ?? "").split(" ").map(Number);
 
 it("plays a source-linked checkout without pretending received or processed means sent or persisted", async () => {
-	const screen = await render(<ThroughlineGraphPlayer trace={trace()} />);
+	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={trace()} />);
 	await expect.element(screen.getByRole("img", { name: "Source-linked graph at current frame" }))
 		.toBeVisible();
 	expect(link("request")?.getAttribute("data-sent-current")).toBe("0");
@@ -55,7 +55,7 @@ it("plays a source-linked checkout without pretending received or processed mean
 });
 
 it("collapses and expands nested groups without losing relation/event provenance or selections", async () => {
-	const screen = await render(<ThroughlineGraphPlayer trace={trace()} />);
+	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={trace()} />);
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	await screen.getByRole("button", { name: "Player options" }).click();
 	const choice = screen.getByRole("combobox", { name: "Select entity" }).element();
@@ -89,7 +89,7 @@ it("paints parent panels first for valid child-before-parent group declarations"
 		{ id: "system", label: "Checkout" },
 	];
 	const screen = await render(
-		<ThroughlineGraphPlayer trace={compileArtifact(artifact)} />,
+		<ThroughlineGraphPlayer initialView="graph" trace={compileArtifact(artifact)} />,
 	);
 	await expect.element(screen.getByRole("img",
 		{ name: "Source-linked graph at current frame" })).toBeVisible();
@@ -112,7 +112,7 @@ it("paints parent panels first for valid child-before-parent group declarations"
 });
 
 it("retains source IDs of removed members in a collapsed graphical group summary", async () => {
-	const screen = await render(<ThroughlineGraphPlayer trace={trace()} />);
+	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={trace()} />);
 	await screen.getByRole("button", { name: "Player options" }).click();
 	await screen.getByRole("button", { name: "Collapse Backend" }).click();
 	await screen.getByRole("button", { name: "Player options" }).click();
@@ -131,7 +131,7 @@ it("retains source IDs of removed members in a collapsed graphical group summary
 it("announces declared non-authored origins without upgrading modeled event evidence", async () => {
 	const artifact = distributedGraph();
 	artifact.steps[3].events[0].originId = "witness"; // declared observed
-	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(artifact)} />);
+	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={compileArtifact(artifact)} />);
 	for (let index = 0; index < 4; index++)
 		await screen.getByRole("button", { name: "Step forward" }).click();
 	const evidence = screen.getByRole("list", { name: "Declared step evidence" });
@@ -142,7 +142,7 @@ it("announces declared non-authored origins without upgrading modeled event evid
 });
 
 it("supports keyboard stepping, zoom and pan independently of v2 model state", async () => {
-	const screen = await render(<ThroughlineGraphPlayer trace={trace()} />);
+	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={trace()} />);
 	await expect.poll(() => viewBox()[2]).toBeLessThan(720);
 	const start = viewBox();
 	const svg = document.querySelector<SVGSVGElement>(".thl-v2-diagram")!;
@@ -161,7 +161,7 @@ it("supports keyboard stepping, zoom and pan independently of v2 model state", a
 });
 
 it("presents a truthful table fallback and source-linked values without changing frame state", async () => {
-	const screen = await render(<ThroughlineGraphPlayer trace={trace()} />);
+	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={trace()} />);
 	await screen.getByRole("button", { name: "Player options" }).click();
 	await userEvent.selectOptions(
 		screen.getByRole("combobox", { name: "Visualization view" }).element(),
@@ -186,7 +186,7 @@ it("presents a truthful table fallback and source-linked values without changing
 it("fits a mobile host and safely resets presentation on trace replacement", async () => {
 	await page.viewport(375, 800);
 	const original = trace();
-	const screen = await render(<ThroughlineGraphPlayer trace={original}/>);
+	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={original}/>);
 	await expect.poll(() => viewBox()[2]).toBeLessThan(720);
 	const container = document.querySelector(".thl-v2")!;
 	expect(container.scrollWidth).toBeLessThanOrEqual(container.clientWidth);
@@ -196,7 +196,7 @@ it("fits a mobile host and safely resets presentation on trace replacement", asy
 	const next = distributedGraph();
 	next.steps = [];
 	next.claims = [];
-	await screen.rerender(<ThroughlineGraphPlayer trace={compileArtifact(next)}/>);
+	await screen.rerender(<ThroughlineGraphPlayer initialView="graph" trace={compileArtifact(next)}/>);
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 1");
 	expect(document.querySelector('[data-group-summary="front"]')).toBeNull();
 	await expect.element(screen.getByRole("button", { name: "Play", exact: true })).toBeDisabled();
