@@ -28,13 +28,13 @@ async function openSequence(screen: Awaited<ReturnType<typeof render>>) {
 }
 
 it("uses artifact hint priority and automatic message choice on initial render", async () => {
-	const normal = await render(<ThroughlineGraphPlayer trace={artifact()} />);
-	await expect.element(normal.getByRole("region", { name: "Message sequence evidence" }))
+	const screen = await render(<ThroughlineGraphPlayer trace={artifact()} />);
+	await expect.element(screen.getByRole("region", { name: "Message sequence evidence" }))
 		.toBeVisible();
-	await normal.getByRole("button", { name: "Player options" }).click();
-	expect(normal.getByRole("combobox", { name: "Visualization view" }).element().value)
+	await screen.getByRole("button", { name: "Player options" }).click();
+	expect((screen.getByRole("combobox", { name: "Visualization view" }).element() as HTMLSelectElement).value)
 		.toBe("sequence");
-	await normal.getByRole("button", { name: "Player options" }).click();
+	await screen.getByRole("button", { name: "Player options" }).click();
 
 	const preferred = retryCheckout();
 	preferred.views = [
@@ -42,14 +42,12 @@ it("uses artifact hint priority and automatic message choice on initial render",
 		{ kind: "state-table", priority: 0 },
 		{ kind: "graph", priority: 5 },
 	];
-	const screen = await render(
-		<ThroughlineGraphPlayer trace={compileArtifact(preferred)} />,
-	);
+	await screen.rerender(<ThroughlineGraphPlayer trace={compileArtifact(preferred)} />);
 	await expect.element(screen.getByRole("region", { name: "State and event table" }))
 		.toBeVisible();
 	await screen.getByRole("button", { name: "Player options" }).click();
 	const selector = screen.getByRole("combobox", { name: "Visualization view" });
-	expect(selector.element().value).toBe("state-table");
+	expect((selector.element() as HTMLSelectElement).value).toBe("state-table");
 	await userEvent.selectOptions(selector.element(), "graph"); // manual choice wins
 	await screen.getByRole("button", { name: "Player options" }).click();
 	await expect.element(screen.getByRole("img",
@@ -57,7 +55,7 @@ it("uses artifact hint priority and automatic message choice on initial render",
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 10");
 	await screen.getByRole("button", { name: "Player options" }).click();
-	expect(selector.element().value).toBe("graph"); // seek never resets manual choice
+	expect((selector.element() as HTMLSelectElement).value).toBe("graph"); // seek never resets manual choice
 	await screen.getByRole("button", { name: "Player options" }).click();
 
 	const tied = retryCheckout();
@@ -71,7 +69,7 @@ it("uses artifact hint priority and automatic message choice on initial render",
 		.toBeVisible();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 10");
 	await screen.getByRole("button", { name: "Player options" }).click();
-	expect(selector.element().value).toBe("sequence");
+	expect((selector.element() as HTMLSelectElement).value).toBe("sequence");
 });
 
 it("does not flag receipt before send within the same atomic step", async () => {
