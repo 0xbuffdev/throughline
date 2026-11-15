@@ -58,6 +58,44 @@ describe("TL-U09 — first-party schema-2 reference contract", () => {
 		}
 	});
 
+
+	it("isolates consumer mutations from the canonical artifact, text and question evidence", () => {
+		expect(Object.isFrozen(EXAMPLES)).toBe(true);
+		for (const example of EXAMPLES) {
+			const canonical = example.artifact;
+			const digest = artifactSha256(canonical);
+			const first = example.artifact;
+			const second = example.artifact;
+			expect(first).not.toBe(second);
+			expect(first.steps[0]).not.toBe(second.steps[0]);
+			expect(first.initialState).not.toBe(second.initialState);
+			expect(Object.isFrozen(example)).toBe(true);
+			expect(Object.isFrozen(example.questions)).toBe(true);
+			expect(Object.isFrozen(example.questions[0])).toBe(true);
+			expect(Object.isFrozen(example.questions[0].evidenceEventIds)).toBe(true);
+			expect(Object.isFrozen(example.caveats)).toBe(true);
+			const explanation = example.explanation;
+			const question = example.questions[0].expectedAnswer;
+			const cited = [...example.questions[0].evidenceEventIds];
+			// Consumers should be able to customize their own model without
+			// changing later imports, matched explanations or referenced IDs.
+			first.steps[0].events[0].id = "consumerOnly";
+			first.initialState[Object.keys(first.initialState)[0]] = { status: "known", value: "changed" };
+			first.entities[0].label = "edited by a consumer";
+			first.steps.push({ id: "consumerAdded", label: "An unreviewed new step", events: [] });
+			expect(artifactSha256(example.artifact)).toBe(digest);
+			expect(example.artifact).toEqual(canonical);
+			expect(compileArtifact(example.artifact).artifact.id).toBe(canonical.id);
+			expect(example.explanation).toBe(explanation);
+			expect(example.questions[0].expectedAnswer).toBe(question);
+			expect(example.questions[0].evidenceEventIds).toEqual(cited);
+			expect(() => (example.questions[0].evidenceEventIds as string[]).push("invented")).toThrow();
+			expect(() => (example.caveats as string[]).push("invented")).toThrow();
+			expect(serializeArtifact(validateArtifact(second)))
+				.toBe(serializeArtifact(validateArtifact(canonical)));
+		}
+	});
+
 	it.each(EXAMPLES)("validates and compiles $title from direct JSON offline with stable hashes", ({ artifact }) => {
 		const validated = validateArtifact(artifact);
 		const source = serializeArtifact(validated);
