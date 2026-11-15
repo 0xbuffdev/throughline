@@ -20,17 +20,19 @@ or application-specific runtime.
 The accepted architecture replaces domain-tagged fences with one `thl` authoring
 surface and a schema-2 evidence-aware artifact. **TL-U02 added strict
 validation; TL-U03 added deterministic atomic replay; TL-U04 added indexed
-`inspectTrace` queries; TL-U05 adds pure `projectView` and an accessible
-native `ThroughlineGraphPlayer`.**
+`inspectTrace` queries; TL-U05 added source-linked graph projection
+and native `ThroughlineGraphPlayer`; TL-U06 adds the evidence-aware message
+sequence projection and accessible timeline.**
 
 The existing `compile` / `ThroughlinePlayer` Markdown route is still schema 1
 until the later authoring/player migration tickets. New v2 consumers must call
 `compileArtifact` with a validated v2 object and use the dedicated v2
 `ThroughlineGraphPlayer`. **No compatibility shim converts one trace to the
-other.** The sequence projection, full Inspect UI and single unqualified `thl`
-fence are separately reviewed future tickets.
+other.** Sequence and graph now share the same player frame and source
+selection. The full Inspect/history UI and single unqualified `thl` fence
+remain future tickets.
 
-See [schema-2 validation, replay, inspection and graph player](docs/schema-v2.md)
+See [schema-2 validation, replay, graph and sequence views](docs/schema-v2.md)
 for the implemented v2 boundary and precise source/evidence semantics.
 
 ### Native v2 graph player
@@ -66,6 +68,27 @@ export function Example() {
 
 The graph renders the `sent` connector only at the authored step. It does not
 invent a receive, acknowledgement, processing event or destination write.
+
+### Native v2 message sequence
+
+The native v2 player now supports a source-linked **Sequence** option under
+Player options. It can also start in sequence mode:
+
+~~~tsx
+// `trace` is a compiler-owned CompiledTrace (schema 2).
+<ThroughlineGraphPlayer trace={trace} initialView="sequence" />
+~~~
+
+The sequence view correlates **only** explicit `sent`, `received`,
+`acknowledged`, and `processed` event evidence by validated message ID.
+A missing acknowledgement is reported as **not modeled**, not proven lost.
+Retries require explicit source events (with distinct event IDs); an explicit
+timeout remains a state write or observation, never a fifth message phase.
+The four-phase summary and accessible chronological text table expose the
+declared origin, relation and event IDs without inventing network results.
+Switching to Graph or State table retains the current frame and selected
+semantic entity. The pure `projectView` auto-choice is stable across frames
+and prioritizes implemented compatible author hints.
 
 ## Features
 
