@@ -1,6 +1,6 @@
 import { inspectedTrace } from "./inspector.js";
 import type {
-	Cell, Id, Origin, SemanticEvent, SourceIds, TraceInspector, ViewDescriptor,
+	Cell, Id, Origin, Relation, SemanticEvent, SourceIds, TraceInspector, ViewDescriptor,
 	ViewItem, ViewKind, ViewRequest, VisualArtifact,
 } from "./model.js";
 import { TraceQueryError } from "./inspector.js";
@@ -20,9 +20,18 @@ function fail(path: string, reason: string): never {
  * On repeated seeking, never rescan every historical frame to decide the
  * graph fallback, and never repeat O(relations) searches for relation IDs.
  */
+type TimelineEvent = {
+	readonly frameIndex: number;
+	readonly frameId: Id;
+	readonly stepLabel: string;
+	readonly event: SemanticEvent;
+};
+
 type ViewIndex = {
 	readonly artifact: VisualArtifact;
 	readonly indexByEventId: ReadonlyMap<Id, number>;
+	readonly timeline: readonly TimelineEvent[];
+	readonly relationsById: ReadonlyMap<Id, Relation>;
 	readonly graphPossible: boolean;
 	readonly graphLinks: boolean;
 	readonly hasMessages: boolean;
@@ -35,9 +44,15 @@ function viewIndex(inspector: TraceInspector): ViewIndex {
 	const { artifact, frames } = inspectedTrace(inspector);
 	const byId = new Map(artifact.relations.map(relation => [relation.id, relation] as const));
 	const indexByEventId = new Map<Id, number>();
+	const timeline: TimelineEvent[] = [];
 	let ordinal = 0;
-	for (const step of artifact.steps)
-		for (const event of step.events) indexByEventId.set(event.id, ordinal++);
+	for (const [index, step] of artifact.steps.entries())
+		for (const event of step.events) {
+			indexByEventId.set(event.id, ordinal++);
+			timeline.push(Object.freeze({
+				event, frameIndex: index + 1, frameId: step.id, stepLabel: step.label,
+			}));
+		}
 	const graphLinks = frames.some(frame => {
 		const presentEntities = new Set(frame.snapshot.presentEntityIds);
 		return frame.snapshot.presentRelationIds.some(id => {
@@ -49,9 +64,11 @@ function viewIndex(inspector: TraceInspector): ViewIndex {
 	const result: ViewIndex = {
 		artifact,
 		indexByEventId,
+		timeline: Object.freeze(timeline),
+		relationsById: byId,
 		graphPossible: artifact.entities.length > 0 || (artifact.groups?.length ?? 0) > 0,
 		graphLinks,
-		hasMessages: artifact.steps.some(step => step.events.some(event => event.type === "message")),
+		hasMessages: timeline.some(entry => entry.event.type === "message"),
 	};
 	viewIndexes.set(inspector, result);
 	return result;
@@ -90,14 +107,13 @@ function descriptor(kind: ViewKind, frameId: string, summary: string, items: Vie
 	});
 }
 
-function eventSource(event: SemanticEvent, artifact: VisualArtifact): Readonly<SourceIds> {
+function eventSource(event: SemanticEvent,
+	relationsById: ReadonlyMap<Id, Relation>): Readonly<SourceIds> {
 	const relationId = event.type === "message"
 		? event.relationId
 		: event.type === "topology" && event.target === "relation"
 			? event.targetId : undefined;
-	const relation = relationId
-		? artifact.relations.find((candidate) => candidate.id === relationId)
-		: undefined;
+	const relation = relationId ? relationsById.get(relationId) : undefined;
 	const actor = event.type === "write" || event.type === "observation"
 		? [event.entityId]
 		: event.type === "topology" && event.target === "entity"
@@ -140,7 +156,8 @@ function eventDescription(event: SemanticEvent, origin: Origin): string {
 }
 
 function eventItems(events: readonly SemanticEvent[], artifact: VisualArtifact,
-	indexByEventId: ReadonlyMap<Id, number>): ViewItem[] {
+	indexByEventId: ReadonlyMap<Id, number>,
+	relationsById: ReadonlyMap<Id, Relation>): ViewItem[] {
 	const origins = new Map(artifact.origins.map(origin => [origin.id, origin] as const));
 	return events.map((event) => {
 		// A validated artifact requires every event's origin to exist.
@@ -150,7 +167,7 @@ function eventItems(events: readonly SemanticEvent[], artifact: VisualArtifact,
 			role: "event",
 			label: event.type === "message" ? event.phase + " · " + event.id : event.type + " · " + event.id,
 			description: eventDescription(event, origin),
-			source: eventSource(event, artifact),
+			source: eventSource(event, relationsById),
 			data: Object.freeze({
 				type: event.type,
 				originId: origin.id,
@@ -172,7 +189,8 @@ function cellDescription(cell: Cell): string {
 /** Fallback never represents unsupported messages as drawn graph sends. */
 function stateTable(inspector: TraceInspector, artifact: VisualArtifact,
 	request: ViewRequest, diagnostics: readonly string[],
-	indexByEventId: ReadonlyMap<Id, number>): ViewDescriptor {
+	indexByEventId: ReadonlyMap<Id, number>,
+	relationsById: ReadonlyMap<Id, Relation>): ViewDescriptor {
 	const frame = inspector.stateAt(request.frameIndex);
 	const present = new Set(frame.presentEntityIds);
 	const events = request.frameIndex > 0 ? artifact.steps[request.frameIndex - 1].events : [];
@@ -189,12 +207,181 @@ function stateTable(inspector: TraceInspector, artifact: VisualArtifact,
 			data: Object.freeze({ present: modeled, cell }),
 		});
 	});
-	items.push(...eventItems(events, artifact, indexByEventId));
+	items.push(...eventItems(events, artifact, indexByEventId, relationsById));
 	return descriptor("state-table", request.frameIndex === 0
 		? "@initial" : artifact.steps[request.frameIndex - 1].id,
 		"State and explicit event evidence at frame " + request.frameIndex +
 		". No message delivery or state persistence is inferred.",
 		items, diagnostics);
+}
+
+const MESSAGE_PHASES = ["sent", "received", "acknowledged", "processed"] as const;
+type MessagePhase = typeof MESSAGE_PHASES[number];
+type Correlation = {
+	readonly messageId: Id;
+	readonly relation: Relation;
+	readonly eventIds: Id[];
+	readonly phases: Record<MessagePhase, number>;
+	readonly firstEventId: Id;
+};
+
+/**
+ * Cumulative authored-order evidence, NOT reconstructed wire chronology.
+ *
+ * The validated model has four message phases. A retry is another explicit
+ * event (and potentially another message ID). Missing phases are omissions
+ * in authored evidence, not proof of failure, loss, delivery or persistence.
+ * Timeout evidence remains an observation/write, never a fifth phase.
+ */
+function sequence(inspector: TraceInspector, request: ViewRequest, selected: ReadonlySet<Id>,
+	index: ViewIndex): ViewDescriptor {
+	const { artifact, relationsById, indexByEventId, timeline } = index;
+	const frame = inspector.stateAt(request.frameIndex);
+	const currentPresence = new Set(frame.presentEntityIds);
+	const entityIndex = new Map(artifact.entities.map((entity, ordinal) =>
+		[entity.id, ordinal] as const));
+	const visibleTimeline: TimelineEvent[] = [];
+	for (const entry of timeline) {
+		if (entry.frameIndex > request.frameIndex) break;
+		visibleTimeline.push(entry);
+	}
+	// Both modeled message facts and non-message state/observation evidence
+	// remain in exact event order. Correlate by message ID only; the validator
+	// enforces that a message ID cannot be used on unrelated relations.
+	const groups = new Map<Id, Correlation>();
+	const participants = new Set<Id>();
+	// An atomic step is a set of modeled facts. Array order only determines
+	// display; "received" before "sent" in the SAME step is not evidence
+	// of an earlier receipt or a missing send. Precompute first modeled
+	// send FRAME for each message ID, ignoring within-step array order.
+	const firstSentFrame = new Map<Id, number>();
+	for (const { event, frameIndex } of visibleTimeline) {
+		if (event.type === "message" && event.phase === "sent" &&
+			!firstSentFrame.has(event.messageId))
+			firstSentFrame.set(event.messageId, frameIndex);
+	}
+	const missingSentThroughStep = new Set<Id>();
+	for (const entry of visibleTimeline) {
+		const event = entry.event;
+		if (event.type !== "message") continue;
+		const relation = relationsById.get(event.relationId)!;
+		participants.add(relation.from);
+		participants.add(relation.to);
+		if (event.phase !== "sent" &&
+			(firstSentFrame.get(event.messageId) ?? Infinity) > entry.frameIndex)
+			missingSentThroughStep.add(event.id);
+		let group = groups.get(event.messageId);
+		if (!group) {
+			group = {
+				messageId: event.messageId, relation, firstEventId: event.id,
+				eventIds: [], phases: { sent: 0, received: 0, acknowledged: 0, processed: 0 },
+			};
+			groups.set(event.messageId, group);
+		}
+		group.eventIds.push(event.id);
+		group.phases[event.phase]++;
+	}
+	const items: ViewItem[] = [];
+	for (const [ordinal, entity] of artifact.entities.entries()) {
+		if (!participants.has(entity.id)) continue;
+		const present = currentPresence.has(entity.id);
+		items.push(item({
+			id: nodeId(ordinal),
+			role: "entity",
+			label: entity.label,
+			description: entity.label + " is an endpoint of an explicitly modeled message. " +
+				(present ? "Present" : "Not present") + " in the selected frame. " +
+				"This does not establish presence at any other event time.",
+			source: source({ entityIds: freezeIds([entity.id]) }),
+			data: Object.freeze({ present, selected: selected.has(entity.id) }),
+		}));
+	}
+	for (const group of groups.values()) {
+		const { relation, messageId, phases, eventIds } = group;
+		const reported = MESSAGE_PHASES.filter(phase => phases[phase] > 0);
+		const omitted = MESSAGE_PHASES.filter(phase => phases[phase] === 0);
+		const description = "Message ID " + messageId + " on declared relation " + relation.id +
+			" (" + relation.from + " to " + relation.to + "). " +
+			"Modeled phase counts: " + MESSAGE_PHASES.map(phase =>
+				phase + " " + phases[phase]).join(", ") + ". " +
+			(omitted.length ? "Not modeled by this frame: " + omitted.join(", ") + ". " : "") +
+			"Absence of a phase is not proof of loss, receipt, delivery, " +
+			"acknowledgement or state persistence; repeated phases remain distinct evidence.";
+		// Keep validated JsonValue-compatible array types at the type boundary;
+		// freeze the nested values in-place before publishing the descriptor.
+		const correlationData = {
+			type: "message-correlation", messageId, relationId: relation.id,
+			phases: { ...phases },
+			reportedPhases: reported,
+			unmodeledPhases: omitted,
+		};
+		Object.freeze(correlationData.phases);
+		Object.freeze(correlationData.reportedPhases);
+		Object.freeze(correlationData.unmodeledPhases);
+		items.push(item({
+			id: "message_" + indexByEventId.get(group.firstEventId)!,
+			role: "value",
+			label: "Message " + messageId,
+			description,
+			source: source({
+				entityIds: freezeIds(relation.from === relation.to
+					? [relation.from] : [relation.from, relation.to]),
+				relationIds: freezeIds([relation.id]),
+				eventIds: freezeIds(eventIds),
+			}),
+			fromItemId: nodeId(entityIndex.get(relation.from)!),
+			toItemId: nodeId(entityIndex.get(relation.to)!),
+			data: Object.freeze(correlationData),
+		}));
+	}
+	const normalized = eventItems(visibleTimeline.map(entry => entry.event),
+		artifact, indexByEventId, relationsById);
+	for (const [ordinal, entry] of visibleTimeline.entries()) {
+		const event = entry.event;
+		const base = normalized[ordinal];
+		const relation = event.type === "message"
+			? relationsById.get(event.relationId)! : undefined;
+		const isCurrent = entry.frameIndex === request.frameIndex;
+		const missingSent = missingSentThroughStep.has(event.id);
+		items.push(item({
+			...base,
+			description: base.description +
+				" Modeled step " + entry.frameId + " (frame " + entry.frameIndex + ")." +
+				(missingSent ? " No sent event was modeled through this atomic step; " +
+					"that is an evidence gap, not proof no send occurred." : "") +
+				(event.type === "message" ? " Correlated only by declared message ID " +
+					event.messageId + "; no phase or causal link is inferred." :
+					" This non-message evidence is not a message phase."),
+			...(relation ? {
+				fromItemId: nodeId(entityIndex.get(relation.from)!),
+				toItemId: nodeId(entityIndex.get(relation.to)!),
+			} : {}),
+			data: Object.freeze({
+				...base.data as Record<string, string | number | boolean>,
+				frameIndex: entry.frameIndex,
+				frameId: entry.frameId,
+				stepLabel: entry.stepLabel,
+				current: isCurrent,
+				...(relation ? {
+					fromEntityId: relation.from, toEntityId: relation.to,
+					missingSentThroughStep: missingSent,
+				} : {}),
+			}),
+		}));
+	}
+	const frameId = request.frameIndex === 0
+		? "@initial" : artifact.steps[request.frameIndex - 1].id;
+	const totalMessages = visibleTimeline.filter(entry =>
+		entry.event.type === "message").length;
+	return descriptor("sequence", frameId,
+		"Sequence evidence at frame " + request.frameIndex + ": " +
+		totalMessages + " explicit message phase event(s), " + groups.size +
+		" correlated message ID(s) and " +
+		(visibleTimeline.length - totalMessages) +
+		" other modeled event(s). Ordered by authored steps/events, not " +
+		"verified physical time. Missing acknowledgements, deliveries, " +
+		"responses and persistence remain unmodeled, not assumed lost or successful.",
+		items);
 }
 
 /**
@@ -207,7 +394,8 @@ function stateTable(inspector: TraceInspector, artifact: VisualArtifact,
  */
 function graph(inspector: TraceInspector, artifact: VisualArtifact, request: ViewRequest,
 	selected: ReadonlySet<Id>, collapsed: ReadonlySet<Id>,
-	indexByEventId: ReadonlyMap<Id, number>): ViewDescriptor {
+	indexByEventId: ReadonlyMap<Id, number>,
+	relationsById: ReadonlyMap<Id, Relation>): ViewDescriptor {
 	const frame = inspector.stateAt(request.frameIndex);
 	const presentEntities = new Set(frame.presentEntityIds);
 	const presentRelations = new Set(frame.presentRelationIds);
@@ -416,7 +604,7 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 			}),
 		}));
 	}
-	items.push(...eventItems(events, artifact, indexByEventId));
+	items.push(...eventItems(events, artifact, indexByEventId, relationsById));
 	return descriptor("graph", request.frameIndex === 0
 		? "@initial" : artifact.steps[request.frameIndex - 1].id,
 		"Graph at frame " + request.frameIndex + ": " + representative.size +
@@ -427,13 +615,13 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 }
 
 /**
- * Pure projection entrypoint. Sequence is deliberately deferred to TL-U06;
- * its requested/auto-selected absence gives a truthful state/event table plus
- * an explicit diagnostic, never a fabricated graph.
+ * Pure source-linked projection entrypoint. All three built-in view kinds are
+ * implemented; incompatible requests fall back to explicit state/evidence.
+ * Auto-selection is stable across the whole artifact, never frame-dependent.
  */
 export function projectView(inspector: TraceInspector, request: ViewRequest): ViewDescriptor {
 	const indexed = viewIndex(inspector);
-	const { artifact, indexByEventId, graphPossible, graphLinks, hasMessages } = indexed;
+	const { artifact, indexByEventId, relationsById, graphPossible, graphLinks, hasMessages } = indexed;
 	if (!request || typeof request !== "object" || Array.isArray(request))
 		fail("$.request", "expected a view request");
 	// The inspector owns frozen compiled semantics. Querying this frame first
@@ -449,19 +637,24 @@ export function projectView(inspector: TraceInspector, request: ViewRequest): Vi
 
 	let preferred: ViewKind | undefined = request.kind;
 	if (!preferred) {
-		const supported = (artifact.views ?? [])
-			.filter(hint => hint.kind === "graph" || hint.kind === "state-table")
-			.slice().sort((a, b) => a.priority - b.priority ||
-				(a.kind === "graph" ? -1 : 1));
-		preferred = supported.find(hint => hint.kind === "state-table" || graphPossible)?.kind;
+		const rank: Record<ViewKind, number> = { sequence: 0, graph: 1, "state-table": 2 };
+		const supported = (artifact.views ?? []).slice().sort((a, b) =>
+			a.priority - b.priority || rank[a.kind] - rank[b.kind]);
+		preferred = supported.find(hint =>
+			hint.kind === "state-table" ||
+			hint.kind === "sequence" && hasMessages ||
+			hint.kind === "graph" && graphPossible)?.kind;
 		if (!preferred) preferred = hasMessages ? "sequence" : graphLinks ? "graph" : "state-table";
 	}
+	if (preferred === "sequence" && hasMessages)
+		return sequence(inspector, request, selected, indexed);
 	if (preferred === "graph" && graphPossible)
-		return graph(inspector, artifact, request, selected, collapsed, indexByEventId);
+		return graph(inspector, artifact, request, selected, collapsed, indexByEventId, relationsById);
 	const diagnostic = preferred === "sequence"
-		? "The sequence view is not available until TL-U06; showing explicit state/event evidence, without inventing message sends."
+		? "Sequence view requires an explicit message event in the validated artifact; showing state and other event evidence, not invented phases."
 		: preferred === "graph"
 			? "Graph view requires at least one declared entity or group; showing the state/event table."
 			: "";
-	return stateTable(inspector, artifact, request, diagnostic ? [diagnostic] : [], indexByEventId);
+	return stateTable(inspector, artifact, request, diagnostic ? [diagnostic] : [],
+		indexByEventId, relationsById);
 }
