@@ -12,9 +12,9 @@ graph, sequence or state-table projections.
 | [Unsigned binary addition](../src/reference/binary.ts) | 1011₂, 0110₂, empty 5-bit result | Four sum/carry updates and leading carry | Correct bit order and carry propagation |
 | [Distributed checkout](../src/reference/checkout.ts) | Draft order; unknown worker outcome; no charge | Distinct sends/receipts, simulated provider effects, timeout, retry and persistence | Evidence limits, separate knowledge and state |
 
-The public \`@0xbuff/throughline/examples\` export contains four
-\`ReferenceExample\` values. Each contains a typed \`artifact\`, a matched
-\`explanation\`, \`questions\` with exact evidence IDs and \`caveats\`.
+The public `@0xbuff/throughline/examples` export contains four
+`ReferenceExample` values. Each contains a typed `artifact`, a matched
+`explanation`, `questions` with exact evidence IDs and `caveats`.
 No domain-tagged source syntax or backward-compatibility adapters are provided.
 
 ~~~ts
