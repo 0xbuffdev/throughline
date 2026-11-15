@@ -489,6 +489,22 @@ The projected fields have distinct responsibilities:
   later events are counted as **not yet in scope** and excluded from
   their modeled evidence until the relevant frame. A claim with all
   references in scope is still not independently verified.
+- **Recorded evidence values:** `InspectionEvidence.recorded` identifies
+  an explicit `{kind:"observation", value: Cell}` or
+  `{kind:"message-payload", value: JsonValue}`. These are immutable source
+  data from the exact event (including known `null` and explicit null
+  message payloads). Observation cells **do not** commit modeled entity
+  state. Message payloads never imply another delivery phase, persistence,
+  or truth beyond their authored provenance. If there is no authored
+  payload, `recorded` is absent rather than fabricated.
+- **Bounded source navigation:** the pure inspector memoizes source
+  event descriptors per validated trace so many claims citing the same
+  evidence share one immutable descriptor. The React UI displays at
+  most **12 editorial claims per page**, and at most **12 cited-event
+  controls per displayed claim**; each pagination is independent and
+  reversible, with totals and original IDs retained. Explicit causal
+  dependency controls are also paged. No 1,000-claim artifact can
+  mount all of its cited-event buttons at once.
 
 The browser player exposes **Explain** and **Inspect** as focusable buttons,
 with the same playback step and selected entity across both modes.
@@ -497,7 +513,14 @@ control, a safe **JSON path array** input (parsed as data; never evaluated),
 ordered change/history tables, explicit relation-phase links and an
 event/claim drill-down that can seek to a referenced source step.
 History, changes, transfer and current-step event rows are displayed
-in bounded page windows. The interactive inspection content remains
+in bounded page windows. Every known value in the before/current, diff,
+history and snapshot tables has a short 150-code-unit preview and,
+if truncated, a button to examine exact canonical JSON in **1,024-code-unit
+segments**, including differences beyond the preview. Segment navigation
+is keyboard accessible, never silently omits suffixes, and prevents
+mounting a 4 MiB value at once. Focused observation/payload values use
+the same safe disclosure. Authored JSON is rendered as inert React text,
+not as parsed HTML or executable code. The interactive inspection content remains
 keyboard/touch accessible, responsive and inert in SSR. The existing
 Graph/Sequence/State-table projection semantics do not change.
 
@@ -509,8 +532,10 @@ inspector and cannot mutate the authored artifact. Regression evidence
 covers checkout, unknown and absent nested paths, known `null`, exact
 parent-record replacements, same-value writes, topology, editorial claims,
 future-reference limitations, browser keyboard/mobile and near-limit
-2,000-step/10,000-event/1,000-relation inspection. Benchmarks are runner
-observations, not latency/memory SLAs or comprehension-study results.
+2,000-step/10,000-event/1,000-relation inspection, plus an independent
+claim-dense fixture with 1,000 claims × 100 explicitly cited events and
+browser pagination tests. Benchmarks are runner observations, not
+latency/memory SLAs or comprehension-study results.
 
 ## Acceptance and deferred replay checks
 
