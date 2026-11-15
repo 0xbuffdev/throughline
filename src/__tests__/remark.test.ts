@@ -100,4 +100,74 @@ describe("TL-U08 Remark validation", () => {
 		}
 		expect(() => remarkThroughline({ mode: "unknown" } as never)).toThrow(/options/);
 	});
+
+	it("requires a trusted VFile-to-repository locator and never uses an absolute path", () => {
+		const prompt = "Show the update.";
+		const relative = "lessons/demo.mdx";
+		const absolute = "/private/build/content/" + relative;
+		const source = { ...file, path: absolute };
+		const entry = {
+			document: relative, ordinal: 0,
+			intentSha256: sha256Text(prompt),
+			artifactPath: "artifacts/demo.json", artifactSha256: artifactSha256(artifact()),
+			review: "reviewed" as const,
+		};
+		const tree: Node = { type: "root", children: [code(prompt, null, 17)] };
+		const opts = { manifest: { version: 1, entries: [entry] }, loadArtifact: () => json() };
+		const visit = (extra: Record<string, unknown> = {}) =>
+			remarkThroughline({ ...opts, ...extra })(
+				tree as { type: string; children: Node[] }, source,
+			);
+		try {
+			visit();
+			throw new Error("expected unsafe VFile path rejection");
+		} catch (error) {
+			expect(error).toMatchObject({ code: "THL_PATH", line: 17 });
+			expect((error as Error).message).toContain("documentForFile");
+			expect((error as Error).message).not.toContain(absolute);
+		}
+		expect(() => visit({
+			documentForFile: (path: string) => {
+				expect(path).toBe(absolute);
+				return relative;
+			},
+		})).not.toThrow();
+		// Explicit per-document mapping remains suitable for a one-off host.
+		expect(() => visit({ document: relative })).not.toThrow();
+		expect(() => visit({ documentForFile: () => "../secret.md" })).toThrow(/THL_PATH/);
+		try {
+			visit({ documentForFile: () => { throw new Error("secret: /private/absolute/path"); } });
+			throw new Error("expected mapper failure");
+		} catch (error) {
+			expect(error).toMatchObject({ code: "THL_PATH", line: 17 });
+			expect((error as Error).message).not.toContain("/private/absolute/path");
+		}
+	});
+
+	it("normalizes loader failures into a stable, positioned and non-secret error", () => {
+		const prompt = "Show an explicit event";
+		const tree: Node = { type: "root", children: [code(prompt, null, 29)] };
+		const opts = {
+			manifest: { version: 1, entries: [{
+				document: file.path, ordinal: 0,
+				intentSha256: sha256Text(prompt),
+				artifactPath: "artifacts/demo.json",
+				artifactSha256: artifactSha256(artifact()),
+				review: "reviewed" as const,
+			}] },
+			loadArtifact: (_path: string): unknown => {
+				throw new Error("EACCES private path /home/secret/build/model.json");
+			},
+		};
+		try {
+			remarkThroughline(opts)(tree as { type: string; children: Node[] }, file);
+			throw new Error("expected loader failure");
+		} catch (error) {
+			expect(error).toMatchObject({ code: "THL_LOADER", line: 29, column: 1 });
+			expect((error as Error).message).toMatch(/thl #0 in lessons\/demo.mdx/);
+			expect((error as Error).message).not.toContain("/home/secret/");
+			expect((error as Error).message).not.toContain("EACCES");
+		}
+	});
+
 });
