@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compile } from "../domains/registry.js";
-import { CHECKOUT_SCENARIOS, EXAMPLES } from "../examples.js";
+import { CHECKOUT_SCENARIOS, EXAMPLES } from "../legacy-examples.js";
 import { traceProgress } from "../scene/progress.js";
 
 const checkout = compile(EXAMPLES.find((example) => example.id === "distributed-checkout")!.source);
