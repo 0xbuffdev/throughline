@@ -327,7 +327,7 @@ try {
   "const unconfigured = unified().use(remarkParse).use(remarkThroughline, { manifest, loadArtifact });",
   "assert.throws(() => unconfigured.runSync(unconfigured.parse(aFile), aFile), (error) => {",
   "  assert.match(error.message, /THL_PATH.*documentForFile/);",
-  "  assert.doesNotMatch(error.message, new RegExp(process.cwd().replace(/[.*+?^${}()|[\\]\\\\]/g, \"\\\\$&\")));",
+  "  assert(!error.message.includes(process.cwd()));",
   "  assert.equal(error.line, 11); return true;",
   "});",
   "const broken = unified().use(remarkParse).use(remarkThroughline, { manifest, documentForFile: mapDocument,",
