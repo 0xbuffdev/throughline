@@ -52,13 +52,16 @@ it("shows unknown, absent and known-null path results and original parent-write 
 	await userEvent.selectOptions(
 		screen.getByRole("combobox", { name: "Inspect entity" }).element(), "gateway",
 	);
-	await expect.element(screen.getByText("Unknown: not measured", { exact: true })).toBeVisible();
+	expect(view()?.textContent).toContain("Unknown: not measured");
 	await userEvent.selectOptions(
 		screen.getByRole("combobox", { name: "Inspect entity" }).element(), "ledger",
 	);
 	await userEvent.type(screen.getByRole("textbox", { name: "Inspect path" }), '["amount"]');
 	await screen.getByRole("button", { name: "Inspect path" }).click();
-	await expect.element(screen.getByText("Known: null", { exact: true })).toBeVisible();
+	await expect.element(screen.getByRole("table", {
+		name: "Previous and current modeled state at requested path",
+	})).toBeVisible();
+	expect(view()?.textContent).toContain("Known: null");
 	await userEvent.selectOptions(
 		screen.getByRole("combobox", { name: "Inspect entity" }).element(), "client",
 	);
@@ -124,13 +127,14 @@ it("guides through exact declared dependencies and non-proof editorial claims", 
 	const focused = document.querySelector<HTMLElement>(".thl-v2-inspect-focus")!;
 	expect(focused.textContent).toContain("Explicitly declared dependencies");
 	expect(focused.textContent).toContain("sent");
-	await screen.getByRole("button", { name: /Inspect event sent \(step 2\)/ }).click();
+	await screen.getByRole("region", { name: "Focused source event" })
+		.getByRole("button", { name: /Inspect event sent \(step 2\)/ }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 7");
 	expect(focus.textContent).toContain("1 cited event(s) are not yet");
 	await screen.getByRole("group", { name: "Visualization player" }).element().focus();
 	await userEvent.keyboard("{End}");
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 7 of 7");
-	expect(focus.textContent).toContain("do not independently verify this claim");
+	expect(focus.textContent).toContain("does not independently verify this claim");
 });
 
 it("responds to keyboard seeking at mobile widths with truthful empty evidence", async () => {
@@ -147,7 +151,7 @@ it("responds to keyboard seeking at mobile widths with truthful empty evidence",
 	expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
 	expect(view()?.textContent).toContain("No explicit write or presence change");
 	expect(view()?.textContent).toContain("No events are authored in this frame");
-	expect(view()?.textContent).toContain("No explicit causal evidence to evaluate");
+	expect(view()?.textContent).toContain("There is no explicit causal evidence to evaluate");
 	await screen.getByRole("button", exact("Explain")).click();
 	await expect.element(screen.getByRole("region", { name: "State and event table" }))
 		.toBeVisible();
