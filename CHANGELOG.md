@@ -9,6 +9,16 @@ program and trace schemas. Changes are grouped using
 
 ### Added
 
+- TL-U09 replaces the published example catalog with four domain-neutral
+  typed schema-2 reference artifacts: factorial call stack, 2×2 matrix
+  multiplication, unsigned binary addition and a hypothetical distributed
+  checkout retry. Each includes static explanation, source-cited comprehension
+  questions, expected answers and caveats. Independent truth tests verify
+  arithmetic, stack transitions, payment uncertainty/persistence order,
+  deterministic JSON and source provenance across graph/sequence/history.
+  The development playground now uses the native schema-2 React player.
+  Historical schema-1 examples remain internal test scaffolding only, not
+  a public catalog or compatibility adapter.
 - Added TL-U08 single unqualified `thl` fence authoring. Strict schema-2
   inline JSON validates and compiles offline; inert prose requires an exact
   reviewed materialization bound to LF-normalized source SHA-256 and canonical
