@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compile } from "../domains/registry.js";
-import { EXAMPLES } from "../examples.js";
+import { EXAMPLES } from "../legacy-examples.js";
 import { projectLayout, composeTrace } from "../layout.js";
 import { projectScene } from "../scene.js";
 
