@@ -21,10 +21,10 @@ const PAGE_SIZE = 120;
 
 /**
  * Accessible timeline of ALL modeled message evidence through the selected
- * frame; only a bounded tail is mounted at once. The correlation summaries
- * always cover the full modeled prefix, and earlier event rows remain
- * reachable with "Show earlier evidence". Hiding DOM rows never changes
- * source truth or the projection.
+ * frame; independent bounded tails of message-ID summaries and event rows
+ * are mounted. All correlation totals/source IDs remain in the full pure
+ * descriptor and are reachable via explicit progressive disclosure.
+ * Hiding DOM rows never changes source truth or the projection.
  */
 export function SequenceView({
 	view, selectedId, onSelect,
@@ -34,12 +34,17 @@ export function SequenceView({
 	onSelect: (id: Id) => void;
 }): React.JSX.Element {
 	const [maxVisible, setMaxVisible] = useState(PAGE_SIZE);
+	const [maxCorrelations, setMaxCorrelations] = useState(PAGE_SIZE);
 	const actors = view.items.filter(item => item.role === "entity");
 	const correlations = view.items.filter(item =>
 		item.role === "value" && field(item, "type") === "message-correlation");
 	const evidence = view.items.filter(item => item.role === "event");
 	const start = Math.max(0, evidence.length - maxVisible);
 	const mounted = evidence.slice(start);
+	// Render newest correlations by default so the active step's new
+	// message IDs remain accessible without mounting thousands of cards.
+	const correlationStart = Math.max(0, correlations.length - maxCorrelations);
+	const mountedCorrelations = correlations.slice(correlationStart);
 	const actorNames = new Map(actors.map(item => [item.id, item.label]));
 	const phases = ["sent", "received", "acknowledged", "processed"] as const;
 	return (
@@ -67,7 +72,15 @@ export function SequenceView({
 				<h3>Messages by declared ID</h3>
 				<p>Only explicitly modeled phases are counted. An unmodeled
 					acknowledgement is not proof that one was lost.</p>
-				<ul>{correlations.map(item => {
+				<p aria-live="polite">Showing {mountedCorrelations.length} of {correlations.length}
+					{" "}message ID(s); summaries remain source-linked and all older IDs
+					can be revealed.</p>
+				{correlations.length > mountedCorrelations.length && <button type="button"
+					onClick={() => setMaxCorrelations(count =>
+						Math.min(correlations.length, count + PAGE_SIZE))}>
+					Show earlier message IDs
+				</button>}
+				<ul>{mountedCorrelations.map(item => {
 					const counts = field(item, "phases");
 					return <li key={item.id}
 						data-message-id={text(field(item, "messageId"))}
@@ -114,7 +127,7 @@ export function SequenceView({
 						const from = item.fromItemId && actorNames.get(item.fromItemId);
 						const to = item.toItemId && actorNames.get(item.toItemId);
 						const current = field(item, "current") === true;
-						const missingSent = field(item, "missingPriorSent") === true;
+						const missingSent = field(item, "missingSentThroughStep") === true;
 						return <tr key={item.id}
 							data-source-event-ids={item.source.eventIds?.join(" ") ?? ""}
 							data-source-relation-ids={item.source.relationIds?.join(" ") ?? ""}
@@ -139,7 +152,7 @@ export function SequenceView({
 							<td>{message ? <>
 								<strong>{text(field(item, "phase"))}</strong>
 								{missingSent && <span className="thl-v2-sequence-gap">
-									Sent not modeled before this event
+									No sent modeled through this step
 								</span>}
 							</> : type + " (not a message phase)"}</td>
 							<td>{text(field(item, "originId"))}
