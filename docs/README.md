@@ -10,6 +10,8 @@ and render it with the optional native React player.
 - [Universal thl contract](grammar.md): strict JSON/prose syntax, event semantics,
   limits and diagnostics.
 - [Reference catalog](catalog.md): factorial, matrix, binary and checkout.
+- [Offline CLI and trusted Node host](cli.md): validate, materialize,
+  editorial-review gate, check and confinement boundaries.
 - [Framework integration](framework-integrations.md): Fumadocs, Next.js,
   Astro and other Markdown renderers.
 - [Reference traces](reference-traces.md): the four independently checked schema-2 teaching models
