@@ -204,9 +204,8 @@ it("shows exact before/after values after a shared 150-character preview", async
 		.not.toBe(before.element().querySelector("pre")?.textContent);
 	// The historical and selected-path cells use the exact same expansion
 	// component rather than a second, truncating data interpretation.
-	await expect.element(screen.getByRole("table", {
-		name: "Previous and current modeled state at requested path",
-	})).toHaveCount(0); // No entity has been selected yet
+	// No before/current path table exists until an entity is selected.
+	expect(view()?.textContent).not.toContain("Previous and current modeled state at requested path");
 	await userEvent.selectOptions(
 		screen.getByRole("combobox", { name: "Inspect entity" }).element(), "value",
 	);
