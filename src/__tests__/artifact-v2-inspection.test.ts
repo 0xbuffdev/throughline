@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { cpus } from "node:os";
 import { describe, expect, it } from "vitest";
 import {
-	compileArtifact, inspectTrace, projectInspection,
+	ArtifactValidationError, compileArtifact, inspectTrace, projectInspection,
 	serializeArtifact, TraceQueryError, type VisualArtifact,
 } from "../index.js";
 import { distributedGraph } from "./v2-graph-fixture.js";
@@ -233,9 +233,11 @@ describe("TL-U07 — pure Explain/Inspect projection", () => {
 			.toThrow(TraceQueryError);
 		expect(() => projectInspection(query, { frameIndex: 1, path: ["x"] }))
 			.toThrow(TraceQueryError);
+		// The underlying validator owns path safety, so reserved property
+		// names intentionally raise ArtifactValidationError, not query errors.
 		expect(() => projectInspection(query, {
 			frameIndex: 1, entityId: "client", path: ["__proto__"],
-		})).toThrow(TraceQueryError);
+		})).toThrow(ArtifactValidationError);
 		expect(() => projectInspection(query, { frameIndex: 1, relationId: "bad" }))
 			.toThrow(TraceQueryError);
 	});
