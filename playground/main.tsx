@@ -72,7 +72,7 @@ function highlightJson(source: string): ReactNode {
 		const value = match[0];
 		let role = "punctuation";
 		if (value.startsWith('"')) {
-			role = source.slice(pattern.lastIndex).trimStart().startsWith(":") ? "key" : "string";
+			role = /^\s*:/.test(source.slice(pattern.lastIndex, pattern.lastIndex + 64)) ? "key" : "string";
 		} else if (/^(true|false|null)$/.test(value)) role = "boolean";
 		else if (/^-?\d/.test(value)) role = "number";
 		tokens.push(<span className={"syntax-" + role} key={count++}>{value}</span>);
@@ -308,7 +308,7 @@ function App() {
 										if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
 											event.preventDefault();
 											setCompiledSource(source);
-											setNotice("Preview updated.");
+											setNotice("Source checked.");
 										}
 									}}
 									onPaste={event => {
