@@ -51,7 +51,10 @@ for (const row of perf.workloads) {
 	assert.deepEqual(row.measurements.geometry.map(item => item.width), [260, 720]);
 	for (const geometry of row.measurements.geometry) {
 		assert(geometry.nodes >= row.fixture.entities);
-		assert(geometry.edges >= 0);
+		assert.equal(geometry.sourceRelations, row.fixture.relations,
+			"All declared source relations must survive graph projection");
+		assert.equal(geometry.edges, row.fixture.relations,
+			"Every uncollapsed source relation must have one routed edge");
 		assert(geometry.layout.samples >= 3);
 		assert(geometry.projectedGeometry.samples >= 3);
 	}
@@ -62,8 +65,23 @@ assert.equal(perf.workloads[2].fixture.events, 6000);
 assert.equal(security.seed, "0x18a2b47d");
 assert.equal(security.iterations, 144);
 assert.equal(security.rejected, 144);
-assert(Object.values(security.cases).reduce((total, count) => total + count, 0) === 144);
-assert.equal(security.pathRejections, 10);
+assert.equal(security.uniqueHostileInputs, 144, "Repeated malformed inputs cannot count as distinct fuzz coverage");
+assert.equal(security.uniqueValidBaselines, 144);
+const requiredClasses = [
+	"legacy-schema", "duplicate-json-key", "trailing-code", "unknown-origin",
+	"bad-entity-id", "missing-relation-endpoint", "unrecognized-event",
+	"bad-phase", "unknown-cell-vocabulary", "prototype-property",
+	"conflicting-same-step-write", "lone-surrogate",
+];
+assert.deepEqual(Object.keys(security.cases).sort(), [...requiredClasses].sort());
+assert.equal(security.coveredClasses, requiredClasses.length);
+assert.equal(security.minCasesPerClass, 12);
+for (const name of requiredClasses)
+	assert.equal(security.cases[name], 12, "Required attack class not exhaustively sampled: " + name);
+assert.equal(security.variation.distinctDepths.length >= 3, true);
+assert(security.variation.maxMutatedBytes > security.variation.minMutatedBytes);
+assert.equal(security.pathRejections, 46);
+assert.equal(security.uniqueRejectedPaths, 46);
 assert.equal(security.validBaselineReplayed, true);
 console.info("TL-U18 accepted release evidence from " + expectedHead +
 	": 3 deterministic fixture scales, 4 measured operations, 2 geometry widths, " +
