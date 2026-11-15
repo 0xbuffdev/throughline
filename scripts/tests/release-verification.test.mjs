@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { inspectReleaseArtifact, verifyReleaseRecord } from "../release-artifact.mjs";
 import { verifyPublishedRegistryRelease } from "../verify-registry-release.mjs";
+import { verifyReleaseApproval } from "../verify-release-approval.mjs";
 
 const hash = (b, algorithm, encoding = "hex") =>
 	createHash(algorithm).update(b).digest(encoding);
@@ -132,4 +133,53 @@ test("TL-U19 staging cannot auto-publish and release tests are required by main 
 	assert.match(workflow, /release-artifact\.mjs create/);
 	assert.match(workflow, /release-artifact\.mjs verify/);
 	assert.match(ci, /test:release-tooling/);
+});
+
+
+const comment = () => ({
+	id: 6930012942,
+	html_url: "https://github.com/0xbuffdev/throughline/issues/100#issuecomment-6930012942",
+	author_association: "MEMBER",
+	user: { login: "example-maintainer", type: "User" },
+	created_at: "2026-11-15T19:00:00Z",
+	updated_at: "2026-11-15T19:00:00Z",
+	body: [
+		"TL-U18-AT-ACCEPTED",
+		"source-sha: " + sourceSha,
+		"tarball-sha256: " + artifact().sha256,
+		"tested-on: 2026-11-15",
+		"screen-reader: NVDA 2026.3",
+		"browser-os: Firefox 145 / Windows 11",
+		"record-url: https://github.com/0xbuffdev/throughline/pull/44#issuecomment-6930012941",
+		"result: pass",
+	].join("\n"),
+});
+
+test("TL-U19 accepts only an actual maintainer's SHA-bound real AT review claim", () => {
+	const accepted = verifyReleaseApproval({
+		comment: comment(), manifest: artifact(), id: "6930012942",
+	});
+	assert.equal(accepted.reviewer, "example-maintainer");
+	assert.equal(accepted.sourceSha, sourceSha);
+});
+
+test("TL-U19 denies absent, stale, untrusted or duplicate human gate claims", () => {
+	const baseline = comment();
+	const cases = [
+		{ ...baseline, user: { type: "Bot", login: "example-bot" } },
+		{ ...baseline, author_association: "NONE" },
+		{ ...baseline, id: 123 },
+		{ ...baseline, html_url: "https://evil.example.invalid/" },
+		{ ...baseline, body: baseline.body.replace("TL-U18-AT-ACCEPTED", "TL-U18-AT-PENDING") },
+		{ ...baseline, body: baseline.body.replace(sourceSha, "b".repeat(40)) },
+		{ ...baseline, body: baseline.body.replace(artifact().sha256, "1".repeat(64)) },
+		{ ...baseline, body: baseline.body.replace("NVDA 2026.3", "NOT PERFORMED") },
+		{ ...baseline, body: baseline.body.replace("result: pass", "result: fail") },
+		{ ...baseline, body: baseline.body + "\nresult: pass" },
+		{ ...baseline, body: baseline.body.replace("tested-on: 2026-11-15", "") },
+	];
+	for (const suspect of cases)
+		assert.throws(() => verifyReleaseApproval({
+			comment: suspect, manifest: artifact(), id: "6930012942",
+		}), "Failed to reject " + String(suspect.body).slice(0, 50));
 });
