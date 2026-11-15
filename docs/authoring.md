@@ -1,13 +1,13 @@
 # Authoring schema-2 reference models
 
 Throughline's authoring system has one semantic artifact and one code-fence
-language. It does not register special \`flow\`, \`binary\`, \`matrix\` or
-\`callstack\` parsers. New examples are typed authored data, not executable
+language. It does not register special `flow`, `binary`, `matrix` or
+`callstack` parsers. New examples are typed authored data, not executable
 domain-specific syntax.
 
 ## Define an artifact
 
-Use \`VisualArtifact\` with \`schemaVersion: 2\`, declared origins, entities,
+Use `VisualArtifact` with `schemaVersion: 2`, declared origins, entities,
 relations, initial cells and ordered steps of explicit events.
 
 ~~~ts
@@ -41,16 +41,16 @@ console.log(inspectTrace(trace).valueAt(1, "counter"));
 const strictJson = serializeArtifact(trace.artifact);
 ~~~
 
-An event may be a \`write\`, \`topology\` change, \`message\` phase or
-non-persistent \`observation\`. A message never mutates persistent state
+An event may be a `write`, `topology` change, `message` phase or
+non-persistent `observation`. A message never mutates persistent state
 on its own. Observations never imply writes. For any external system
 claim, declare what is authored, simulated or actually observed and
 identify the evidence or knowledge that is missing.
 
 ## Build a first-party reference
 
-1. Add a typed example to \`src/reference/\`, using the shared
-   \`ReferenceExample\` type from \`reference/model.ts\`.
+1. Add a typed example to `src/reference/`, using the shared
+   `ReferenceExample` type from `reference/model.ts`.
 2. Include an explicit, bounded initial state; every meaningful
    transition should have a stable event ID, descriptive step label,
    truthful note and declared origin.
@@ -58,7 +58,7 @@ identify the evidence or knowledge that is missing.
    expected answers, cited event IDs and evidence caveats. These are
    the baseline materials for future user studies; do not claim
    measured improvements without evidence.
-4. Export the reference in \`src/examples.ts\` so Node, Markdown and
+4. Export the reference in `src/examples.ts` so Node, Markdown and
    the development preview all consume the same semantic source.
 5. Write independent truth assertions. For arithmetic, recompute
    expected values outside the view. For networks, check send,
@@ -78,7 +78,7 @@ the canonical artifact.
 
 ## Author the model in Markdown
 
-Use an unqualified \`thl\` fence. An object opening brace selects a
+Use an unqualified `thl` fence. An object opening brace selects a
 **strict schema-2 JSON artifact**, compiled offline. Any other nonempty
 body is **inert prose**, requiring a trusted, reviewed and hash-matched
 sidecar artifact at build time. Prose cannot compile in the pure core,
