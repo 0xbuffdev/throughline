@@ -1,7 +1,8 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
-import { ThroughlinePlayer, ThroughlineScenarios } from "../index.js";
+import { ThroughlinePlayer } from "../player.js";
+import { ThroughlineScenarios } from "../scenarios.js";
 import "../../styles/throughline.css";
 import { closePlayerPanel, openPlayerPanel, seekFrame } from "./player-actions.js";
 

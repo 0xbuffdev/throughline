@@ -14,6 +14,7 @@ release suite on the exact reviewed revision:
 pnpm install --frozen-lockfile
 pnpm audit:source
 pnpm typecheck
+pnpm test:cli
 pnpm preview:typecheck
 pnpm preview:build
 pnpm test:run
@@ -45,8 +46,8 @@ requirements. These checks are not replaced by mocked or fixture-only tests.
    changelog. Review the public history for any sensitive references.
    Historical exposure cannot be undone by deleting current-tree files.
 2. Update the version in `package.json` and document the changes in
-   `CHANGELOG.md`. Maintain the five public package exports and keep
-   `Program.version` / `Trace.version` independent of npm SemVer.
+   `CHANGELOG.md`. Maintain the six public package exports and the separate `thl` binary;
+   schema-2 `VisualArtifact.schemaVersion` is independent of npm SemVer.
 3. Run the source, TypeScript, preview, Chromium/Firefox/WebKit browser,
    build, license and packed consumer checks listed above.
    Record the exact candidate SHA, CI runs and applicable manual review.
@@ -54,22 +55,22 @@ requirements. These checks are not replaced by mocked or fixture-only tests.
    ensure main CI is green.
 4. From a clean checkout with a signing key registered with GitHub, create
    and push an immutable signed tag **only after** the release commit is
-   merged. For version `0.1.0`:
+   merged. For the proposed schema-2 version `0.2.0` (only if approved):
 
    ~~~sh
    git switch main
    git pull --ff-only
-   git tag -s v0.1.0 -m "Throughline v0.1.0"
-   git tag -v v0.1.0
-   git push origin v0.1.0
+   git tag -s v0.2.0 -m "Throughline v0.2.0"
+   git tag -v v0.2.0
+   git push origin v0.2.0
    ~~~
 
    GitHub must show the tag as **Verified**. Protect `v*` tag updates and
    deletions. Do not move or reuse existing release tags.
 5. In [GitHub Actions](https://github.com/0xbuffdev/throughline/actions),
    run **Throughline npm release (staged with provenance)** from `main`.
-   Enter the exact signed tag (e.g. `v0.1.0`) and confirmation
-   `STAGE-v0.1.0`. The read-only verification job checks the signed tag,
+   Enter the exact signed tag (e.g. `v0.2.0`) and confirmation
+   `STAGE-v0.2.0`. The read-only verification job checks the signed tag,
    manifest, build, tests, packed consumers and archive SHA-256.
 6. Inspect the GitHub release artifact and approve the protected
    `npm-publish` environment job. Its **stage-only** Trusted Publisher
@@ -100,7 +101,7 @@ requirements. These checks are not replaced by mocked or fixture-only tests.
    ~~~sh
    npm view @0xbuff/throughline version
    npm view @0xbuff/throughline dist-tags
-   npm view @0xbuff/throughline@0.1.0 version
+   npm view @0xbuff/throughline@0.2.0 version
    ~~~
 
    Check [npm's package page](https://www.npmjs.com/package/@0xbuff/throughline)

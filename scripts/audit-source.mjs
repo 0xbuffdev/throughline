@@ -129,7 +129,7 @@ for (const path of paths) {
 	}
 }
 
-for (const name of ["cn", "react", "react-dom"]) {
+for (const name of ["cn", "react", "react-dom", "remark-mdx", "remark-parse", "unified"]) {
 	const dependency = JSON.parse(
 		readFileSync(join(root, "node_modules", name, "package.json"), "utf8"),
 	);

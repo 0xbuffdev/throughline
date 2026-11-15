@@ -3,7 +3,7 @@ import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
 import type { ThroughlineGuidance } from "../guidance.js";
-import { ThroughlinePlayer } from "../index.js";
+import { ThroughlinePlayer } from "../player.js";
 import "../../styles/throughline.css";
 import { closePlayerPanel, openPlayerPanel } from "./player-actions.js";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compile } from "../../index.js";
+import { compile } from "../registry.js";
 
 describe("public compile API domain boundaries", () => {
 	it("preserves leading zeroes when adding a one-bit operand", () => {

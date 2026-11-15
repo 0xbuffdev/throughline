@@ -1,106 +1,58 @@
-# AGENTS.md
+# Repository instructions
 
-Instructions for coding agents working in this repository. This file applies
-to the entire repository; follow any more specific `AGENTS.md` in a
-subdirectory when present.
+These instructions apply to the entire Throughline repository. Follow more specific `AGENTS.md` files where present. Read the [public architecture](docs/architecture.md) and the relevant contract before changing observable behavior.
 
-## Project overview
+## Purpose and boundaries
 
-Throughline (`@0xbuff/throughline`) is a standalone TypeScript/ESM package
-for compiling Markdown-authored state traces into bounded, deterministic
-snapshots. Its React 19 player is optional. The package must remain usable
-without a host application, account, backend, network connection, or React
-when importing the core compiler.
+Throughline is a standalone TypeScript/ESM package for authoring and inspecting deterministic, evidence-linked **schema-2 `VisualArtifact`** timelines. The compiler is pure and offline. React 19 is optional. The CLI is Node 24+ only. Neither the compiler nor the CLI executes authoring prose or calls an AI provider.
 
-Read `README.md`, `docs/architecture.md`, and the relevant grammar/domain
-documentation before changing observable behavior. The source and
-`package.json` define the implementation and published package contract.
+The current source is a pre-release schema-2 redesign. Do not describe it as already published to npm. The package version and the artifact schema version are different concepts. No version-1 backward compatibility or translation layer may be added.
 
-## Development and verification
+## Public contracts
 
-Use Node.js 24+, pnpm 11.2.2 and the committed lockfile in this
-single-package repository. Run the relevant tests for each change and
-follow [verification and release procedures](docs/releasing.md) for a
-full release candidate. Never misrepresent skipped or failed checks.
+Keep exactly these package exports unless a reviewed ticket explicitly changes them:
+
+- `@0xbuff/throughline`: `validateArtifact`, `parseArtifactJson`, `serializeArtifact`, `compileArtifact`, `inspectTrace`, `projectView`, `projectInspection`, authoring/hash helpers and associated schema-2 types.
+- `@0xbuff/throughline/remark`: mdast validation and literal-data MDX transform.
+- `@0xbuff/throughline/node`: trusted Node filesystem host and non-executing Markdown/MDX AST discovery for the CLI.
+- `@0xbuff/throughline/react`: `ThroughlineGraphPlayer` and `ThroughlineEmbed`.
+- `@0xbuff/throughline/examples`: four reference artifacts with matched explanations, questions, expected answers, evidence event IDs and caveats.
+- `@0xbuff/throughline/styles/throughline.css`: explicitly imported, namespaced CSS.
+
+The separate executable is `thl` and supports `validate`, `materialize`, `check` and help. Do not add wildcard exports or require deep imports. Public `parseThl`, `compile`, `compileProgram`, `ThroughlinePlayer` and domain-tagged fences were intentionally removed.
 
 ## Repository map
 
-- `src/index.ts`, `src/compiler.ts`, `src/dsl.ts`, `src/model.ts`,
-  `src/tracer.ts`: the core parser, validation, types, and trace compiler.
-- `src/domains/`: the legacy v1 supported domains: `flow`, `bindings`,
-  `binary`, `matrix`, and `callstack`, pending TL-U08 migration.
-- `src/remark/`: optional mdast validation plugin; keep React out and preserve
-  host-owned source positions.
-- `src/layout/`, `src/layout.ts`, `src/scene.ts`: React-independent
-  scene composition and layout.
-- `src/react/`: optional player, controls, inspector, accessible
-  captions, and opt-in sonification.
-- `src/styles/throughline.css`: explicitly imported, `thl-`-namespaced
-  player styles and `--thl-*` customization tokens.
-- `src/examples.ts`: public examples and acceptance fixtures.
-- `src/**/__tests__/`, `scripts/`: regression, browser, packaging,
-  source-boundary, and license checks.
-- `docs/`: grammar, authoring, integration and architecture documentation.
-- `.github/workflows/ci.yml`: read-only quality checks.
-- `.github/workflows/publish.yml`, `docs/releasing.md`: manual npm
-  staging, provenance, and maintainer approval procedures.
+- `src/v2/`: canonical schema-2 model, strict JSON, atomic replay, queries, source-preserving projections, authoring, digests and limits.
+- `src/remark/`: host-neutral mdast transform. It must validate every matching `thl` node before mutating the tree.
+- `src/node/`: trusted Node-only filesystem and Markdown/MDX AST parsing. Discovery must reflect **actual** code nodes, including nested containers; HTML comments and embedded syntax are not code fences.
+- `src/cli/`: offline command-line arguments, validation, unreviewed materialization and check diagnostics.
+- `src/react/`: native player, caption, controls, accessibility, optional narration and SSR/hydration behavior.
+- `src/reference/`, `src/examples.ts`: the four schema-2 reference baselines.
+- `src/styles/`: `thl-`-scoped styles and `--thl-*` tokens.
+- `src/domains/`, `src/compiler.ts`, `src/dsl.ts` and other older files: **internal** v1 regression scaffolding pending later cleanup. Do not export or extend these for production.
+- `scripts/`, `src/**/__tests__/`: pure, Node/CLI, packed archive, browser, framework, security and provenance checks.
+- `docs/`: authoritative human-readable public architecture, grammar, CLI, integration and release guides.
+- `.github/workflows/ci.yml`: quality-only, read-only CI. Publication requires the separate maintainer-controlled process.
 
-## Public API and compatibility
+## Implementation rules
 
-Support exactly these package imports:
+Use Node.js 24+, pnpm 11.2.2, strict TypeScript and the committed lockfile. Keep a single canonical source of truth; do not duplicate artifact state or infer events from visuals, graph edges, notes or message timestamps. Each step commits atomically; known `null` is not unknown. Evidence must cite declared events. Maintain bounded source, state, JSON and replay work.
 
-- `@0xbuff/throughline`
-- `@0xbuff/throughline/remark`
-- `@0xbuff/throughline/react`
-- `@0xbuff/throughline/examples`
-- `@0xbuff/throughline/styles/throughline.css`
+Markdown/MDX discovery must parse syntax trees **without running MDX or JavaScript**. Its depth-first zero-based `thl` ordinals, source content and positions must agree with the Remark host. Unqualified `thl` is the only supported fence. The opening brace selects strict JSON; prose requires an exact, separately reviewed sidecar. A new or regenerated sidecar always remains `unreviewed` until a human explicitly reviews it. No auto-approval command.
 
-Do not add undocumented deep imports or wildcard exports. The core
-compiler must never depend on React, browser globals, or host-specific
-code. Keep `react` and `react-dom` as optional peer dependencies.
+The Node host alone may read filesystem paths, using a trusted real root, strict relative POSIX locators, bounded decoding and symlink rejection. Never reflect a raw loader exception, let content select a root or execute its embedded code. Keep the root library and Remark entry free of Node filesystem, React and network dependencies. React and React DOM remain optional peers; browser-only capabilities must be detected after hydration.
 
-The accepted future contract is schema-2 `VisualArtifact` (see
-`docs/schema-v2.md` and context Specification 0004 §§10–13).
-`Program.version` and `Trace.version` are current legacy schema-1 source
-implementation, not a compatibility guarantee. There are no existing v1 users
-whose migration must block the accepted redesign. Keep v1 stable within an
-individual incremental PR only to avoid leaving the repository untestable;
-replace and remove legacy public APIs with the reviewed TL-U03–TL-U10 work.
-Preserve deterministic compilation and stable seeking through frames.
+Follow the project's existing naming and code style. Review third-party dependency licenses and notices; update both `package.json` and the committed lockfile when adding packages. Avoid undocumented exports, arbitrary imports and dependencies on unpublished versions. Never insert private architecture links, tokens or internal-project details in public documentation.
 
-## Implementation and security rules
+## Verification
 
-- Follow the existing strict TypeScript, ESM, and code formatting
-  conventions; keep changes small and avoid unnecessary dependencies.
-- Never execute authored source, call `eval`, or fetch remote resources
-  as part of compilation. No telemetry or persistent source storage.
-- Render author-provided strings as text, not untrusted HTML.
-- Preserve bounds on source size, work, state and expansion, plus
-  source-positioned errors, cycle rejection, and atomic state updates.
-- Preserve accessible labels, keyboard navigation, live status, focus
-  visibility, reduced-motion behavior, responsive layout, and SSR
-  hydration. Keep sound opt-in.
-- Review dependency licenses, notices, bundled output, and package
-  contents before changing dependencies or build configuration.
-- Never add credentials, private planning links, host-only packages,
-  unpublished dependencies, or sensitive materials to public source.
+Before proposing review, run the relevant checks and ensure the exact PR head has passing CI. For a full package change, verify TypeScript, local preview build/typecheck, pure/CLI tests, browser tests, distribution, source/license audits, an independently packed Node-only/CLI consumer, optional Remark/React/MDX integrations, mobile SSR/hydration and framework consumers. Include negative regressions for malformed or unauthorized input, changed source hashes, unknown states and false code-node discovery.
 
-## Change and release workflow
+Do not claim tests passed if not run. Do not substitute local source imports for packed-consumer proof, or infer npm publication from a successful archive build. Keep [documentation](docs/README.md) and the [changelog](CHANGELOG.md) aligned with user-facing contracts.
 
-- Work on a dedicated branch and open a focused PR against `main`.
-  Document purpose, compatibility impact, implementation, and checks
-  actually run. Keep `README.md`, relevant `docs/`, tests, and
-  `CHANGELOG.md` in sync with user-visible changes.
-- Final review, any required signing, merges, Git tags and npm release
-  approvals require maintainer authorization. Never invent approvals or
-  claim unperformed actions are complete.
-- Do not publish, stage, approve, move release tags, change repository
-  visibility, or rewrite Git history without explicit authorization.
-- Publication uses an immutable, GitHub-verified signed tag and the
-  manually dispatched `publish.yml` workflow. Only its protected
-  `npm-publish` staging job receives `id-token: write`. No npm
-  token or OIDC write permission belongs in quality CI. npm staging
-  is not a public release; final npm 2FA approval is separate.
+## Pull requests and releases
 
-See `CONTRIBUTING.md`, `SECURITY.md` and `docs/releasing.md` for
-contribution, security reporting and release procedures.
+Use one focused branch and PR per accepted ticket. Give the maintainer an accurate summary of decisions, user-visible changes, security limits and actual verification. Respond to and resolve review threads only after the corrections and tests are confirmed. Leave PRs unmerged until the maintainer authorizes merging.
+
+Do not deploy, publish, sign or move release tags, change repository visibility, archive architecture tickets, grant new credentials or rewrite Git history without the appropriate explicit approval. Release stages and the live documentation-app upgrade are separate gates. See [release guidance](docs/releasing.md), [contribution guidelines](CONTRIBUTING.md) and [security reporting](SECURITY.md).

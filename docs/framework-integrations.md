@@ -1,6 +1,6 @@
 # Framework integrations
 
-This guide covers the **unreleased TL-U08 schema-2 source**. Verify the
+This guide covers the **unreleased TL-U10 schema-2 source**. Verify the
 installed npm version before using it. The older v0.1.0 published package
 has a different Markdown contract and does not receive a compatibility layer.
 
@@ -90,8 +90,10 @@ A wrong source hash, mismatched canonical artifact hash, missing entry or
 unreviewed entry always fails closed. A trusted loader throwing an error produces
 the stable `THL_LOADER` diagnostic; arbitrary host exception messages and
 private loader paths are never included in the user-facing error. The
-creation/check CLI and filesystem integration are scheduled separately under
-TL-U10.
+standalone `thl` CLI and a confined Node filesystem host are now
+implemented in TL-U10 source, pending the package's separate publication.
+See the [CLI guide](cli.md) for validated materialization, editorial review,
+strict check mode and source-hash diagnostics.
 
 ## Remark and MDX
 
@@ -102,35 +104,25 @@ position where known. It verifies the complete document before any MDX mutation.
 
 ~~~ts
 import { remarkThroughline } from "@0xbuff/throughline/remark";
-import { relative, isAbsolute, sep } from "node:path";
+import { createNodeThroughlineHost } from "@0xbuff/throughline/node";
 
-// This is host build tooling, not imported by the pure Throughline engine.
-// Choose the trusted repository root that defines manifest document paths.
-const repositoryRoot = "/trusted/repository/root";
-function documentForFile(absoluteFilePath: string): string {
-  const path = relative(repositoryRoot, absoluteFilePath);
-  if (!path || path === ".." || path.startsWith(".." + sep) || isAbsolute(path)) {
-    throw new Error("VFile path is outside the configured repository root");
-  }
-  return path.split(sep).join("/");
-}
-
-const plugin = [remarkThroughline, {
-  mode: "mdx",
-  documentForFile, // maps every VFile path to the exact sidecar document key
-  manifest,        // reviewed, host-loaded manifest
-  loadArtifact,    // trusted, content-root-confined synchronous loader
-}];
-// For one specific file, document: "content/docs/checkout.mdx" may replace
-// documentForFile. Inline JSON needs neither loader nor document mapping.
+// This Node-only host config owns the trusted root, blocks symlink escapes,
+// and validates the exact manifest schema. No Markdown input can choose paths.
+const host = createNodeThroughlineHost({
+  root: "/absolute/trusted/repository",
+  manifestPath: "throughline/manifest.json",
+});
+const plugin = [remarkThroughline, { mode: "mdx", ...host }];
+// For a project containing only direct JSON fences, omit manifestPath.
 ~~~
 
 Remark receives the host's real VFile. Its path is commonly absolute, while
 sidecar document keys must remain repository-relative POSIX paths. Do **not**
 remove an assumed prefix, use the system working directory implicitly, or
-loosen the path validator. A trusted host config either supplies an explicit
-relative `document` for a single file, uses a validated already-relative VFile
-path, or supplies `documentForFile` for a multi-document build. Missing or
+loosen the path validator. The bundled Node host config supplies a strictly confined `documentForFile`
+callback for multi-document builds. An advanced host may instead supply an
+explicit relative `document` for one file or a validated already-relative
+VFile path. Missing or
 unsafe mappings fail with `THL_PATH` and the known fence line/ordinal without
 printing a private absolute path. The callback must be provided by the trusted
 host, not by authored Markdown, and must not follow untrusted symlink paths.

@@ -9,7 +9,7 @@ export type ThlBody =
 	| Readonly<{ kind: "artifact"; value: VisualArtifact }>;
 
 export type AuthoringErrorCode =
-	| "THL_EMPTY" | "THL_INTENT_LIMIT" | "THL_UNICODE" | "THL_SYNTAX"
+	| "THL_EMPTY" | "THL_INTENT_LIMIT" | "THL_LIMIT" | "THL_UNICODE" | "THL_SYNTAX"
 	| "THL_UNSUPPORTED_DOCUMENT" | "THL_PATH" | "THL_MANIFEST"
 	| "THL_UNRESOLVED" | "THL_UNREVIEWED" | "THL_DIGEST" | "THL_LOADER";
 

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { compile, compileAst, ProgramError, parseThl } from "../index.js";
+import { compile, compileAst } from "../domains/registry.js";
+import { ProgramError } from "../model.js";
+import { parseThl } from "../dsl.js";
 
 const FLOW = 'node a "A" = 1\nstep "Read"\nfocus a';
 

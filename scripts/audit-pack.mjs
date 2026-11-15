@@ -49,6 +49,9 @@ try {
 		"package/dist/remark/index.d.ts",
 		"package/dist/examples.js",
 		"package/dist/examples.d.ts",
+		"package/dist/node/index.js",
+		"package/dist/node/index.d.ts",
+		"package/dist/cli/main.js",
 		"package/src/styles/throughline.css",
 	]) {
 		assert(entries.includes(file), "Missing packed file: " + file);
@@ -92,9 +95,10 @@ try {
 	);
 	assert.deepEqual(
 		Object.keys(packed.exports).sort(),
-		[".", "./react", "./remark", "./examples", "./styles/throughline.css"].sort(),
+		[".", "./react", "./remark", "./examples", "./node", "./styles/throughline.css"].sort(),
 	);
-	assert.deepEqual(Object.keys(packed.dependencies ?? {}), ["cn"]);
+	assert.equal(packed.bin?.thl, "./dist/cli/main.js");
+	assert.deepEqual(Object.keys(packed.dependencies ?? {}), ["cn", "remark-mdx", "remark-parse", "unified"]);
 	for (const dependencies of [
 		packed.dependencies ?? {},
 		packed.peerDependencies ?? {},
@@ -128,17 +132,125 @@ try {
 	);
 	assert(
 		!existsSync(join(consumer, "node_modules", "react")) &&
-			!existsSync(join(consumer, "node_modules", "unified")),
-		"Core consumer unexpectedly installed React",
+			existsSync(join(consumer, "node_modules", "unified")) &&
+			existsSync(join(consumer, "node_modules", "remark-parse")) &&
+			existsSync(join(consumer, "node_modules", "remark-mdx")),
+		"Node-only package must contain syntax parsers but not React",
 	);
+	// Independently installed CLI/Node host: real archive, real bin, no
+	// compulsory React/AI, no MDX execution and no self-approval.
+	assert(existsSync(join(consumer, "node_modules", ".bin", "thl")),
+		"Packed CLI binary link missing");
+	const cliPath = join(consumer, "node_modules", "@0xbuff", "throughline", "dist", "cli", "main.js");
+	const cli = (...args) => run("node", [cliPath, ...args], consumer);
+	const fixtureRoot = join(consumer, "fixtures");
+	mkdirSync(join(fixtureRoot, "docs"), { recursive: true });
+	mkdirSync(join(fixtureRoot, "artifacts"), { recursive: true });
+	const counterJson = JSON.stringify({
+		schemaVersion: 2, id: "packedCounter",
+		origins: [{ id: "author", kind: "authored" }],
+		entities: [{ id: "x", label: "Counter" }], relations: [],
+		initialState: { x: { status: "known", value: 0 } },
+		steps: [{ id: "increment", label: "Increment", events: [
+			{ id: "w", originId: "author", type: "write",
+				entityId: "x", path: [], value: { status: "known", value: 1 } },
+		] }],
+	});
+	writeFileSync(join(fixtureRoot, "artifacts", "counter.json"), counterJson);
+	const prompt = "Explain the counter with explicit writes.";
+	writeFileSync(join(fixtureRoot, "docs", "sample.mdx"),
+		"## Semantic model\n\n~~~thl\n" + counterJson + "\n~~~\n\n" +
+		"~~~mermaid\ngraph TD\n~~~\n\n" + "~~~thl\n" + prompt + "\n~~~\n");
+	assert.match(cli("validate", "artifacts/counter.json", "--root", fixtureRoot), /THL_OK validate/);
+	const before = spawnSync("node", [cliPath, "check", "docs", "--root", fixtureRoot],
+		{ cwd: consumer, encoding: "utf8" });
+	assert.notEqual(before.status, 0);
+	assert.match(before.stderr, /THL_UNRESOLVED.*thl #1/);
+	assert.match(cli("materialize", "--root", fixtureRoot,
+		"--document", "docs/sample.mdx", "--ordinal", "1",
+		"--artifact", "artifacts/counter.json", "--manifest", "manifest.json"),
+		/THL_UNREVIEWED materialize/);
+	const unreviewed = spawnSync("node", [cliPath, "check", "docs",
+		"--manifest", "manifest.json", "--root", fixtureRoot],
+		{ cwd: consumer, encoding: "utf8" });
+	assert.notEqual(unreviewed.status, 0);
+	assert.match(unreviewed.stderr, /THL_UNREVIEWED/);
+	const manifestLocation = join(fixtureRoot, "manifest.json");
+	const generated = JSON.parse(readFileSync(manifestLocation, "utf8"));
+	assert.equal(generated.entries.length, 1);
+	assert.equal(generated.entries[0].ordinal, 1);
+	assert.equal(generated.entries[0].review, "unreviewed");
+	generated.entries[0].review = "reviewed"; // trusted test-only editorial step
+	writeFileSync(manifestLocation, JSON.stringify(generated));
+	assert.match(cli("check", ".", "--manifest", "manifest.json", "--root", fixtureRoot),
+		/checked 1 document\(s\), 2 thl block\(s\)/);
+	const pureHost = [
+		'import assert from "node:assert/strict";',
+		'import { createNodeThroughlineHost } from "@0xbuff/throughline/node";',
+		'import { resolveThlBody } from "@0xbuff/throughline";',
+		'const root = process.argv[1];',
+		'const host = createNodeThroughlineHost({ root, manifestPath: "manifest.json" });',
+		'const doc = host.documentForFile(root + "/docs/sample.mdx");',
+		'assert.equal(doc, "docs/sample.mdx");',
+		'assert.equal(resolveThlBody("Explain the counter with explicit writes.",',
+		'  { document: doc, ordinal: 1, manifest: host.manifest, loadArtifact: host.loadArtifact }).id, "packedCounter");',
+	].join("\n");
+	run("node", ["--input-type=module", "-e", pureHost, fixtureRoot], consumer);
+	// A packed CLI must discover nested, real CommonMark code nodes. A
+	// line-level scanner incorrectly saw zero blocks here, and falsely
+	// included a thl-looking string inside an HTML comment.
+	const nestedSource = [
+		"<!--", "~~~thl", "Fake comment fence.", "~~~", "-->", "",
+		"- Parent", "  - Child", "",
+		"    ~~~thl", "    Explain a nested model from the real AST.", "    ~~~",
+		"",
+		"~~~js", "const fake = '~~~thl';", "~~~",
+	].join("\n");
+	writeFileSync(join(fixtureRoot, "docs", "nested.md"), nestedSource);
+	const nestedNotReviewed = spawnSync("node", [
+		cliPath, "check", "docs/nested.md", "--manifest", "manifest.json",
+		"--root", fixtureRoot,
+	], { cwd: consumer, encoding: "utf8" });
+	assert.notEqual(nestedNotReviewed.status, 0,
+		"Packed CLI must fail closed on unmaterialized nested thl code");
+	assert.match(nestedNotReviewed.stderr,
+		/THL_UNRESOLVED.*docs\/nested.md:10:5 thl #0/,
+		"Source location and ordinal must come from nested mdast code node");
+	assert.match(cli("materialize", "--document", "docs/nested.md",
+		"--ordinal", "0", "--artifact", "artifacts/counter.json",
+		"--manifest", "manifest.json", "--root", fixtureRoot),
+		/THL_UNREVIEWED.*docs\/nested.md:10:5 thl #0/);
+	const pendingNested = JSON.parse(readFileSync(manifestLocation, "utf8"));
+	assert.deepEqual(pendingNested.entries.map(entry => entry.document),
+		["docs/nested.md", "docs/sample.mdx"]);
+	assert.equal(pendingNested.entries[0].ordinal, 0);
+	assert.equal(pendingNested.entries[0].review, "unreviewed");
+	const nestedNeedsApproval = spawnSync("node", [cliPath, "check", ".",
+		"--manifest", "manifest.json", "--root", fixtureRoot],
+		{ cwd: consumer, encoding: "utf8" });
+	assert.notEqual(nestedNeedsApproval.status, 0);
+	assert.match(nestedNeedsApproval.stderr, /THL_UNREVIEWED/);
+	pendingNested.entries[0].review = "reviewed"; // separate trusted test-only review
+	writeFileSync(manifestLocation, JSON.stringify(pendingNested));
+	assert.match(cli("check", ".", "--manifest", "manifest.json", "--root", fixtureRoot),
+		/checked 2 document\(s\), 3 thl block\(s\)/);
+
+	assert(!existsSync(join(consumer, "node_modules", "react")) &&
+		!!existsSync(join(consumer, "node_modules", "unified")) &&
+		!!existsSync(join(consumer, "node_modules", "remark-mdx")),
+		"CLI/Node host must not require React, but must carry its non-evaluating syntax parsers");
+
 	const core = [
 		'import assert from "node:assert/strict";',
-		'import { compile, ProgramError, compileArtifact, inspectTrace, projectView, projectInspection } from "@0xbuff/throughline";',
+		'import * as publicCore from "@0xbuff/throughline";',
+		'import { compileArtifact, inspectTrace, projectView, projectInspection, resolveThlBody } from "@0xbuff/throughline";',
 		'import { EXAMPLES } from "@0xbuff/throughline/examples";',
 		'assert(Array.isArray(EXAMPLES) && EXAMPLES.length === 4);',
 		'assert(EXAMPLES.every(example => example.artifact.schemaVersion === 2 && example.questions.length >= 3));',
 		'assert(compileArtifact(EXAMPLES[0].artifact).frames.length > 2);',
-		'assert.throws(() => compile("not a thl block"), ProgramError);',
+		'assert.equal("compile" in publicCore, false);',
+		'assert.equal("SUPPORTED_DOMAINS" in publicCore, false);',
+		'assert.throws(() => resolveThlBody("{bad"), /invalid JSON/);',
 		'const artifact = { schemaVersion: 2, id: "counter", origins: [{ id: "author", kind: "authored" }], entities: [{ id: "counter", label: "Counter" }], relations: [], initialState: { counter: { status: "known", value: 0 } }, steps: [{ id: "increment", label: "Increment", events: [{ id: "write", originId: "author", type: "write", entityId: "counter", path: [], value: { status: "known", value: 1 } }] }] };',
 		'const compiled = compileArtifact(artifact);',
 		'assert.deepEqual(compiled.frames.map(frame => frame.id), ["@initial", "increment"]);',
@@ -215,7 +327,7 @@ try {
 	writeFileSync(
 		join(consumer, "index.ts"),
 		[
-			'import { compile, compileArtifact, inspectTrace, projectView, projectInspection, type Trace, type VisualArtifact, type CompiledTrace, type TraceInspector, type QueryCell, type StateChange, type HistoryEntry, type PresenceChange, type SemanticEvent, type ViewRequest, type ViewDescriptor, type ViewItem, type ViewKind, type InspectionRequest, type InspectionView, type InspectionRecorded } from "@0xbuff/throughline";',
+			'import { compileArtifact, inspectTrace, projectView, projectInspection, type VisualArtifact, type CompiledTrace, type TraceInspector, type QueryCell, type StateChange, type HistoryEntry, type PresenceChange, type SemanticEvent, type ViewRequest, type ViewDescriptor, type ViewItem, type ViewKind, type InspectionRequest, type InspectionView, type InspectionRecorded } from "@0xbuff/throughline";',
 			'import { EXAMPLES } from "@0xbuff/throughline/examples";',
 			'const trace: CompiledTrace = compileArtifact(EXAMPLES[0]!.artifact);',
 			'const frames: number = trace.frames.length;',
@@ -383,14 +495,10 @@ try {
 		'import assert from "node:assert/strict";',
 		'import { createElement } from "react";',
 		'import { renderToString } from "react-dom/server";',
-		'import { compile, compileArtifact } from "@0xbuff/throughline";',
-		'import { ThroughlinePlayer, ThroughlineGraphPlayer } from "@0xbuff/throughline/react";',
-		'const fence = String.fromCharCode(96).repeat(3);',
-		'const trace = compile([fence+"thl binary","a = 1","b = 1",fence].join(String.fromCharCode(10)));',
-		'const html = renderToString(createElement(ThroughlinePlayer, { trace }));',
-		'assert(html.includes("Visualization player"));',
-		'assert.throws(() => renderToString(createElement(ThroughlinePlayer, { trace: { ...trace, version: 2 } })), /Expected trace version 1/);',
-		'assert.throws(() => renderToString(createElement(ThroughlinePlayer, { trace: { ...trace, frames: null } })), /Expected trace version 1/);',
+		'import { compileArtifact } from "@0xbuff/throughline";',
+		'import { ThroughlineGraphPlayer } from "@0xbuff/throughline/react";',
+		'import * as publishedReact from "@0xbuff/throughline/react";',
+		'assert.deepEqual(Object.keys(publishedReact).sort(), ["ThroughlineEmbed", "ThroughlineGraphPlayer"].sort());',
 		'const v2Model = { schemaVersion: 2, id: "ssr", origins: [{ id: "author", kind: "authored" }], entities: [{ id: "alpha", label: "Alpha" }, { id: "beta", label: "Beta" }], relations: [{ id: "link", from: "alpha", to: "beta" }], initialState: { alpha: { status: "known", value: 1 }, beta: { status: "unknown", reason: "unobserved" } }, steps: [{ id: "sendStep", label: "Send", events: [{ id: "send", type: "message", originId: "author", relationId: "link", messageId: "message", phase: "sent" }] }] };',
 		'const v2 = compileArtifact(v2Model);',
 		'const graphHtml = renderToString(createElement(ThroughlineGraphPlayer, { trace: v2, initialView: "graph" }));',

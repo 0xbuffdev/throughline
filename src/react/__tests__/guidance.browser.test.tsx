@@ -3,7 +3,8 @@ import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
 import { CHECKOUT_GUIDANCE, CHECKOUT_SCENARIOS } from "../../legacy-examples.js";
-import { ThroughlinePlayer, ThroughlineScenarios } from "../index.js";
+import { ThroughlinePlayer } from "../player.js";
+import { ThroughlineScenarios } from "../scenarios.js";
 import "../../styles/throughline.css";
 import { openPlayerPanel, seekFrame, stepCount } from "./player-actions.js";
 

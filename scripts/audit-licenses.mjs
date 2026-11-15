@@ -8,7 +8,7 @@ const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
 assert.deepEqual(
 	Object.keys(manifest.dependencies ?? {}).sort(),
-	["cn"],
+	["cn", "remark-mdx", "remark-parse", "unified"],
 	"Unreviewed direct production dependency",
 );
 assert.deepEqual(
@@ -34,9 +34,13 @@ const visited = new Map();
 function requirePackage(name, parent) {
 	// pnpm's isolated linker keeps a dependency's children beside its own
 	// symlink target; first-level dependencies use root/node_modules.
+	// pnpm 11 may hoist type-only and shared transitive dependencies into
+	// .pnpm/node_modules rather than creating a sibling link for each caller.
+	// Audit those resolved packages too; do not silently skip a dependency.
+	const hoisted = join(root, "node_modules", ".pnpm", "node_modules", name);
 	const locations = parent
-		? [join(dirname(parent), name), join(root, "node_modules", name)]
-		: [join(root, "node_modules", name)];
+		? [join(dirname(parent), name), join(root, "node_modules", name), hoisted]
+		: [join(root, "node_modules", name), hoisted];
 	const location = locations.find((candidate) => existsSync(candidate));
 	assert(location, "Missing installed dependency: " + name);
 	const path = realpathSync(location);
@@ -68,12 +72,18 @@ function auditPackage(name, parent) {
 		if (existsSync(location)) auditPackage(dependency, path);
 	}
 }
-for (const name of ["cn", "react", "react-dom"]) {
+for (const name of ["cn", "react", "react-dom", "remark-mdx", "remark-parse", "unified"]) {
 	auditPackage(name);
 }
 
 // The published tarball is audited separately. Keep JS dependencies external
 // so the project's Apache LICENSE cannot silently cover embedded MIT files.
+const nodeEntry = readFileSync(join(root, "dist", "node", "index.js"), "utf8");
+const cliEntry = readFileSync(join(root, "dist", "cli", "main.js"), "utf8");
+// Ensure the package does not embed copied third-party parser implementations.
+// The actual parser is an explicit, locked production dependency instead.
+assert(!nodeEntry.includes("function tokenizeFactory") && !cliEntry.includes("function tokenizeFactory"),
+	"Node/CLI parser dependencies must remain external and separately licensed");
 const generated = join(root, "dist", "react", "index.js");
 assert(existsSync(generated), "Run the build before this audit");
 const code = readFileSync(generated, "utf8");

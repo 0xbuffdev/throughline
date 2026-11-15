@@ -2,7 +2,8 @@ import { StrictMode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
-import { ThroughlinePlayer, ThroughlineScenarios } from "../index.js";
+import { ThroughlinePlayer } from "../player.js";
+import { ThroughlineScenarios } from "../scenarios.js";
 import { closePlayerPanel, openPlayerPanel } from "./player-actions.js";
 
 const trace = compile(
