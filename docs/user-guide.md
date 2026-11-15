@@ -2,8 +2,8 @@
 
 Throughline helps readers examine **authored semantic state across
 explicit steps**. The native schema-2 model separates data and evidence
-from the viewer. Its source uses one \`thl\` code-fence language and one
-\`VisualArtifact\` schema, regardless of whether the subject is a stack,
+from the viewer. Its source uses one `thl` code-fence language and one
+`VisualArtifact` schema, regardless of whether the subject is a stack,
 matrix, bit operation or distributed service.
 
 **Version note:** this describes the **unreleased schema-2 source**.
@@ -12,7 +12,7 @@ install must not be assumed to expose this pre-release contract.
 
 ## Direct JSON quick start
 
-An ordinary \`thl\` code block can contain exact schema-2 JSON:
+An ordinary `thl` code block can contain exact schema-2 JSON:
 
 ~~~thl
 {
@@ -60,7 +60,7 @@ fail validation.
 
 ## Read the four reference models
 
-The public \`@0xbuff/throughline/examples\` export exposes four
+The public `@0xbuff/throughline/examples` export exposes four
 typed schema-2 examples, each with an explanation, matched questions,
 expected answers, source evidence IDs and caveats:
 
@@ -109,23 +109,23 @@ a group and changing presentation cannot change committed state.
 Keyboard-accessible controls and reduced-motion presentation apply;
 narration is optional and must not alter the model.
 
-The standalone development preview opens with \`pnpm dev\` from the
+The standalone development preview opens with `pnpm dev` from the
 source repository and displays all four references at desktop, tablet
 and mobile widths. It includes the matched prose baseline so evidence
 can be reviewed next to the live state representation.
 
 ## Markdown and MDX hosts
 
-The optional \`@0xbuff/throughline/remark\` entry validates unqualified
-\`thl\` code nodes without importing React. In explicit MDX mode it
+The optional `@0xbuff/throughline/remark` entry validates unqualified
+`thl` code nodes without importing React. In explicit MDX mode it
 prevalidates every block and injects a registered
-\`ThroughlineEmbed\` with **only literal \`artifactJson\` data**;
+`ThroughlineEmbed` with **only literal `artifactJson` data**;
 the host supplies the React component and stylesheet.
 
 Prose intent, such as a request to "explain factorial(4)", is
 **not** directly compilable. It requires a reviewed, SHA-256-bound
 schema-2 artifact supplied by a trusted host. A VFile with an absolute
-path requires trusted \`documentForFile\` mapping to a
+path requires trusted `documentForFile` mapping to a
 repository-relative sidecar locator. Missing or stale sidecars, unsafe
 paths, and loader failures produce stable diagnostics; no compiler
 call triggers AI or network access.
@@ -137,7 +137,7 @@ is a separate release-gated implementation.
 
 ## Understanding evidence and limits
 
-A source \`sent\` message is not a source \`received\` message, a
+A source `sent` message is not a source `received` message, a
 processed phase is not a persistent write, and a timeout does not
 prove decline. The snapshot after a step is atomic: event-list order
 does not imply intermediate committed states or elapsed time.
