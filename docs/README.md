@@ -22,6 +22,7 @@ and render it with the optional native React player.
 - [Architecture](architecture.md): compiler, trace model, presentation and
   trust boundaries.
 - [Reference authoring](authoring.md): building typed, evidence-grounded examples.
+- [Release-quality gate](release-quality.md): measured v2 performance, security, browser evidence and manual accessibility checklist.
 - [Release procedure](releasing.md): exact verification commands, signing,
   staged publication and post-release checks.
 - [v0.1.0 release notes](release-notes-v0.1.0.md) and

@@ -18,6 +18,9 @@ pnpm test:cli
 pnpm preview:typecheck
 pnpm preview:build
 pnpm test:run
+# CI additionally validates SHA-bound TL-U18 JSON performance/security evidence.
+pnpm test:release-performance
+pnpm test:release-security
 pnpm exec playwright install chromium
 pnpm test:browser:run
 pnpm build
@@ -27,6 +30,8 @@ pnpm audit:browser
 pnpm audit:frameworks
 pnpm audit:markdown-hosts
 ~~~
+
+Inspect the [release-quality evidence and manual accessibility checklist](release-quality.md) before authorizing a package release. Exact-head CI checks `v2-performance.json` and `v2-security.json`, and attaches them as GitHub Actions artifacts alongside Chromium, Firefox and WebKit browser evidence. The performance numbers are measured baselines, **not** unreviewed latency SLAs. **Real screen-reader acceptance on a source- and tarball-SHA-bound candidate must be performed before TL-U18 can be closed.** Follow the [actual AT test-record instructions](qa/tl-u18-screen-reader-record.md); the current record is NOT PERFORMED. Real native-browser zoom and other device checks must be reported as performed or outstanding for the TL-U19 release review, never silently passed.
 
 For Firefox and WebKit verification, install the browser binaries and run
 `THROUGHLINE_QA_BROWSER=firefox pnpm test:browser:run` and
@@ -50,7 +55,7 @@ requirements. These checks are not replaced by mocked or fixture-only tests.
    schema-2 `VisualArtifact.schemaVersion` is independent of npm SemVer.
 3. Run the source, TypeScript, preview, Chromium/Firefox/WebKit browser,
    build, license and packed consumer checks listed above.
-   Record the exact candidate SHA, CI runs and applicable manual review.
+   Record the exact candidate SHA, CI runs, quality evidence artifacts and applicable manual accessibility/rights review.
    Review the exact archive contents. Merge the release PR after review and
    ensure main CI is green.
 4. From a clean checkout with a signing key registered with GitHub, create

@@ -53,7 +53,9 @@
 		"audit:licenses": "node scripts/audit-licenses.mjs",
 		"audit:frameworks": "node scripts/audit-frameworks.mjs",
 		"audit:markdown-hosts": "node scripts/audit-markdown-hosts.mjs",
-		"test:cli": "vitest run src/__tests__/cli.test.ts"
+		"test:cli": "vitest run src/__tests__/cli.test.ts",
+		"test:release-performance": "vitest run src/__tests__/release-v2-performance.test.ts",
+		"test:release-security": "vitest run src/__tests__/release-v2-security.test.ts"
 	},
 	"files": [
 		"dist",

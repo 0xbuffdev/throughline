@@ -66,6 +66,10 @@ jobs:
           git merge-base --is-ancestor HEAD origin/main || { echo "Tagged commit is not on main"; exit 1; }
           git cat-file -e HEAD:.github/workflows/publish.yml
 
+      - name: Bind release evidence to the exact checked-out signed tag commit
+        shell: bash
+        run: echo "THL_SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
       - uses: pnpm/action-setup@v6
         name: Set up pinned pnpm
       - uses: actions/setup-node@v6
@@ -92,7 +96,8 @@ jobs:
           assert.equal(pkg.homepage, "https://docs.0xbuff.com/docs/throughline");
           assert.equal(pkg.repository?.url, "git+https://github.com/0xbuffdev/throughline.git");
           assert.deepEqual(Object.keys(pkg.exports).sort(),
-            [".", "./remark", "./react", "./examples", "./styles/throughline.css"].sort());
+            [".", "./remark", "./react", "./examples", "./node", "./styles/throughline.css"].sort());
+          assert.equal(pkg.bin?.thl, "./dist/cli/main.js");
           NODE
 
       - name: Install frozen dependencies
@@ -105,12 +110,33 @@ jobs:
         run: |
           pnpm preview:typecheck
           pnpm preview:build
-      - name: Compiler tests
+      - name: Compiler, release performance and hostile-input tests
         run: pnpm test:run
+      - name: Verify exact-tag quality evidence
+        run: node scripts/verify-release-evidence.mjs
+      - name: Upload validated release-quality evidence separately from the staged package
+        uses: actions/upload-artifact@v7
+        with:
+          name: throughline-quality-${{ github.run_id }}
+          path: |
+            .release-evidence/v2-performance.json
+            .release-evidence/v2-security.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
       - name: Browser tests
         run: pnpm test:browser:run
+      - name: Record Chromium verification
+        run: node scripts/record-browser-evidence.mjs chromium
+      - name: Upload verified Chromium evidence separately from the staged package
+        uses: actions/upload-artifact@v7
+        with:
+          name: throughline-release-chromium-${{ github.run_id }}
+          path: .release-evidence/v2-browser-chromium.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Build typed ESM distributable
         run: pnpm build
       - name: Verify installed dependency licenses

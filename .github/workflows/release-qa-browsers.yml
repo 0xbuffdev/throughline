@@ -23,8 +23,15 @@ jobs:
       matrix:
         browser: [firefox, webkit]
     steps:
-      - name: Checkout source
+      - name: Checkout exact source head for reproducible TL-U18 results
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify actual checked-out source matches the recorded evidence SHA
+        env:
+          THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$THL_SOURCE_SHA"
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node.js
@@ -43,3 +50,14 @@ jobs:
         env:
           THROUGHLINE_QA_BROWSER: ${{ matrix.browser }}
         run: pnpm test:browser:run
+      - name: Record exact-source browser acceptance
+        env:
+          THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/record-browser-evidence.mjs ${{ matrix.browser }}
+      - name: Upload cross-browser acceptance record
+        uses: actions/upload-artifact@v7
+        with:
+          name: throughline-v2-${{ matrix.browser }}-${{ github.run_id }}
+          path: .release-evidence/v2-browser-${{ matrix.browser }}.json
+          if-no-files-found: error
+          retention-days: 30
