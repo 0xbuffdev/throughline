@@ -124,6 +124,18 @@ message phase never silently becomes a write; missing dependencies remain
 explicitly unmodeled. Causal claims are editorial, not independently proven,
 and future cited events cannot support claims in earlier frames.
 
+**Source evidence is inspectable:** recorded observation cells (such as
+"no acknowledgement recorded yet") and optional authored message payloads
+appear in focused event details, clearly labeled as **not committed state**.
+Before/after, history and snapshot values retain short previews while
+keyboard-accessible exact JSON disclosures reveal *all* content in bounded
+1,024-code-unit segments. Focused editorial claims display 12 per page;
+each has its own independent 12-citation page. Even a valid artifact with
+1,000 claims × 100 referenced events mounts a bounded set of controls.
+Dependencies, changes and current-step event lists have separate bounds.
+Neither hiding DOM entries nor disclosing editorial citations changes
+the trusted source values or makes a causal inference.
+
 No server, untrusted code evaluation, AI inference or v1 schema adapter is
 part of Inspect. Its exact model and provenance rules are documented in
 [the v2 semantics and Inspect guide](docs/schema-v2.md).
