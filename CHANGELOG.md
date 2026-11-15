@@ -9,6 +9,16 @@ program and trace schemas. Changes are grouped using
 
 ### Added
 
+- Added TL-U08 single unqualified `thl` fence authoring. Strict schema-2
+  inline JSON validates and compiles offline; inert prose requires an exact
+  reviewed materialization bound to LF-normalized source SHA-256 and canonical
+  artifact SHA-256. Sidecar locators are document + zero-based `thl` ordinal,
+  with traversal-safe paths, closed manifest schema and no implicit AI/network.
+  Remark/MDX replaces validated nodes with literal schema-2 `artifactJson`
+  and the React embed now renders the native v2 graph/sequence/Inspect player;
+  unrelated Markdown remains unchanged. This is an intentional breaking source
+  change, not a v1-compatible adapter. CLI and reference migrations are separate
+  TL-U09/U10 tickets, not part of TL-U08.
 - Added TL-U07 pure `projectInspection` for typed source-linked chapter
   context, previous/current state, exact explicit `diff`, nested-path
   `history`, modeled relation transfers, origin-labeled causal
