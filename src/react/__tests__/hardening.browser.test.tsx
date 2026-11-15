@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { compileProgram } from "../../compiler.js";
-import { ThroughlinePlayer } from "../index.js";
+import { ThroughlinePlayer } from "../player.js";
 import "../../styles/throughline.css";
 
 it("renders malicious-looking labels, notes and values as inert text on mobile", async () => {
