@@ -350,7 +350,7 @@ try {
 	writeFileSync(join(consumer, "embed-typecheck.ts"), [
 		'import { ThroughlineEmbed, ThroughlineGraphPlayer, type ThroughlineEmbedProps, type ThroughlineGraphPlayerProps } from "@0xbuff/throughline/react";',
 		'import { remarkThroughline, type ThroughlineRemarkOptions } from "@0xbuff/throughline/remark";',
-		'const props: ThroughlineEmbedProps = { artifactJson: "{\"schemaVersion\":2,\"id\":\"host\",\"origins\":[{\"id\":\"author\",\"kind\":\"authored\"}],\"entities\":[{\"id\":\"x\",\"label\":\"X\"}],\"relations\":[],\"initialState\":{\"x\":{\"status\":\"known\",\"value\":0}},\"steps\":[{\"id\":\"advance\",\"label\":\"Advance\",\"events\":[{\"id\":\"w\",\"originId\":\"author\",\"type\":\"write\",\"entityId\":\"x\",\"path\":[],\"value\":{\"status\":\"known\",\"value\":1}}]}]}", theme: "dark" };',
+		'const props: ThroughlineEmbedProps = { artifactJson: JSON.stringify({ schemaVersion: 2 }), theme: "dark" };',
 		'const plugin: ThroughlineRemarkOptions = { mode: "mdx", componentName: "CustomTrace" };',
 		'const model: ThroughlineGraphPlayerProps = { trace: { schemaVersion: 2, artifact: { schemaVersion: 2 } as never, frames: [] }, initialView: "sequence" };',
 		'void [props, plugin, model, ThroughlineEmbed, ThroughlineGraphPlayer, remarkThroughline];',
