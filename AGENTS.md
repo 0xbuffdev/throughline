@@ -47,7 +47,7 @@ Follow the project's existing naming and code style. Review third-party dependen
 
 ## Verification
 
-Before proposing review, run the relevant checks and ensure the exact PR head has passing CI. For a full package change, verify TypeScript, local preview build/typecheck, pure/CLI tests, browser tests, distribution, source/license audits, an independently packed Node-only/CLI consumer, optional Remark/React/MDX integrations, mobile SSR/hydration and framework consumers. Include negative regressions for malformed or unauthorized input, changed source hashes, unknown states and false code-node discovery.
+Before proposing review, run the relevant checks and ensure the exact PR head has passing CI. For a full package change, verify TypeScript, local preview build/typecheck, pure/CLI/security tests, exact-SHA TL-U18 performance evidence, Chromium/Firefox/WebKit browser tests, distribution, source/license audits, an independently packed Node-only/CLI consumer, optional Remark/React/MDX integrations, mobile SSR/hydration and framework consumers. Keep human assistive-technology/native-zoom results distinct from automated role checks. Include negative regressions for malformed or unauthorized input, changed source hashes, unknown states and false code-node discovery.
 
 Do not claim tests passed if not run. Do not substitute local source imports for packed-consumer proof, or infer npm publication from a successful archive build. Keep [documentation](docs/README.md) and the [changelog](CHANGELOG.md) aligned with user-facing contracts.
 
