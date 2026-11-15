@@ -46,6 +46,8 @@ jobs:
         run: ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/publish.yml")'
       - name: Audit public-source boundaries and dependency licenses
         run: pnpm audit:source
+      - name: Check public documentation links and code fences
+        run: pnpm audit:docs
       - name: Typecheck
         run: pnpm typecheck
       - name: Typecheck local preview
@@ -157,6 +159,7 @@ jobs:
           set -euo pipefail
           ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/publish.yml")'
           pnpm audit:source
+          pnpm audit:docs
           pnpm typecheck
           pnpm preview:typecheck
           pnpm preview:build

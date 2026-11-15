@@ -7,7 +7,9 @@ Each version is published from an immutable, GitHub-verified signed
 
 ## Verification
 
-Use Node.js 24+, pnpm 11.2.2 and the committed lockfile. Run the full
+Use Node.js 24+, pnpm 11.2.2 and the committed lockfile. The protected
+staging job pins npm CLI 11.21.2, which satisfies npm's documented
+11.15.0-or-later staged-publishing requirement. Run the full
 release suite on the exact reviewed revision:
 
 ~~~sh
@@ -75,7 +77,7 @@ As an additional distribution proof, the normal read-only GitHub CI now **packs 
 
 The reviewed human test **must** use that archive, including the optional React 19 host, and the record must include the actual spoken announcements, tester, OS/browser/AT versions, results, deviations, full commit SHA and SHA-256. Do not put human transcripts or identifiers into public source by default without a privacy review; reference a reviewed PR issue/comment or a consented QA attachment.
 
-A maintainer who has actually examined the evidence must create a **GitHub issue comment in this repository** (for example, on PR #44) with exactly these lines (replace every placeholder with actual values; do **not** paste this template as approval):
+A maintainer who has actually examined the evidence must create a **GitHub issue comment in this repository** (on a suitable repository PR or issue) with exactly these lines (replace every placeholder with actual values; do **not** paste this template as approval):
 
 ~~~text
 TL-U18-AT-ACCEPTED
@@ -104,7 +106,10 @@ The comment must be authored by a real GitHub repository OWNER/MEMBER/COLLABORAT
 3. Run the source, TypeScript, preview, Chromium/Firefox/WebKit browser,
    build, license and packed consumer checks listed above.
    Record the exact candidate SHA, CI runs, quality evidence artifacts and actual manual accessibility/rights review.
-   Review the exact archive contents, record the human TL-U18 acceptance comment described above, merge the source PR only after review, and ensure main CI is green.
+   Review and merge the source PR only after maintainer approval and green
+   source/merge CI. Then inspect the final main-CI candidate, run the real
+   manual screen-reader acceptance on those exact bytes, and record the
+   source- and archive-bound human approval comment before tagging.
 4. From a clean checkout with a signing key registered with GitHub, create
    and push an immutable signed tag **only after** the release commit is
    merged. For the proposed schema-2 version `0.2.0` (only if approved):

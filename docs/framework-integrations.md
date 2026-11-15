@@ -1,8 +1,8 @@
 # Framework integrations
 
-This guide covers the **unreleased TL-U10 schema-2 source**. Verify the
-installed npm version before using it. The older v0.1.0 published package
-has a different Markdown contract and does not receive a compatibility layer.
+This guide describes the **v0.2.0 schema-2 release candidate**. Verify that
+v0.2.0 is actually published and installed before using these APIs. The v0.1.x
+package uses an incompatible authoring contract; no compatibility layer is provided.
 
 ## One fence language
 
@@ -90,8 +90,8 @@ A wrong source hash, mismatched canonical artifact hash, missing entry or
 unreviewed entry always fails closed. A trusted loader throwing an error produces
 the stable `THL_LOADER` diagnostic; arbitrary host exception messages and
 private loader paths are never included in the user-facing error. The
-standalone `thl` CLI and a confined Node filesystem host are now
-implemented in TL-U10 source, pending the package's separate publication.
+standalone `thl` CLI and confined Node filesystem host implement this workflow
+in the v0.2.0 source candidate; availability still requires publication.
 See the [CLI guide](cli.md) for validated materialization, editorial review,
 strict check mode and source-hash diagnostics.
 
@@ -144,8 +144,8 @@ rehype, math and Markdown/MDX transformations.
 
 **Fumadocs Unified / React Router:** append the MDX-mode Remark plugin to the
 existing configuration's remarkPlugins array. Keep remark-math, Mermaid and
-rehype-katex. Map ThroughlineEmbed in the MDX components registry. The separate
-Sätteri backend does not run Remark.
+rehype-katex. Map ThroughlineEmbed in the MDX components registry. Only a host that
+actually uses the Remark pipeline can run this plugin.
 
 **Next.js App Router:** register the plugin with @next/mdx in next.config,
 enable .mdx pages, and map ThroughlineEmbed from a "use client" component in
@@ -155,7 +155,7 @@ hydration, not only compilation.
 **Astro:** use the @astrojs/markdown-remark Unified processor with the
 @astrojs/mdx plugin and @astrojs/react. An Astro wrapper forwards artifactJson
 to a React ThroughlineEmbed island with client:load. Import the CSS once.
-Astro's default Sätteri pipeline cannot run this Remark plugin.
+A pipeline that bypasses Remark cannot use this plugin directly.
 
 **mdx-bundler:** preserve any existing remarkPlugins and add the plugin in
 MDX mode. Register ThroughlineEmbed in the resulting component map. MDX itself

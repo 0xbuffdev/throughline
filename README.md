@@ -100,7 +100,7 @@ The player supports Graph, Sequence, and State table views, plus an Explain/Insp
 
 Use a plain `thl` fence, without domain qualifiers:
 
-~~~markdown
+~~~~markdown
 ~~~thl
 {
   "schemaVersion": 2,
@@ -119,7 +119,7 @@ Use a plain `thl` fence, without domain qualifiers:
   }]
 }
 ~~~
-~~~
+~~~~
 
 For direct JSON, the Remark integration validates and compiles offline. If a `thl` fence contains prose instead, the host must load a **reviewed** schema-2 sidecar with matching source and artifact SHA-256 digests. Unreviewed or stale materialization fails the build; prose is never executed.
 
