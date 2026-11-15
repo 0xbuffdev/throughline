@@ -84,6 +84,17 @@ describe("TL-U08 — one universal authoring contract", () => {
 			.toThrow(/THL_DIGEST/);
 		expect(() => resolveThlBody(source, { ...options, manifest: manifestFor(), ordinal: 1 }))
 			.toThrow(/THL_UNRESOLVED/);
+		try {
+			resolveThlBody(source, {
+				...options, manifest: manifestFor(),
+				loadArtifact: () => { throw new Error("EACCES: /private/keys/production-token"); },
+			});
+			throw new Error("expected loader failure");
+		} catch (error) {
+			expect(error).toMatchObject({ code: "THL_LOADER" });
+			expect((error as Error).message).not.toContain("/private/keys");
+			expect((error as Error).message).not.toContain("production-token");
+		}
 	});
 
 	it("rejects traversal, encoded path aliases, duplicate locators and getters", () => {
