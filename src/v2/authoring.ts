@@ -1,6 +1,6 @@
 import { compileArtifact } from "./compiler.js";
 import type { VisualArtifact } from "./model.js";
-import { parseArtifactJson, serializeArtifact, validateArtifact } from "./validator.js";
+import { ArtifactValidationError, parseArtifactJson, serializeArtifact, validateArtifact } from "./validator.js";
 import { sha256Text } from "./sha256.js";
 
 export type IntentBlock = Readonly<{ body: string }>;
@@ -62,9 +62,16 @@ export function parseThlBody(markdownBody: string): ThlBody {
 		return Object.freeze({ kind: "intent", value: parseIntentBlock(normalized) });
 	// The document/visual-plan envelope belongs to TL-U21, not this foundation.
 	// Do not parse unknown wrappers as prose or run any authoring resolver.
-	if (/"documentVersion"\s*:/.test(normalized))
-		reject("THL_UNSUPPORTED_DOCUMENT", "ThroughlineDocument is not supported before TL-U21; expected schemaVersion 2");
-	return Object.freeze({ kind: "artifact", value: parseArtifactJson(normalized) });
+	try {
+		return Object.freeze({ kind: "artifact", value: parseArtifactJson(normalized) });
+	} catch (error) {
+		// Only a root-level missing schema plus a documentVersion marker can
+		// identify the future envelope. Nested data may use this key legally.
+		if (error instanceof ArtifactValidationError && error.path === "$.schemaVersion" &&
+			/"documentVersion"\s*:/.test(normalized))
+			reject("THL_UNSUPPORTED_DOCUMENT", "ThroughlineDocument is not supported before TL-U21; expected schemaVersion 2");
+		throw error;
+	}
 }
 
 const DIGEST = /^[0-9a-f]{64}$/;
@@ -178,11 +185,11 @@ export function resolveThlBody(body: string, options: MaterializationOptions = {
 	if (parsed.kind === "artifact") {
 		artifact = parsed.value;
 	} else {
+		if (!options.manifest || !options.loadArtifact)
+			reject("THL_UNRESOLVED", "prose intent requires a reviewed sidecar and trusted loader (no automatic provider)");
 		const document = artifactRelativePath(options.document as string);
 		if (!Number.isSafeInteger(options.ordinal) || (options.ordinal as number) < 0)
 			reject("THL_MANIFEST", "a zero-based thl ordinal is required for prose");
-		if (!options.manifest || !options.loadArtifact)
-			reject("THL_UNRESOLVED", "prose intent requires a reviewed sidecar and trusted loader (no automatic provider)");
 		const manifest = validateSidecarManifest(options.manifest);
 		const entry = manifest.entries.find((item) => item.document === document && item.ordinal === options.ordinal);
 		if (!entry) reject("THL_UNRESOLVED", "no sidecar entry for document and thl ordinal");
