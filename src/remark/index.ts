@@ -22,7 +22,7 @@ type DiagnosticFile = {
 	fail: (reason: string, options?: { place?: Point; source?: string; ruleId?: string }) => never;
 };
 
-export type ThroughlineRemarkOptions = MaterializationOptions & (
+export type ThroughlineRemarkOptions = Pick<MaterializationOptions, "document" | "manifest" | "loadArtifact"> & (
 	| { mode?: "validate" }
 	| { mode: "mdx"; componentName?: string }
 );
