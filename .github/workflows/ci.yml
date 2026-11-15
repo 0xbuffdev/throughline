@@ -52,6 +52,8 @@ jobs:
         run: pnpm preview:typecheck
       - name: Bundle local preview
         run: pnpm preview:build
+      - name: TL-U19 offline release tooling and negative authorization checks
+        run: pnpm test:release-tooling
       - name: Compiler, release performance and hostile-input tests
         env:
           THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -133,6 +135,7 @@ jobs:
           pnpm typecheck
           pnpm preview:typecheck
           pnpm preview:build
+          pnpm test:release-tooling
           pnpm test:run
           node scripts/verify-release-evidence.mjs
           pnpm test:browser:run
