@@ -56,7 +56,7 @@ it("shows unknown, absent and known-null path results and original parent-write 
 	await userEvent.selectOptions(
 		screen.getByRole("combobox", { name: "Inspect entity" }).element(), "ledger",
 	);
-	await userEvent.type(screen.getByRole("textbox", { name: "Inspect path" }), '["amount"]');
+	await screen.getByRole("textbox", { name: "Inspect path" }).fill('["amount"]');
 	await screen.getByRole("button", { name: "Inspect path" }).click();
 	await expect.element(screen.getByRole("table", {
 		name: "Previous and current modeled state at requested path",
@@ -70,14 +70,13 @@ it("shows unknown, absent and known-null path results and original parent-write 
 	await userEvent.keyboard("{End}");
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 8 of 8");
 	const input = screen.getByRole("textbox", { name: "Inspect path" });
-	await userEvent.type(input, '["amount"]');
+	await input.fill('["amount"]');
 	await screen.getByRole("button", { name: "Inspect path" }).click();
 	expect(view()?.textContent).toContain("Absent at requested path");
 	expect(view()?.textContent).toContain("Known: 25");
 	expect(view()?.textContent).toContain("replace");
 	expect(view()?.textContent).toContain("Whole entity");
-	await userEvent.clear(input);
-	await userEvent.type(input, '["__proto__"]');
+	await input.fill('["__proto__"]');
 	await screen.getByRole("button", { name: "Inspect path" }).click();
 	await expect.element(screen.getByRole("alert")).toBeVisible();
 	expect(view()?.textContent).toContain("Absent at requested path");
