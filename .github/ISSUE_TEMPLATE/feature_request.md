@@ -1,27 +1,25 @@
 ---
 name: Feature request
-about: Suggest an authoring, compiler or player improvement
+about: Suggest an improvement to Throughline's authoring, compiler or player
 title: "[Feature] "
 ---
 
-## Problem
+## Problem or use case
 
-Describe the real use case and the limitation of the current design.
+What are you trying to model, explain or inspect? What prevents you from doing so with the current schema-2 APIs?
 
 ## Proposed behavior
 
-Describe the minimum useful change and an example if available.
+Describe the smallest useful change. Include an example `VisualArtifact`, `thl` block or player interaction if possible.
 
-## Alternatives
+## Alternatives considered
 
-What can be done with the existing five domains and public exports?
+Can this be represented with existing write, topology, message or observation events, or Graph, Sequence and State-table views? Explain what is missing.
 
-## Compatibility
+## Compatibility and accessibility
 
-Would this change grammar, trace schema 1, exported types, CSS,
-accessibility, runtime dependencies or performance limits?
+Would the change affect schema 2, `thl` grammar, exports, the CLI, optional React player, CSS, keyboard/screen-reader accessibility, security or performance limits?
 
 ## Additional context
 
-Links to relevant public issues or documentation only. Do not include
-private planning documents or proprietary integration details.
+Link public issues or documentation. Do not include credentials, private plans or proprietary details. For vulnerabilities, see [SECURITY.md](../../SECURITY.md).
