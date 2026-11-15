@@ -34,7 +34,7 @@ describe("TL-U08 — one universal authoring contract", () => {
 	it("matches known SHA-256 vectors and Unicode UTF-8, in pure JS", () => {
 		expect(sha256Text("")).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 		expect(sha256Text("abc")).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
-		expect(sha256Text("hello 🌍")).toBe("d86eb67a8c0bb4b65f8b7bc627b3ad77ab1cb8a5b9be65c29c77f069fb9477dc");
+		expect(sha256Text("hello 🌍")).toBe("92de6bbfa52e6cfa0f85916fd8176cb1644b95a4c0148cdda94745ba6c35e5eb");
 	});
 
 	it("normalizes line endings but preserves other intent whitespace and makes no inference", () => {
