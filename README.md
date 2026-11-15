@@ -235,9 +235,14 @@ npm install react@^19 react-dom@^19
 ~~~
 
 **The schema-2 examples and interfaces described here are source-level,
-unreleased changes.** The currently published 0.1.0 package does not
-automatically include them. They will be released only after the separate
-publication gates; do not assume this README is an assertion of npm delivery.
+unreleased changes.** The source `package.json` has been prepared as a
+**v0.2.0 release candidate**, but versioning the source does **not** publish
+it. The previously released npm v0.1.0 package does not automatically include
+these APIs. Read the [v0.2.0 draft release notes](docs/release-notes-v0.2.0.md)
+and [release acceptance process](docs/releasing.md); TL-U19 still requires a
+human real-screen-reader acceptance record, a verified signed tag, explicit
+stage-only approval and final npm 2FA, independently installed registry tests
+and provenance verification. Do not assume npm v0.2.0 is available yet.
 
 ## Quick start — use a typed reference
 
