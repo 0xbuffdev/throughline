@@ -56,7 +56,14 @@ const adversaries = [
 	{ name: "bad-phase", mutate: (text: string) => text.replace('"phase":"sent"', '"phase":"persisted"') },
 	{ name: "unknown-cell-vocabulary", mutate: (text: string) => text.replace('"status":"unknown"', '"status":"probably"') },
 	{ name: "prototype-property", mutate: (text: string) => text.replace('"count":0', '"__proto__":0,"count":0') },
-	{ name: "conflicting-same-step-write", mutate: (text: string) => text.replace('"label":"Change","events":[', '"label":"Change","events":[{"id":"overlap","type":"write","originId":"author","entityId":"source","path":["count"],"value":{"status":"known","value":5}},') },
+	{ name: "conflicting-same-step-write", mutate: (text: string) => {
+		const altered = JSON.parse(text) as VisualArtifact;
+		altered.steps[1].events.unshift({
+			id: "overlap", type: "write", originId: "author", entityId: "source",
+			path: ["count"], value: { status: "known", value: 5 },
+		});
+		return JSON.stringify(altered);
+	} },
 	{ name: "lone-surrogate", mutate: (text: string) => text.replace('"label":"Source"', '"label":"\\uD800"') },
 ] as const;
 
@@ -73,7 +80,7 @@ it("TL-U18 rejects seeded malformed and malicious schema-2 inputs without execut
 		const chosen = adversaries[caseIndex];
 		const altered = chosen.mutate(canonical);
 		expect(altered, "mutation " + chosen.name).not.toBe(canonical);
-		expect(() => parseArtifactJson(altered),
+		expect(() => compileArtifact(parseArtifactJson(altered)),
 			"Adversarial case " + chosen.name + " #" + iteration).toThrow();
 		outcomes[chosen.name] = (outcomes[chosen.name] ?? 0) + 1;
 	}
