@@ -54,10 +54,15 @@ assert(
 // With more than one compiler entry, Rolldown may emit a source-less
 // re-export facade for the root, with executable core in a mapped chunk.
 for (const filename of ["react/index.js", "remark/index.js", "examples.js", "node/index.js", "cli/main.js"]) {
-	assert(
-		existsSync(resolve(root, "dist", `${filename}.map`)),
-		`Missing JavaScript source map: ${filename}.map`,
-	);
+	if (!existsSync(resolve(root, "dist", filename + ".map"))) {
+		// Rolldown emits a source-less re-export facade when shared code
+		// is emitted into a separately mapped chunk.
+		const facade = readFileSync(resolve(root, "dist", filename), "utf8");
+		assert(
+			facade.length < 1024 && /\\b(?:export|from)\\b/.test(facade),
+			"Missing JavaScript source map or mapped facade: " + filename,
+		);
+	}
 }
 if (!existsSync(resolve(root, "dist/index.js.map"))) {
 	const rootFacade = readFileSync(resolve(root, "dist/index.js"), "utf8");
