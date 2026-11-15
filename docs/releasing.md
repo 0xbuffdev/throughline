@@ -71,6 +71,8 @@ THL_SOURCE_SHA="$(git rev-parse HEAD)" THL_RELEASE_TAG=v0.2.0 \
   node scripts/release-artifact.mjs create release-artifacts
 ~~~
 
+As an additional distribution proof, the normal read-only GitHub CI now **packs this candidate twice**: once on the exact source head (with `throughline-v2-candidate-<run-id>` as a downloadable archive containing the tarball, SHA256SUMS, RELEASE_COMMIT and RELEASE_MANIFEST.json) and once for the proposed merge commit. After the reviewed release PR merges, use the **latest main CI** candidate artifact for the final human test, rather than reusing a superseded PR-head build. Verify that its `RELEASE_COMMIT` equals the intended final main SHA and that both archive checksums match. CI packaging is unsigned and **does not** stage or publish to npm.
+
 The reviewed human test **must** use that archive, including the optional React 19 host, and the record must include the actual spoken announcements, tester, OS/browser/AT versions, results, deviations, full commit SHA and SHA-256. Do not put human transcripts or identifiers into public source by default without a privacy review; reference a reviewed PR issue/comment or a consented QA attachment.
 
 A maintainer who has actually examined the evidence must create a **GitHub issue comment in this repository** (for example, on PR #44) with exactly these lines (replace every placeholder with actual values; do **not** paste this template as approval):
