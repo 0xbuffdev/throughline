@@ -4,11 +4,6 @@ Notable user-facing changes to Throughline are listed here. The format follows [
 
 ## [Unreleased]
 
-### Documentation
-
-- Reworked installation, quick-start, migration, community and contributor guidance for the schema-2 API.
-- Consolidated historical release guidance into this changelog and introduced a dedicated v0.1.x-to-v0.2.0 migration guide.
-
 ## [0.2.0] — Release candidate (not yet published)
 
 **Breaking release.** This section describes the proposed source package. Its presence does not mean that the release has been tagged, staged, approved or published to npm. See [release notes](docs/release-notes-v0.2.0.md) and [migration](docs/migration-v0.2.0.md).
@@ -35,6 +30,12 @@ Notable user-facing changes to Throughline are listed here. The format follows [
 
 - Public schema-1 `Program`/`Trace` compile APIs, legacy parser/domain exports, domain-tagged `thl flow`/`binary`/`matrix`/`callstack` syntax, and automatic compatibility routing.
 - Implicit side effects from authored message phases. A message or observation is evidence, not an automatic persistent write.
+
+### Documentation
+
+- Rewrote the public README, contributor and security guides around the supported schema-2 model, package boundaries and honest pre-publication status.
+- Added a dedicated v0.1.x-to-v0.2.0 migration guide and removed redundant historical v0.1.0 docs; the changelog remains the historical summary.
+- Added a CI documentation audit for local links and Markdown code fences.
 
 ### Release status
 
