@@ -283,20 +283,29 @@ The Graph and Sequence views only render declared facts.
 A sequence request without message events falls back to a state table
 instead of inventing messages.
 
-## Local development preview
+## Interactive authoring playground
 
-[The Vite playground](playground) uses the current **source** versions
-of the four schema-2 artifacts and the native player. With Node.js 24+
-and the repository's pinned pnpm version:
+[The Throughline Playground](playground) is a public-facing, static authoring
+studio built against the current **schema-2 repository source**, independently
+of the npm registry. Write or paste strict JSON into the editor, get compiler
+diagnostics, and explore the resulting Graph, Sequence, State table and
+Explain/Inspect views. Load and edit four verified reference examples; format
+valid source, copy a `thl` Markdown fence or export a validated JSON artifact.
+Unreviewed prose remains inert and cannot be previewed without its separately
+approved materialization.
+
+With Node.js 24+ and the repository's pinned pnpm version:
 
 ~~~sh
 pnpm install --frozen-lockfile
+pnpm preview:typecheck
 pnpm dev
 ~~~
 
-Open http://localhost:5173 to inspect states and source events and
-read the matched explanations/questions at desktop, tablet and mobile
-widths. The preview is excluded from the published npm package.
+Visit http://localhost:5173. The playground is a browser-only static site with
+responsive authoring and preview layouts; it is **not** an npm package feature
+or proof of the new npm version's publication. See
+[the playground guide and Cloudflare Pages deployment handoff](playground/README.md).
 
 ## Behind the model
 

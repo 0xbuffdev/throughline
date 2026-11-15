@@ -71,6 +71,8 @@ jobs:
           retention-days: 30
       - name: Install browser
         run: pnpm exec playwright install --with-deps chromium
+      - name: Audit built public authoring playground
+        run: pnpm audit:playground
       - name: Browser tests
         run: pnpm test:browser:run
       - name: Record verified Chromium browser evidence
@@ -135,6 +137,7 @@ jobs:
           pnpm preview:build
           pnpm test:run
           node scripts/verify-release-evidence.mjs
+          pnpm audit:playground
           pnpm test:browser:run
           pnpm build
           pnpm audit:licenses

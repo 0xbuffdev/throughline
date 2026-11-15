@@ -9,6 +9,14 @@ All notable changes to Throughline are recorded here. Package versions follow
 
 ### Added
 
+- Replaced the fixed-reference Vite development preview with a public-facing,
+  static schema-2 authoring playground. It now supports editable JSON with
+  syntax highlighting, exact semantic/compiler diagnostics, debounced native
+  Graph/Sequence/State-table and Explain/Inspect preview, safe reference
+  loading, format/copy/export actions, responsive editor/preview tabs,
+  appearance and width controls, and Cloudflare Pages deployment guidance.
+  Prose remains inert until independently reviewed; the playground does not
+  publish the npm package or perform AI materialization.
 - TL-U18 establishes an exact-head, machine-readable schema-2 release-quality gate: deterministic small/moderate/near-limit fixture hashes and compile/index/query/projection/geometry timings with runner metadata; a seeded negative-input sweep; 260px keyboard/semantic-accessibility browser regressions; separately attested Chromium/Firefox/WebKit runs; a checked independent packed SSR consumer at 260/320/375 CSS px; and CI artifacts plus a read-only evidence verifier. Results use hard correctness/resource budgets, not invented CPU or learning-outcome claims. Maintainer review caught incomplete merge-result CI, 12 repeatedly sampled attack strings and vacuously passing empty-edge geometry: these are corrected with a full proposed-merge CI replay, 144 unique seeded malformed inputs (12 mandatory classes) and an all-edges-preserved bounded-geometry gate. Real screen-reader acceptance is **still pending TL-U18** and cannot be reclassified as an automatic DOM test or postponed to TL-U19 without an accepted spec amendment; a dated SHA-bound human test template is provided. Native zoom is also a manual release check. The previously stale manual publisher export map now checks the schema-2 Node entry and `thl` binary. No package was published.
 - TL-U10 adds a separately packed Node 24+ `thl` CLI with strict
   `validate`, `materialize` and `check` commands. Materialization computes
