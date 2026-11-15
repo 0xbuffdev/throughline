@@ -237,13 +237,22 @@ it("mounts at most 120 correlation cards for hundreds of distinct message IDs", 
 	expect(correlation("unique0")).toBeNull();
 	await expect.element(screen.getByText(/Showing 120 of 360 message ID/)).toBeVisible();
 	await screen.getByRole("button", { name: "Show earlier message IDs" }).click();
-	expect(cards()).toHaveLength(240);
+	expect(cards()).toHaveLength(120);
 	expect(correlation("unique120")?.getAttribute("data-source-event-ids")).toBe("event120");
 	expect(correlation("unique0")).toBeNull();
+	expect(correlation("unique359")).toBeNull();
 	await screen.getByRole("button", { name: "Show earlier message IDs" }).click();
-	expect(cards()).toHaveLength(360);
+	expect(cards()).toHaveLength(120);
 	expect(correlation("unique0")?.getAttribute("data-source-relation-ids")).toBe("request");
 	expect(phase("unique0", "sent")).toBe("sent: 1");
+	expect(correlation("unique359")).toBeNull();
+	await expect.element(screen.getByRole("button", { name: "Show earlier message IDs" }))
+		.toBeDisabled();
+	await screen.getByRole("button", { name: "Show newer message IDs" }).click();
+	expect(cards()).toHaveLength(120);
+	expect(correlation("unique120")?.getAttribute("data-source-event-ids")).toBe("event120");
+	await screen.getByRole("button", { name: "Show newer message IDs" }).click();
+	expect(cards()).toHaveLength(120);
 	expect(phase("unique359", "sent")).toBe("sent: 1");
 	expect(document.querySelectorAll(".thl-v2-sequence-log tr[data-source-event-ids]"))
 		.toHaveLength(120); // independent event paging
