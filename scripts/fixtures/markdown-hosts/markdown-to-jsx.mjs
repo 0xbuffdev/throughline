@@ -14,7 +14,7 @@ const options = {
     return createElement(ThroughlineEmbed, { key: state.key, artifactJson });
   },
 };
-const artifact = {"schemaVersion":2,"id":"markdown","origins":[{"id":"author","kind":"authored"}],"entities":[{"id":"counter","label":"Counter"}],"relations":[],"initialState":{"counter":{"status":"known","value":0}},"steps":[{"id":"next","label":"Increment","events":[{"id":"w","originId":"author","type":"write","entityId":"counter","path":[],"value":{"status":"known","value":1}}]}]};
+const artifact = JSON.stringify({"schemaVersion":2,"id":"markdown","origins":[{"id":"author","kind":"authored"}],"entities":[{"id":"counter","label":"Counter"}],"relations":[],"initialState":{"counter":{"status":"known","value":0}},"steps":[{"id":"next","label":"Increment","events":[{"id":"w","originId":"author","type":"write","entityId":"counter","path":[],"value":{"status":"known","value":1}}]}]});
 const markdown = ["# Markdown-to-JSX trace integration", "",
   "~~~thl", artifact, "~~~",
   "", "~~~js", "const unaffected = true;", "~~~",
