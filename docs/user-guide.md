@@ -42,15 +42,26 @@ An ordinary `thl` code block can contain exact schema-2 JSON:
 
 There are two frames: an initial value 0 and a committed value 1.
 The compiler does not run arbitrary JavaScript or infer changes from
-a note, a graph edge or a message. For a typed programmatic caller:
+a note, a graph edge or a message.
+
+For a **standalone programmatic** example, obtain the JSON body from a
+published, independently checked reference. This sample inspects factorial(4)
+rather than relying on a variable implicitly created by the Markdown fence:
 
 ~~~ts
-import { resolveThlBody, compileArtifact, inspectTrace } from "@0xbuff/throughline";
+import {
+  resolveThlBody, compileArtifact, inspectTrace, serializeArtifact
+} from "@0xbuff/throughline";
+import { EXAMPLES } from "@0xbuff/throughline/examples";
 
+const example = EXAMPLES.find(item => item.id === "factorial");
+if (!example) throw new Error("Missing factorial reference");
+const jsonBody = serializeArtifact(example.artifact);
 const model = resolveThlBody(jsonBody);
 const trace = compileArtifact(model);
 const inspect = inspectTrace(trace);
-console.log(inspect.valueAt(1, "counter")); // { status: "known", value: 1 }
+console.log(inspect.valueAt(trace.frames.length - 1, "result"));
+// { status: "known", value: 24 }
 ~~~
 
 The strict JSON branch requires **no manifest or provider**. Invalid JSON
