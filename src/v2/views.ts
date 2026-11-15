@@ -297,6 +297,17 @@ function sequence(inspector: TraceInspector, request: ViewRequest, selected: Rea
 			(omitted.length ? "Not modeled by this frame: " + omitted.join(", ") + ". " : "") +
 			"Absence of a phase is not proof of loss, receipt, delivery, " +
 			"acknowledgement or state persistence; repeated phases remain distinct evidence.";
+		// Keep validated JsonValue-compatible array types at the type boundary;
+		// freeze the nested values in-place before publishing the descriptor.
+		const correlationData = {
+			type: "message-correlation", messageId, relationId: relation.id,
+			phases: { ...phases },
+			reportedPhases: reported,
+			unmodeledPhases: omitted,
+		};
+		Object.freeze(correlationData.phases);
+		Object.freeze(correlationData.reportedPhases);
+		Object.freeze(correlationData.unmodeledPhases);
 		items.push(item({
 			id: "message_" + indexByEventId.get(group.firstEventId)!,
 			role: "value",
@@ -310,12 +321,7 @@ function sequence(inspector: TraceInspector, request: ViewRequest, selected: Rea
 			}),
 			fromItemId: nodeId(entityIndex.get(relation.from)!),
 			toItemId: nodeId(entityIndex.get(relation.to)!),
-			data: Object.freeze({
-				type: "message-correlation", messageId, relationId: relation.id,
-				phases: Object.freeze({ ...phases }),
-				reportedPhases: Object.freeze(reported),
-				unmodeledPhases: Object.freeze(omitted),
-			}),
+			data: Object.freeze(correlationData),
 		}));
 	}
 	const normalized = eventItems(visibleTimeline.map(entry => entry.event),
