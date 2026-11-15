@@ -9,6 +9,17 @@ program and trace schemas. Changes are grouped using
 
 ### Added
 
+- TL-U10 adds a separately packed Node 24+ `thl` CLI with strict
+  `validate`, `materialize` and `check` commands. Materialization computes
+  LF-normalized source and canonical artifact SHA-256, creates ordered
+  version-1 sidecars as **unreviewed**, and requires separate editorial review
+  before check/production. Strict JSON and sidecar errors use stable codes
+  with source line/ordinal where known. The independent `./node` host entry
+  confines file reads to a trusted root, rejects symlink/path escapes and
+  supplies reviewed sidecar loading for actual Remark/MDX integrations.
+  No AI, React or Node filesystem dependency reaches the pure root entry.
+  CLI and Node host have dedicated security tests and independently packed
+  consumer proof; the real documentation-app deployment is TL-U20.
 - TL-U09 replaces the published example catalog with four domain-neutral
   typed schema-2 reference artifacts: factorial call stack, 2×2 matrix
   multiplication, unsigned binary addition and a hypothetical distributed
