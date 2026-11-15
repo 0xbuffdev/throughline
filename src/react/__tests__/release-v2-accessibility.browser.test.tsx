@@ -23,7 +23,7 @@ it("preserves labeled timeline navigation, explicit evidence and inspect control
 	expect(element.getAttribute("aria-keyshortcuts")).toContain("ArrowRight");
 	expect(element.getAttribute("aria-describedby")).toBeTruthy();
 	expect(document.getElementById(element.getAttribute("aria-describedby")!)?.textContent)
-		.toContain("ArrowRight");
+		.toContain("Left and Right arrows");
 	await expect.element(screen.getByRole("heading", { name: example.title })).toBeVisible();
 	await expect.element(screen.getByRole("img", {
 		name: "Source-linked graph at current frame",
