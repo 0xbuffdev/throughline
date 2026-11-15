@@ -155,7 +155,7 @@ a { color: inherit; }
 }
 .code-highlight { z-index: 0; pointer-events: none; scrollbar-width: none; user-select: none; }
 .code-highlight::-webkit-scrollbar { display: none; }
-.code-highlight code { white-space: pre; }
+.code-highlight code { white-space: pre; font: inherit; }
 .code-input { z-index: 1; outline: none; resize: none; background: transparent; color: transparent; -webkit-text-fill-color: transparent; caret-color: #fff; }
 .code-input::selection { background: rgba(89, 140, 255, .34); }
 .code-input:focus-visible { outline: 2px solid #6f99ff; outline-offset: -2px; }
