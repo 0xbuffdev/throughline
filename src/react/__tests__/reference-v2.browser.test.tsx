@@ -36,7 +36,7 @@ it("does not present absent receipt evidence as a checkout acknowledgement", asy
 		.toHaveTextContent("Step 1 of " + (example.artifact.steps.length + 1));
 	// Source-derived sequences are visible; unanswered phases must remain
 	// transparent rather than being synthesized into receipt or persistence.
-	await expect.element(screen.getByRole("region", { name: /sequence/i })).toBeVisible();
+	await expect.element(screen.getByRole("region", { name: "Message sequence evidence", exact: true })).toBeVisible();
 	expect(example.artifact.steps
 		.flatMap(step => step.events)
 		.filter(event => event.type === "message" && event.phase === "acknowledged"))
