@@ -23,8 +23,15 @@ jobs:
       matrix:
         browser: [firefox, webkit]
     steps:
-      - name: Checkout source
+      - name: Checkout exact source head for reproducible TL-U18 results
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify actual checked-out source matches the recorded evidence SHA
+        env:
+          THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$THL_SOURCE_SHA"
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node.js
