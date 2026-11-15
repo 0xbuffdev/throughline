@@ -24,6 +24,8 @@ export type ThroughlineGraphPlayerProps = {
 	title?: string;
 	theme?: "auto" | "light" | "dark";
 	className?: string;
+	/** Initial native v2 view; later switching preserves frame/source selection. */
+	initialView?: ViewKind;
 	/** Native speech is opt-in and remains outside the pure core. */
 	narration?: boolean;
 };
@@ -242,7 +244,7 @@ function StateFallback({ view, selectedId, onSelect }: {
  * IDs and playback frame. Full Inspect/history navigation remains TL-U07.
  */
 export function ThroughlineGraphPlayer({
-	trace, title, className, theme = "auto", narration = false,
+	trace, title, className, theme = "auto", narration = false, initialView = "graph",
 }: ThroughlineGraphPlayerProps): React.JSX.Element {
 	const inspector = useMemo(() => inspectTrace(trace), [trace]);
 	const canvasRef = useRef<HTMLDivElement>(null);
@@ -255,7 +257,7 @@ export function ThroughlineGraphPlayer({
 	const [identity, setIdentity] = useState(trace);
 	const [selectedId, setSelectedId] = useState<Id | null>(null);
 	const [collapsed, setCollapsed] = useState<readonly Id[]>([]);
-	const [viewKind, setViewKind] = useState<ViewKind>("graph");
+	const [viewKind, setViewKind] = useState<ViewKind>(initialView);
 	const [camera, setCamera] = useState<Camera | null>(null);
 	const [fullscreen, setFullscreen] = useState(false);
 	const [fullscreenError, setFullscreenError] = useState<string | null>(null);
@@ -264,7 +266,7 @@ export function ThroughlineGraphPlayer({
 		setSelectedId(null);
 		setCollapsed([]);
 		setCamera(null);
-		setViewKind("graph");
+		setViewKind(initialView);
 		setNarrating(false);
 	}
 	useEffect(() => {
