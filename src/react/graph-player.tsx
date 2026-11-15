@@ -24,7 +24,9 @@ export type ThroughlineGraphPlayerProps = {
 	title?: string;
 	theme?: "auto" | "light" | "dark";
 	className?: string;
-	/** Initial native v2 view; later switching preserves frame/source selection. */
+	/** Optional explicit override. If omitted, accepted artifact hint/auto
+	 * selection determines the initial view consistently across all frames.
+	 * Selecting another view in Player options is a deliberate manual override. */
 	initialView?: ViewKind;
 	/** Native speech is opt-in and remains outside the pure core. */
 	narration?: boolean;
@@ -244,7 +246,7 @@ function StateFallback({ view, selectedId, onSelect }: {
  * IDs and playback frame. Full Inspect/history navigation remains TL-U07.
  */
 export function ThroughlineGraphPlayer({
-	trace, title, className, theme = "auto", narration = false, initialView = "graph",
+	trace, title, className, theme = "auto", narration = false, initialView,
 }: ThroughlineGraphPlayerProps): React.JSX.Element {
 	const inspector = useMemo(() => inspectTrace(trace), [trace]);
 	const canvasRef = useRef<HTMLDivElement>(null);
@@ -257,7 +259,7 @@ export function ThroughlineGraphPlayer({
 	const [identity, setIdentity] = useState(trace);
 	const [selectedId, setSelectedId] = useState<Id | null>(null);
 	const [collapsed, setCollapsed] = useState<readonly Id[]>([]);
-	const [viewKind, setViewKind] = useState<ViewKind>(initialView);
+	const [viewKind, setViewKind] = useState<ViewKind | undefined>(initialView);
 	const [camera, setCamera] = useState<Camera | null>(null);
 	const [fullscreen, setFullscreen] = useState(false);
 	const [fullscreenError, setFullscreenError] = useState<string | null>(null);
@@ -369,7 +371,7 @@ export function ThroughlineGraphPlayer({
 	const controls = (
 		<>
 			<label className="thl-v2-field">View
-				<select aria-label="Visualization view" value={viewKind}
+				<select aria-label="Visualization view" value={viewKind ?? view.kind}
 					onChange={event => setViewKind(event.currentTarget.value as ViewKind)}>
 					<option value="graph">Graph</option>
 					<option value="sequence">Sequence</option>
