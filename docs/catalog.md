@@ -1,38 +1,27 @@
-# Reference catalog
+# Reference examples
 
-Throughline now uses **one universal schema-2 VisualArtifact model**.
-The names below identify teaching **examples**, not special parser domains.
-Every example uses the same compiler, source-linked history and built-in
-graph, sequence or state-table projections.
+Throughline includes four schema-2 models to show what the engine can express. They all use the same compiler and inspector; none requires a special language such as `thl binary` or `thl matrix`.
 
-| Model | Initial facts | Explicit transitions | Why inspect it |
-| --- | --- | --- | --- |
-| [Factorial recursion](../src/reference/factorial.ts) | Empty modeled stack; no return result | Four pushes, base case 1 and returns 2, 6, 24 | Stack history and return arithmetic |
-| [2×2 matrix multiplication](../src/reference/matrix.ts) | A, B and an explicitly initialized C | Four row–column dot products and nested writes | Operand terms and changed cells |
-| [Unsigned binary addition](../src/reference/binary.ts) | 1011₂, 0110₂, empty 5-bit result | Four sum/carry updates and leading carry | Correct bit order and carry propagation |
-| [Distributed checkout](../src/reference/checkout.ts) | Draft order; unknown worker outcome; no charge | Distinct sends/receipts, simulated provider effects, timeout, retry and persistence | Evidence limits, separate knowledge and state |
+| Example | What it models | What to examine |
+| --- | --- | --- |
+| [Factorial of four](../src/reference/factorial.ts) | Calls, a base case and explicit return values | Call-stack state, unwinding and the result 24 |
+| [2×2 matrix multiplication](../src/reference/matrix.ts) | Four row-by-column dot products | Intermediate values and nested writes |
+| [Unsigned binary addition](../src/reference/binary.ts) | `1011₂ + 0110₂ = 10001₂` | Carries and low-to-high bit updates |
+| [Distributed checkout retry](../src/reference/checkout.ts) | A *hypothetical* request, uncertainty, retry and separate persistence | What was sent, received, modeled, and remains unknown |
 
-The public `@0xbuff/throughline/examples` export contains four
-`ReferenceExample` values. Each contains a typed `artifact`, a matched
-`explanation`, `questions` with exact evidence IDs and `caveats`.
-No domain-tagged source syntax or backward-compatibility adapters are provided.
+Every item in `EXAMPLES` contains `id`, `title`, `description`, a typed `artifact`, a matched `explanation`, `questions`, and `caveats`. Questions include expected answers and source event IDs. The catalog returns a fresh artifact object each time, so modifying a local example does not change the published reference.
 
 ~~~ts
 import { EXAMPLES } from "@0xbuff/throughline/examples";
 import { compileArtifact, inspectTrace } from "@0xbuff/throughline";
 
-const reference = EXAMPLES.find(example => example.id === "factorial");
-if (!reference) throw new Error("Reference not found");
-const inspector = inspectTrace(compileArtifact(reference.artifact));
-console.log(inspector.valueAt(8, "result")); // {status:"known", value:24}
+const factorial = EXAMPLES.find(example => example.id === "factorial");
+if (!factorial) throw new Error("Missing example");
+const trace = compileArtifact(factorial.artifact);
+console.log(inspectTrace(trace).valueAt(trace.frames.length - 1, "result"));
+// { status: "known", value: 24 }
 ~~~
 
-The models are **authored teaching artifacts**. Their numerical truth is
-checked independently in [reference tests](../src/__tests__/examples.test.ts).
-The checkout provider is hypothetical; the fixture does not establish real
-payment-provider guarantees, a missing acknowledgement's physical cause,
-or any automatic state change implied by a message.
+These are **hand-authored models**, not recordings of live programs. Mathematical outputs are checked independently, while the checkout scenario makes no assertion about actual network delivery, physical causes of missing acknowledgements or payment-provider guarantees.
 
-Read [reference explanations and matched questions](reference-traces.md),
-[the one-fence authoring contract](grammar.md), and
-[Markdown/MDX integration](framework-integrations.md).
+For the full explanations, questions and source evidence, see [reference traces](reference-traces.md). To create an example, see [reference authoring](authoring.md).

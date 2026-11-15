@@ -1,18 +1,14 @@
-# Authoring schema-2 reference models
+# Write a schema-2 model
 
-Throughline's authoring system has one semantic artifact and one code-fence
-language. It does not register special `flow`, `binary`, `matrix` or
-`callstack` parsers. New examples are typed authored data, not executable
-domain-specific syntax.
+Throughline models state changes with **one** `VisualArtifact` schema. A stack, matrix, binary operation or message exchange is a different use of the same data model, not a separate language.
 
-## Define an artifact
+## Start with facts
 
-Use `VisualArtifact` with `schemaVersion: 2`, declared origins, entities,
-relations, initial cells and ordered steps of explicit events.
+Declare stable IDs for the things being modeled, where information came from, their initial state and the events that change or describe them:
 
 ~~~ts
+import { compileArtifact, inspectTrace } from "@0xbuff/throughline";
 import type { VisualArtifact } from "@0xbuff/throughline";
-import { compileArtifact, inspectTrace, serializeArtifact } from "@0xbuff/throughline";
 
 const artifact: VisualArtifact = {
   schemaVersion: 2,
@@ -24,74 +20,43 @@ const artifact: VisualArtifact = {
   steps: [{
     id: "increment",
     label: "Increment",
-    note: "The counter is explicitly written to 1.",
+    note: "An explicit write changes the counter to one.",
     events: [{
-      id: "counterWrite",
+      id: "write-counter",
       originId: "author",
       type: "write",
       entityId: "counter",
       path: [],
-      value: { status: "known", value: 1 }
-    }]
-  }]
+      value: { status: "known", value: 1 },
+    }],
+  }],
 };
 
 const trace = compileArtifact(artifact);
 console.log(inspectTrace(trace).valueAt(1, "counter"));
-const strictJson = serializeArtifact(trace.artifact);
 ~~~
 
-An event may be a `write`, `topology` change, `message` phase or
-non-persistent `observation`. A message never mutates persistent state
-on its own. Observations never imply writes. For any external system
-claim, declare what is authored, simulated or actually observed and
-identify the evidence or knowledge that is missing.
+A step is **atomic**: its events contribute to one committed snapshot. A `message` event records an explicit phase (sent, received, acknowledged or processed) but does not change persistent state on its own. `observation` records evidence; `topology` records modeled presence; only `write` changes a stored value. Known `null` is not the same as unknown or absent.
 
-## Build a first-party reference
+## Model uncertainty
 
-1. Add a typed example to `src/reference/`, using the shared
-   `ReferenceExample` type from `reference/model.ts`.
-2. Include an explicit, bounded initial state; every meaningful
-   transition should have a stable event ID, descriptive step label,
-   truthful note and declared origin.
-3. Supply a **matched static explanation**, comprehension questions,
-   expected answers, cited event IDs and evidence caveats. These are
-   the baseline materials for future user studies; do not claim
-   measured improvements without evidence.
-4. Export the reference in `src/examples.ts` so Node, Markdown and
-   the development preview all consume the same semantic source.
-5. Write independent truth assertions. For arithmetic, recompute
-   expected values outside the view. For networks, check send,
-   received, processed and persistent writes separately.
-6. Run validation, compilation, queries, and graph/sequence/state-table
-   projections at initial, middle and final frames. Verify source
-   IDs and deterministic canonical JSON. The same modeled facts
-   must survive switching views and seeking.
-7. Run the package's full TypeScript, pure, browser and packed-host
-   verification. The CI harness checks both source-only and React
-   environments.
+Describe observed facts as observed, simulations as simulated and assumptions as assumptions. A send does not prove delivery, a missing acknowledgement does not prove loss, and a diagram connection is not an event. Cite source event IDs in explanations and claims; the compiler checks the citation is valid but cannot prove a real-world assertion.
 
-A special matrix renderer, voice provider or code interpreter is **not**
-required to model matrix or stack facts. Specialized visual providers
-must be reviewed separately; their existence must not change or fabricate
-the canonical artifact.
+Avoid choosing a more attractive view at the expense of truth. Graph, Sequence, State table and Inspect must all agree on the same frame and source facts.
 
-## Author the model in Markdown
+## Publish a reference example
 
-Use an unqualified `thl` fence. An object opening brace selects a
-**strict schema-2 JSON artifact**, compiled offline. Any other nonempty
-body is **inert prose**, requiring a trusted, reviewed and hash-matched
-sidecar artifact at build time. Prose cannot compile in the pure core,
-and the engine never calls an AI provider to guess a diagram.
+1. Create a typed model in `src/reference/` using `ReferenceExample` from `src/reference/model.ts`.
+2. Supply a concise static explanation, comprehension questions, expected answers and the exact event IDs supporting the explanation. Include caveats where external behavior is hypothetical.
+3. Register it in `src/examples.ts`. The exported `EXAMPLES` catalog supplies fresh artifact copies so callers can edit a model without mutating the shared reference.
+4. Independently verify expected arithmetic or state transitions, rather than treating the visual output as its own oracle.
+5. Test validation, compilation, history, Graph/Sequence/State-table projection, determinism and source selection at initial and later frames. For rendered behavior, test keyboard navigation, accessible text and small-screen layouts.
+6. Run the relevant [contributor checks](../CONTRIBUTING.md) and inspect packaged-consumer results.
 
-See [syntax and data contract](grammar.md) and
-[host integration and reviewed materialization](framework-integrations.md).
-The filesystem-confined CLI operations are separately gated under TL-U10.
+The four existing [reference models](catalog.md) provide patterns for algorithmic and distributed examples. They are authored teaching models, not recorded executions or proof of a measured learning improvement.
 
-## Review questions
+## Author from Markdown
 
-Ask whether the example states exactly what is known, whether a derived
-result has an independent oracle, whether any drawn link is being mistaken
-for an actual side effect, and whether the text distinguishes authored
-assumptions from verified external evidence. Reject a reference that
-fails these checks even if its diagram looks plausible.
+An unqualified `thl` fence accepts strict schema-2 JSON directly. If the body is descriptive prose, it requires an independently reviewed and SHA-256-bound sidecar generated with the offline `thl materialize` workflow. The compiler does not turn prose into a model by itself.
+
+See [the authoring grammar](grammar.md), [the CLI review procedure](cli.md), and the [precise schema contract](schema-v2.md). Specialized visual renderers can be added later without changing the artifact's semantic truth.

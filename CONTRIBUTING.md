@@ -1,84 +1,68 @@
 # Contributing to Throughline
 
-## Before you start
+Thanks for helping improve Throughline. Contributions can include bug reports, documentation fixes, tests, examples, accessibility findings and changes to the library.
 
-- Check the [README](README.md), [authoring docs](docs/grammar.md),
-  [domain catalog](docs/catalog.md) and existing issues.
-- For an API, grammar, trace-schema, accessibility or dependency change,
-  discuss its compatibility impact in an issue before implementing.
-- Keep Throughline independent of private applications, curricula,
-  accounts, external services, unpublished dependencies and telemetry.
-- Do not include credentials, private documents, proprietary code or
-  sensitive vulnerability details in a public issue or PR.
+Throughline's current development contract is **schema 2**. Before changing the public API, read the [README](README.md), [architecture](docs/architecture.md), and [authoring grammar](docs/grammar.md). A proposed release candidate in GitHub is not automatically available on npm.
 
-## Development
+## Discuss and report
 
-Prerequisites: Node.js 24+, pnpm 11.2.2 and a Chromium-capable system.
+Search [existing issues](https://github.com/0xbuffdev/throughline/issues) before filing a new one. For bugs, include the package version, Node/browser/React versions as relevant, a minimal `thl` artifact or code sample, expected behavior, actual behavior and reproducible steps. For feature ideas, describe the user problem and why existing APIs are insufficient.
+
+For suspected vulnerabilities, **do not publish exploit details** in an issue. Follow [SECURITY.md](SECURITY.md).
+
+## Set up the repository
+
+Use Node.js 24+ and the pinned pnpm 11.2.2, with an environment capable of running Playwright browsers:
 
 ~~~sh
+corepack enable
 pnpm install --frozen-lockfile
+pnpm dev
+~~~
+
+The development preview shows reference examples. It is not the production package or proof of hosted deployment.
+
+### Check a change
+
+Run the checks relevant to your modification. A package-wide change should include:
+
+~~~sh
 pnpm audit:source
 pnpm typecheck
 pnpm preview:typecheck
 pnpm preview:build
 pnpm test:run
-pnpm exec playwright install chromium
-pnpm test:browser:run
+pnpm test:release-tooling
 pnpm build
 pnpm audit:licenses
 pnpm audit:pack
 pnpm audit:browser
 pnpm audit:frameworks
 pnpm audit:markdown-hosts
+pnpm exec playwright install chromium
+pnpm test:browser:run
 ~~~
 
-This repository is a standalone package. The root compiler must stay
-React-free and deterministic; optional React peer dependencies belong
-only in the player. See [architecture](docs/architecture.md) for the
-compiler-to-player boundary.
+CI also verifies the proposed merge result, independent packaged consumers, signed-release tooling and browser-specific behavior. See [release checks](docs/release-quality.md) and [releasing](docs/releasing.md). Do not report a test as passed unless you ran it or can link to a passing run for the **exact revision**.
+
+## Code and content standards
+
+- Preserve the pure, deterministic core. Do not introduce execution of authored code, implicit network requests, inferred message delivery, or invented state changes.
+- Use explicit, stable event IDs. Distinguish known values, unknown values and absent entities. Describe assumptions as assumptions and cite the relevant authored evidence.
+- Keep Node filesystem access confined to the `/node` host and CLI. React, browser speech and styles are optional presentation concerns.
+- Respect strict JSON, source hash and human editorial-review boundaries for prose materialization. There is no auto-approval command.
+- Add regression tests for observable changes and independent truth assertions for teaching examples. Include keyboard, reduced motion, SSR/hydration, screen-reader text and compact-layout checks when touching React.
+- Keep public docs and examples in sync. Explain user-visible behavior in plain language; avoid internal ticket identifiers as a substitute for describing changes.
+- Add dependencies only with a justified purpose, license review and updated `pnpm-lock.yaml`. Do not submit secrets, sensitive data, or material you lack permission to license.
 
 ## Pull requests
 
-1. Open a focused branch and keep unrelated changes separate.
-2. Add regression tests for behavior changes; cover browser behavior,
-   keyboard access, reduced motion or hydration when relevant.
-3. Update docs and examples when authoring syntax, exports or observable
-   behavior changes. Do not silently change schema version 1.
-4. Run applicable tests and record exactly what passed. Avoid skipped
-   or focused tests.
-5. Open the PR with a concise purpose, implementation notes, potential
-   compatibility risks, test results and any remaining work.
+Create a focused branch and explain the problem, implementation, compatibility implications, risks and verification in the PR. Update [CHANGELOG.md](CHANGELOG.md) for noteworthy changes and [migration guidance](docs/migration-v0.2.0.md) for breaking ones.
 
-Maintainers perform final review, any required signing and merge.
-Do not publish npm packages, create release tags or change repository
-visibility as part of a contribution without explicit authorization.
+Maintainers review changes and decide on merges. Release signing, tags, npm staging, approval and deployment are separate, explicitly authorized operations and must not happen as a side effect of a contribution.
 
-## Community and security
+## Community and support
 
-Follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). For security-sensitive
-findings, follow [SECURITY.md](SECURITY.md) instead of opening a public
-issue with exploitation details.
+Follow our [Code of Conduct](CODE_OF_CONDUCT.md). For usage questions, start with the [documentation index](docs/README.md); for reproducible issues or proposals, use [GitHub issues](https://github.com/0xbuffdev/throughline/issues/new/choose). Maintainer support is provided as time permits; there is no promised response time.
 
-By submitting a contribution, you agree it may be distributed under
-the repository's [Apache-2.0 license](LICENSE); do not submit code or
-content that you lack rights to contribute.
-
-## Support
-
-For usage questions, consult the [README](README.md),
-[grammar reference](docs/grammar.md),
-[domain catalog](docs/catalog.md), and
-[architecture notes](docs/architecture.md).
-
-For a reproducible bug, use the
-[bug report template](https://github.com/0xbuffdev/throughline/issues/new/choose)
-and include the version,
-minimal authored `thl` block, expected/actual behavior and relevant
-runtime (Node, browser, React). Avoid disclosing secrets or sensitive
-content.
-
-For an API or feature idea, use the feature request template and
-explain the underlying problem and compatibility impact. Support and review are provided as available, without a guaranteed response time.
-
-**Security vulnerabilities:** use [SECURITY.md](SECURITY.md) rather than
-publishing exploitation details in an issue.
+By submitting a contribution, you agree that it may be distributed under the repository's [Apache License 2.0](LICENSE), and confirm that you have the right to submit it.
