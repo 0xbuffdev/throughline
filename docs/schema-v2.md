@@ -162,8 +162,9 @@ filesystem CLI integration belongs to TL-U10. The future
 
 `serializeArtifact` canonically sorts object keys, preserving all array
 orders and authored event IDs. It is stable across object insertion order.
-This is an artifact JSON serialization guarantee, **not** a published
-cryptographic digest contract. Externally serialized compiled traces remain inadmissible. Call
+TL-U08 additionally specifies SHA-256 over these canonical UTF-8 JSON bytes
+for reviewed sidecar artifact hashes. This is a documented **source-level
+contract**, not evidence that an unreleased package has been published. Externally serialized compiled traces remain inadmissible. Call
 `compileArtifact` with a validated artifact (which is revalidated at the compiler
 boundary) to reconstruct frames deterministically.
 
