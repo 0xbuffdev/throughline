@@ -196,6 +196,10 @@ References' mathematical truth and persistence order are independently tested.
 Matched questions are a baseline for future comprehension studies, not
 evidence of measured educational improvement.
 
+## Release quality and acceptance
+
+Before a schema-2 package can be published, the source release gate records SHA-bound compile/query/layout measurements, hostile-input rejections, accessible keyboard/browser verification and independent packed-host proof. See the [release-quality acceptance matrix](docs/release-quality.md) for the deterministic inputs, measured runner conditions, automated results and separate manual screen-reader/zoom sign-off. A green quality gate does not publish, deploy or establish educational superiority.
+
 ## Offline CLI and reviewed Markdown authoring
 
 The unreleased source now includes a standalone Node 24+ binary and a
