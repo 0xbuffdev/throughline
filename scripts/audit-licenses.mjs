@@ -34,9 +34,13 @@ const visited = new Map();
 function requirePackage(name, parent) {
 	// pnpm's isolated linker keeps a dependency's children beside its own
 	// symlink target; first-level dependencies use root/node_modules.
+	// pnpm 11 may hoist type-only and shared transitive dependencies into
+	// .pnpm/node_modules rather than creating a sibling link for each caller.
+	// Audit those resolved packages too; do not silently skip a dependency.
+	const hoisted = join(root, "node_modules", ".pnpm", "node_modules", name);
 	const locations = parent
-		? [join(dirname(parent), name), join(root, "node_modules", name)]
-		: [join(root, "node_modules", name)];
+		? [join(dirname(parent), name), join(root, "node_modules", name), hoisted]
+		: [join(root, "node_modules", name), hoisted];
 	const location = locations.find((candidate) => existsSync(candidate));
 	assert(location, "Missing installed dependency: " + name);
 	const path = realpathSync(location);
