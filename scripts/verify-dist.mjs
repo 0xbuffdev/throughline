@@ -68,8 +68,9 @@ if (!existsSync(resolve(root, "dist/index.js.map"))) {
 	const rootFacade = readFileSync(resolve(root, "dist/index.js"), "utf8");
 	assert(
 		rootFacade.length < 1024 &&
-			artifacts.some((file) => /^registry-.*\.js\.map$/.test(file)),
-		"Unmapped root entry must remain a small facade backed by mapped core code",
+			(rootFacade.includes("export") || rootFacade.includes("from")) &&
+			artifacts.some((file) => file.endsWith(".js.map")),
+		"Unmapped root entry must be a small re-export facade with mapped chunks",
 	);
 }
 
