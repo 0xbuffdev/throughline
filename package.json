@@ -57,7 +57,8 @@
 		"test:release-performance": "vitest run src/__tests__/release-v2-performance.test.ts",
 		"test:release-security": "vitest run src/__tests__/release-v2-security.test.ts",
 		"test:release-tooling": "node --test scripts/tests/release-verification.test.mjs",
-		"release:verify-registry": "node scripts/verify-registry-release.mjs"
+		"release:verify-registry": "node scripts/verify-registry-release.mjs",
+		"release:audit-registry": "node scripts/audit-registry.mjs"
 	},
 	"files": [
 		"dist",
