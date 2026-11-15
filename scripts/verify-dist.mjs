@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -10,6 +11,7 @@ const expected = [
 	"./react",
 	"./remark",
 	"./examples",
+	"./node",
 	"./styles/throughline.css",
 ];
 assert.deepEqual(Object.keys(manifest.exports).sort(), expected.sort());
@@ -51,7 +53,7 @@ assert(
 
 // With more than one compiler entry, Rolldown may emit a source-less
 // re-export facade for the root, with executable core in a mapped chunk.
-for (const filename of ["react/index.js", "remark/index.js", "examples.js"]) {
+for (const filename of ["react/index.js", "remark/index.js", "examples.js", "node/index.js", "cli/main.js"]) {
 	assert(
 		existsSync(resolve(root, "dist", `${filename}.map`)),
 		`Missing JavaScript source map: ${filename}.map`,
@@ -68,6 +70,21 @@ if (!existsSync(resolve(root, "dist/index.js.map"))) {
 
 const load = (entry) =>
 	import(pathToFileURL(resolve(root, "dist", entry)).href);
+// Node validation is a completely separate entry: the core must not import IO.
+const { createNodeThroughlineHost } = await load("node/index.js");
+assert.equal(typeof createNodeThroughlineHost, "function");
+assert.equal(manifest.bin?.thl, "./dist/cli/main.js");
+const cli = resolve(root, manifest.bin.thl);
+assert(existsSync(cli), "Missing published standalone thl binary");
+assert.match(readFileSync(cli, "utf8").slice(0, 80), /^#!\/usr\/bin\/env node/,
+	"CLI executable requires a Node shebang");
+const help = spawnSync(process.execPath, [cli, "help"], { cwd: root, encoding: "utf8" });
+assert.equal(help.status, 0, help.stderr);
+assert.match(help.stdout, /thl materialize/);
+// Keep the pure package root free of Node-only and React dependencies.
+const pure = readFileSync(resolve(root, "dist/index.js"), "utf8");
+assert(!pure.includes("node:fs") && !pure.includes("node:crypto"),
+	"Core root must not import CLI filesystem or crypto dependencies");
 const { compile } = await load("index.js");
 assert.equal(typeof compile, "function");
 const trace = compile("```thl binary\na = 1\nb = 1\n```");
