@@ -14,8 +14,11 @@ program and trace schemas. Changes are grouped using
   message-ID correlations and a bounded, accessible React evidence timeline.
   Missing acknowledgements remain unmodeled instead of being marked lost;
   timeout observations/writes are not synthetic message phases. Frame/selection
-  identity persists across views, and initial sequence SSR is available via
-  `ThroughlineGraphPlayer.initialView`.
+  identity persists across views, the default player honors artifact view
+  hints/automatic message selection, and manual initial sequence SSR remains
+  available via `ThroughlineGraphPlayer.initialView`. Review hardening also
+  preserves atomic same-step message semantics, indexes relation provenance
+  once, and pages correlation cards in fixed 120-item windows.
 - Added the pure schema-2 `projectView` graph projection, static nested-group
   collapse with complete semantic source provenance, a truthful state/event
   table fallback and the dedicated accessible
