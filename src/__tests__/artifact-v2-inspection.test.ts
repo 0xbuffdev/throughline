@@ -7,6 +7,7 @@ import {
 } from "../index.js";
 import { distributedGraph } from "./v2-graph-fixture.js";
 import { retryCheckout } from "./v2-sequence-fixture.js";
+import { claimHeavyInspection } from "./v2-claims-fixture.js";
 
 function example(): VisualArtifact {
 	const source = distributedGraph();
@@ -273,6 +274,93 @@ describe("TL-U07 — pure Explain/Inspect projection", () => {
 		}
 		expect(() => (first.state as unknown[]).push("fake")).toThrow(TypeError);
 	});
+
+	it("exposes exact authored observation cells and optional message payload without persistence", () => {
+		const source = retryCheckout();
+		const sent = source.steps[0]!.events[0]!;
+		if (sent.type !== "message") throw new Error("invalid example fixture");
+		sent.payload = { requestedAmount: 25, status: null, note: "A".repeat(180) + "z" };
+		const query = open(source);
+		const sentView = projectInspection(query, { frameIndex: 1, eventId: "originalSent" });
+		expect(sentView.focused?.evidence.recorded).toMatchObject({
+			kind: "message-payload",
+			value: { requestedAmount: 25, status: null, note: "A".repeat(180) + "z" },
+		});
+		expect(sentView.stepEvidence[0].recorded).toBe(sentView.focused?.evidence.recorded);
+		expect(Object.isFrozen(sentView.focused?.evidence.recorded)).toBe(true);
+		expect(Object.isFrozen((sentView.focused?.evidence.recorded as
+			{ value: object }).value)).toBe(true);
+		expect(query.valueAt(1, "gateway")).toEqual({
+			status: "unknown", reason: "no state measurement",
+		});
+		expect(query.valueAt(1, "client", ["timeout"]))
+			.toEqual({ status: "known", value: false });
+
+		const observed = projectInspection(query, {
+			frameIndex: 3, entityId: "client", eventId: "watchTimeout",
+		});
+		expect(observed.focused?.evidence.recorded).toEqual({
+			kind: "observation",
+			value: { status: "known", value: "no acknowledgement recorded yet" },
+		});
+		expect(observed.focused?.evidence.origin.kind).toBe("observed");
+		expect(observed.changes).toEqual([]);
+		expect(observed.selected?.after).toEqual({
+			status: "known", value: { timeout: false, ack: false },
+		});
+		// Data-only evidence, not a hidden write, invented acknowledgement or
+		// receiver persistence. Null message payloads are still present values.
+		const second = retryCheckout();
+		const firstEvent = second.steps[0]!.events[0]!;
+		if (firstEvent.type !== "message") throw new Error("invalid example fixture");
+		firstEvent.payload = null;
+		const nullView = projectInspection(open(second), {
+			frameIndex: 1, eventId: "originalSent",
+		});
+		expect(nullView.focused?.evidence.recorded)
+			.toEqual({ kind: "message-payload", value: null });
+		expect(projectInspection(query, {
+			frameIndex: 2, eventId: "originalReceived",
+		}).focused?.evidence.recorded).toBeUndefined();
+		source.steps[0]!.label = "mutated original";
+		expect(projectInspection(query, { frameIndex: 1, eventId: "originalSent" })
+			.focused?.evidence.recorded).toEqual(sentView.focused?.evidence.recorded);
+	});
+
+	it("deduplicates repeated claim evidence descriptors across 1,000 claims × 100 references", () => {
+		const source = claimHeavyInspection();
+		const hash = createHash("sha256").update(serializeArtifact(source)).digest("hex");
+		const query = open(source);
+		const start = performance.now();
+		const view = projectInspection(query, { frameIndex: 100, eventId: "observation99" });
+		const ms = Number((performance.now() - start).toFixed(1));
+		expect(view.focused?.claims).toHaveLength(1000);
+		expect(view.focused?.claims[0].modeledEvidence).toHaveLength(100);
+		expect(view.focused?.claims[999].modeledEvidence).toHaveLength(100);
+		expect(view.focused?.claims[0].modeledEvidence[50])
+			.toBe(view.focused?.claims[999].modeledEvidence[50]);
+		expect(view.focused?.evidence.recorded).toEqual({
+			kind: "observation",
+			value: { status: "known", value: "recorded 99" },
+		});
+		expect(view.state[0].after).toEqual({
+			status: "unknown", reason: "no state write",
+		});
+		expect(Object.isFrozen(view.focused?.claims[0].modeledEvidence)).toBe(true);
+		const halfway = projectInspection(query, {
+			frameIndex: 50, eventId: "observation49",
+		});
+		expect(halfway.focused?.claims).toHaveLength(1000);
+		expect(halfway.focused?.claims[500].modeledEvidence).toHaveLength(50);
+		expect(halfway.focused?.claims[500].unmodeledUntilLater).toBe(50);
+		expect(halfway.focused?.claims[500].modeledEvidence.every(e =>
+			e.frameIndex <= 50)).toBe(true);
+		console.info("TL-U07 claims-heavy evidence boundary:", JSON.stringify({
+			fixtureSHA256: hash, claims: 1000, citationsPerClaim: 100, events: 100,
+			cpu: cpus()[0]?.model ?? "unknown", platform: process.platform,
+			runtime: process.version, fullClaimProjectionMs: ms,
+		}));
+	}, 60_000);
 
 	it("benchmarks selected-frame inspection over a near-limit 10k-event 1k-link model", () => {
 		const source: VisualArtifact = {
