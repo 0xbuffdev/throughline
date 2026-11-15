@@ -80,3 +80,11 @@ export { inspectTrace, TraceQueryError } from "./v2/inspector.js";
 
 /** Renderer-independent, source-linked v2 graph/placeholder projection. */
 export { projectView } from "./v2/views.js";
+
+/** Pure renderer-independent Explain/Inspect projection; trusted v2 indexes only. */
+export { projectInspection } from "./v2/inspection.js";
+export type {
+	InspectionChapter, InspectionClaim, InspectionEvidence, InspectionFocus,
+	InspectionRelation, InspectionRequest, InspectionSelection, InspectionStateRow,
+	InspectionView,
+} from "./v2/inspection.js";
