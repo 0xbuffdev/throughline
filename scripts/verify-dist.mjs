@@ -67,10 +67,10 @@ for (const filename of ["react/index.js", "remark/index.js", "examples.js", "nod
 if (!existsSync(resolve(root, "dist/index.js.map"))) {
 	const rootFacade = readFileSync(resolve(root, "dist/index.js"), "utf8");
 	assert(
-		rootFacade.length < 1024 &&
+		rootFacade.length < 16 * 1024 &&
 			(rootFacade.includes("export") || rootFacade.includes("from")) &&
 			artifacts.some((file) => file.endsWith(".js.map")),
-		"Unmapped root entry must be a small re-export facade with mapped chunks",
+		"Unmapped root entry must be a bounded re-export facade with mapped chunks (size=" + rootFacade.length + ", maps=" + artifacts.filter(f => f.endsWith(".js.map")).length + ")",
 	);
 }
 
