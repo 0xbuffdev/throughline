@@ -114,12 +114,29 @@ jobs:
         run: pnpm test:run
       - name: Verify exact-tag quality evidence
         run: node scripts/verify-release-evidence.mjs
+      - name: Upload validated release-quality evidence separately from the staged package
+        uses: actions/upload-artifact@v7
+        with:
+          name: throughline-quality-${{ github.run_id }}
+          path: |
+            .release-evidence/v2-performance.json
+            .release-evidence/v2-security.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
       - name: Browser tests
         run: pnpm test:browser:run
       - name: Record Chromium verification
         run: node scripts/record-browser-evidence.mjs chromium
+      - name: Upload verified Chromium evidence separately from the staged package
+        uses: actions/upload-artifact@v7
+        with:
+          name: throughline-release-chromium-${{ github.run_id }}
+          path: .release-evidence/v2-browser-chromium.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Build typed ESM distributable
         run: pnpm build
       - name: Verify installed dependency licenses
@@ -152,9 +169,6 @@ jobs:
             release-artifacts/throughline.tgz
             release-artifacts/SHA256SUMS
             release-artifacts/RELEASE_COMMIT
-            .release-evidence/v2-performance.json
-            .release-evidence/v2-security.json
-            .release-evidence/v2-browser-chromium.json
           if-no-files-found: error
           retention-days: 7
 
