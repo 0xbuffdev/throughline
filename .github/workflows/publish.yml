@@ -198,8 +198,11 @@ jobs:
           ACCEPTANCE_COMMENT_ID: ${{ inputs.acceptance_comment_id }}
         run: |
           set -euo pipefail
-          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$ACCEPTANCE_COMMENT_ID"             > release-artifacts/review-comment.json
-          node scripts/verify-release-approval.mjs             release-artifacts/RELEASE_MANIFEST.json             release-artifacts/review-comment.json "$ACCEPTANCE_COMMENT_ID"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$ACCEPTANCE_COMMENT_ID" \
+            > release-artifacts/review-comment.json
+          node scripts/verify-release-approval.mjs \
+            release-artifacts/RELEASE_MANIFEST.json \
+            release-artifacts/review-comment.json "$ACCEPTANCE_COMMENT_ID"
           printf '%s\n' "$ACCEPTANCE_COMMENT_ID" > release-artifacts/ACCEPTANCE_COMMENT_ID
           rm release-artifacts/review-comment.json
 
@@ -275,8 +278,11 @@ jobs:
             echo "Maintainer acceptance changed between verification and staging"
             exit 1
           }
-          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$EXPECTED_COMMENT_ID"             > acceptance-comment.json
-          node scripts/verify-release-approval.mjs             release-artifacts/RELEASE_MANIFEST.json             acceptance-comment.json "$EXPECTED_COMMENT_ID"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$EXPECTED_COMMENT_ID" \
+            > acceptance-comment.json
+          node scripts/verify-release-approval.mjs \
+            release-artifacts/RELEASE_MANIFEST.json \
+            acceptance-comment.json "$EXPECTED_COMMENT_ID"
           rm acceptance-comment.json
 
       # Avoid setup-node's registry-url input for tokenless OIDC:
