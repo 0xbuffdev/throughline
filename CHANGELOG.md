@@ -9,6 +9,7 @@ All notable changes to Throughline are recorded here. Package versions follow
 
 ### Added
 
+- TL-U18 establishes an exact-head, machine-readable schema-2 release-quality gate: deterministic small/moderate/near-limit fixture hashes and compile/index/query/projection/geometry timings with runner metadata; a seeded negative-input sweep; 260px keyboard/semantic-accessibility browser regressions; separately attested Chromium/Firefox/WebKit runs; a checked independent packed SSR consumer at 260/320/375 CSS px; and CI artifacts plus a read-only evidence verifier. Results use hard correctness/resource budgets, not invented CPU or learning-outcome claims. The manual assistive-technology and native-zoom review remains an explicit release-authorization item. The previously stale manual publisher export map now checks the schema-2 Node entry and `thl` binary. No package was published.
 - TL-U10 adds a separately packed Node 24+ `thl` CLI with strict
   `validate`, `materialize` and `check` commands. Materialization computes
   LF-normalized source and canonical artifact SHA-256, creates ordered
