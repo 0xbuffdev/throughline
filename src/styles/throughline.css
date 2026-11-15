@@ -1122,3 +1122,37 @@
 @media (prefers-reduced-motion: reduce) {
 	.thl-v2 .thl-v2-inspect * { transition: none !important; animation: none !important; }
 }
+
+/* Reviewed TL-U07: exact JSON is rendered in 1,024-code-unit user-revealed
+   segments; claims and independently nested citations stay in bounded pages. */
+.thl-v2 .thl-v2-inspect-value,
+.thl-v2 .thl-v2-inspect-recorded,
+.thl-v2 .thl-v2-inspect-exact {
+	display: grid;
+	gap: 0.4rem;
+	min-width: 0;
+	max-width: 100%;
+	overflow-wrap: anywhere;
+}
+.thl-v2 .thl-v2-inspect-value > code {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.thl-v2 .thl-v2-inspect-value button { justify-self: start; }
+.thl-v2 .thl-v2-inspect-exact,
+.thl-v2 .thl-v2-inspect-recorded {
+	padding: 0.5rem;
+	border: 1px solid var(--thl-line);
+	border-radius: var(--thl-radius);
+}
+.thl-v2 .thl-v2-inspect-exact pre {
+	margin: 0;
+	max-width: 100%;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	font-size: 0.8rem;
+}
+.thl-v2 .thl-v2-inspect-claim {
+	border-bottom: 1px solid var(--thl-line);
+	padding-block: 0.5rem;
+}
