@@ -64,7 +64,7 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 				const point = validPoint(node.position?.start) ? node.position?.start : undefined;
 				const fail = (code: string, reason: string): never =>
 					file.fail(
-						"thl #" + currentOrdinal + (document ? " in " + document : "") + ": " + reason,
+						code + ": thl #" + currentOrdinal + (document ? " in " + document : "") + ": " + reason,
 						{ ...(point ? { place: point } : {}), source: "@0xbuff/throughline", ruleId: code },
 					);
 				if (node.meta !== null && node.meta !== undefined && node.meta.trim() !== "")
