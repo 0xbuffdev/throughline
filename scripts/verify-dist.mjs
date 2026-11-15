@@ -107,7 +107,10 @@ const exampleArtifact = {
 };
 const trace = core.compileArtifact(exampleArtifact);
 assert.deepEqual(trace.frames.map(frame => frame.id), ["@initial", "increment"]);
-assert.deepEqual(core.inspectTrace(trace).valueAt(1, "counter"), { status: "known", value: 1 });
+const cell = core.inspectTrace(trace).valueAt(1, "counter");
+assert.equal(cell.status, "known");
+assert.equal(cell.value, 1);
+assert.equal(Object.getPrototypeOf(cell), null, "Queried cells must be immutable plain data");
 const { remarkThroughline } = await load("remark/index.js");
 assert.equal(typeof remarkThroughline, "function");
 const { EXAMPLES } = await load("examples.js");
