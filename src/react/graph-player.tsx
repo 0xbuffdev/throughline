@@ -264,6 +264,9 @@ export function ThroughlineGraphPlayer({
 	const [inspectionMode, setInspectionMode] = useState<"explain" | "inspect">("explain");
 	const [camera, setCamera] = useState<Camera | null>(null);
 	const [fullscreen, setFullscreen] = useState(false);
+	// Capability detection is client-only. SSR and the first hydration render
+	// must agree before the mount effect enables fullscreen controls.
+	const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
 	const [fullscreenError, setFullscreenError] = useState<string | null>(null);
 	if (identity !== trace) {
 		setIdentity(trace);
@@ -355,6 +358,7 @@ export function ThroughlineGraphPlayer({
 	}, [layout, effectiveCamera, view.kind]);
 	useEffect(() => {
 		const sync = () => setFullscreen(document.fullscreenElement === rootRef.current);
+		setFullscreenAvailable(Boolean(document.fullscreenEnabled));
 		sync();
 		document.addEventListener("fullscreenchange", sync);
 		return () => document.removeEventListener("fullscreenchange", sync);
@@ -434,8 +438,8 @@ export function ThroughlineGraphPlayer({
 						enabled: narrating, available: voice.available, toggle: voice.toggle,
 					} : undefined}
 					fullscreen={{
-						active: fullscreen, available: typeof document !== "undefined" &&
-							Boolean(document.fullscreenEnabled), toggle: toggleFullscreen,
+						active: fullscreen, available: fullscreenAvailable,
+						toggle: toggleFullscreen,
 					}}/>
 			</header>
 
