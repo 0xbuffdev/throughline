@@ -22,15 +22,16 @@ surface and a schema-2 evidence-aware artifact. **TL-U02 added strict
 validation; TL-U03 added deterministic atomic replay; TL-U04 added indexed
 `inspectTrace` queries; TL-U05 added source-linked graph projection
 and native `ThroughlineGraphPlayer`; TL-U06 adds the evidence-aware message
-sequence projection and accessible timeline.**
+sequence projection and accessible timeline; TL-U07 adds the pure
+`projectInspection` query and native Explain/Inspect interface.**
 
 The existing `compile` / `ThroughlinePlayer` Markdown route is still schema 1
 until the later authoring/player migration tickets. New v2 consumers must call
 `compileArtifact` with a validated v2 object and use the dedicated v2
 `ThroughlineGraphPlayer`. **No compatibility shim converts one trace to the
 other.** Sequence and graph now share the same player frame and source
-selection. The full Inspect/history UI and single unqualified `thl` fence
-remain future tickets.
+selection, including Inspect. The single unqualified `thl` fence and
+schema-2 host migration remain separate future tickets.
 
 See [schema-2 validation, replay, graph and sequence views](docs/schema-v2.md)
 for the implemented v2 boundary and precise source/evidence semantics.
@@ -96,6 +97,36 @@ earlier/newer page controls.
 Switching to Graph or State table retains the current frame and selected
 semantic entity. The pure `projectView` auto-choice is stable across frames
 and prioritizes implemented compatible author hints.
+
+### Native v2 Explain / Inspect
+
+The schema-2 React player now has a visible **Explain / Inspect** switch.
+Explain presents Graph, Sequence or State table; Inspect reads the same
+selected frame and semantic entity through a pure query:
+
+~~~ts
+import { compileArtifact, inspectTrace, projectInspection } from "@0xbuff/throughline";
+const inspector = inspectTrace(compileArtifact(artifact));
+const investigation = projectInspection(inspector, {
+  frameIndex: 1, compareFromIndex: 0, entityId: "left", path: [],
+});
+// investigation.changes lists only explicit writes/topology events.
+// investigation.selected includes typed previous/current values and history.
+// inspection of a selected event exposes only declared causal dependencies.
+~~~
+
+The UI answers **what changed?**, **what do we know?**, **where did this
+message go?**, and **what evidence supports this?** through accessible text
+tables, a safe typed path query and source-event navigation. The inspection
+projection distinguishes known JSON null, unknown values, absent nested
+paths, same-value writes and changes of modeled presence. An observation or
+message phase never silently becomes a write; missing dependencies remain
+explicitly unmodeled. Causal claims are editorial, not independently proven,
+and future cited events cannot support claims in earlier frames.
+
+No server, untrusted code evaluation, AI inference or v1 schema adapter is
+part of Inspect. Its exact model and provenance rules are documented in
+[the v2 semantics and Inspect guide](docs/schema-v2.md).
 
 ## Features
 
