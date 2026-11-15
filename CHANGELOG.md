@@ -9,11 +9,18 @@ program and trace schemas. Changes are grouped using
 
 ### Added
 
+- Added TL-U06 pure source-linked message-sequence projection with
+  deterministic graph/sequence/state-table auto-choice, explicit four-phase
+  message-ID correlations and a bounded, accessible React evidence timeline.
+  Missing acknowledgements remain unmodeled instead of being marked lost;
+  timeout observations/writes are not synthetic message phases. Frame/selection
+  identity persists across views, and initial sequence SSR is available via
+  `ThroughlineGraphPlayer.initialView`.
 - Added the pure schema-2 `projectView` graph projection, static nested-group
   collapse with complete semantic source provenance, a truthful state/event
-  table fallback while sequence is pending, and the dedicated accessible
+  table fallback and the dedicated accessible
   `ThroughlineGraphPlayer` React component (TL-U05).
-  Only authored `sent` events animate workflow connectors; observations,
+  Only explicit modeled `sent` events animate workflow connectors; observations,
   receipts and processed phases never invent persistent writes or sends.
   Native v2 playback reuses transport, speech ownership and pure edge routing
   without converting schema-2 artifacts into schema-1 traces.
