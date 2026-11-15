@@ -1,60 +1,68 @@
-# Repository instructions
+# Working on Throughline
 
-These instructions apply to the entire Throughline repository. Follow more specific `AGENTS.md` files where present. Read the [public architecture](docs/architecture.md) and the relevant contract before changing observable behavior.
+This file gives coding agents repository-specific guidance. The [README](README.md) is for users; [CONTRIBUTING.md](CONTRIBUTING.md) describes the human contribution workflow. Follow narrower `AGENTS.md` instructions if they are added to subdirectories.
 
-## Purpose and boundaries
+## Understand the product
 
-Throughline is a standalone TypeScript/ESM package for authoring and inspecting deterministic, evidence-linked **schema-2 `VisualArtifact`** timelines. The compiler is pure and offline. React 19 is optional. The CLI is Node 24+ only. Neither the compiler nor the CLI executes authoring prose or calls an AI provider.
+Throughline is a standalone, offline-first TypeScript/ESM package. Its **public** model is schema-2 `VisualArtifact`: explicit semantic events compiled into deterministic, inspectable snapshots. A source note, diagram connection, message phase, or animation is *not* a substitute for an authored state write. A missing fact stays missing.
 
-The current source is a pre-release schema-2 redesign. Do not describe it as already published to npm. The package version and the artifact schema version are different concepts. No version-1 backward compatibility or translation layer may be added.
+The current branch contains a **v0.2.0 release candidate**, not proof of npm publication. Never confuse npm SemVer with the artifact schema version. The new surface intentionally has no compatibility adapter for schema 1. The old domain-specific source remaining in the repository supports historical regression tests, not the published API.
 
-## Public contracts
+## Where to work
 
-Keep exactly these package exports unless a reviewed ticket explicitly changes them:
+| Path | Responsibility |
+| --- | --- |
+| `src/v2/` | Schema, strict JSON validation, compilation, inspection, projection, authoring and digests |
+| `src/remark/` | Host-neutral Markdown AST validation and literal MDX transformation |
+| `src/node/`, `src/cli/` | Trusted filesystem loading, Markdown/MDX discovery and the `thl` commands |
+| `src/react/`, `src/styles/` | Optional React 19 player, accessible controls, SSR/hydration and CSS |
+| `src/reference/`, `src/examples.ts` | Four evidence-linked example models and matched explanatory material |
+| `src/__tests__/`, `scripts/` | Source, CLI, security, performance, packed-consumer and release verification |
+| `playground/` | Development-only reference preview, not a published authoring app |
+| `docs/` | Public guides, schema semantics, upgrade and maintainer release procedures |
 
-- `@0xbuff/throughline`: `validateArtifact`, `parseArtifactJson`, `serializeArtifact`, `compileArtifact`, `inspectTrace`, `projectView`, `projectInspection`, authoring/hash helpers and associated schema-2 types.
-- `@0xbuff/throughline/remark`: mdast validation and literal-data MDX transform.
-- `@0xbuff/throughline/node`: trusted Node filesystem host and non-executing Markdown/MDX AST discovery for the CLI.
-- `@0xbuff/throughline/react`: `ThroughlineGraphPlayer` and `ThroughlineEmbed`.
-- `@0xbuff/throughline/examples`: four reference artifacts with matched explanations, questions, expected answers, evidence event IDs and caveats.
-- `@0xbuff/throughline/styles/throughline.css`: explicitly imported, namespaced CSS.
+Read [Architecture](docs/architecture.md), [Grammar](docs/grammar.md) and [Schema 2](docs/schema-v2.md) before changing an observable contract.
 
-The separate executable is `thl` and supports `validate`, `materialize`, `check` and help. Do not add wildcard exports or require deep imports. Public `parseThl`, `compile`, `compileProgram`, `ThroughlinePlayer` and domain-tagged fences were intentionally removed.
+## Preserve the public boundaries
 
-## Repository map
+There are six package exports: root, `/examples`, `/react`, `/remark`, `/node`, and `/styles/throughline.css`. The separate executable is `thl`. Changes to these entries, peer dependency requirements, the schema, or the grammar are breaking-interface decisions: discuss them and update the docs and tests. Do not introduce deep imports, wildcard exports, legacy `ThroughlinePlayer`, old domain-tagged fences, or an undocumented conversion layer.
 
-- `src/v2/`: canonical schema-2 model, strict JSON, atomic replay, queries, source-preserving projections, authoring, digests and limits.
-- `src/remark/`: host-neutral mdast transform. It must validate every matching `thl` node before mutating the tree.
-- `src/node/`: trusted Node-only filesystem and Markdown/MDX AST parsing. Discovery must reflect **actual** code nodes, including nested containers; HTML comments and embedded syntax are not code fences.
-- `src/cli/`: offline command-line arguments, validation, unreviewed materialization and check diagnostics.
-- `src/react/`: native player, caption, controls, accessibility, optional narration and SSR/hydration behavior.
-- `src/reference/`, `src/examples.ts`: the four schema-2 reference baselines.
-- `src/styles/`: `thl-`-scoped styles and `--thl-*` tokens.
-- `src/domains/`, `src/compiler.ts`, `src/dsl.ts` and other older files: **internal** v1 regression scaffolding pending later cleanup. Do not export or extend these for production.
-- `scripts/`, `src/**/__tests__/`: pure, Node/CLI, packed archive, browser, framework, security and provenance checks.
-- `docs/`: authoritative human-readable public architecture, grammar, CLI, integration and release guides.
-- `.github/workflows/ci.yml`: quality-only, read-only CI. Publication requires the separate maintainer-controlled process.
+- Keep the **root compiler** pure: no filesystem, browser, React, AI provider, telemetry, code evaluation, or network side effects. Deterministic validation, canonical JSON, and bounded replay are mandatory.
+- Keep **Markdown** parsing non-executing. Only an unqualified `thl` code node is recognized. Its opening brace selects strict schema-2 JSON. Prose needs a source- and artifact-hash-matched sidecar with an independent human `reviewed` decision; the CLI must never approve its own output.
+- Keep **Node host** I/O explicitly confined to a trusted root. Validate relative POSIX locators, reject traversal/symlinks and unsafe Unicode, and avoid revealing private absolute paths or loader exceptions.
+- Keep **React** optional. The same compiled truth drives every view. Preserve accessible text equivalents, focus/keyboard behavior, reduced motion, source event IDs and server-rendering consistency.
+- Keep **references** honest. Independently verify mathematical examples, distinguish observed facts from simulations and assumptions, and never infer real payment/network outcomes from absent evidence.
+- Follow the existing strict TypeScript conventions. Update `package.json` and `pnpm-lock.yaml` together for dependency changes; do not introduce private workspaces, internal links or credentials into public files.
 
-## Implementation rules
+## Local checks
 
-Use Node.js 24+, pnpm 11.2.2, strict TypeScript and the committed lockfile. Keep a single canonical source of truth; do not duplicate artifact state or infer events from visuals, graph edges, notes or message timestamps. Each step commits atomically; known `null` is not unknown. Evidence must cite declared events. Maintain bounded source, state, JSON and replay work.
+Use Node.js 24+, pnpm 11.2.2, and the committed lockfile.
 
-Markdown/MDX discovery must parse syntax trees **without running MDX or JavaScript**. Its depth-first zero-based `thl` ordinals, source content and positions must agree with the Remark host. Unqualified `thl` is the only supported fence. The opening brace selects strict JSON; prose requires an exact, separately reviewed sidecar. A new or regenerated sidecar always remains `unreviewed` until a human explicitly reviews it. No auto-approval command.
+~~~sh
+corepack enable
+pnpm install --frozen-lockfile
+pnpm audit:source
+pnpm typecheck
+pnpm preview:typecheck
+pnpm preview:build
+pnpm test:run
+pnpm test:release-tooling
+pnpm build
+pnpm audit:licenses
+pnpm audit:pack
+pnpm audit:browser
+pnpm audit:frameworks
+pnpm audit:markdown-hosts
+pnpm exec playwright install chromium
+pnpm test:browser:run
+~~~
 
-The Node host alone may read filesystem paths, using a trusted real root, strict relative POSIX locators, bounded decoding and symlink rejection. Never reflect a raw loader exception, let content select a root or execute its embedded code. Keep the root library and Remark entry free of Node filesystem, React and network dependencies. React and React DOM remain optional peers; browser-only capabilities must be detected after hydration.
+Use `THROUGHLINE_QA_BROWSER=firefox` and `THROUGHLINE_QA_BROWSER=webkit` for other supported browser runs with their installed Playwright binaries. Reproduce the relevant test and inspect the exact PR-head CI, not merely an older green run. Packed-consumer tests matter: a source import is not a proof that npm exports work.
 
-Follow the project's existing naming and code style. Review third-party dependency licenses and notices; update both `package.json` and the committed lockfile when adding packages. Avoid undocumented exports, arbitrary imports and dependencies on unpublished versions. Never insert private architecture links, tokens or internal-project details in public documentation.
+## Pull requests and release safety
 
-## Verification
+Use focused branches. Preserve the maintainer's review workflow; do not merge, sign, tag, deploy, or publish without explicit authorization. Record what changed, the compatibility/security implications, tests **actually** run and blockers. Do not claim automated accessibility checks are human screen-reader acceptance.
 
-Before proposing review, run the relevant checks and ensure the exact PR head has passing CI. For a full package change, verify TypeScript, local preview build/typecheck, pure/CLI/security tests, exact-SHA TL-U18 performance evidence, Chromium/Firefox/WebKit browser tests, distribution, source/license audits, an independently packed Node-only/CLI consumer, optional Remark/React/MDX integrations, mobile SSR/hydration and framework consumers. Real screen-reader evidence, including an actual tester, date, heard announcements and source/package hash, is **required before TL-U18 closure**; manual native-browser zoom remains an additional release checklist item. Keep both distinct from automated role checks, which cannot substitute for spoken output. Include negative regressions for malformed or unauthorized input, changed source hashes, unknown states and false code-node discovery.
+The release workflow is deliberately staged: verified source and immutable package bytes, real source- and tarball-bound manual screen-reader acceptance, an approved signed tag, protected OIDC stage-only publishing, human npm 2FA, then independent registry checksum/provenance and consumer verification. Keep these as separate gates. See [Releasing](docs/releasing.md) and the [manual test record](docs/qa/tl-u18-screen-reader-record.md).
 
-Do not claim tests passed if not run. Do not substitute local source imports for packed-consumer proof, or infer npm publication from a successful archive build. Keep [documentation](docs/README.md) and the [changelog](CHANGELOG.md) aligned with user-facing contracts.
-
-## Pull requests and releases
-
-Use one focused branch and PR per accepted ticket. Give the maintainer an accurate summary of decisions, user-visible changes, security limits and actual verification. Respond to and resolve review threads only after the corrections and tests are confirmed. Leave PRs unmerged until the maintainer authorizes merging.
-
-Do not deploy, publish, sign or move release tags, change repository visibility, archive architecture tickets, grant new credentials or rewrite Git history without the appropriate explicit approval. For TL-U19, the candidate `package.json` version must not be interpreted as a published npm version. Preserve `scripts/release-artifact.mjs`, `scripts/verify-release-approval.mjs` and `scripts/verify-registry-release.mjs` exact-SHA/immutable-stage checks, and keep authorization from real AT testing by a GitHub maintainer tied to the reviewed source SHA and archive digest. No synthetic test acceptance is a human screen-reader test. The `npm-publish` environment, stage-only OIDC and final npm 2FA approval are independent gates. Registry success is established only after separate checksum/provenance verification and consumer installation from npm, not source or stage.
-
-Release stages and the live documentation-app upgrade are separate gates. See [release guidance](docs/releasing.md), [contribution guidelines](CONTRIBUTING.md) and [security reporting](SECURITY.md).
+Update the [README](README.md), [Changelog](CHANGELOG.md), and relevant public guide whenever behavior changes. Avoid ticket-number narration in user-facing explanations; describe capabilities and limitations instead.

@@ -1,46 +1,106 @@
 # Throughline
 
-[![CI](https://github.com/0xbuffdev/throughline/actions/workflows/ci.yml/badge.svg)](https://github.com/0xbuffdev/throughline/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/%400xbuff%2Fthroughline)](https://www.npmjs.com/package/@0xbuff/throughline) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Node.js](https://img.shields.io/badge/node-%3E%3D24-blue)](package.json)
+[![CI](https://github.com/0xbuffdev/throughline/actions/workflows/ci.yml/badge.svg)](https://github.com/0xbuffdev/throughline/actions/workflows/ci.yml) [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-**Readable state over time, authored in Markdown.**
+**Explain how state changes, one step at a time.**
 
-Throughline compiles small, explanatory state traces into deterministic,
-versioned snapshots. Its optional React player makes each change visible as
-a step-by-step SVG scene—with keyboard controls, accessible descriptions,
-responsive controls and opt-in sound. Previous, play/pause and next are
-always in reach. Player options can jump directly to a numbered step.
+Throughline is a TypeScript library for turning authored state changes into an inspectable timeline. Define what exists, what is known, and which events occurred. Throughline validates those facts, compiles reproducible snapshots, and can display them with an optional React player.
 
-Use it to explain what changes during an algorithm, a data-structure
-operation, a recursive call or a system workflow. Throughline does not
-execute arbitrary code or require an account, server, network connection
-or application-specific runtime.
+It works for algorithms, recursion, data structures, message exchanges, and other processes that benefit from seeing *what changed* and *why the source says it changed*. The core runs offline, without executing the described program or calling an AI service.
 
-## Schema-2 engine and universal authoring (v0.2.0 source)
+> **Release status:** This branch documents the **v0.2.0 source release candidate**, not an npm release. The schema-2 API below is intentionally incompatible with v0.1.x. Check `npm view @0xbuff/throughline version` before installing; do not assume the registry has v0.2.0. Publication is gated on human accessibility testing and the release checks described in [Releasing](docs/releasing.md).
 
-The accepted architecture replaces domain-tagged fences with one `thl` authoring
-surface and a schema-2 evidence-aware artifact. TL-U02–U04 delivered
-strict validation, atomic replay and indexed inspection. TL-U05–U07 added
-source-linked graph/sequence/state-table projection and Explain/Inspect UI.
-TL-U08 introduced the single `thl` authoring contract. **TL-U09 now supplies
-four typed, independently checked references with matched static comprehension
-baselines.**
+## What you can do
 
-**The new Remark/MDX `thl` route is schema 2 only**, with native
-`ThroughlineEmbed` using `artifactJson`. No domain-tagged fence or v1 source
-bridge is accepted by that route. Internal schema-1 code remains as temporary
-source scaffolding pending independent U10 migration—not as a maintained
-compatibility contract. Pure consumers use `compileArtifact` and the dedicated
-`ThroughlineGraphPlayer`. Sequence, graph and Inspect share the same playback
-frame and source selection. The release requires the remaining acceptance gates.
+- **Author one model, use several views.** A schema-2 `VisualArtifact` declares entities, relations, initial values, and explicit events. The same compiled trace powers a graph, message sequence, or state table.
+- **Inspect evidence, not guesses.** See before/after values, history, source event IDs, declarations of uncertainty, and cited explanations. A sent message does not automatically become a received message or a persistent write.
+- **Write Markdown or work in TypeScript.** An unqualified `thl` code fence accepts strict schema-2 JSON. Descriptive prose requires a separately reviewed, hash-bound artifact; Throughline does not silently generate a model from it.
+- **Render only when needed.** The compiler, validator, and inspector do not need React. The optional React 19 player provides playback, keyboard interaction, source inspection, and opt-in browser narration.
+- **Check content offline.** The `thl` CLI validates artifacts and Markdown/MDX files, with a human-review gate for materialized prose.
 
-See [schema-2 validation, replay, graph and sequence views](docs/schema-v2.md)
-for the implemented v2 boundary and precise source/evidence semantics.
+## Installation
 
-### One domain-independent thl fence (TL-U08)
+Once **v0.2.0 has actually been published**, use Node.js 24+ and an ESM project:
 
-The first non-whitespace character distinguishes validated JSON (`{`) from
-inert prose. For direct offline playback, author a schema-2 VisualArtifact:
+~~~sh
+npm view @0xbuff/throughline version
+npm install @0xbuff/throughline@0.2.0
+~~~
 
+The core has no React peer requirement at runtime. For the optional player, install compatible React 19 and React DOM 19:
+
+~~~sh
+npm install react@^19 react-dom@^19
+~~~
+
+For the unreleased candidate, work from a checked-out source revision with Node.js 24+ and the repository's pinned pnpm 11.2.2; do not substitute the currently published npm version for these examples.
+
+## Quick start: compile and inspect a trace
+
+An artifact models facts rather than executable code. Here is a counter with one explicit write:
+
+~~~ts
+import { compileArtifact, inspectTrace } from "@0xbuff/throughline";
+import type { VisualArtifact } from "@0xbuff/throughline";
+
+const artifact: VisualArtifact = {
+  schemaVersion: 2,
+  id: "counter-demo",
+  origins: [{ id: "author", kind: "authored" }],
+  entities: [{ id: "counter", label: "Counter" }],
+  relations: [],
+  initialState: {
+    counter: { status: "known", value: 0 },
+  },
+  steps: [{
+    id: "increment",
+    label: "Increase counter",
+    events: [{
+      id: "write-counter",
+      originId: "author",
+      type: "write",
+      entityId: "counter",
+      path: [],
+      value: { status: "known", value: 1 },
+    }],
+  }],
+};
+
+const trace = compileArtifact(artifact);
+const inspector = inspectTrace(trace);
+
+console.log(trace.frames.map(frame => frame.id));
+// ["@initial", "increment"]
+console.log(inspector.valueAt(0, "counter")); // known 0
+console.log(inspector.valueAt(1, "counter")); // known 1
+console.log(inspector.history("counter"));   // includes "write-counter"
+~~~
+
+There are two immutable snapshots: the initial state and the result of the complete `increment` step. The event is not inferred from a label or animation; it is present because the source declares it.
+
+### Render the optional React player
+
+~~~tsx
+import { compileArtifact } from "@0xbuff/throughline";
+import { EXAMPLES } from "@0xbuff/throughline/examples";
+import { ThroughlineGraphPlayer } from "@0xbuff/throughline/react";
+import "@0xbuff/throughline/styles/throughline.css";
+
+const reference = EXAMPLES[0];
+const trace = compileArtifact(reference.artifact);
+
+export function Demo() {
+  return <ThroughlineGraphPlayer trace={trace} title={reference.title} theme="auto" />;
+}
+~~~
+
+The player supports Graph, Sequence, and State table views, plus an Explain/Inspect panel. Sequence only shows explicitly modeled message phases; otherwise Throughline uses an honest state-table fallback. The bundled references cover factorial recursion, 2×2 matrix multiplication, binary addition, and a *hypothetical* distributed checkout. [Explore the references](docs/catalog.md).
+
+## Author in Markdown
+
+Use a plain `thl` fence, without domain qualifiers:
+
+~~~markdown
 ~~~thl
 {
   "schemaVersion": 2,
@@ -50,7 +110,7 @@ inert prose. For direct offline playback, author a schema-2 VisualArtifact:
   "relations": [],
   "initialState": { "counter": { "status": "known", "value": 0 } },
   "steps": [{
-    "id": "advance", "label": "Advance",
+    "id": "increment", "label": "Increment",
     "events": [{
       "id": "write", "originId": "author", "type": "write",
       "entityId": "counter", "path": [],
@@ -59,301 +119,51 @@ inert prose. For direct offline playback, author a schema-2 VisualArtifact:
   }]
 }
 ~~~
-
-Use `parseThlBody` for the pure disjoint parser or `resolveThlBody`
-to obtain a compiled-valid artifact. The Markdown/MDX plugin validates JSON
-without any manifest and sends only literal artifact JSON to the registered
-React v2 component. A descriptive prose block instead **requires** a
-reviewed, hash-bound sidecar supplied by a trusted host; unresolved prose is a
-build error, not an AI call or a placeholder. Source hash = SHA-256 of
-normalized-LF mdast body. Artifact hash = SHA-256 of canonical validated
-JSON. No backward-compatibility parser is added. See
-[framework and Markdown integrations](docs/framework-integrations.md).
-
-### Native v2 graph player
-
-~~~tsx
-import { compileArtifact } from "@0xbuff/throughline";
-import { ThroughlineGraphPlayer } from "@0xbuff/throughline/react";
-import "@0xbuff/throughline/styles/throughline.css";
-
-const artifact = {
-  schemaVersion: 2 as const,
-  id: "example",
-  origins: [{ id: "author", kind: "authored" as const }],
-  entities: [{ id: "left", label: "Left" }, { id: "right", label: "Right" }],
-  relations: [{ id: "link", from: "left", to: "right" }],
-  initialState: {
-    left: { status: "known" as const, value: 0 },
-    right: { status: "unknown" as const },
-  },
-  steps: [{
-    id: "sent", label: "Request sent",
-    events: [{
-      id: "send", type: "message" as const, originId: "author",
-      relationId: "link", messageId: "request", phase: "sent" as const,
-    }],
-  }],
-};
-const trace = compileArtifact(artifact);
-export function Example() {
-  return <ThroughlineGraphPlayer trace={trace} initialView="graph" title="Explicit message evidence" />;
-}
 ~~~
 
-The graph renders the `sent` connector only at the authored step. It does not
-invent a receive, acknowledgement, processing event or destination write.
+For direct JSON, the Remark integration validates and compiles offline. If a `thl` fence contains prose instead, the host must load a **reviewed** schema-2 sidecar with matching source and artifact SHA-256 digests. Unreviewed or stale materialization fails the build; prose is never executed.
 
-### Native v2 message sequence
+Read the [authoring guide](docs/grammar.md), [CLI review workflow](docs/cli.md), and [Markdown/MDX integration guide](docs/framework-integrations.md) for exact formats and setup.
 
-The native v2 player defaults to the highest-priority compatible validated
-artifact view hint, or automatically selects Sequence when modeled message
-events exist. It also supports a manual **Sequence** option under Player options.
-A caller can explicitly override the initial view:
+## How it works
 
-~~~tsx
-// `trace` is a compiler-owned CompiledTrace (schema 2).
-<ThroughlineGraphPlayer trace={trace} initialView="sequence" />
-~~~
+1. **Validate:** Check schema version, IDs, relationships, state types, event references, and resource limits. Strict JSON rejects duplicate object keys.
+2. **Compile:** Apply each step atomically, producing deterministic snapshots. Writes and topology changes are explicit; observations and message phases do not mutate state by themselves.
+3. **Inspect:** Query known, unknown, or absent values, history, differences, event origins, and declared dependencies.
+4. **Project:** Derive graph, sequence, and state-table descriptions from the *same* compiled trace without fabricating events.
+5. **Present:** Render the descriptions with the optional React player or use the pure APIs in another UI.
 
-The sequence view correlates **only** explicit `sent`, `received`,
-`acknowledged`, and `processed` event evidence by validated message ID.
-A missing acknowledgement is reported as **not modeled**, not proven lost.
-Retries require explicit source events (with distinct event IDs); an explicit
-timeout remains a state write or observation, never a fifth message phase.
-The four-phase summary and accessible chronological text table expose the
-declared origin, relation and event IDs without inventing network results.
-Within one atomic step, event-array order is for display only: a received
-phase placed before a modeled sent in the **same step** is not a missing-send
-gap. The correlation display uses fixed 120-card pages even for thousands
-of distinct IDs; the full source-linked summaries remain accessible through
-earlier/newer page controls.
-Switching to Graph or State table retains the current frame and selected
-semantic entity. The pure `projectView` auto-choice is stable across frames
-and prioritizes implemented compatible author hints.
+The artifact records **authored evidence**, not proof that a real system performed those actions. Even a `reviewed` claim means an editor reviewed it, not that Throughline independently established its truth. See [Architecture](docs/architecture.md) and [Schema 2](docs/schema-v2.md).
 
-### Native v2 Explain / Inspect
+## Public interfaces
 
-The schema-2 React player now has a visible **Explain / Inspect** switch.
-Explain presents Graph, Sequence or State table; Inspect reads the same
-selected frame and semantic entity through a pure query:
+| Entry point | What it provides |
+| --- | --- |
+| `@0xbuff/throughline` | Pure validation, compilation, inspection, projections, serialization and authoring helpers |
+| `@0xbuff/throughline/examples` | Four reference artifacts and accompanying explanations and questions |
+| `@0xbuff/throughline/react` | `ThroughlineGraphPlayer` and `ThroughlineEmbed` |
+| `@0xbuff/throughline/remark` | Markdown/MDX `thl` validation and inert literal-data transform |
+| `@0xbuff/throughline/node` | Trusted, root-confined filesystem host for content builds |
+| `@0xbuff/throughline/styles/throughline.css` | Opt-in namespaced player styles |
+| `thl` command | Validate JSON, materialize *unreviewed* sidecars, and check Markdown/MDX |
 
-~~~ts
-import { compileArtifact, inspectTrace, projectInspection } from "@0xbuff/throughline";
-const inspector = inspectTrace(compileArtifact(artifact));
-const investigation = projectInspection(inspector, {
-  frameIndex: 1, compareFromIndex: 0, entityId: "left", path: [],
-});
-// investigation.changes lists only explicit writes/topology events.
-// investigation.selected includes typed previous/current values and history.
-// inspection of a selected event exposes only declared causal dependencies.
-~~~
+The npm package version (`0.2.0`) and artifact `schemaVersion` (`2`) are separate. There is no schema-1 compatibility adapter. See [Migrating from v0.1.x](docs/migration-v0.2.0.md).
 
-The UI answers **what changed?**, **what do we know?**, **where did this
-message go?**, and **what evidence supports this?** through accessible text
-tables, a safe typed path query and source-event navigation. The inspection
-projection distinguishes known JSON null, unknown values, absent nested
-paths, same-value writes and changes of modeled presence. An observation or
-message phase never silently becomes a write; missing dependencies remain
-explicitly unmodeled. Causal claims are editorial, not independently proven,
-and future cited events cannot support claims in earlier frames.
-
-**Source evidence is inspectable:** recorded observation cells (such as
-"no acknowledgement recorded yet") and optional authored message payloads
-appear in focused event details, clearly labeled as **not committed state**.
-Before/after, history and snapshot values retain short previews while
-keyboard-accessible exact JSON disclosures reveal *all* content in bounded
-1,024-code-unit segments. Focused editorial claims display 12 per page;
-each has its own independent 12-citation page. Even a valid artifact with
-1,000 claims × 100 referenced events mounts a bounded set of controls.
-Dependencies, changes and current-step event lists have separate bounds.
-Neither hiding DOM entries nor disclosing editorial citations changes
-the trusted source values or makes a causal inference.
-
-No server, untrusted code evaluation, AI inference or v1 schema adapter is
-part of Inspect. Its exact model and provenance rules are documented in
-[the v2 semantics and Inspect guide](docs/schema-v2.md).
-
-## Features
-
-- **One `thl` fence:** strict, offline schema-2 JSON or reviewed prose
-  materialization with hash-bound provenance. No old domain tags or
-  compatibility router in the new authoring surface.
-- **Evidence-aware steps:** explicit writes, modeled topology, independent
-  message phases, observations and traceable editorial claims.
-- **Deterministic replay and Inspect:** immutable frames, typed state,
-  history, diffs, event dependencies and missing-knowledge distinctions.
-- **Optional accessible React player:** responsive Graph, Sequence and
-  State-table views, keyboard controls, Explain/Inspect and optional narration.
-- **Four first-party typed references (TL-U09):** factorial(4), 2×2 matrix
-  multiplication, 4-bit binary addition and a **hypothetical** distributed
-  checkout/retry scenario. Every model includes a matched static explanation,
-  comprehension questions, expected answers and exact source-event IDs.
-
-The checkout reference does not assert a real provider's idempotency guarantee
-or conclude that missing acknowledgement evidence proves packet loss.
-References' mathematical truth and persistence order are independently tested.
-Matched questions are a baseline for future comprehension studies, not
-evidence of measured educational improvement.
-
-## Release quality and acceptance
-
-Before a schema-2 package can be published, the source release gate records SHA-bound compile/query/layout measurements, hostile-input rejections, accessible keyboard/browser verification and independent packed-host proof. See the [release-quality acceptance matrix](docs/release-quality.md) for the deterministic inputs, measured runner conditions, automated results and separate manual screen-reader/zoom sign-off. A green automated quality gate is **not sufficient to close TL-U18** until an exact-candidate real screen-reader test is recorded, and does not publish, deploy or establish educational superiority.
-
-## Offline CLI and reviewed Markdown authoring
-
-The v0.2.0 source includes a standalone Node 24+ binary and a
-Node-only trusted host entry. The commands accept only strict schema-2
-artifacts, plain `thl` fences and reviewed, SHA-256-bound prose sidecars:
+## Develop and contribute
 
 ~~~sh
-thl validate artifacts/factorial.json
-thl materialize --document content/docs/factorial.mdx --ordinal 0 \
-  --artifact artifacts/factorial.json --manifest throughline/manifest.json
-# Manually review the artifact and the generated unreviewed manifest entry.
-thl check content/docs --manifest throughline/manifest.json
-~~~
-
-Materialization **never approves** generated artifacts. Hosts can use
-`@0xbuff/throughline/node` to map VFile paths and load confined sidecars;
-core validation still requires no Node filesystem, React or provider SDK.
-See the [CLI and editorial-review procedure](docs/cli.md).
-
-## Installation and version boundary
-
-Install the published package with:
-
-~~~sh
-npm install @0xbuff/throughline
-~~~
-
-The package targets Node.js 24+ with ESM. The React 19 player is an
-optional peer; install React and React DOM in a rendering application:
-
-~~~sh
-npm install react@^19 react-dom@^19
-~~~
-
-**These schema-2 interfaces require package version 0.2.0 or newer.**
-The preceding npm v0.1.0 release has a different authoring and playback
-contract. A GitHub source version does **not** establish npm availability:
-check `npm view @0xbuff/throughline version`, install the explicit desired
-version and confirm the installed `package.json` before using this API.
-The v0.2.0 release procedure requires actual human accessibility evidence,
-a verified signed tag, protected stage-only OIDC, final npm 2FA, and
-independently installed registry/provenance tests. See the
-[v0.2.0 notes](docs/release-notes-v0.2.0.md) and
-[release acceptance process](docs/releasing.md).
-
-## Quick start — use a typed reference
-
-~~~ts
-import { compileArtifact, inspectTrace, serializeArtifact } from "@0xbuff/throughline";
-import { EXAMPLES } from "@0xbuff/throughline/examples";
-
-const example = EXAMPLES.find(item => item.id === "factorial");
-if (!example) throw new Error("Missing reference example");
-
-const trace = compileArtifact(example.artifact);
-const inspector = inspectTrace(trace);
-console.log(inspector.valueAt(trace.frames.length - 1, "result"));
-// { status: "known", value: 24 }
-
-const json = serializeArtifact(trace.artifact); // canonical, deterministic JSON
-~~~
-
-For a Markdown document, place this structured JSON inside an
-unqualified `~~~thl` fence. Remark/MDX validates it without AI, a
-network service or a sidecar. Descriptive text instead requires
-explicit, reviewed materialization. Read
-[universal authoring](docs/grammar.md) and
-[framework integrations](docs/framework-integrations.md).
-
-### Render the native player
-
-~~~tsx
-import { compileArtifact } from "@0xbuff/throughline";
-import { EXAMPLES } from "@0xbuff/throughline/examples";
-import { ThroughlineGraphPlayer } from "@0xbuff/throughline/react";
-import "@0xbuff/throughline/styles/throughline.css";
-
-const example = EXAMPLES[0];
-const trace = compileArtifact(example.artifact);
-
-export function ReferenceDemo() {
-  return <ThroughlineGraphPlayer trace={trace} title={example.title} theme="auto" />;
-}
-~~~
-
-The Graph and Sequence views only render declared facts.
-A sequence request without message events falls back to a state table
-instead of inventing messages.
-
-## Local development preview
-
-[The Vite playground](playground) uses the current **source** versions
-of the four schema-2 artifacts and the native player. With Node.js 24+
-and the repository's pinned pnpm version:
-
-~~~sh
+corepack enable
 pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm test:run
+pnpm build
 pnpm dev
 ~~~
 
-Open http://localhost:5173 to inspect states and source events and
-read the matched explanations/questions at desktop, tablet and mobile
-widths. The preview is excluded from the published npm package.
+`pnpm dev` launches the repository's **development reference preview**, currently intended for inspecting examples rather than as a finished authoring product. It is not part of the npm tarball, and this PR does not deploy a hosted playground.
 
-## Behind the model
+For browser, package, security, framework, and release checks, use [Contributing](CONTRIBUTING.md). For changes and upgrade guidance, see the [Changelog](CHANGELOG.md), [Documentation index](docs/README.md), and [v0.2.0 candidate notes](docs/release-notes-v0.2.0.md).
 
-1. **Validate:** strict schema-2 input is detached and checked for
-   known/unknown state, IDs, references, depth and bounded work.
-2. **Compile:** each named step commits its declared writes and topology
-   updates atomically; messages/observations never implicitly mutate
-   persistent state.
-3. **Inspect:** immutable frame checkpoints support indexed state,
-   history, diffs, explicit transfers and directly declared dependencies.
-4. **Project:** the native viewer maps the same source-linked facts to
-   Graph, Sequence and State-table descriptors without synthesizing events.
-5. **Explain:** optional React components display those immutable facts
-   alongside authored notes, evidence limits and reviewable claims.
+## Project
 
-Schema 2 is intentionally incompatible with the previous trace
-schema. No migration/conversion or backward-compatibility route is
-introduced here. The remaining historical internal tests are isolated
-pending the separately reviewed v1 cleanup tickets.
-
-## Documentation
-
-- [User guide and player](docs/user-guide.md)
-- [Reference catalog](docs/catalog.md) and
-  [static explanations and comprehension questions](docs/reference-traces.md)
-- [Universal `thl` grammar](docs/grammar.md) and
-  [typed reference authoring](docs/authoring.md)
-- [Framework integration guide](docs/framework-integrations.md)
-- [Offline CLI, safe file loading and manual review](docs/cli.md)
-- [Semantic schema-2 runtime](docs/schema-v2.md)
-- [Documentation index](docs/README.md)
-- [Changelog](CHANGELOG.md) and [release guidance](docs/releasing.md)
-
-## Development
-
-Build and verification commands are documented under
-[releasing and checks](docs/releasing.md). Never publish an unreleased
-schema-2 API without its own independently verified distribution,
-signed release and approval.
-
-## Community
-
-Read [contributing guidelines](https://github.com/0xbuffdev/throughline/blob/main/CONTRIBUTING.md) before opening a PR.
-Use [GitHub issues](https://github.com/0xbuffdev/throughline/issues)
-for reproducible bugs and feature proposals; see
-[support guidance](https://github.com/0xbuffdev/throughline/blob/main/CONTRIBUTING.md#support) for support and [SECURITY.md](https://github.com/0xbuffdev/throughline/blob/main/SECURITY.md)
-for confidential vulnerability reports. Participation is governed by
-the [code of conduct](https://github.com/0xbuffdev/throughline/blob/main/CODE_OF_CONDUCT.md).
-
-## License
-
-Licensed under [Apache-2.0](https://github.com/0xbuffdev/throughline/blob/main/LICENSE).
-Copyright 2026 0xBUFF; see [COPYRIGHT.md](https://github.com/0xbuffdev/throughline/blob/main/COPYRIGHT.md).
-The license covers software rights under its terms, not trademark use.
+Licensed under [Apache-2.0](LICENSE), copyright 2026 0xBUFF. See [Contributing](CONTRIBUTING.md) for bugs and feature requests, [Security](SECURITY.md) for private vulnerability reports, and the [Code of Conduct](CODE_OF_CONDUCT.md) for community expectations.
