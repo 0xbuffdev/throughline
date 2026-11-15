@@ -137,6 +137,7 @@ try {
 
   // A real Fumadocs Unified project must generate entries from a source.config.ts
   // retaining existing remark/rehype hooks. It must also validate malformed fences.
+  const v2Artifact = JSON.stringify({ schemaVersion: 2, id: "framework", origins: [{ id: "o", kind: "authored" }], entities: [{ id: "x", label: "X" }], relations: [], initialState: { x: { status: "known", value: 0 } }, steps: [{ id: "advance", label: "Advance", events: [{ id: "w", originId: "o", type: "write", entityId: "x", path: [], value: { status: "known", value: 1 } }] }] });
   const fumadocs = consumer("fumadocs", tarball);
   write(fumadocs, "source.config.ts", [
     'import { remarkMdxMermaid } from "fumadocs-core/mdx-plugins";',
@@ -154,7 +155,7 @@ try {
   write(fumadocs, "content/docs/index.mdx", [
     "---", "title: Trace integration", "description: A safe MDX build.", "---", "",
     "# Trace integration", "", "$1+1=2$", "",
-    "~~~thl flow", 'node a "A" = 0', 'step "Advance"', "  set a = 1", "~~~",
+    "~~~thl", v2Artifact, "~~~",
     "", "~~~mermaid", "graph TD", "  A --> B", "~~~",
     "", "~~~js", "const untouched = true;", "~~~",
   ].join("\n"));
@@ -185,7 +186,7 @@ try {
     'const plainCompiled = String(await compile(plain.replace(/^---[\\s\\S]*?---\\n/, ""), { remarkPlugins: plugins, rehypePlugins: rehype }));',
     'assert.match(plainCompiled, /stillPlain/);',
     'assert.doesNotMatch(plainCompiled, /ThroughlineEmbed/);',
-    'await assert.rejects(() => compile("~~~thl flow\\ninvalid\\n~~~", { remarkPlugins: plugins, rehypePlugins: rehype }), /invalid|Expected|Unknown/i);',
+    'await assert.rejects(() => compile("~~~thl\\n{bad\\n~~~", { remarkPlugins: plugins, rehypePlugins: rehype }), /invalid|Expected|Unknown/i);',
   ].join("\n");
   run(fumadocs, "node", ["--experimental-strip-types", "--input-type=module", "-e", fumadocsCheck]);
 
@@ -268,7 +269,7 @@ try {
   ].join("\n"));
   write(next, "app/page.mdx", [
     "# Next trace integration", "",
-    "~~~thl binary", "a = 1011", "b = 0110", "~~~",
+    "~~~thl", v2Artifact, "~~~",
     "", "~~~js", "const unaffected = true;", "~~~",
   ].join("\n"));
   write(next, "app/plain/page.mdx", [
@@ -304,14 +305,14 @@ try {
     "---",
     'import HydratedTrace from "./HydratedTrace.jsx";',
     'import "@0xbuff/throughline/styles/throughline.css";',
-    'const { source } = Astro.props;',
+    'const { artifactJson } = Astro.props;',
     "---",
-    "<HydratedTrace source={source} client:load />",
+    "<HydratedTrace artifactJson={artifactJson} client:load />",
   ].join("\n"));
   write(astro, "src/pages/index.mdx", [
     'import ThroughlineEmbed from "../components/ThroughlineEmbed.astro";',
     "", "# Astro trace integration", "",
-    "~~~thl flow", 'node x "X" = 0', 'step "Change"', "  set x = 1", "~~~",
+    "~~~thl", v2Artifact, "~~~",
   ].join("\n"));
   write(astro, "src/pages/plain.mdx", [
     "# Unchanged MDX content", "", "Ordinary Markdown without a trace.", "",
