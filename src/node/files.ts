@@ -39,7 +39,7 @@ const EXCLUDED_DIRECTORIES = new Set([
  * select the root.
  */
 export class TrustedContentRoot {
-	readonly root: string;
+	readonly root!: string;
 	constructor(path: string = process.cwd()) {
 		let root: string;
 		try {
@@ -106,7 +106,7 @@ export class TrustedContentRoot {
 			return utf8.decode(bytes);
 		} catch (error) {
 			if (error instanceof TrustedFileError) throw error;
-			fault("THL_IO", "cannot read valid UTF-8 content: " + name);
+			return fault("THL_IO", "cannot read valid UTF-8 content: " + name);
 		} finally {
 			if (fd !== undefined) closeSync(fd);
 		}
