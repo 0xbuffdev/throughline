@@ -18,7 +18,8 @@ const FIELDS = [
 ];
 
 export function verifyReleaseApproval({ comment, manifest, id }) {
-	assert(/^[1-9]\d{0,19}$/.test(String(id)), "GitHub numeric issue-comment ID required");
+	assert(/^[1-9]\d{0,19}$/.test(String(id)) &&
+		Number.isSafeInteger(Number(id)), "Safe GitHub numeric issue-comment ID required");
 	assert.equal(comment.id, Number(id), "Release acceptance comment ID mismatch");
 	assert(comment.user && comment.user.type === "User", "A human GitHub user must attest");
 	assert(["OWNER", "MEMBER", "COLLABORATOR"].includes(comment.author_association),
