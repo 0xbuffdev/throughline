@@ -127,7 +127,47 @@ try {
 	assert(await page.getByRole("region", { name: "State and event table" }).isVisible());
 	const state = await page.getByRole("region", { name: "State and event table" }).textContent();
 	assert.match(state, /Modeled call stack/);
+	// TL-U18: the *packed* SSR-hydrated consumer must stay navigable in the
+	// smallest supported embed, not merely at a desktop-friendly viewport.
+	const widthEvidence = [];
+	for (const width of [260, 320, 375]) {
+		await page.setViewportSize({ width, height: 850 });
+		const measurements = await page.evaluate(() => {
+			const node = document.querySelector(".thl-v2");
+			return {
+				viewport: innerWidth,
+				documentWidth: document.documentElement.scrollWidth,
+				playerWidth: node?.clientWidth ?? -1,
+				playerScrollWidth: node?.scrollWidth ?? -1,
+			};
+		});
+		assert.equal(measurements.viewport, width);
+		assert(measurements.playerWidth > 0, "Native packed player lost its visible container");
+		assert(measurements.playerScrollWidth <= measurements.playerWidth + 2,
+			"Packed player overflows at " + width + " CSS px: " + JSON.stringify(measurements));
+		assert(await page.getByRole("status").isVisible() ||
+			await page.getByRole("group", { name: "Visualization player" }).isVisible(),
+			"Named player unavailable at " + width + " CSS px");
+		widthEvidence.push(measurements);
+	}
+	// Text scaling is *not* an actual browser 200%/400% zoom or human AT
+	// verification. It is an additional automated readability smoke check.
+	await page.setViewportSize({ width: 1280, height: 850 });
+	const zoomEvidence = [];
+	for (const scale of ["200%", "400%"]) {
+		await page.evaluate(value => { document.documentElement.style.fontSize = value; }, scale);
+		assert(await page.getByRole("group", { name: "Visualization player" }).isVisible(),
+			"Player inaccessible at " + scale + " text scale");
+		assert(await page.getByRole("button", { name: "Step back" }).isVisible(),
+			"Playback action inaccessible at " + scale + " text scale");
+		zoomEvidence.push({ textScale: scale, verifiedNamedControls: true });
+	}
+	await page.evaluate(() => { document.documentElement.style.fontSize = ""; });
 	assert.deepEqual(errors, [], "Browser hydration/console failures occurred");
+	console.log("TL_U18_PACKED_ACCESSIBILITY " + JSON.stringify({
+		suite: "independently packed Chromium SSR/hydration",
+		widthEvidence, zoomEvidence, note: "text scaling is not native browser zoom or screen-reader testing",
+	}));
 	console.log("Packed v2 browser consumer passed SSR hydration, mobile CSS, keyboard, touch, state-table and public-export gates.");
 } finally {
 	await context?.close();
