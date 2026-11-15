@@ -18,19 +18,17 @@ or application-specific runtime.
 ## Schema-2 engine and universal authoring (unreleased source)
 
 The accepted architecture replaces domain-tagged fences with one `thl` authoring
-surface and a schema-2 evidence-aware artifact. **TL-U02 added strict
-validation; TL-U03 added deterministic atomic replay; TL-U04 added indexed
-`inspectTrace` queries; TL-U05 added source-linked graph projection
-and native `ThroughlineGraphPlayer`; TL-U06 adds the evidence-aware message
-sequence projection and accessible timeline; TL-U07 adds the pure
-`projectInspection` query and native Explain/Inspect interface; TL-U08
-introduces one strict schema-2 `thl` fence with reviewed prose materialization;
-**TL-U09 replaces public reference examples with four tested typed artifacts and matched comprehension baselines.**
+surface and a schema-2 evidence-aware artifact. TL-U02–U04 delivered
+strict validation, atomic replay and indexed inspection. TL-U05–U07 added
+source-linked graph/sequence/state-table projection and Explain/Inspect UI.
+TL-U08 introduced the single `thl` authoring contract. **TL-U09 now supplies
+four typed, independently checked references with matched static comprehension
+baselines.**
 
 **The new Remark/MDX `thl` route is schema 2 only**, with native
 `ThroughlineEmbed` using `artifactJson`. No domain-tagged fence or v1 source
 bridge is accepted by that route. Internal schema-1 code remains as temporary
-source scaffolding pending independent U09/U10 migration—not as a maintained
+source scaffolding pending independent U10 migration—not as a maintained
 compatibility contract. Pure consumers use `compileArtifact` and the dedicated
 `ThroughlineGraphPlayer`. Sequence, graph and Inspect share the same playback
 frame and source selection. The release requires the remaining acceptance gates.
