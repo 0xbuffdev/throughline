@@ -1,33 +1,6 @@
-/** Pure authoring and compilation API. The optional renderer lives at ./react. */
-export { parseProgram } from "./authoring.js";
-export { compileProgram, validateProgram } from "./compiler.js";
-export { describeFrame } from "./describe.js";
-export { compile, compileAst, SUPPORTED_DOMAINS } from "./domains/registry.js";
-export type { DomainName } from "./domains/types.js";
-export { parseThl, type ThlBlock } from "./dsl.js";
-export { COMPILATION_LIMITS } from "./limits.js";
-export type {
-	Beat,
-	Diagnostic,
-	Entity,
-	Event,
-	Frame,
-	GroupLayout,
-	Program,
-	Relation,
-	SceneGroup,
-	Snapshot,
-	SourceLocation,
-	Trace,
-	Value,
-	View,
-} from "./model.js";
-export { ProgramError } from "./model.js";
-export { type StepApi, type Tracer, tracer } from "./tracer.js";
-
+/** Pure schema-2 Throughline core. No legacy domain compiler or React imports. */
 /**
- * Schema-2 semantic artifact boundary (TL-U02). The v1 compiler/player
- * migration is deliberately separate work in TL-U03–TL-U10.
+ * Schema-2 semantic artifact boundary (TL-U02). The previous domain-tagged parser is not a public API.
  */
 export {
 	ARTIFACT_LIMITS,
@@ -45,6 +18,7 @@ export type {
 	PresenceChange,
 	TraceInspector,
 	WriteChange,
+	Entity,
 	Entity as V2Entity,
 	EventBase,
 	Group,
@@ -54,6 +28,7 @@ export type {
 	OriginKind,
 	Path,
 	QueryCell,
+	Relation,
 	Relation as V2Relation,
 	SemanticEvent,
 	Step,
