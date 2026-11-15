@@ -66,6 +66,10 @@ jobs:
           git merge-base --is-ancestor HEAD origin/main || { echo "Tagged commit is not on main"; exit 1; }
           git cat-file -e HEAD:.github/workflows/publish.yml
 
+      - name: Bind release evidence to the exact checked-out signed tag commit
+        shell: bash
+        run: echo "THL_SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
       - uses: pnpm/action-setup@v6
         name: Set up pinned pnpm
       - uses: actions/setup-node@v6
@@ -107,20 +111,14 @@ jobs:
           pnpm preview:typecheck
           pnpm preview:build
       - name: Compiler, release performance and hostile-input tests
-        env:
-          THL_SOURCE_SHA: ${{ github.sha }}
         run: pnpm test:run
       - name: Verify exact-tag quality evidence
-        env:
-          THL_SOURCE_SHA: ${{ github.sha }}
         run: node scripts/verify-release-evidence.mjs
       - name: Install Chromium
         run: pnpm exec playwright install --with-deps chromium
       - name: Browser tests
         run: pnpm test:browser:run
       - name: Record Chromium verification
-        env:
-          THL_SOURCE_SHA: ${{ github.sha }}
         run: node scripts/record-browser-evidence.mjs chromium
       - name: Build typed ESM distributable
         run: pnpm build
