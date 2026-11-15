@@ -16,8 +16,7 @@ function withThroughline(options) {
 }
 const markdown = [
   "# Bundler trace integration", "",
-  "~~~thl flow", 'node counter "Counter" = 0',
-  'step "Increment"', "  set counter = 1", "~~~",
+  "~~~thl", JSON.stringify({"schemaVersion":2,"id":"host","origins":[{"id":"author","kind":"authored"}],"entities":[{"id":"counter","label":"Counter"}],"relations":[],"initialState":{"counter":{"status":"known","value":0}},"steps":[{"id":"advance","label":"Advance","events":[{"id":"w","originId":"author","type":"write","entityId":"counter","path":[],"value":{"status":"known","value":1}}]}]}), "~~~",
   "", "~~~js", "let untouched = true;", "~~~",
 ].join("\n");
 
@@ -43,7 +42,7 @@ assert.doesNotMatch(untouchedHtml, /Visualization player/);
 
 await assert.rejects(
   () => bundleMDX({
-    source: "~~~thl flow\ninvalid\n~~~",
+    source: "~~~thl\n{bad\n~~~",
     mdxOptions: withThroughline,
   }),
   /invalid|Expected|Unknown/i,
