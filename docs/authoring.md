@@ -1,54 +1,97 @@
-# Throughline adapter authoring guide
+# Authoring schema-2 reference models
 
-How to add a computed domain. Copy `binary.ts` (simplest) or
-`bindings.ts` (dynamic topology on static edges); keep the adapter
-~100 lines plus tests.
+Throughline's authoring system has one semantic artifact and one code-fence
+language. It does not register special \`flow\`, \`binary\`, \`matrix\` or
+\`callstack\` parsers. New examples are typed authored data, not executable
+domain-specific syntax.
 
-## Recipe
+## Define an artifact
 
-1. **Syntax.** Define 2–5 lines of params in the fence body, e.g.
-   `a = 1011`. Iterate them with `sourceLines(ast)` (blank lines and `#`
-   comments skipped without shifting the original fence-relative numbers).
-2. **Parse: `parseX(ast: ThlBlock): Params`.** Validate everything and throw
-   `ProgramError([{ message, line }])` — these fail the build with the
-   same rendering as grammar errors. Parse never computes.
-3. **Build: `buildX(params: Params): Program`.** Run the ordinary
-   algorithm and narrate it with `tracer()`: `node`/`link` declarations
-   first, then one `step(label, body)` per micro-step using
-   `set`/`focus`/`send`/`note`. Use `group(name, "row" | "column" | "tree")`
-   to arrange a set of nodes. `tracer().get()` reads live state
-   between steps. Validate by compiling: `compileProgram` enforces
-   unknown targets, conflicting writes, and value shapes.
-4. **Register.** Add the name to `DomainName` (`domains/types.ts`),
-   `SUPPORTED_DOMAINS`, and the `COMPUTED` dispatch table
-   (`domains/registry.ts`), all re-exported from the package index.
-5. **Document.** Add a catalog entry: syntax, params, exactly which
-   micro-steps it emits, a minimal example, and its limits.
+Use \`VisualArtifact\` with \`schemaVersion: 2\`, declared origins, entities,
+relations, initial cells and ordered steps of explicit events.
 
-## Staging rules
+~~~ts
+import type { VisualArtifact } from "@0xbuff/throughline";
+import { compileArtifact, inspectTrace, serializeArtifact } from "@0xbuff/throughline";
 
-The two staging rules live in `grammar.md` (one idea per beat;
-`send` does not mutate) and bind computed adapters too. Two
-adapter-specific additions:
-- **Stable identities, changing visibility.** Predeclare nodes and links;
-  future objects and inactive references start with `hidden: true`.
-  Use `show("node", id)` / `hide("node", id)` and their `"link"` equivalents
-  to describe the current structure. Rebinding hides the previous reference
-  and shows its replacement in one step. A transfer cannot use a hidden link
-  or endpoint. Reserving layout space does not require showing future objects.
-- **One source line = one beat** where the domain has source lines
-  (`bindings`); otherwise one computation step = one beat (`binary`
-  bits, `matrix` cells, `callstack` pushes/pops).
+const artifact: VisualArtifact = {
+  schemaVersion: 2,
+  id: "counter",
+  origins: [{ id: "author", kind: "authored" }],
+  entities: [{ id: "counter", label: "Counter" }],
+  relations: [],
+  initialState: { counter: { status: "known", value: 0 } },
+  steps: [{
+    id: "increment",
+    label: "Increment",
+    note: "The counter is explicitly written to 1.",
+    events: [{
+      id: "counterWrite",
+      originId: "author",
+      type: "write",
+      entityId: "counter",
+      path: [],
+      value: { status: "known", value: 1 }
+    }]
+  }]
+};
 
-## Tests (same change, no exceptions)
+const trace = compileArtifact(artifact);
+console.log(inspectTrace(trace).valueAt(1, "counter"));
+const strictJson = serializeArtifact(trace.artifact);
+~~~
 
-- Parse: happy path plus every error branch (missing/duplicate/bad
-  operand, out-of-range) asserting the `/Line N/` message.
-- Build: beat labels in order, final entity values, at least one
-  transfer assertion, and one failure/edge case (zero carry, rebind,
-  1×1 grid, depth 1).
-- Registry: one routing test per domain in `__tests__/registry.test.ts`.
-- From this standalone package root, run `pnpm test:run` and
-  `pnpm typecheck`, plus browser tests for interactive changes.
-  Avoid `describe.only`, `test.only`, and skipped tests; current CI
-  does not automatically reject them.
+An event may be a \`write\`, \`topology\` change, \`message\` phase or
+non-persistent \`observation\`. A message never mutates persistent state
+on its own. Observations never imply writes. For any external system
+claim, declare what is authored, simulated or actually observed and
+identify the evidence or knowledge that is missing.
+
+## Build a first-party reference
+
+1. Add a typed example to \`src/reference/\`, using the shared
+   \`ReferenceExample\` type from \`reference/model.ts\`.
+2. Include an explicit, bounded initial state; every meaningful
+   transition should have a stable event ID, descriptive step label,
+   truthful note and declared origin.
+3. Supply a **matched static explanation**, comprehension questions,
+   expected answers, cited event IDs and evidence caveats. These are
+   the baseline materials for future user studies; do not claim
+   measured improvements without evidence.
+4. Export the reference in \`src/examples.ts\` so Node, Markdown and
+   the development preview all consume the same semantic source.
+5. Write independent truth assertions. For arithmetic, recompute
+   expected values outside the view. For networks, check send,
+   received, processed and persistent writes separately.
+6. Run validation, compilation, queries, and graph/sequence/state-table
+   projections at initial, middle and final frames. Verify source
+   IDs and deterministic canonical JSON. The same modeled facts
+   must survive switching views and seeking.
+7. Run the package's full TypeScript, pure, browser and packed-host
+   verification. The CI harness checks both source-only and React
+   environments.
+
+A special matrix renderer, voice provider or code interpreter is **not**
+required to model matrix or stack facts. Specialized visual providers
+must be reviewed separately; their existence must not change or fabricate
+the canonical artifact.
+
+## Author the model in Markdown
+
+Use an unqualified \`thl\` fence. An object opening brace selects a
+**strict schema-2 JSON artifact**, compiled offline. Any other nonempty
+body is **inert prose**, requiring a trusted, reviewed and hash-matched
+sidecar artifact at build time. Prose cannot compile in the pure core,
+and the engine never calls an AI provider to guess a diagram.
+
+See [syntax and data contract](grammar.md) and
+[host integration and reviewed materialization](framework-integrations.md).
+The filesystem-confined CLI operations are separately gated under TL-U10.
+
+## Review questions
+
+Ask whether the example states exactly what is known, whether a derived
+result has an independent oracle, whether any drawn link is being mistaken
+for an actual side effect, and whether the text distinguishes authored
+assumptions from verified external evidence. Reject a reference that
+fails these checks even if its diagram looks plausible.
