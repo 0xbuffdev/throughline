@@ -1,10 +1,12 @@
-# Schema-2 semantic runtime, indexed queries and native graph (TL-U02–U05)
+# Schema-2 semantic runtime and graph/sequence views (TL-U02–U06)
 
 The schema-2 validator, deterministic compiler and indexed inspector implement
 the pure semantic foundation. TL-U05 adds the native graph projection and React
-player without a v1 adapter. The preexisting schema-1 Markdown parser and player
-remain separate while TL-U06–TL-U10 deliver sequence, full Inspect UI, one-fence
-authoring and integrations. No backward-compatibility promise is made.
+player; TL-U06 adds the source-linked sequence projection, accessible evidence
+timeline and deterministic all-three-view selection without a v1 adapter.
+The preexisting schema-1 Markdown parser and player remain separate while
+TL-U07–TL-U10 deliver full Inspect/history UI, one-fence authoring and host
+integrations. No backward-compatibility promise is made.
 Normative authority: Throughline Specification 0004 §§10–13 (maintainer-owned architecture record).
 
 ## Public data boundary
@@ -322,14 +324,16 @@ opaque parent backgrounds covering child labels. The pure edge router is
 reused from the existing layout module; there is no adapter through legacy
 `Program.version:1`.
 
-**Fallback while building all three views:** Explicit `graph` uses the
-implemented source-linked graph; graph-incompatible requests and unsupported
-`sequence` requests receive a truthful state/event table and an explicit
-diagnostic. An auto-selection that requires a not-yet-implemented sequence
-view likewise chooses the table, **not** a fabricated graph. TL-U06 delivers
-the sequence projector; TL-U07 delivers the complete Inspect/history UI and
-view-navigation experience. Later tickets implement stable view switching
-from authoring hints across the complete supported three-view set.
+**Three view descriptors:** `graph`, `sequence`, and `state-table`
+are implemented. Explicit incompatible `sequence` requests (no message
+events anywhere in the validated artifact) and graph-incompatible requests
+return the honest state/event table with a diagnostic. Omitted `kind` uses
+the entire immutable artifact to pick valid implemented author hints by
+ascending priority, tie-breaking `sequence > graph > state-table`; without
+a compatible hint, any authored message event chooses sequence, else a
+modeled-present graph link chooses graph, else state-table. Seeking never
+silently switches the automatically selected view.
+TL-U07 delivers full Inspect/history UI and guided evidence navigation.
 
 **Native React:** `ThroughlineGraphPlayer` is exported solely from
 `@0xbuff/throughline/react`, consuming `CompiledTrace` directly. It reuses
@@ -352,6 +356,75 @@ are release evidence gates on the source PR, not substitute claims of human
 understanding. Near-cap 200-entity/1000-relation layout tests record hardware
 and a fixture SHA-256; timings are observations, not portable SLAs.
 
+## TL-U06 — Cumulative, explicit message sequence evidence
+
+`projectView(inspector, { kind: "sequence", frameIndex })` now returns a
+pure, frozen `ViewDescriptor` backed by the **same compiler-owned inspector**
+used by graph and state-table. The sequence is cumulative only through the
+selected committed frame, ordered by authored step and event order. No
+unselected future evidence leaks into a past frame. This is **not** a
+reconstruction of verified network chronology or an inference of causal
+edges.
+
+The sequence contains three kinds of source-linked items:
+
+- **Actor `role:"entity"`:** a declared endpoint of a message modeled by
+  the selected frame, with its exact source entity ID, `selected` flag and
+  modeled **presence at the selected frame**. Absence at that frame is not a
+  claim about the actor's presence when an earlier event was recorded.
+- **Message correlation `role:"value"`:** a deterministic summary for each
+  message ID, on its validated declared relation. It retains all contributing
+  explicit event IDs, both endpoint IDs and the relation ID. The `data.phases`
+  object counts independent `sent`, `received`, `acknowledged`, and
+  `processed` events, including separately authored duplicates. Missing
+  phases appear as `unmodeledPhases`, **never** a fabricated missing event or
+  proof of lost/delivered/acknowledged messages.
+- **Timeline `role:"event"`:** all explicitly authored message, write,
+  observation and topology facts through the frame, preserving source
+  event/entity/relation IDs, frame/step IDs, origin ID/kind and original
+  authored order. Message rows point to their declared relation endpoints.
+  Non-message facts do not receive a message phase. When a non-`sent` phase
+  appears without an earlier modeled `sent` for that message ID, the row
+  flags an **evidence gap**, not proof no send occurred. The validator rejects
+  the same message ID on unrelated relations.
+
+**Distributed retry example:** The reference test fixture
+`src/__tests__/v2-sequence-fixture.ts` explicitly models an initial send,
+a received/processed report, an observation of missing acknowledgement,
+a separate timeout **write**, a distinct retry send/receipt/acknowledgement,
+an orphan acknowledged import and a repeated receipt. The initial
+acknowledgement stays *unmodeled*; the timeout is a state/observation
+fact, not a fifth message phase. Message phases never mutate the receiver
+cell. The only causality modeled is explicitly declared `dependsOn` (e.g.
+retry depends on the prior timeout write), not arbitrary temporal adjacency.
+
+~~~ts
+const inspector = inspectTrace(compileArtifact(retryCheckout()));
+const beforeRetry = projectView(inspector, { kind: "sequence", frameIndex: 4 });
+const afterRetry = projectView(inspector, { kind: "sequence", frameIndex: 7 });
+// beforeRetry reports original acknowledgement as unmodeled;
+// afterRetry reports a modeled acknowledgement for the retry ID only.
+// retryCheckout() is the example artifact from the cited test fixture.
+~~~
+
+**Native player:** `ThroughlineGraphPlayer` supports `initialView="sequence"`
+or a Sequence selection in Player options. Frame playback, keyboard seeking
+and selected **source entity ID** are shared with Graph and State table.
+The accessible sequence region includes actor selection, message-ID phase
+summaries and a literal event table with step, source event, message ID,
+declared endpoints, phase/evidence type and declared origin. The browser
+renders the latest 120 event rows initially and provides **Show earlier
+evidence** to progressively reveal all older rows; summaries count the
+complete modeled prefix. Render pagination does not prune the pure
+descriptor or invent evidence. The view remains readable on a narrow host,
+and HTML is React-escaped inert text, not executable content.
+
+The accepted resource ceiling remains 2,000 steps and 10,000 events.
+A pure near-limit benchmark records SHA-256, runner hardware, runtime and
+measurement for the full sequence descriptor; results are evidence for that
+runner, never a portable render/latency SLA. The full history/diff/claim
+navigation UI remains TL-U07.
+
 ## Acceptance and deferred replay checks
 
 TL-U02 tests positive recursion/matrix/checkout-shaped artifacts and rejects
@@ -359,7 +432,7 @@ broken cross-references, malformed and duplicate JSON, invalid paths, dates,
 cycles, unsafe input, depth/count/byte/work-limit breaches and mutation leaks.
 TL-U03 adds atomic replay, no-false-persistence and endpoint-presence
 checks, deterministic checkpoint/mutation tests and expanded-budget rejection.
-TL-U05 adds the graph, diagnosed fallback and native v2 player. Sequence,
-full Inspect history UI, unified authoring and packed-host migration remain
-TL-U06–TL-U10 work. Test and release evidence must be recorded from real CI,
+TL-U05 added the graph and native v2 player; TL-U06 added sequence
+and deterministic auto-view selection. Full Inspect/history UI, unified
+authoring and packed-host migration remain TL-U07–TL-U10 work. Test and release evidence must be recorded from real CI,
 not assumed from documentation alone.
