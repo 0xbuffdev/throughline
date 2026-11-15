@@ -2,46 +2,33 @@ import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import Markdown, { RuleType } from "markdown-to-jsx/react";
+import { resolveThlBody, serializeArtifact } from "@0xbuff/throughline";
 import { ThroughlineEmbed } from "@0xbuff/throughline/react";
 
-/**
- * markdown-to-jsx does not run Remark. Adapt its own codeBlock rule using
- * the shared, bounded Throughline source bridge. The domain lives in the
- * first body line because non-Unified parsers may discard fence metadata.
- */
+// This host does not run Remark. It validates the exact code-block body
+// through the same pure universal thl contract, without domain routing.
 const options = {
   renderRule(next, node, _renderChildren, state) {
-    if (node.type !== RuleType.codeBlock) return next();
-    if (node.lang !== "thl") return next();
-    const source = String(node.text ?? "");
-    if (!/^thl (?:flow|bindings|binary|matrix|callstack)\r?\n/.test(source)) {
-      throw new Error(
-        "A markdown-to-jsx thl block must begin with 'thl <domain>' on its first body line.",
-      );
-    }
-    return createElement(ThroughlineEmbed, { key: state.key, source });
+    if (node.type !== RuleType.codeBlock || node.lang !== "thl") return next();
+    const artifactJson = serializeArtifact(resolveThlBody(String(node.text ?? "")));
+    return createElement(ThroughlineEmbed, { key: state.key, artifactJson });
   },
 };
-const markdown = [
-  "# Markdown-to-JSX trace integration", "",
-  "~~~thl", "thl binary", "a = 1011", "b = 0110", "~~~",
+const artifact = JSON.stringify({"schemaVersion":2,"id":"markdown","origins":[{"id":"author","kind":"authored"}],"entities":[{"id":"counter","label":"Counter"}],"relations":[],"initialState":{"counter":{"status":"known","value":0}},"steps":[{"id":"next","label":"Increment","events":[{"id":"w","originId":"author","type":"write","entityId":"counter","path":[],"value":{"status":"known","value":1}}]}]});
+const markdown = ["# Markdown-to-JSX trace integration", "",
+  "~~~thl", artifact, "~~~",
   "", "~~~js", "const unaffected = true;", "~~~",
 ].join("\n");
 const html = renderToString(createElement(Markdown, { options, children: markdown }));
 assert.match(html, /Visualization player/);
 assert.match(html, /Markdown-to-JSX trace integration/);
 assert.match(html, /const unaffected = true;/);
-const untouchedMarkdown = [
-  "# Unchanged MDX content", "", "Plain Markdown without Throughline fences.", "",
+const untouchedMarkdown = ["# Unchanged Markdown", "", "Plain Markdown without Throughline fences.", "",
   "~~~js", "const stillPlain = true;", "~~~",
 ].join("\n");
 const untouchedHtml = renderToString(createElement(Markdown, { options, children: untouchedMarkdown }));
 assert.match(untouchedHtml, /stillPlain = true/);
 assert.doesNotMatch(untouchedHtml, /Visualization player/);
-
-assert.throws(
-  () => renderToString(createElement(Markdown, {
-    options, children: "~~~thl\nthl flow\ninvalid\n~~~",
-  })),
-  /invalid|Expected|Unknown/i,
-);
+assert.throws(() => renderToString(createElement(Markdown, {
+  options, children: "~~~thl\n{bad\n~~~",
+})), /invalid|THL_ARTIFACT/i);

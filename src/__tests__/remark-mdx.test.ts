@@ -1,96 +1,84 @@
 import { describe, expect, it } from "vitest";
 import { remarkThroughline } from "../remark/index.js";
+import { artifactSha256, sha256Text, type VisualArtifact } from "../index.js";
 
-type MdNode = {
-	type: string;
-	lang?: string | null;
-	meta?: string | null;
-	value?: string;
-	name?: string | null;
+const artifact = (): VisualArtifact => ({
+	schemaVersion: 2, id: "demo", origins: [{ id: "o", kind: "authored" }],
+	entities: [{ id: "node", label: "Node" }], relations: [],
+	initialState: { node: { status: "known", value: 0 } }, steps: [],
+});
+const json = () => JSON.stringify(artifact());
+type Node = {
+	type: string; lang?: string | null; meta?: string | null; value?: string;
+	children?: Node[]; name?: string | null;
 	attributes?: Array<{ type: "mdxJsxAttribute"; name: string; value: string }>;
-	children?: MdNode[];
 	position?: { start: { line: number; column: number } };
 };
-const flow = 'node counter "Counter" = 0\nstep "Read"\n  focus counter';
-const code = (body: string, meta = "flow"): MdNode => ({
-	type: "code",
-	lang: "thl",
-	meta,
-	value: body,
-	position: { start: { line: 4, column: 3 } },
+const code = (value: string, line = 1): Node => ({
+	type: "code", lang: "thl", value,
+	position: { start: { line, column: 1 } },
 });
 const file = {
+	path: "lessons/demo.mdx",
 	fail: (reason: string): never => { throw new Error(reason); },
 };
 
-describe("remarkThroughline MDX mode", () => {
-	it("replaces only trace fences with literal source attributes and preserves positions", () => {
-		const original = code(flow);
-		const untouched = { type: "code", lang: "ts", value: "const a = 1" };
-		const tree: MdNode = {
-			type: "root",
-			children: [
-				{ type: "heading", children: [{ type: "text", value: "Example" }] },
-				{ type: "blockquote", children: [original] },
-				untouched,
-				code("a = 1\nb = 1", "binary"),
-			],
-		};
-		remarkThroughline({ mode: "mdx" })(tree as { type: string; children: MdNode[] }, file);
-		const nested = tree.children![1].children![0];
-		expect(nested).toMatchObject({
-			type: "mdxJsxFlowElement",
-			name: "ThroughlineEmbed",
-			attributes: [{ type: "mdxJsxAttribute", name: "source", value: "thl flow\n" + flow }],
-			children: [],
-			position: original.position,
-		});
-		expect(tree.children![2]).toBe(untouched);
-		expect(tree.children![3]).toMatchObject({
-			type: "mdxJsxFlowElement",
-			attributes: [{ value: "thl binary\na = 1\nb = 1" }],
-		});
-	});
-
-	it("holds quotes, JSX, braces, script text, backticks and newlines as literal data", () => {
-		const injection = [
-			'</script><script>alert("bad")</script>',
-			'{globalThis.__throughlineInjected = true}',
-			String.fromCharCode(96) + "code" + String.fromCharCode(96),
-			"line\\nmore",
-		].join(" ");
-		const body = flow + "\n  note " + JSON.stringify(injection);
-		const tree: MdNode = { type: "root", children: [code(body)] };
-		remarkThroughline({ mode: "mdx" })(tree as { type: string; children: MdNode[] }, file);
-		const node = tree.children![0];
-		expect(node.attributes).toEqual([
-			{ type: "mdxJsxAttribute", name: "source", value: "thl flow\n" + body },
-		]);
-		expect(node.attributes![0].value).toContain(injection.slice(0, 9));
-		expect(node.attributes!.every((attr) => typeof attr.value === "string")).toBe(true);
-	});
-
-	it("never partially transforms a document if a later fence fails", () => {
-		const tree: MdNode = { type: "root", children: [code(flow), code("invalid")] };
-		const before = structuredClone(tree);
-		expect(() =>
-			remarkThroughline({ mode: "mdx" })(tree as { type: string; children: MdNode[] }, file),
-		).toThrow(/Expected node/);
-		expect(tree).toEqual(before);
-	});
-
-	it("accepts a custom component identifier and rejects invalid names and options", () => {
-		const tree: MdNode = { type: "root", children: [code(flow)] };
-		remarkThroughline({ mode: "mdx", componentName: "CustomTrace_2" })(
-			tree as { type: string; children: MdNode[] },
-			file,
-		);
-		expect(tree.children![0].name).toBe("CustomTrace_2");
-		for (const name of ["div", "Trace.Part", "Bad-Name", "Trace{value}", "", "A".repeat(129)]) {
-			expect(() => remarkThroughline({ mode: "mdx", componentName: name }))
-				.toThrow(/componentName/);
+describe("TL-U08 inert MDX host projection", () => {
+	it("replaces only validated thl nodes, using literal schema-2 artifacts", () => {
+		const original = code(json(), 4);
+		const unrelated: Node = { type: "code", lang: "javascript", value: "const a = 1" };
+		const tree: Node = { type: "root", children: [
+			{ type: "blockquote", children: [original] }, unrelated, code(json(), 9),
+		] };
+		remarkThroughline({ mode: "mdx" })(tree as { type: string; children: Node[] }, file);
+		for (const node of [tree.children![0].children![0], tree.children![2]]) {
+			expect(node.type).toBe("mdxJsxFlowElement");
+			expect(node.name).toBe("ThroughlineEmbed");
+			expect(node.attributes![0].name).toBe("artifactJson");
+			expect(JSON.parse(node.attributes![0].value)).toEqual(JSON.parse(json()));
 		}
+		expect(tree.children![1]).toBe(unrelated);
+		expect(tree.children![0].children![0].position).toEqual(original.position);
+	});
+
+	it("renders dangerous looking authored text as an inert string", () => {
+		const source = artifact();
+		source.title = "</script>{globalThis.__injected=true}";
+		const tree: Node = { type: "root", children: [code(JSON.stringify(source))] };
+		remarkThroughline({ mode: "mdx" })(tree as { type: string; children: Node[] }, file);
+		const attribute = tree.children![0].attributes![0];
+		expect(attribute.name).toBe("artifactJson");
+		expect(typeof attribute.value).toBe("string");
+		expect(attribute.value).toContain("__injected");
+	});
+
+	it("never partly transforms a document when a later fence fails", () => {
+		const tree: Node = { type: "root", children: [code(json()), code("unresolved")] };
+		const original = structuredClone(tree);
+		expect(() => remarkThroughline({ mode: "mdx" })(tree as { type: string; children: Node[] }, file)).toThrow(/THL_UNRESOLVED/);
+		expect(tree).toEqual(original);
+	});
+
+	it("counts ordinal among thl nodes only for reviewed prose", () => {
+		const intent = "Explain explicit changes";
+		const tree: Node = { type: "root", children: [
+			code(json()), { type: "code", lang: "math", value: "x^2" }, code(intent),
+		] };
+		remarkThroughline({ mode: "mdx", manifest: { version: 1, entries: [{
+			document: "lessons/demo.mdx", ordinal: 1,
+			intentSha256: sha256Text(intent), artifactPath: "artifacts/demo.json",
+			artifactSha256: artifactSha256(artifact()), review: "reviewed",
+		}] }, loadArtifact: () => json() })(tree as { type: string; children: Node[] }, file);
+		expect(tree.children![2].attributes![0].name).toBe("artifactJson");
+	});
+
+	it("validates custom component names and option keys", () => {
+		const tree: Node = { type: "root", children: [code(json())] };
+		remarkThroughline({ mode: "mdx", componentName: "CustomTrace_2" })(tree as { type: string; children: Node[] }, file);
+		expect(tree.children![0].name).toBe("CustomTrace_2");
+		for (const name of ["div", "Trace.Part", "Bad-Name", "Trace{value}", "", "A".repeat(129)])
+			expect(() => remarkThroughline({ mode: "mdx", componentName: name })).toThrow(/componentName/);
 		expect(() => remarkThroughline({ mode: "validate", componentName: "Bad" } as never))
-			.toThrow(/mode/);
+			.toThrow(/options/);
 	});
 });

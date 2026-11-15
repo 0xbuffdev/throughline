@@ -1,12 +1,12 @@
-# Schema-2 runtime, graph/sequence views and Explain/Inspect (TL-U02–U07)
+# Schema-2 runtime, Explain/Inspect and universal authoring (TL-U02–U08)
 
 The schema-2 validator, deterministic compiler and indexed inspector implement
 the pure semantic foundation. TL-U05 adds the native graph projection and React
 player; TL-U06 adds the source-linked sequence projection, accessible evidence
 timeline and deterministic all-three-view selection without a v1 adapter.
-The preexisting schema-1 Markdown parser and player remain separate while
-TL-U07–TL-U10 deliver full Inspect/history UI, one-fence authoring and host
-integrations. No backward-compatibility promise is made.
+TL-U07 delivers Explain/Inspect, and TL-U08 introduces a schema-2-only,
+single-fence Markdown/MDX bridge. Historical schema-1 source remains separate
+until U09/U10 remove the unused scaffolding; it is not a compatibility promise.
 Normative authority: Throughline Specification 0004 §§10–13 (maintainer-owned architecture record).
 
 ## Public data boundary
@@ -102,6 +102,52 @@ charges its lexical traversal against the same per-read budget. Typed reference
 checks are further bounded by the fixed structural ceilings. The limits are
 independent ceilings: approaching one can make another impossible to reach.
 
+
+## TL-U08 — Universal authoring trust boundary
+
+The only recognized Markdown language is unqualified thl, with no metadata.
+The first non-whitespace character is the disjoint selector: an opening brace
+is strict schema-2 JSON (duplicate keys and unsupported envelope versions
+fail); everything else is inert descriptive intent. Blank blocks fail.
+Intent has a 262,144-unit UTF-16 source limit. JSON has the same strict
+4 MiB UTF-8 artifact and semantic compiler budgets as the typed API.
+Invalid JSON never becomes an AI request or a placeholder diagram.
+
+~~~ts
+import {
+  parseIntentBlock, parseThlBody, resolveThlBody,
+  validateSidecarManifest, artifactSha256, sha256Text,
+} from "@0xbuff/throughline";
+import { remarkThroughline } from "@0xbuff/throughline/remark";
+
+// Pure: no React, provider SDK, environment secret or network:
+const parsed = parseThlBody(sourceBody);
+const checked = resolveThlBody(sourceBody); // for schema-2 JSON
+// In a trusted authoring host, reviewed prose additionally supplies
+// { document, ordinal, manifest, loadArtifact }.
+~~~
+
+Source locators pair a repository-relative POSIX document path, a zero-based
+thl-only mdast ordinal and SHA-256 of its code-node body after CRLF/CR → LF
+normalization. Normalization preserves all other whitespace. The version-1
+sidecar has exactly {version,entries}; entries contain document, ordinal,
+intentSha256, artifactPath, artifactSha256 and review. Both hashes are exact
+64-character lowercase hexadecimal SHA-256. The artifact hash uses
+serializeArtifact of the validated artifact, independent of input object
+property order. Unreviewed artifacts, wrong hashes, missing entries,
+duplicate locators, encoded traversal and invalid artifacts fail closed.
+Hosts own the content-root path checks, symlink confinement and trusted
+synchronous loader; core neither accesses local files nor sends network
+requests. No resolver can silently self-approve its own content.
+
+The Remark bridge prevalidates the whole mdast. In explicit MDX mode it
+inserts only inert literal artifactJson for a host-registered ThroughlineEmbed
+React component, which parses and compiles into the native schema-2 player.
+No user text becomes an MDX expression. Unsupported ThroughlineDocument
+envelopes belong to TL-U21, not this milestone. Full CLI filesystem operations
+and packed publication gates belong to TL-U10. See
+[framework integration and reviewed authoring](framework-integrations.md).
+
 ## Serialization and migration
 
 Schema 2 is intentionally incompatible with v1 `Program.version: 1` and
@@ -109,14 +155,16 @@ Schema 2 is intentionally incompatible with v1 `Program.version: 1` and
 compiled frames and unknown versions. There is no implicit migration, coercion,
 legacy domain-tag compatibility or trust of an asserted `schemaVersion`.
 Source examples, authoring and the player migrate as separate reviewed work.
-The authoring and sidecar interface belongs to TL-U08/TL-U10. The future
+The pure authoring and reviewed sidecar contract is implemented in TL-U08;
+filesystem CLI integration belongs to TL-U10. The future
 `ThroughlineDocument`/`VisualPlan` envelope is **not** a schema-2
 `VisualArtifact`; TL-U21 explicitly owns that optional fidelity layer.
 
 `serializeArtifact` canonically sorts object keys, preserving all array
 orders and authored event IDs. It is stable across object insertion order.
-This is an artifact JSON serialization guarantee, **not** a published
-cryptographic digest contract. Externally serialized compiled traces remain inadmissible. Call
+TL-U08 additionally specifies SHA-256 over these canonical UTF-8 JSON bytes
+for reviewed sidecar artifact hashes. This is a documented **source-level
+contract**, not evidence that an unreleased package has been published. Externally serialized compiled traces remain inadmissible. Call
 `compileArtifact` with a validated artifact (which is revalidated at the compiler
 boundary) to reconstruct frames deterministically.
 
