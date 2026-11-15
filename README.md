@@ -23,8 +23,9 @@ validation; TL-U03 added deterministic atomic replay; TL-U04 added indexed
 `inspectTrace` queries; TL-U05 added source-linked graph projection
 and native `ThroughlineGraphPlayer`; TL-U06 adds the evidence-aware message
 sequence projection and accessible timeline; TL-U07 adds the pure
-`projectInspection` query and native Explain/Inspect interface; **TL-U08
-introduces one strict schema-2 `thl` fence with reviewed prose materialization.**
+`projectInspection` query and native Explain/Inspect interface; TL-U08
+introduces one strict schema-2 `thl` fence with reviewed prose materialization;
+**TL-U09 replaces public reference examples with four tested typed artifacts and matched comprehension baselines.**
 
 **The new Remark/MDX `thl` route is schema 2 only**, with native
 `ThroughlineEmbed` using `artifactJson`. No domain-tagged fence or v1 source
@@ -177,135 +178,142 @@ part of Inspect. Its exact model and provenance rules are documented in
 
 ## Features
 
-- **Author in Markdown:** write a `thl` code fence with explicit, named steps.
-- **Deterministic snapshots:** compile once, then seek through immutable
-  frames without re-running the authored program.
-- **Five supported domains:** hand-authored `flow`, reference `bindings`,
-  `binary` addition, `matrix` multiplication and recursive `callstack`.
-- **Remark validation and MDX output are optional:** validate fenced traces without changing Markdown, or emit registered React components from MDX.
-- **React is optional:** use the pure compiler from Node or other ESM
-  environments without loading React or browser globals.
-- **Accessible playback:** keyboard navigation, step captions, a state
-  inspector, reduced-motion support and explicit CSS/theme controls.
-- **Bounded by design:** source, state, event and expansion limits provide
-  predictable rejection rather than uncontrolled trace growth.
-- **Complex reference traces:** inspect keyed React reconciliation and a
-  distributed checkout with a lost acknowledgement, retry and recovery.
+- **One \`thl\` fence:** strict, offline schema-2 JSON or reviewed prose
+  materialization with hash-bound provenance. No old domain tags or
+  compatibility router in the new authoring surface.
+- **Evidence-aware steps:** explicit writes, modeled topology, independent
+  message phases, observations and traceable editorial claims.
+- **Deterministic replay and Inspect:** immutable frames, typed state,
+  history, diffs, event dependencies and missing-knowledge distinctions.
+- **Optional accessible React player:** responsive Graph, Sequence and
+  State-table views, keyboard controls, Explain/Inspect and optional narration.
+- **Four first-party typed references (TL-U09):** factorial(4), 2×2 matrix
+  multiplication, 4-bit binary addition and a **hypothetical** distributed
+  checkout/retry scenario. Every model includes a matched static explanation,
+  comprehension questions, expected answers and exact source-event IDs.
 
-## Installation
+The checkout reference does not assert a real provider's idempotency guarantee
+or conclude that missing acknowledgement evidence proves packet loss.
+References' mathematical truth and persistence order are independently tested.
+Matched questions are a baseline for future comprehension studies, not
+evidence of measured educational improvement.
 
-Install the package from npm:
+## Installation and version boundary
+
+Install the published package with:
 
 ~~~sh
 npm install @0xbuff/throughline
 ~~~
 
-For the optional React player, use React 19 and React DOM 19 in the
-consuming application:
+The package targets Node.js 24+ with ESM. The React 19 player is an
+optional peer; install React and React DOM in a rendering application:
 
 ~~~sh
 npm install react@^19 react-dom@^19
 ~~~
 
-The package targets Node.js 24 or later, uses ESM and ships TypeScript
-declarations. React is not required for the root compiler import.
+**The schema-2 examples and interfaces described here are source-level,
+unreleased changes.** The currently published 0.1.0 package does not
+automatically include them. They will be released only after the separate
+publication gates; do not assume this README is an assertion of npm delivery.
 
-## Quick start
-
-### Compile a trace
+## Quick start — use a typed reference
 
 ~~~ts
-import { compile } from "@0xbuff/throughline";
+import { compileArtifact, inspectTrace, serializeArtifact } from "@0xbuff/throughline";
+import { EXAMPLES } from "@0xbuff/throughline/examples";
 
-const source = [
-  "```thl flow",
-  'node counter "Counter" = 0',
-  'step "Increment"',
-  "  set counter = 1",
-  "  focus counter",
-  '  note "Counter now holds one."',
-  "```",
-].join("\n");
+const example = EXAMPLES.find(item => item.id === "factorial");
+if (!example) throw new Error("Missing reference example");
 
-const trace = compile(source);
+const trace = compileArtifact(example.artifact);
+const inspector = inspectTrace(trace);
+console.log(inspector.valueAt(trace.frames.length - 1, "result"));
+// { status: "known", value: 24 }
 
-// Frame 0 contains the initial state; later frames capture authored steps.
-console.log(trace.version);       // 1
-console.log(trace.frames.length); // 2
+const json = serializeArtifact(trace.artifact); // canonical, deterministic JSON
 ~~~
 
-A `thl flow` block declares entities and relationships first, followed by
-named steps using operations such as `set`, `focus`, `note`, `send`,
-`show` and `hide`. Markdown fences are optional when calling `compile`
-directly, but each source must identify its `thl` domain.
+For a Markdown document, place this structured JSON inside an
+unqualified \`~~~thl\` fence. Remark/MDX validates it without AI, a
+network service or a sidecar. Descriptive text instead requires
+explicit, reviewed materialization. Read
+[universal authoring](docs/grammar.md) and
+[framework integrations](docs/framework-integrations.md).
 
-### Render it with React
+### Render the native player
 
 ~~~tsx
-import { compile } from "@0xbuff/throughline";
+import { compileArtifact } from "@0xbuff/throughline";
 import { EXAMPLES } from "@0xbuff/throughline/examples";
-import { ThroughlinePlayer } from "@0xbuff/throughline/react";
+import { ThroughlineGraphPlayer } from "@0xbuff/throughline/react";
 import "@0xbuff/throughline/styles/throughline.css";
 
-const trace = compile(EXAMPLES[0].source);
+const example = EXAMPLES[0];
+const trace = compileArtifact(example.artifact);
 
-export function TraceDemo() {
-  return <ThroughlinePlayer trace={trace} title="React Reconciliation" theme="auto" />;
+export function ReferenceDemo() {
+  return <ThroughlineGraphPlayer trace={trace} title={example.title} theme="auto" />;
 }
 ~~~
 
-The React player and stylesheet are optional. Read the [player and Markdown
-guide](https://github.com/0xbuffdev/throughline/blob/main/docs/user-guide.md) for theming, accessible controls, narration,
-hierarchy, scenarios and MDX integration.
+The Graph and Sequence views only render declared facts.
+A sequence request without message events falls back to a state table
+instead of inventing messages.
 
-## Preview locally
+## Local development preview
 
-The [Vite playground](https://github.com/0xbuffdev/throughline/tree/main/playground) renders the current checkout's source, not
-necessarily the version currently available from npm. With Node.js 24+ and
-pnpm 11.2.2:
+[The Vite playground](playground) uses the current **source** versions
+of the four schema-2 artifacts and the native player. With Node.js 24+
+and the repository's pinned pnpm version:
 
 ~~~sh
 pnpm install --frozen-lockfile
 pnpm dev
 ~~~
 
-Open [http://localhost:5173](http://localhost:5173) to step through examples,
-compare scenarios and inspect the player at desktop, tablet, and phone widths.
-The playground is excluded from the published npm package.
+Open http://localhost:5173 to inspect states and source events and
+read the matched explanations/questions at desktop, tablet and mobile
+widths. The preview is excluded from the published npm package.
 
-## How it works
+## Behind the model
 
-1. **Parse:** `compile` reads one `thl <domain>` block, preserving useful
-   source-line information for diagnostics.
-2. **Build:** `flow` is parsed into an authored program; computed domains
-   construct the same program model from bounded input parameters.
-3. **Validate and compile:** the engine rejects invalid references, JSON
-   values, conflicting writes and excessive work, then produces an initial
-   frame plus a snapshot for each step.
-4. **Present (optional):** the React player uses the compiled frames to
-   render a responsive scene, controls, captions and an inspectable state.
-   Seeking a frame does not execute the source a second time.
+1. **Validate:** strict schema-2 input is detached and checked for
+   known/unknown state, IDs, references, depth and bounded work.
+2. **Compile:** each named step commits its declared writes and topology
+   updates atomically; messages/observations never implicitly mutate
+   persistent state.
+3. **Inspect:** immutable frame checkpoints support indexed state,
+   history, diffs, explicit transfers and directly declared dependencies.
+4. **Project:** the native viewer maps the same source-linked facts to
+   Graph, Sequence and State-table descriptors without synthesizing events.
+5. **Explain:** optional React components display those immutable facts
+   alongside authored notes, evidence limits and reviewable claims.
 
-Trace schema version `1` is independent of the npm package version.
-Source length is capped at 262,144 UTF-16 code units; the authored
-program is limited to 200 entities, 1,000 relations, 2,000 steps and
-10,000 events, plus work/expansion budgets. These limits are for
-deterministic work, not a guarantee of exact heap or CPU usage.
+Schema 2 is intentionally incompatible with the previous trace
+schema. No migration/conversion or backward-compatibility route is
+introduced here. The remaining historical internal tests are isolated
+pending the separately reviewed v1 cleanup tickets.
 
 ## Documentation
 
-- [Documentation website](https://docs.0xbuff.com/docs/throughline)
-- [User guide: player, themes, audio, navigation and Markdown](https://github.com/0xbuffdev/throughline/blob/main/docs/user-guide.md)
-- [Grammar reference](https://github.com/0xbuffdev/throughline/blob/main/docs/grammar.md) and [supported domains](https://github.com/0xbuffdev/throughline/blob/main/docs/catalog.md)
-- [Framework integration guide](https://github.com/0xbuffdev/throughline/blob/main/docs/framework-integrations.md)
-- [Architecture and trace model](https://github.com/0xbuffdev/throughline/blob/main/docs/architecture.md)
-- [Complete documentation index](https://github.com/0xbuffdev/throughline/blob/main/docs/README.md)
-- [Changelog](https://github.com/0xbuffdev/throughline/blob/main/CHANGELOG.md), [v0.1.0 release notes](https://github.com/0xbuffdev/throughline/blob/main/docs/release-notes-v0.1.0.md)
-  and [upgrade guide](https://github.com/0xbuffdev/throughline/blob/main/docs/migration-v0.1.0.md)
+- [User guide and player](docs/user-guide.md)
+- [Reference catalog](docs/catalog.md) and
+  [static explanations and comprehension questions](docs/reference-traces.md)
+- [Universal \`thl\` grammar](docs/grammar.md) and
+  [typed reference authoring](docs/authoring.md)
+- [Framework integration guide](docs/framework-integrations.md)
+- [Semantic schema-2 runtime](docs/schema-v2.md)
+- [Documentation index](docs/README.md)
+- [Changelog](CHANGELOG.md) and [release guidance](docs/releasing.md)
 
 ## Development
 
-To build and verify a checkout, use the [development and verification commands](https://github.com/0xbuffdev/throughline/blob/main/docs/releasing.md#verification).
+Build and verification commands are documented under
+[releasing and checks](docs/releasing.md). Never publish an unreleased
+schema-2 API without its own independently verified distribution,
+signed release and approval.
 
 ## Community
 
