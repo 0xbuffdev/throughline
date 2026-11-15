@@ -42,6 +42,7 @@ function ExactJson({ value, label, prefix }: {
 	const fragments = useMemo(() => expanded ? jsonFragments(json) : [], [expanded, json]);
 	const current = Math.min(part, Math.max(0, fragments.length - 1));
 	const before = fragments.slice(0, current).reduce((n, chunk) => n + chunk.length, 0);
+	const active = fragments[current] ?? "";
 	return <div className="thl-v2-inspect-value">
 		<code>{prefix}{json.length > PREVIEW
 			? json.slice(0, PREVIEW) + "… (truncated preview)" : json}</code>
@@ -53,10 +54,10 @@ function ExactJson({ value, label, prefix }: {
 			{expanded && <div className="thl-v2-inspect-exact" role="region"
 				aria-label={"Exact " + label}>
 				<p>Exact canonical JSON, segment {current + 1} of {fragments.length};
-					code units {before + 1}–{before + fragments[current].length} of {json.length}.
+					code units {before + 1}–{before + active.length} of {json.length}.
 					Only the visible segment is mounted. Use the next/previous controls
 					to inspect the complete value without omission.</p>
-				<pre>{fragments[current]}</pre>
+				<pre>{active}</pre>
 				<div className="thl-v2-inspect-pager" role="group"
 					aria-label={"Exact " + label + " segments"}>
 					<button type="button" disabled={current === 0}
