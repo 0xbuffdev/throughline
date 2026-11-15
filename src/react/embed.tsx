@@ -1,17 +1,17 @@
 import { useMemo } from "react";
-import { compile } from "../domains/registry.js";
-import { ThroughlinePlayer, type ThroughlinePlayerProps } from "./player.js";
-
-/** The MDX host supplies the literal, complete `thl <domain>` source. */
-export interface ThroughlineEmbedProps extends Omit<ThroughlinePlayerProps, "trace"> {
-	source: string;
-}
+import { compileArtifact } from "../v2/compiler.js";
+import { parseArtifactJson } from "../v2/validator.js";
+import { ThroughlineGraphPlayer, type ThroughlineGraphPlayerProps } from "./graph-player.js";
 
 /**
- * React-only source bridge. Stable source and unrelated prop changes reuse
- * the compiled trace, preserving timeline state in ThroughlinePlayer.
+ * MDX host bridge for reviewed, literal schema-2 artifact JSON.
+ * Remark does not inject JSX expressions, execute text or fetch materializations.
  */
-export function ThroughlineEmbed({ source, ...playerProps }: ThroughlineEmbedProps) {
-	const trace = useMemo(() => compile(source), [source]);
-	return <ThroughlinePlayer trace={trace} {...playerProps} />;
+export interface ThroughlineEmbedProps extends Omit<ThroughlineGraphPlayerProps, "trace"> {
+	artifactJson: string;
+}
+
+export function ThroughlineEmbed({ artifactJson, ...props }: ThroughlineEmbedProps) {
+	const trace = useMemo(() => compileArtifact(parseArtifactJson(artifactJson)), [artifactJson]);
+	return <ThroughlineGraphPlayer trace={trace} {...props} />;
 }
