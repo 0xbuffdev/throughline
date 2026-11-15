@@ -4,7 +4,7 @@ import {
 	type SidecarEntry, type SidecarManifest,
 } from "../v2/authoring.js";
 import { compileArtifact } from "../v2/compiler.js";
-import { ArtifactValidationError, parseArtifactJson, serializeArtifact } from "../v2/validator.js";
+import { ArtifactValidationError, parseArtifactJson } from "../v2/validator.js";
 import { TrustedContentRoot, TrustedFileError } from "../node/files.js";
 import { scanMarkdownFences } from "../node/markdown.js";
 import { readSidecarManifest } from "../node/index.js";
@@ -123,7 +123,8 @@ function checkFile(
 				...(manifest ? { loadArtifact: (artifact: string) => root.read(artifact) } : {}),
 			});
 		} catch (error) {
-			throw new ThroughlineCliError("THL_CHECK", format(error, location));
+			const issue = toDiagnostic(error);
+			throw new ThroughlineCliError(issue.code, location + ": " + issue.message);
 		}
 		checked++;
 		io.out("THL_OK check " + location);
@@ -166,7 +167,8 @@ function materialize(root: TrustedContentRoot, args: Arguments, io: CliIO): void
 	try {
 		body = parseIntentBlock(fence.body).body;
 	} catch (error) {
-		throw new ThroughlineCliError("THL_MATERIALIZE", format(error, location));
+		const issue = toDiagnostic(error);
+		throw new ThroughlineCliError(issue.code, location + ": " + issue.message);
 	}
 	const artifact = compileArtifact(parseArtifactJson(root.read(artifactPath))).artifact;
 	const entry: SidecarEntry = Object.freeze({
@@ -174,9 +176,9 @@ function materialize(root: TrustedContentRoot, args: Arguments, io: CliIO): void
 		artifactPath, artifactSha256: artifactSha256(artifact),
 		review: "unreviewed",
 	});
-	const prior = root.exists(manifestPath)
+	const prior: SidecarManifest = root.exists(manifestPath)
 		? readSidecarManifest(root, manifestPath)
-		: { version: 1 as const, entries: [] };
+		: { version: 1, entries: [] };
 	const entries = prior.entries.filter(row =>
 		row.document !== document || row.ordinal !== ordinal);
 	const ordered = [...entries, entry].sort((left, right) =>
