@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
-import { ThroughlinePlayer } from "../index.js";
+import { ThroughlinePlayer } from "../player.js";
 import "../../styles/throughline.css";
 import { openPlayerPanel } from "./player-actions.js";
 
