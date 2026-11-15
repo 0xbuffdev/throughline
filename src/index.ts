@@ -89,3 +89,14 @@ export type {
 	InspectionRelation, InspectionRequest, InspectionSelection, InspectionStateRow,
 	InspectionView,
 } from "./v2/inspection.js";
+
+/** Single unqualified thl authoring surface: strict JSON or reviewed prose. */
+export {
+	ThroughlineAuthoringError, normalizeThlBody, parseIntentBlock, parseThlBody,
+	artifactRelativePath, validateSidecarManifest, resolveThlBody, artifactSha256,
+} from "./v2/authoring.js";
+export type {
+	IntentBlock, ThlBody, SidecarEntry, SidecarManifest, MaterializationOptions,
+	AuthoringErrorCode,
+} from "./v2/authoring.js";
+export { sha256Text } from "./v2/sha256.js";
