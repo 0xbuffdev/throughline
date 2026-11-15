@@ -98,7 +98,7 @@ try {
 		[".", "./react", "./remark", "./examples", "./node", "./styles/throughline.css"].sort(),
 	);
 	assert.equal(packed.bin?.thl, "./dist/cli/main.js");
-	assert.deepEqual(Object.keys(packed.dependencies ?? {}), ["cn"]);
+	assert.deepEqual(Object.keys(packed.dependencies ?? {}), ["cn", "remark-mdx", "remark-parse", "unified"]);
 	for (const dependencies of [
 		packed.dependencies ?? {},
 		packed.peerDependencies ?? {},
@@ -195,7 +195,8 @@ try {
 	].join("\n");
 	run("node", ["--input-type=module", "-e", pureHost, fixtureRoot], consumer);
 	assert(!existsSync(join(consumer, "node_modules", "react")) &&
-		!existsSync(join(consumer, "node_modules", "unified")),
+		!!existsSync(join(consumer, "node_modules", "unified")) &&
+		!!existsSync(join(consumer, "node_modules", "remark-mdx")),
 		"CLI/Node host must not require React or a runtime Markdown executor");
 
 	const core = [
