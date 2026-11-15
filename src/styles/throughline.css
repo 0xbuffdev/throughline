@@ -947,3 +947,25 @@
 @media (prefers-reduced-motion: reduce) {
 	.thl-v2 .thl-v2-sequence * { scroll-behavior: auto; transition: none !important; }
 }
+
+/* Fixed-size message correlation pagination; focusable in narrow hosts. */
+.thl-v2 .thl-v2-sequence-pages {
+	display: flex;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+	align-items: center;
+	margin-block: 0.5rem;
+}
+.thl-v2 .thl-v2-sequence-pages button {
+	min-height: 2.5rem;
+	border: 1px solid var(--thl-line);
+	border-radius: var(--thl-radius);
+	background: var(--thl-control-bg);
+	color: inherit;
+	font: inherit;
+	padding: 0.4rem 0.6rem;
+}
+.thl-v2 .thl-v2-sequence-pages button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
