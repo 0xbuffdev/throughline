@@ -196,6 +196,25 @@ References' mathematical truth and persistence order are independently tested.
 Matched questions are a baseline for future comprehension studies, not
 evidence of measured educational improvement.
 
+## Offline CLI and reviewed Markdown authoring
+
+The unreleased source now includes a standalone Node 24+ binary and a
+Node-only trusted host entry. The commands accept only strict schema-2
+artifacts, plain `thl` fences and reviewed, SHA-256-bound prose sidecars:
+
+~~~sh
+thl validate artifacts/factorial.json
+thl materialize --document content/docs/factorial.mdx --ordinal 0 \
+  --artifact artifacts/factorial.json --manifest throughline/manifest.json
+# Manually review the artifact and the generated unreviewed manifest entry.
+thl check content/docs --manifest throughline/manifest.json
+~~~
+
+Materialization **never approves** generated artifacts. Hosts can use
+`@0xbuff/throughline/node` to map VFile paths and load confined sidecars;
+core validation still requires no Node filesystem, React or provider SDK.
+See the [CLI and editorial-review procedure](docs/cli.md).
+
 ## Installation and version boundary
 
 Install the published package with:
@@ -302,6 +321,7 @@ pending the separately reviewed v1 cleanup tickets.
 - [Universal `thl` grammar](docs/grammar.md) and
   [typed reference authoring](docs/authoring.md)
 - [Framework integration guide](docs/framework-integrations.md)
+- [Offline CLI, safe file loading and manual review](docs/cli.md)
 - [Semantic schema-2 runtime](docs/schema-v2.md)
 - [Documentation index](docs/README.md)
 - [Changelog](CHANGELOG.md) and [release guidance](docs/releasing.md)
