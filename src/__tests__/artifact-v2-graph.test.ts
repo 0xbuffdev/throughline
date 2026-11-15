@@ -291,27 +291,38 @@ describe("TL-U05 — v2 graph projection and truthful source identities", () => 
 			.toThrow(TypeError);
 	});
 
-	it("handles unsupported sequence and empty link hints with an explicit, truthful table fallback", () => {
+	it("auto-selects sequence for explicit message history and honors a graph hint", () => {
 		const query = model();
+		const initial = projectView(query, { frameIndex: 0 });
+		expect(initial.kind).toBe("sequence");
+		expect(initial.items.filter(item => item.role === "event")).toEqual([]);
 		const explicit = projectView(query, { kind: "sequence", frameIndex: 2 });
-		expect(explicit.kind).toBe("state-table");
-		expect(explicit.diagnostics?.[0]).toContain("TL-U06");
+		expect(explicit.kind).toBe("sequence");
 		expect(explicit.items.filter(item => item.role === "event")
-			.map(item => item.source.eventIds?.[0])).toEqual(["received", "evidence"]);
+			.map(item => item.source.eventIds?.[0]))
+			.toEqual(["sent", "received", "evidence"]);
 		expect(explicit.items.filter(item => item.role === "value")
+			.map(item => item.label)).toEqual(["Message charge"]);
+		expect(explicit.items.filter(item => item.role === "entity")
 			.map(item => item.source.entityIds?.[0]))
-			.toEqual(["client", "gateway", "ledger", "worker"]);
-		expect(named(explicit, "value", "Gateway").description)
-			.toContain("Unknown modeled value");
+			.toEqual(["client", "gateway"]);
 		for (const frameIndex of [0, 1, 2, 6])
-			expect(projectView(query, { frameIndex }).kind).toBe("state-table");
-		// A graph view hint is stable across seeking and does not convert
-		// received evidence into a sent connector.
+			expect(projectView(query, { frameIndex }).kind).toBe("sequence");
+		// A graph view hint is stable across seeking and never turns received
+		// evidence into a synthetic sent connector.
 		const source = distributedGraph();
 		source.views = [{ kind: "graph", priority: 0 }];
 		const hinted = inspectTrace(compileArtifact(source));
 		for (const frameIndex of [0, 1, 3, 6])
 			expect(projectView(hinted, { frameIndex }).kind).toBe("graph");
+
+		// An incompatible explicit sequence request is diagnosed, not faked.
+		source.steps = [];
+		source.claims = [];
+		const noMessages = inspectTrace(compileArtifact(source));
+		const fallback = projectView(noMessages, { kind: "sequence", frameIndex: 0 });
+		expect(fallback.kind).toBe("state-table");
+		expect(fallback.diagnostics?.[0]).toContain("requires an explicit message event");
 	});
 
 	it("rejects invalid query/view selections and forged inspector objects", () => {
