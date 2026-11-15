@@ -132,8 +132,10 @@ try {
 	);
 	assert(
 		!existsSync(join(consumer, "node_modules", "react")) &&
-			!existsSync(join(consumer, "node_modules", "unified")),
-		"Core consumer unexpectedly installed React",
+			existsSync(join(consumer, "node_modules", "unified")) &&
+			existsSync(join(consumer, "node_modules", "remark-parse")) &&
+			existsSync(join(consumer, "node_modules", "remark-mdx")),
+		"Node-only package must contain syntax parsers but not React",
 	);
 	// Independently installed CLI/Node host: real archive, real bin, no
 	// compulsory React/AI, no MDX execution and no self-approval.
@@ -194,10 +196,49 @@ try {
 		'  { document: doc, ordinal: 1, manifest: host.manifest, loadArtifact: host.loadArtifact }).id, "packedCounter");',
 	].join("\n");
 	run("node", ["--input-type=module", "-e", pureHost, fixtureRoot], consumer);
+	// A packed CLI must discover nested, real CommonMark code nodes. A
+	// line-level scanner incorrectly saw zero blocks here, and falsely
+	// included a thl-looking string inside an HTML comment.
+	const nestedSource = [
+		"<!--", "~~~thl", "Fake comment fence.", "~~~", "-->", "",
+		"- Parent", "  - Child", "",
+		"    ~~~thl", "    Explain a nested model from the real AST.", "    ~~~",
+		"",
+		"~~~js", "const fake = '~~~thl';", "~~~",
+	].join("\n");
+	writeFileSync(join(fixtureRoot, "docs", "nested.md"), nestedSource);
+	const nestedNotReviewed = spawnSync("node", [
+		cliPath, "check", "docs/nested.md", "--manifest", "manifest.json",
+		"--root", fixtureRoot,
+	], { cwd: consumer, encoding: "utf8" });
+	assert.notEqual(nestedNotReviewed.status, 0,
+		"Packed CLI must fail closed on unmaterialized nested thl code");
+	assert.match(nestedNotReviewed.stderr,
+		/THL_UNRESOLVED.*docs\/nested.md:10:5 thl #0/,
+		"Source location and ordinal must come from nested mdast code node");
+	assert.match(cli("materialize", "--document", "docs/nested.md",
+		"--ordinal", "0", "--artifact", "artifacts/counter.json",
+		"--manifest", "manifest.json", "--root", fixtureRoot),
+		/THL_UNREVIEWED.*docs\/nested.md:10:5 thl #0/);
+	const pendingNested = JSON.parse(readFileSync(manifestLocation, "utf8"));
+	assert.deepEqual(pendingNested.entries.map(entry => entry.document),
+		["docs/nested.md", "docs/sample.mdx"]);
+	assert.equal(pendingNested.entries[0].ordinal, 0);
+	assert.equal(pendingNested.entries[0].review, "unreviewed");
+	const nestedNeedsApproval = spawnSync("node", [cliPath, "check", ".",
+		"--manifest", "manifest.json", "--root", fixtureRoot],
+		{ cwd: consumer, encoding: "utf8" });
+	assert.notEqual(nestedNeedsApproval.status, 0);
+	assert.match(nestedNeedsApproval.stderr, /THL_UNREVIEWED/);
+	pendingNested.entries[0].review = "reviewed"; // separate trusted test-only review
+	writeFileSync(manifestLocation, JSON.stringify(pendingNested));
+	assert.match(cli("check", ".", "--manifest", "manifest.json", "--root", fixtureRoot),
+		/checked 2 document\(s\), 3 thl block\(s\)/);
+
 	assert(!existsSync(join(consumer, "node_modules", "react")) &&
 		!!existsSync(join(consumer, "node_modules", "unified")) &&
 		!!existsSync(join(consumer, "node_modules", "remark-mdx")),
-		"CLI/Node host must not require React or a runtime Markdown executor");
+		"CLI/Node host must not require React, but must carry its non-evaluating syntax parsers");
 
 	const core = [
 		'import assert from "node:assert/strict";',
