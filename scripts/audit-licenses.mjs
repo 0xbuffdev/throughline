@@ -8,7 +8,7 @@ const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 
 assert.deepEqual(
 	Object.keys(manifest.dependencies ?? {}).sort(),
-	["cn"],
+	["cn", "remark-mdx", "remark-parse", "unified"],
 	"Unreviewed direct production dependency",
 );
 assert.deepEqual(
@@ -68,12 +68,18 @@ function auditPackage(name, parent) {
 		if (existsSync(location)) auditPackage(dependency, path);
 	}
 }
-for (const name of ["cn", "react", "react-dom"]) {
+for (const name of ["cn", "react", "react-dom", "remark-mdx", "remark-parse", "unified"]) {
 	auditPackage(name);
 }
 
 // The published tarball is audited separately. Keep JS dependencies external
 // so the project's Apache LICENSE cannot silently cover embedded MIT files.
+const nodeEntry = readFileSync(join(root, "dist", "node", "index.js"), "utf8");
+const cliEntry = readFileSync(join(root, "dist", "cli", "main.js"), "utf8");
+// Ensure the package does not embed copied third-party parser implementations.
+// The actual parser is an explicit, locked production dependency instead.
+assert(!nodeEntry.includes("function tokenizeFactory") && !cliEntry.includes("function tokenizeFactory"),
+	"Node/CLI parser dependencies must remain external and separately licensed");
 const generated = join(root, "dist", "react", "index.js");
 assert(existsSync(generated), "Run the build before this audit");
 const code = readFileSync(generated, "utf8");
