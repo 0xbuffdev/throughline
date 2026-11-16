@@ -10,7 +10,7 @@ interface PlaybackProps {
 interface PlayerOptionsProps extends PlaybackProps {
  chapterControls?: (onSeek: (step: number) => void) => React.ReactNode;
  diagramControls?: React.ReactNode;
- sound?: { enabled: boolean; available: boolean; toggle: () => void };
+ sound?: { enabled: boolean; available?: boolean; toggle: () => void };
  narration?: { enabled: boolean; available: boolean; toggle: () => void };
  inspection?: { enabled: boolean; toggle: () => void };
  fullscreen: { active: boolean; available: boolean; toggle: () => void };
@@ -117,7 +117,7 @@ export function PlayerOptions({
     </div>
     <div className="opt-grid">
      {sound && <button type="button" className={`opt-toggle ${sound.enabled ? "on" : ""}`}
-      aria-label="Sonify trace" aria-pressed={sound.enabled} disabled={!sound.available}
+      aria-label="Sonify trace" aria-pressed={sound.enabled} disabled={sound.available === false}
       onClick={sound.toggle}>
       <PlayerIcon name={sound.enabled ? "sound" : "soundOff"} size={14}/><span>Sonify trace</span>
      </button>}
