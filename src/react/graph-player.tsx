@@ -82,7 +82,7 @@ function GraphDiagram({
 				const item = rect.id && groupsById.get(rect.id);
 				if (!item) return null;
 				return (
-					<g key={item.id} className="group-frame" data-group={item.source.groupIds?.[0]}
+					<g key={item.id} data-group={item.source.groupIds?.[0]}
 						data-source-group-ids={item.source.groupIds?.join(" ")}
 						data-source-entity-ids={item.source.entityIds?.join(" ")}>
 						<rect className="thl-group" x={rect.x} y={rect.y}
@@ -105,7 +105,7 @@ function GraphDiagram({
 					(visitedAt.get(id) ?? Number.POSITIVE_INFINITY) <= frameIndex);
 				const aggregated = Boolean(data(item, "aggregated"));
 				return (
-					<g key={item.id} className={cn("thl-link links", {
+					<g key={item.id} className={cn("thl-link", {
 						"thl-visited": visited,
 						"thl-transferred": sent > 0,
 						"thl-animate": animate && sent > 0,
@@ -136,7 +136,6 @@ function GraphDiagram({
 				const active = Boolean(item.source.entityIds?.includes(selectedId ?? ""));
 				return (
 					<g key={"summary-" + item.id} role="button" tabIndex={0}
-						className="entity summary"
 						data-group-summary={group}
 						data-source-group-ids={item.source.groupIds?.join(" ")}
 						data-source-entity-ids={item.source.entityIds?.join(" ") ?? ""}
@@ -176,7 +175,6 @@ function GraphDiagram({
 				const participating = participants.has(id);
 				return (
 					<g key={item.id} role="button" tabIndex={0}
-						className={cn("entity", { "active": focused, "selected": selected })}
 						data-node={id} data-source-entity-ids={id}
 						data-source-event-ids={item.source.eventIds?.join(" ") ?? ""}
 						aria-label={"Select " + item.label}
@@ -196,15 +194,16 @@ function GraphDiagram({
 							})} />
 						<rect className={cn("thl-ring", { "thl-ring-selected": selected })}
 							x={-4} y={-4} width={rect.w + 8} height={rect.h + 8} rx={4}/>
-						<circle cx={12} cy={14} r={3} />
-						<text className="thl-node-label entity-label" x={22} y={19}>
+						<text className="thl-node-label" x={8} y={19}>
 							{preview(item.label, Math.floor((rect.w - 16) / 7))}
 						</text>
-						<text className={cn("thl-v2-value entity-value", { "thl-changed": changed })}
-							x={12} y={39}>
+						<text className={cn("thl-v2-value", { "thl-changed": changed })}
+							x={8} y={44}>
 							{preview(value ? cellText(value) : "Unknown", Math.floor((rect.w - 16) / 7.4))}
 						</text>
-						
+						{changed && <text x={8} y={62} className="thl-v2-change">
+							Explicit write
+						</text>}
 					</g>
 				);
 			})}
@@ -215,8 +214,6 @@ function GraphDiagram({
 	);
 }
 
-/** Inert fallback; full source-linked history inspector UI is TL-U07. */
-/** The compact four-column state sheet, displaying real committed cells. */
 function StateFallback({ view, selectedId, onSelect, inspector, frameIndex }: {
  view: ViewDescriptor;
  selectedId: Id | null;
@@ -268,12 +265,6 @@ export function ThroughlineGraphPlayer({
 	const svgRef = useRef<SVGSVGElement>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const width = useSceneWidth(canvasRef);
- // On initially narrow embeds, follow authored action.
- useEffect(() => {
-  if (followInitialized.current || !canvasRef.current) return;
-  followInitialized.current = true;
-  if (canvasRef.current.clientWidth < 640) setFollow(true);
- }, [width, trace]);
 	const [narrating, setNarrating] = useState(false);
 	const { state, dispatch, lastAction, seekRevision, onKeyDown } =
 		usePlayer(trace, narration && narrating);
@@ -326,7 +317,7 @@ export function ThroughlineGraphPlayer({
 	// The player graph is a stable, pannable 828-unit SVG world, even
  // when the host is a narrow embed. Never reshuffle the authored diagram
  // solely because the container changes width.
- const layout = useMemo(() => layoutGraph(trace, 828), [trace]);
+ const layout = useMemo(() => layoutGraph(trace, width), [trace, width]);
 	const view = useMemo(() => projectView(inspector, {
 		kind: viewKind, frameIndex,
 		selectedEntityIds: selectedId ? [selectedId] : [],
