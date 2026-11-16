@@ -708,6 +708,8 @@ export function ThroughlineGraphPlayer({
       data-source-event-ids={event.id}>
       {event.type === "message" ? event.phase : event.type} <b>→</b>
       <code>{event.id}</code>
+      <span className="thl-sr-only">{events.find(item =>
+       item.source.eventIds?.includes(event.id))?.description ?? ""}</span>
      </li>)}
      {step.events.length > 80 && <li>{step.events.length - 80} more events; inspect source for details.</li>}
     </ul>}
