@@ -1372,7 +1372,7 @@
   stroke: var(--acid);
   stroke-width: 1.7;
   stroke-dasharray: 5 4;
-  animation: none;
+  
   color: var(--acid);
   filter: drop-shadow(0 0 3px color-mix(in srgb, var(--thl-active) 30%, transparent));
 }
@@ -1546,12 +1546,12 @@
   border-left: 1px solid var(--line);
   background: var(--thl-panel);
   padding: 12px;
-  animation: none;
+  
 }
 @keyframes thl-player-reveal {
   from {
     opacity: 0;
-    transform: translateX(8px);
+    transform: none;
   }
 }.thl.player-shell .inspector-top{
   display: flex;
@@ -2015,7 +2015,7 @@
   border-radius: 4px;
   background: var(--thl-panel);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px color-mix(in srgb, var(--thl-text) 2%, transparent) inset;
-  animation: none;
+  
   text-align: left;
 }
 @keyframes thl-player-pop {
@@ -2293,7 +2293,7 @@
   max-height: 240px;
   overflow-y: auto;
   padding: 0 14px 14px 48px;
-  animation: none;
+  
 }
 @keyframes thl-player-thl-player-reveal-down {
   from {
