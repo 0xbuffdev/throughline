@@ -3,6 +3,7 @@ import { EXAMPLES } from "../src/examples.js";
 import { compileArtifact } from "../src/index.js";
 import { ThroughlineGraphPlayer } from "../src/react/index.js";
 import type { ViewKind, VisualArtifact } from "../src/v2/model.js";
+import { compileWorkbenchSource } from "./workbench.js";
 import "./player-design.css";
 
 type ReviewTheme = "auto" | "light" | "dark";
@@ -25,11 +26,18 @@ export function makePlayerReviewFixture(id: string, variant: FixtureVariant): {
 } {
 	const reference = EXAMPLES.find(item => item.id === id);
 	if (!reference) throw new Error("Unknown player design reference: " + id);
-	if (variant === "invalid") return {
-		artifact: null,
-		title: reference.title,
-		invalidReason: "This fixture is intentionally invalid. The real compiler must reject it, so the player is not mounted. No replacement scene or inferred evidence is generated.",
-	};
+	if (variant === "invalid") {
+		const rejected = compileWorkbenchSource(JSON.stringify({
+			...reference.artifact, schemaVersion: 999,
+		}));
+		if (rejected.kind === "ready") throw new Error("Invalid review artifact unexpectedly compiled.");
+		return {
+			artifact: null,
+			title: reference.title,
+			invalidReason: "This fixture is intentionally invalid and was rejected by the real parser/compiler: " +
+				rejected.message + " No replacement scene or inferred evidence is generated.",
+		};
+	}
 	const source = reference.artifact;
 	if (variant === "untitled") {
 		const { title: _title, ...withoutTitle } = source;
