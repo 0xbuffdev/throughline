@@ -1350,71 +1350,8 @@
   width: 100%;
   height: calc(100% - 20px);
   overflow: visible;
-  color: var(--thl-muted);
-}.thl.player-shell .group-frame rect{
-  fill: color-mix(in srgb, var(--thl-text) 1%, transparent);
-  stroke: var(--thl-surface);
-  stroke-dasharray: 3 4;
-  rx: 2px;
-}.thl.player-shell .group-frame text{
-  fill: var(--thl-muted);
-  font:
-    500 8px "IBM Plex Mono",
-    monospace;
-  letter-spacing: 0.09em;
-}.thl.player-shell .links path{
-  fill: none;
-  stroke: var(--thl-line);
-  stroke-width: 1.2;
-}.thl.player-shell .links path.visited{
-  stroke: var(--thl-muted);
-}.thl.player-shell .links path.hot{
-  stroke: var(--acid);
-  stroke-width: 1.7;
-  stroke-dasharray: 5 4;
-  
-  color: var(--acid);
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--thl-active) 30%, transparent));
-}
-@keyframes thl-player-flow {
-  to {
-    stroke-dashoffset: -9;
   }
-}.thl.player-shell .entity{
-  cursor: pointer;
-}.thl.player-shell .entity rect{
-  fill: var(--thl-panel);
-  stroke: var(--thl-line);
-  rx: 2px;
-  transition: 0.15s ease;
-}.thl.player-shell .entity:hover rect{
-  fill: var(--thl-surface);
-  stroke: var(--thl-muted);
-}.thl.player-shell .entity circle{
-  fill: var(--thl-muted);
-}.thl.player-shell .entity text{
-  pointer-events: none;
-}.thl.player-shell .entity-label{
-  fill: var(--thl-text);
-  font:
-    500 10px "DM Sans",
-    sans-serif;
-}.thl.player-shell .entity-value{
-  fill: var(--thl-muted);
-  font:
-    400 8.5px "IBM Plex Mono",
-    monospace;
-}.thl.player-shell .entity.active rect{
-  stroke: var(--acid);
-  fill: var(--thl-panel);
-}.thl.player-shell .entity.active circle{
-  fill: var(--acid);
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--thl-active) 60%, transparent));
-}.thl.player-shell .entity.active .entity-value{
-  fill: var(--acid);
-}.thl.player-shell .entity.selected rect{
-  stroke-width: 2px;
-}.thl.player-shell .canvas-hint{
+.thl.player-shell .canvas-hint{
   position: absolute;
   left: 14px;
   right: 14px;
@@ -1868,9 +1805,6 @@
     min-height: 310px;
   }.thl.player-shell .canvas{
     min-height: 310px;
-  }.thl.player-shell .graph{
-    min-width: 680px;
-    transform: translateX(-35px);
   }.thl.player-shell .sequence-event{
     grid-template-columns: 22px 1fr;
   }.thl.player-shell .sequence-event code{
@@ -1901,11 +1835,6 @@
   }.thl.player-shell .player-content,
 .thl.player-shell .canvas{
     min-height: 292px;
-  }.thl.player-shell .graph-wrap{
-    overflow-x: auto;
-  }.thl.player-shell .graph{
-    width: 680px;
-    transform: none;
   }.thl.player-shell .canvas-meta code{
     display: none;
   }.thl.player-shell .step-caption p{
@@ -2180,10 +2109,6 @@
   cursor: grabbing;
 }.thl.player-shell .graph-wrap{
   overflow: hidden;
-}.thl.player-shell .entity.summary rect{
-  stroke-dasharray: 3 3;
-}.thl.player-shell .group-frame g.collapsed rect{
-  opacity: 0.4;
 }.thl.player-shell .canvas-hint{
   align-items: center;
   bottom: 6px;
@@ -2646,26 +2571,25 @@
 .thl.player-shell .player-content { flex: 1 1 auto; }
 .thl.player-shell .canvas { height: 330px; }
 .thl.player-shell:fullscreen .canvas { height: auto; flex: 1 1 auto; }
-.thl.player-shell .graph { display: block; font-family: "IBM Plex Mono", ui-monospace, monospace; }
-.thl.player-shell .thl-group { fill: transparent; stroke: var(--thl-line); stroke-dasharray: 3 4; }
-.thl.player-shell .thl-group-label { fill: var(--thl-muted); font: 500 8px "IBM Plex Mono", monospace; }
-.thl.player-shell .thl-link .thl-edge { stroke: var(--thl-line); stroke-width: 1.2; }
-.thl.player-shell .thl-link.thl-visited .thl-edge { stroke: var(--thl-trail); }
-.thl.player-shell .thl-link.thl-transferred .thl-edge { stroke: var(--thl-active); stroke-width: 1.7; stroke-dasharray: 5 4; }
-.thl.player-shell .thl-link.thl-transferred polygon { fill: var(--thl-active); }
-.thl.player-shell .thl-link:not(.thl-transferred) polygon { fill: var(--thl-line); }
-.thl.player-shell .thl-node-label { fill: var(--thl-text); font: 500 10px "DM Sans", system-ui, sans-serif; }
-.thl.player-shell .thl-v2-value { fill: var(--thl-muted); font: 400 8.5px "IBM Plex Mono", monospace; }
-.thl.player-shell .thl-node.thl-focused { fill: var(--thl-focus-bg); stroke: var(--thl-focus); }
-.thl.player-shell .thl-v2-value.thl-changed,
-.thl.player-shell .thl-v2-change { fill: var(--thl-change); }
-.thl.player-shell .thl-node.thl-selected { stroke: var(--thl-focus); stroke-width: 2; }
-.thl.player-shell .thl-ring-selected { stroke: var(--thl-focus); }
-.thl.player-shell .entity rect { fill: var(--thl-surface); stroke: var(--thl-line); }
-.thl.player-shell .entity.active rect { fill: var(--thl-focus-bg); stroke: var(--thl-active); }
-.thl.player-shell .entity.selected rect { stroke: var(--thl-focus); }
-.thl.player-shell .entity.active circle { fill: var(--thl-active); }
-.thl.player-shell .entity.active .entity-value { fill: var(--thl-active); }
+.thl.player-shell .graph { display: block; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 .thl.player-shell .state-row:focus-visible,
 .thl.player-shell .view-tabs button:focus-visible { outline: 2px solid var(--thl-focus); outline-offset: -2px; }
 .thl.player-shell .inspector { overflow-y: auto; max-height: 600px; }
@@ -2757,7 +2681,7 @@
 /* Motion is opt-in by preference. Reduced-motion users never receive a
  * running animation, and legacy player motion rules remain untouched. */
 @media (prefers-reduced-motion: no-preference) {
- .thl.player-shell .links path.hot { animation: thl-player-flow 0.7s linear infinite; }
+ 
  .thl.player-shell .inspector { animation: thl-player-reveal 0.18s ease-out; }
  .thl.player-shell .options-menu { animation: thl-player-pop 0.14s ease-out; }
  .thl.player-shell .caption-body { animation: thl-player-reveal-down 0.18s ease-out; }
@@ -2790,3 +2714,11 @@
  color: var(--thl-muted);
  font: 400 9px/1.5 "IBM Plex Mono", ui-monospace, monospace;
 }
+
+/* Authored graph shapes, routes, colors, and highlight states are unchanged.
+ * Only text size is adjusted inside the source-linked diagram. */
+.thl.player-shell .thl-v2-diagram .thl-node-label { font-size: 10px; }
+.thl.player-shell .thl-v2-diagram .thl-v2-value { font-size: 8.5px; }
+.thl.player-shell .thl-v2-diagram .thl-v2-change { font-size: 9px; }
+.thl.player-shell .thl-v2-diagram .thl-group-label { font-size: 8px; }
+.thl.player-shell .thl-v2-diagram .thl-edge-label { font-size: 9px; }
