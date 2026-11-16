@@ -265,7 +265,7 @@ it("progressively reveals earlier rows without losing source evidence", async ()
 	expect(evidence("event0")).toBeNull();
 	expect(evidence("event159")).not.toBeNull();
 	expect(phase("batch", "sent")).toBe("sent: 160");
-	await page.locator(".thl-v2-sequence-log").getByRole("button", { name: "Show earlier evidence" }).click();
+	await screen.getByRole("button", { name: "Show earlier evidence" }).click();
 	expect(rows()).toHaveLength(160);
 	expect(evidence("event0")).not.toBeNull();
 	expect(evidence("event159")).not.toBeNull();
