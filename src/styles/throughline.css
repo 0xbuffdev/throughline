@@ -2783,3 +2783,10 @@
   max-width: min(270px, 86%);
  }
 }
+
+.thl.player-shell .seq-empty {
+ margin: 0;
+ padding: 14px 12px;
+ color: var(--thl-muted);
+ font: 400 9px/1.5 "IBM Plex Mono", ui-monospace, monospace;
+}
