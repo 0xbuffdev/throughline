@@ -172,6 +172,9 @@ it("preserves frame and source identity switching graph → sequence → graph",
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 10");
 	expect(document.querySelector('.sequence-head [data-source-entity-ids="gateway"]')
 		?.getAttribute("aria-pressed")).toBe("true");
+	// The responsive inspector intentionally overlays source lanes. Close it
+	// before selecting another lane, then verify the new selection reopens it.
+	await screen.getByRole("button", { name: "Close inspector" }).click();
 	await screen.getByRole("button", { name: "Inspect Client" }).click();
 	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Client");
 	await screen.getByRole("tab", { name: "Graph" }).click();
