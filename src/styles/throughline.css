@@ -1507,7 +1507,7 @@
   }
 }.thl.player-shell .inspector-top{
   position: sticky;
-  top: -12px;
+  top: 0;
   z-index: 1;
   display: flex;
   align-items: center;
