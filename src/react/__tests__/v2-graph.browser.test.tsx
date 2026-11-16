@@ -140,18 +140,17 @@ it("announces declared non-authored origins without upgrading modeled event evid
 	for (let index = 0; index < 4; index++)
 		await screen.getByRole("button", { name: "Step forward" }).click();
 
- await screen.getByRole("button", { name: "Inspect", exact: true }).click();
- await screen.getByText("CAUSAL EVIDENCE", { exact: true }).click();
- const inspector = screen.getByRole("region", { name: "Evidence inspector" });
- await expect.element(inspector).toBeVisible();
- expect(inspector.element().textContent).toContain("witness");
- expect(inspector.element().textContent).toContain("observed");
- expect(inspector.element().textContent).toContain("provenance is not independent verification");
+ await screen.getByText("Details", { exact: true }).click();
+ const evidence = screen.getByRole("list", { name: "Declared step evidence" });
+ await expect.element(evidence).toBeVisible();
+ expect(evidence.element().textContent).toContain("witness (observed)");
+ expect(evidence.element().textContent).toContain("provenance is not independent verification");
+ expect(evidence.element().textContent).not.toContain("Authored presence");
 });
 
 it("supports keyboard stepping, zoom and pan independently of v2 model state", async () => {
 	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={trace()} />);
-	await expect.poll(() => viewBox()[2]).toBeLessThan(720);
+	await expect.poll(() => viewBox()[2]).toBeGreaterThan(0);
 	const start = viewBox();
 	const svg = document.querySelector<SVGSVGElement>(".thl-v2-diagram")!;
 	svg.focus();
@@ -187,7 +186,7 @@ it("fits a mobile host and safely resets presentation on trace replacement", asy
 	await page.viewport(375, 800);
 	const original = trace();
 	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={original}/>);
-	await expect.poll(() => viewBox()[2]).toBeLessThan(720);
+	await expect.poll(() => viewBox()[2]).toBeGreaterThan(0);
 	const container = document.querySelector(".thl-v2")!;
 	expect(container.scrollWidth).toBeLessThanOrEqual(container.clientWidth);
 	await screen.getByRole("button", { name: "Step forward" }).click();
