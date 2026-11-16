@@ -73,6 +73,17 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Audit built public authoring playground
         run: pnpm audit:playground
+      - name: Capture proposed TL-P01 real-browser review baseline
+        env:
+          THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: pnpm audit:player-design
+      - name: Upload TL-P01 unapproved player visual review images
+        uses: actions/upload-artifact@v7
+        with:
+          name: throughline-player-design-${{ github.run_id }}
+          path: .release-evidence/player-design/
+          if-no-files-found: error
+          retention-days: 30
       - name: Browser tests
         run: pnpm test:browser:run
       - name: Record verified Chromium browser evidence
@@ -138,6 +149,7 @@ jobs:
           pnpm test:run
           node scripts/verify-release-evidence.mjs
           pnpm audit:playground
+          pnpm audit:player-design
           pnpm test:browser:run
           pnpm build
           pnpm audit:licenses
