@@ -273,7 +273,7 @@ export function ThroughlineGraphPlayer({
   if (followInitialized.current || !canvasRef.current) return;
   followInitialized.current = true;
   if (canvasRef.current.clientWidth < 640) setFollow(true);
- }, [width]);
+ }, [width, trace]);
 	const [narrating, setNarrating] = useState(false);
 	const { state, dispatch, lastAction, seekRevision, onKeyDown } =
 		usePlayer(trace, narration && narrating);
