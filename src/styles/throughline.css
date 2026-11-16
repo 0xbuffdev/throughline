@@ -1303,11 +1303,14 @@
   margin: 0 7px 2px;
   background: var(--thl-muted);
 }.thl.player-shell .player-content{
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   min-height: 330px;
 }.thl.player-shell .player-content.with-inspector{
-  grid-template-columns: minmax(0, 1fr) 246px;
+  /* Inspector overlays the unchanged canvas, so opening it never causes
+     authored graph layout to recalculate for a narrower viewport. */
+  grid-template-columns: minmax(0, 1fr);
 }.thl.player-shell .canvas{
   min-width: 0;
   min-height: 330px;
@@ -1479,11 +1482,23 @@
 }.thl.player-shell .state-row.future{
   opacity: 0.3;
 }.thl.player-shell .inspector{
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: 10;
+  box-sizing: border-box;
+  width: min(60%, 48rem);
   min-width: 0;
-  border-left: 1px solid var(--line);
+  min-height: 0;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  border-inline-start: 1px solid var(--line);
   background: var(--thl-panel);
-  padding: 12px;
-  
+  box-shadow: -18px 0 36px color-mix(in srgb, var(--thl-bg) 65%, transparent);
+  padding: 12px 16px 20px;
 }
 @keyframes thl-player-reveal {
   from {
@@ -1491,22 +1506,41 @@
     transform: none;
   }
 }.thl.player-shell .inspector-top{
+  position: sticky;
+  top: -12px;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  margin: -12px -16px 0;
+  padding: 5px 12px 5px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--thl-panel);
   color: var(--thl-muted);
   font:
     500 8px "IBM Plex Mono",
     monospace;
   letter-spacing: 0.08em;
 }.thl.player-shell .inspector-top button{
-  width: 22px;
-  height: 22px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
   border: 0;
+  border-radius: var(--radius);
   background: transparent;
-  color: var(--thl-muted);
-  font-size: 17px;
+  color: var(--thl-text);
+  font-size: 20px;
+  line-height: 1;
   cursor: pointer;
+}.thl.player-shell .inspector-top button:hover{
+  background: var(--thl-control-hover);
+}.thl.player-shell .inspector-top button:focus-visible{
+  outline: 2px solid var(--thl-focus);
+  outline-offset: -2px;
 }.thl.player-shell .entity-heading{
   display: flex;
   gap: 9px;
@@ -1537,19 +1571,24 @@
 }.thl.player-shell .inspector dl > div{
   min-height: 27px;
   display: grid;
-  grid-template-columns: 80px 1fr;
-  align-items: center;
+  grid-template-columns: minmax(80px, 30%) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
 }.thl.player-shell .inspector dt{
   color: var(--thl-muted);
   font-size: 9px;
 }.thl.player-shell .inspector dd{
+  min-width: 0;
   margin: 0;
   color: var(--thl-text);
   font:
     400 9px "IBM Plex Mono",
     monospace;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}.thl.player-shell .inspector dd code{
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }.thl.player-shell .known{
   color: var(--acid);
 }.thl.player-shell .history-title{
@@ -1790,18 +1829,7 @@
 .thl.player-shell .truth-note,
 .thl.player-shell .header-actions button span{
     display: none;
-  }.thl.player-shell .player-content.with-inspector{
-    grid-template-columns: 1fr;
-  }.thl.player-shell .inspector{
-    position: absolute;
-    z-index: 10;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: min(270px, 86%);
-    box-shadow: -20px 0 40px rgba(0, 0, 0, 0.4);
   }.thl.player-shell .player-content{
-    position: relative;
     min-height: 310px;
   }.thl.player-shell .canvas{
     min-height: 310px;
@@ -2604,12 +2632,22 @@
 
 .thl.player-shell .state-row:focus-visible,
 .thl.player-shell .view-tabs button:focus-visible { outline: 2px solid var(--thl-focus); outline-offset: -2px; }
-.thl.player-shell .inspector { overflow-y: auto; max-height: 600px; }
-.thl.player-shell .inspector .thl-v2-inspect { max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
-.thl.player-shell .inspector .thl-v2-inspect pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.thl.player-shell .inspector .thl-v2-inspect {
+  max-width: 100%;
+  min-width: 0;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  gap: 0.75rem;
+  overflow-wrap: anywhere;
+}
+.thl.player-shell .inspector .thl-v2-inspect pre {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .thl.player-shell .thl-sr-only { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
 @container (max-width: 760px) {
- .thl.player-shell .player-content .inspector { max-height: none; }
  .thl.player-shell .canvas { height: 310px; }
 }
 @container (max-width: 480px) {
@@ -2709,16 +2747,44 @@
 .thl.player-shell .inspector {
  min-width: 0;
  max-width: 100%;
- overflow-x: clip;
 }
-@container (max-width: 760px) {
- .thl.player-shell .player-content.with-inspector {
-  grid-template-columns: minmax(0, 1fr);
+@container (max-width: 560px) {
+ /* An embedded mobile player stays inside its host. When the player itself
+    goes fullscreen, the inspector consequently fills that fullscreen view. */
+ .thl.player-shell {
+  position: relative;
+ }
+ .thl.player-shell .player-content {
+  position: static;
  }
  .thl.player-shell .player-content .inspector {
-  max-width: min(270px, 86%);
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  border-inline-start: 0;
+  box-shadow: none;
  }
 }
+/* The inspector alone scrolls vertically; disclosure panels remain part of
+   that same reading surface rather than introducing a second scrollbar. */
+.thl.player-shell .inspector .evidence-note {
+ min-width: 0;
+}
+.thl.player-shell .inspector .evidence-note :is(pre, table) {
+ overflow-x: visible;
+ white-space: pre-wrap;
+ overflow-wrap: anywhere;
+}
+.thl.player-shell .inspector .evidence-note table {
+ display: table;
+ width: 100%;
+ table-layout: fixed;
+}
+.thl.player-shell .history-item > div {
+ min-width: 0;
+}
+
 
 .thl.player-shell .seq-empty {
  margin: 0;
