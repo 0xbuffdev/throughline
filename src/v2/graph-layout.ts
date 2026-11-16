@@ -89,7 +89,7 @@ function prototypeWorld(trace: CompiledTrace, width: number): Layout {
   }
   const children=byParent.get(id) ?? [];
   const childTop=top+(rows ? (rows-1)*ROW+52+30 : 0);
-  let childBottom=childTop;
+  let childBottom=y;
   if (children.length) {
    const childWidths=widths(children,w-INNER*2);
    let cx=x+INNER;
