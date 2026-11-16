@@ -278,7 +278,6 @@ export function ThroughlineGraphPlayer({
  const [soundOn, setSoundOn] = useState(false);
  const [soundAvailable, setSoundAvailable] = useState(false);
  const audioRef = useRef<AudioContext | null>(null);
- const followInitialized = useRef(false);
 	const [camera, setCamera] = useState<Camera | null>(null);
 	const [fullscreen, setFullscreen] = useState(false);
 	// Capability detection is client-only. SSR and the first hydration render
@@ -294,7 +293,6 @@ export function ThroughlineGraphPlayer({
 		setInspectionMode("explain");
   setDrilled(null);
   setFollow(false);
-  followInitialized.current = false;
   setSoundOn(false);
   setNarrating(false);
 	}
@@ -314,9 +312,8 @@ export function ThroughlineGraphPlayer({
 	// Never send the former trace's higher frame index into a new, shorter
 	// immutable inspector while React completes that state transition.
 	const frameIndex = Math.min(state.step, trace.frames.length - 1);
-	// The player graph is a stable, pannable 828-unit SVG world, even
- // when the host is a narrow embed. Never reshuffle the authored diagram
- // solely because the container changes width.
+// Use the unchanged authored graph layout, including container-dependent
+ // geometry, rather than the reference design's fixed demo coordinates.
  const layout = useMemo(() => layoutGraph(trace, width), [trace, width]);
 	const view = useMemo(() => projectView(inspector, {
 		kind: viewKind, frameIndex,
@@ -343,18 +340,8 @@ export function ThroughlineGraphPlayer({
    layout.height / Math.max(1, focusBottom - focusTop),
   ))),
  } : null;
- const firstVisible = frameIndex === 0 && view.kind === "graph"
-  ? view.items.find(item => item.role === "entity" && geometry.nodes[item.id])
-  : undefined;
- const firstBox = firstVisible && geometry.nodes[firstVisible.id];
- const mobileInitialCamera: Camera | null = firstBox && width < 640 ? {
-  centerX: firstBox.x + firstBox.w / 2,
-  centerY: firstBox.y + firstBox.h / 2,
-  zoom: 2.4,
- } : null;
  const effectiveCamera = constrainCamera(layout,
-  follow ? followedCamera ?? mobileInitialCamera ?? camera ?? fitCamera(layout)
-   : camera ?? fitCamera(layout));
+  follow && followedCamera ? followedCamera : camera ?? fitCamera(layout));
 	const presentEntities = new Set(inspector.stateAt(frameIndex).presentEntityIds);
 	const selected = selectedId
 		? trace.artifact.entities.find(entity => entity.id === selectedId)
