@@ -201,12 +201,10 @@ function GraphDiagram({
 							{preview(item.label, Math.floor((rect.w - 16) / 7))}
 						</text>
 						<text className={cn("thl-v2-value entity-value", { "thl-changed": changed })}
-							x={8} y={44}>
+							x={12} y={39}>
 							{preview(value ? cellText(value) : "Unknown", Math.floor((rect.w - 16) / 7.4))}
 						</text>
-						{changed && <text x={8} y={62} className="thl-v2-change">
-							Explicit write
-						</text>}
+						
 					</g>
 				);
 			})}
