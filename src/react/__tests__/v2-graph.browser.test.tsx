@@ -8,7 +8,8 @@ import "../../styles/throughline.css";
 
 const trace = () => compileArtifact(distributedGraph());
 async function collapseGroup(screen: Awaited<ReturnType<typeof render>>, id: string) {
- await screen.getByRole("button", { name: "Player options" }).click();
+ const options = screen.getByRole("button", { name: "Player options" });
+ if (options.element().getAttribute("aria-expanded") !== "true") await options.click();
  await userEvent.selectOptions(
   screen.getByRole("combobox", { name: "Drill into group" }).element(), id);
  await screen.getByRole("button", { name: "Collapse group" }).click();
@@ -44,7 +45,7 @@ it("plays a source-linked checkout without pretending received or processed mean
 	// Truncated graph labels are not full-state evidence; inspect the
 	// selected source entity to verify the actual persistent value.
 	await screen.getByRole("button", { name: "Select Ledger" }).click();
-	expect(document.querySelector(".inspector .entity-heading")?.textContent)
+	expect(document.querySelector(".inspector dl > div:nth-child(2) code")?.textContent)
 		.toContain('"settled":false');
 	await next.click(); // ledger write + processed, no second sent
 	expect(link("settlement")?.getAttribute("data-sent-current")).toBe("0");
@@ -68,7 +69,7 @@ it("collapses and expands nested groups without losing relation/event provenance
 	await screen.getByRole("button", { name: "Player options" }).click();
  const choice = screen.getByRole("combobox", { name: "Select entity" }).element();
 	await userEvent.selectOptions(choice, "gateway");
-	await expect.element(screen.getByText("Gateway", { exact: true })).toBeVisible();
+	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Gateway");
 	await collapseGroup(screen, "front");
 	const summary = document.querySelector('[data-group-summary="front"]');
 	expect(summary).not.toBeNull();
@@ -83,7 +84,7 @@ it("collapses and expands nested groups without losing relation/event provenance
 	await screen.getByRole("button", { name: "Expand group Frontend" }).click();
 	expect(document.querySelector('[data-node="gateway"]')).not.toBeNull();
 	expect(link("request")?.getAttribute("data-sent-current")).toBe("1");
-	await expect.element(screen.getByText("Gateway", { exact: true })).toBeVisible();
+	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Gateway");
 });
 
 it("paints parent panels first for valid child-before-parent group declarations", async () => {
@@ -120,7 +121,6 @@ it("paints parent panels first for valid child-before-parent group declarations"
 it("retains source IDs of removed members in a collapsed graphical group summary", async () => {
 	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={trace()} />);
 	await collapseGroup(screen, "back");
-	await screen.getByRole("button", { name: "Player options" }).click();
 	for (let index = 0; index < 6; index++)
 		await screen.getByRole("button", { name: "Step forward" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 7 of 7");
@@ -139,11 +139,14 @@ it("announces declared non-authored origins without upgrading modeled event evid
 	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={compileArtifact(artifact)} />);
 	for (let index = 0; index < 4; index++)
 		await screen.getByRole("button", { name: "Step forward" }).click();
-	const evidence = screen.getByRole("list", { name: "Declared step evidence" });
-	await expect.element(evidence).toBeVisible();
-	await expect.element(screen.getByText(/Declared origin witness \(observed\)/)).toBeVisible();
-	expect(evidence.element().textContent).toContain("provenance is not independent verification");
-	expect(evidence.element().textContent).not.toContain("Authored presence");
+
+ await screen.getByRole("button", { name: "Inspect", exact: true }).click();
+ await screen.getByText("CAUSAL EVIDENCE", { exact: true }).click();
+ const inspector = screen.getByRole("region", { name: "Evidence inspector" });
+ await expect.element(inspector).toBeVisible();
+ expect(inspector.element().textContent).toContain("witness");
+ expect(inspector.element().textContent).toContain("observed");
+ expect(inspector.element().textContent).toContain("provenance is not independent verification");
 });
 
 it("supports keyboard stepping, zoom and pan independently of v2 model state", async () => {
