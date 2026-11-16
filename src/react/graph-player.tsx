@@ -228,7 +228,7 @@ function StateFallback({ view, selectedId, onSelect, inspector, frameIndex }: {
 }): React.JSX.Element {
  const rows = view.items.filter(item => item.role === "value");
  const changed = new Set(inspector.diff(Math.max(0, frameIndex - 1), frameIndex)
-  .filter(change => change.kind === "write").map(change => change.entityId));
+  .flatMap(change => change.kind === "write" ? [change.entityId] : []));
  return <div className="state-view" role="region" aria-label="State and event table">
   {view.diagnostics?.map(message => <p key={message} role="note">{message}</p>)}
   <div className="state-row state-header" aria-hidden="true">
