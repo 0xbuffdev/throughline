@@ -23,7 +23,7 @@ describe("TL-P01 design review fixtures", () => {
 			const fixture = makePlayerReviewFixture(reference.id, "reference");
 			expect(fixture.invalidReason).toBeNull();
 			const compiled = compileArtifact(fixture.artifact!);
-			expect(compiled.artifact.id).toBe(reference.id);
+			expect(compiled.artifact.id).toBe(reference.artifact.id);
 			expect(compiled.frames.length).toBe(reference.artifact.steps.length + 1);
 		});
 
