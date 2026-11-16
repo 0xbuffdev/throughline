@@ -7,6 +7,7 @@
 	"include": [
 		"src",
 		"playground/main.tsx",
+		"playground/player-design.tsx",
 		"playground/workbench.ts",
 		"playground/workbench.test.ts",
 		"playground/vite.config.ts"
