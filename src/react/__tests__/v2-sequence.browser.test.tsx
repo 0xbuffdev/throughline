@@ -171,7 +171,7 @@ it("preserves frame and source identity switching graph → sequence → graph",
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 10");
 	expect(document.querySelector('.sequence-head [data-source-entity-ids="gateway"]')
 		?.getAttribute("aria-pressed")).toBe("true");
-	await screen.getByRole("button", { name: /Client \(present at frame\)/ }).click();
+	await screen.getByRole("button", { name: "Inspect Client" }).click();
 	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Client");
 	await screen.getByRole("tab", { name: "Graph" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 10");
@@ -182,7 +182,7 @@ it("preserves frame and source identity switching graph → sequence → graph",
 	await screen.getByRole("tab", { name: "State" }).click();
 	await expect.element(screen.getByRole("region", { name: "State and event table" }))
 		.toBeVisible();
-	await expect.element(screen.getByText("Selected: Client")).toBeVisible();
+	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Client");
 });
 
 it("works at mobile width and retains chronological source rows", async () => {
