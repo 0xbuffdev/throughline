@@ -33,7 +33,7 @@ export function SequenceView({
  const minWidth = Math.max(300, actors.length * 105);
  return <section className="sequence-view" role="region" aria-label="Message sequence evidence">
   <p className="thl-sr-only">{view.summary} Events are in declared order, not physical time.</p>
-  <div className="seq-scroll" role="region" aria-label="Sequence evidence timeline">
+  <div className="seq-scroll" role="region" aria-label="Sequence lane diagram">
    <div style={{ minWidth }}>
     <div className="sequence-head" style={{ gridTemplateColumns: columns }}
      role="group" aria-label="Sequence actors">
