@@ -1374,7 +1374,7 @@
   stroke: var(--acid);
   stroke-width: 1.7;
   stroke-dasharray: 5 4;
-  animation: thl-player-flow 0.7s linear infinite;
+  animation: none;
   color: var(--acid);
   filter: drop-shadow(0 0 3px color-mix(in srgb, var(--thl-active) 30%, transparent));
 }
@@ -1548,7 +1548,7 @@
   border-left: 1px solid var(--line);
   background: var(--thl-panel);
   padding: 12px;
-  animation: thl-player-reveal 0.18s ease-out;
+  animation: none;
 }
 @keyframes thl-player-reveal {
   from {
@@ -2017,7 +2017,7 @@
   border-radius: 4px;
   background: var(--thl-panel);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px color-mix(in srgb, var(--thl-text) 2%, transparent) inset;
-  animation: thl-player-pop 0.14s ease-out;
+  animation: none;
   text-align: left;
 }
 @keyframes thl-player-pop {
@@ -2295,7 +2295,7 @@
   max-height: 240px;
   overflow-y: auto;
   padding: 0 14px 14px 48px;
-  animation: thl-player-thl-player-reveal-down 0.18s ease-out;
+  animation: none;
 }
 @keyframes thl-player-thl-player-reveal-down {
   from {
@@ -2754,4 +2754,34 @@
  display: block;
  overflow-x: auto;
  max-width: 100%;
+}
+
+/* Motion is opt-in by preference. Reduced-motion users never receive a
+ * running animation, and legacy player motion rules remain untouched. */
+@media (prefers-reduced-motion: no-preference) {
+ .thl.player-shell .links path.hot { animation: thl-player-flow 0.7s linear infinite; }
+ .thl.player-shell .inspector { animation: thl-player-reveal 0.18s ease-out; }
+ .thl.player-shell .options-menu { animation: thl-player-pop 0.14s ease-out; }
+ .thl.player-shell .caption-body { animation: thl-player-thl-player-reveal-down 0.18s ease-out; }
+}
+/* The compact inspector cannot force the host's horizontal scroll at any
+ * embed width. Popup controls remain accessible within the player width. */
+.thl.player-shell {
+ overflow-x: clip;
+}
+.thl.player-shell .player-content.with-inspector {
+ min-width: 0;
+}
+.thl.player-shell .inspector {
+ min-width: 0;
+ max-width: 100%;
+ overflow-x: clip;
+}
+@container (max-width: 760px) {
+ .thl.player-shell .player-content.with-inspector {
+  grid-template-columns: minmax(0, 1fr);
+ }
+ .thl.player-shell .player-content .inspector {
+  max-width: min(270px, 86%);
+ }
 }
