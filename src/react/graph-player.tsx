@@ -336,8 +336,8 @@ export function ThroughlineGraphPlayer({
  const focusTop = focusRects.length ? Math.min(...focusRects.map(rect => rect.y)) : 0;
  const focusBottom = focusRects.length ? Math.max(...focusRects.map(rect => rect.y + rect.h)) : 0;
  const followedCamera: Camera | null = focusRects.length ? {
-  cx: (focusLeft + focusRight) / 2,
-  cy: (focusTop + focusBottom) / 2,
+  centerX: (focusLeft + focusRight) / 2,
+  centerY: (focusTop + focusBottom) / 2,
   zoom: Math.max(1, Math.min(2.4, 0.8 * Math.min(
    layout.width / Math.max(1, focusRight - focusLeft),
    layout.height / Math.max(1, focusBottom - focusTop),
@@ -472,7 +472,7 @@ export function ThroughlineGraphPlayer({
    candidate.source.entityIds?.includes(id));
   const rect = item && geometry.nodes[item.id];
   if (rect && view.kind === "graph")
-   manual({ cx: rect.x + rect.w / 2, cy: rect.y + rect.h / 2, zoom: 2 });
+   manual({ centerX: rect.x + rect.w / 2, centerY: rect.y + rect.h / 2, zoom: 2 });
  };
  const focusGroup = (id: Id | null) => {
   setDrilled(id);
@@ -481,7 +481,7 @@ export function ThroughlineGraphPlayer({
    candidate.source.groupIds?.includes(id));
   const rect = item && (geometry.groups.find(rect => rect.id === item.id) ??
    geometry.nodes[item.id]);
-  if (rect) manual({ cx: rect.x + rect.w / 2, cy: rect.y + rect.h / 2, zoom: 2 });
+  if (rect) manual({ centerX: rect.x + rect.w / 2, centerY: rect.y + rect.h / 2, zoom: 2 });
  };
  const diagramControls = <>
   <div className="opt-field">
@@ -627,7 +627,7 @@ export function ThroughlineGraphPlayer({
        <span>Drag to pan · scroll to zoom · click a node to inspect</span>
        <div className="zoom-tools" role="toolbar" aria-label="Diagram navigation">
         <button type="button" aria-label="Zoom out" title="Zoom out" onClick={() => zoom(0.8)}
-         disabled={effectiveCamera.zoom <= 0.6}><PlayerIcon name="minus" size={12}/></button>
+         disabled={effectiveCamera.zoom <= 1}><PlayerIcon name="minus" size={12}/></button>
         <span className="zoom-readout">{Math.round(effectiveCamera.zoom * 100)}%</span>
         <button type="button" aria-label="Zoom in" title="Zoom in" onClick={() => zoom(1.25)}
          disabled={effectiveCamera.zoom >= 4}><PlayerIcon name="plus" size={12}/></button>
