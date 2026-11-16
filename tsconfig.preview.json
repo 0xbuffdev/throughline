@@ -8,6 +8,7 @@
 		"src",
 		"playground/main.tsx",
 		"playground/player-design.tsx",
+		"playground/player-design.test.ts",
 		"playground/workbench.ts",
 		"playground/workbench.test.ts",
 		"playground/vite.config.ts"
