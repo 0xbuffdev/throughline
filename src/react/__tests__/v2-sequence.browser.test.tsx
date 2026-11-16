@@ -217,6 +217,7 @@ it("mounts at most 120 correlation cards for hundreds of distinct message IDs", 
 	screen.getByRole("group", { name: "Visualization player" }).element().focus();
 	await userEvent.keyboard("{End}");
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 361 of 361");
+ await openEvidence(screen);
 	const cards = () => document.querySelectorAll(
 		".thl-v2-sequence-correlations li[data-message-id]");
 	expect(cards()).toHaveLength(120);
@@ -265,7 +266,8 @@ it("progressively reveals earlier rows without losing source evidence", async ()
 	expect(evidence("event0")).toBeNull();
 	expect(evidence("event159")).not.toBeNull();
 	expect(phase("batch", "sent")).toBe("sent: 160");
-	await screen.getByRole("button", { name: "Show earlier evidence" }).click();
+	await screen.getByRole("region", { name: "Sequence evidence timeline" })
+  .getByRole("button", { name: "Show earlier evidence" }).click();
 	expect(rows()).toHaveLength(160);
 	expect(evidence("event0")).not.toBeNull();
 	expect(evidence("event159")).not.toBeNull();
