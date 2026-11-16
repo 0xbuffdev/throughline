@@ -9,6 +9,8 @@ All notable changes to Throughline are recorded here. Package versions follow
 
 ### Added
 
+- TL-P01 adds a source-only, browser-rendered player design review lab inside the authoring Playground, with four validated references, five host widths, light/dark modes, no-title and long-label fixtures, a static compact-anatomy proposal and automated screenshot/manifest collection. This is a design foundation **not** the released player redesign or evidence of human accessibility acceptance.
+
 - Replaced the fixed-reference Vite development preview with a public-facing,
   static schema-2 authoring playground. It now supports editable JSON with
   syntax highlighting, exact semantic/compiler diagnostics, debounced native
