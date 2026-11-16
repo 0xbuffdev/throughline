@@ -270,6 +270,12 @@ export function ThroughlineGraphPlayer({
 	const svgRef = useRef<SVGSVGElement>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const width = useSceneWidth(canvasRef);
+ // Match the prototype: on initially narrow embeds, follow authored action.
+ useEffect(() => {
+  if (followInitialized.current || !canvasRef.current) return;
+  followInitialized.current = true;
+  if (canvasRef.current.clientWidth < 640) setFollow(true);
+ }, [width]);
 	const [narrating, setNarrating] = useState(false);
 	const { state, dispatch, lastAction, seekRevision, onKeyDown } =
 		usePlayer(trace, narration && narrating);
@@ -283,6 +289,7 @@ export function ThroughlineGraphPlayer({
  const [soundOn, setSoundOn] = useState(false);
  const [soundAvailable, setSoundAvailable] = useState(false);
  const audioRef = useRef<AudioContext | null>(null);
+ const followInitialized = useRef(false);
 	const [camera, setCamera] = useState<Camera | null>(null);
 	const [fullscreen, setFullscreen] = useState(false);
 	// Capability detection is client-only. SSR and the first hydration render
@@ -298,6 +305,7 @@ export function ThroughlineGraphPlayer({
 		setInspectionMode("explain");
   setDrilled(null);
   setFollow(false);
+  followInitialized.current = false;
   setSoundOn(false);
   setNarrating(false);
 	}
@@ -456,7 +464,7 @@ export function ThroughlineGraphPlayer({
  const helpId = useId();
  const captionId = useId();
  const currentEvent = step?.events[0];
- const eventType = currentEvent?.type ?? "initial";
+ const eventType = !step ? "initial" : currentEvent?.type ?? "no event";
  const hasWrite = step?.events.some(event => event.type === "write") ?? false;
  const origins = [...new Set(trace.artifact.origins.map(origin => origin.kind))].join(" + ");
  const inspectSelected = selected ?? trace.artifact.entities[0];
