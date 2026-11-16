@@ -56,20 +56,20 @@ it("preserves labeled timeline navigation, explicit evidence and inspect control
 
 	await screen.getByRole("button", { name: "Player options" }).click();
 	await expect.element(screen.getByRole("group", { name: "Player options" })).toBeVisible();
-	const choice = screen.getByRole("combobox", { name: "Visualization view" });
-	await userEvent.selectOptions(choice.element(), "state-table");
+	await screen.getByRole("button", { name: "Player options" }).click();
+ await screen.getByRole("tab", { name: "State" }).click();
 	await expect.element(screen.getByRole("region", { name: "State and event table" }))
 		.toBeVisible();
 	expect(document.querySelector(".thl-v2-state")?.textContent ??
 		document.querySelector(".thl-v2-table")?.textContent ??
 		document.body.textContent).toContain("Modeled call stack");
-	await screen.getByRole("button", { name: "Player options" }).click();
 	await screen.getByRole("button", { name: "Inspect", exact: true }).click();
-	await expect.element(screen.getByRole("region", { name: "Evidence inspector" }))
+ await screen.getByText("CAUSAL EVIDENCE", { exact: true }).click();
+ await expect.element(screen.getByRole("region", { name: "Evidence inspector" }))
 		.toBeVisible();
 	expect(element.scrollWidth).toBeLessThanOrEqual(element.clientWidth + 2);
-	// Audio is opt-in; no source fixture enables narration or sonification.
-	expect(document.querySelectorAll('button[aria-label="Sonify trace"]')).toHaveLength(0);
+	// The prototype's optional sound control is only mounted in Options.
+ expect(document.querySelectorAll('button[aria-label="Sonify trace"]')).toHaveLength(0);
 	expect(document.querySelectorAll('button[aria-label="Narrate captions"]')).toHaveLength(0);
 }, 30_000);
 
@@ -89,10 +89,7 @@ it("keeps original source IDs and a readable state equivalent when views switch"
 	if (correlation) {
 		expect(correlation.textContent).not.toContain("acknowledged: 1");
 	}
-	await screen.getByRole("button", { name: "Player options" }).click();
-	await userEvent.selectOptions(screen.getByRole("combobox", {
-		name: "Visualization view",
-	}).element(), "state-table");
+	await screen.getByRole("tab", { name: "State" }).click();
 	await expect.element(screen.getByRole("region", { name: "State and event table" }))
 		.toBeVisible();
 	expect(trace.frames[1].eventIds).toEqual(
