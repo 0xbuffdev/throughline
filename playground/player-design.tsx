@@ -160,7 +160,7 @@ export function PlayerDesignLab() {
 						<h1>Build the right player.</h1>
 						<p>Compare today's native schema-2 player with the proposed compact layout. This review surface is not the redesigned production player; TL-P02–P04 implement the approved anatomy.</p>
 					</div>
-					<a className="pdr-spec-link" href="https://github.com/0xbuffdev/context/blob/main/repos/throughline/specs/0008-compact-player-experience.md" target="_blank" rel="noopener noreferrer">Read player requirements ↗</a>
+					<a className="pdr-spec-link" href="https://github.com/0xbuffdev/throughline/blob/main/docs/player-design-system.md" target="_blank" rel="noopener noreferrer">Player design guide ↗</a>
 				</div>
 
 				<div className="pdr-toolbar" role="group" aria-label="Player review settings">
