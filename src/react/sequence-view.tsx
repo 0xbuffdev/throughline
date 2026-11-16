@@ -89,6 +89,7 @@ export function SequenceView({
        </li>;
       })}
      </ol>
+     {events.length === 0 && <p className="seq-empty">No modeled events through this frame.</p>}
     </div>
    </div>
   </div>
