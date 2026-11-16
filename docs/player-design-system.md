@@ -2,7 +2,7 @@
 
 **Status:** Proposed source design and browser-review fixtures; implementation of the new player shell is TL-P02, graph TL-P03, and sequence/Inspect TL-P04. A reviewed design is not evidence that the code or release is finished.
 
-**Authority:** [ADR-0010](https://github.com/0xbuffdev/context/blob/main/repos/throughline/adr/0010-compact-evidence-first-player.md) and [Specification 0008](https://github.com/0xbuffdev/context/blob/main/repos/throughline/specs/0008-compact-player-experience.md) (requirements PLR-001–PLR-015). The schema-2 model and query projections remain owned by [Specification 0004](https://github.com/0xbuffdev/context/blob/main/repos/throughline/specs/0004-universal-visualization-engine.md).
+**Authority:** Throughline ADR-0010 and Throughline Specification 0008 (requirements PLR-001–PLR-015). The schema-2 model and query projections remain owned by Throughline Specification 0004.
 
 ## Design objective
 
@@ -107,7 +107,7 @@ The fixture variants are constructed from each validated reference by adding **p
 - [Nielsen Norman Group, Progressive Disclosure](https://www.nngroup.com/articles/progressive-disclosure/) and [10 usability heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/): visible system status, reader control, consistent navigation and minimal primary chrome.
 - [W3C WCAG 2.2](https://www.w3.org/TR/WCAG22/): keyboard access, reflow, text resize, status, non-text contrast and target-size minimum with exceptions.
 - [WAI-ARIA slider pattern](https://www.w3.org/WAI/ARIA/apg/patterns/slider/): discrete seek, Home/End and meaningful value text.
-- Accepted [ADR-0006](https://github.com/0xbuffdev/context/blob/main/repos/throughline/adr/0006-semantic-runtime-and-views.md) and Specification 0004: model, timeline and presentation remain separate; the state table is the truthful fallback.
+- Accepted Throughline ADR-0006 and Specification 0004: model, timeline and presentation remain separate; the state table is the truthful fallback.
 
 ## Implementation and release boundaries
 
