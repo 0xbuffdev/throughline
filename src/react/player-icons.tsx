@@ -1,6 +1,6 @@
 import type * as React from "react";
 
-/** Icon shapes copied from the Throughline player design prototype. */
+/** Icon shapes ported directly from the player design prototype. */
 export type IconName =
   | "back"
   | "check"
@@ -95,4 +95,12 @@ const ICONS: Record<IconName, React.ReactNode> = {
 };
 
 export function PlayerIcon({ name, size = 16 }: { name: IconName; size?: number }) {
-  return 
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <g stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        {ICONS[name]}
+      </g>
+    </svg>
+  );
+}
+
