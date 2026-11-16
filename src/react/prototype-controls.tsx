@@ -8,6 +8,7 @@ interface PlaybackProps {
  dispatch: React.Dispatch<SeekAction>;
 }
 interface PlayerOptionsProps extends PlaybackProps {
+ scenario: { id: string; title: string };
  chapterControls?: (onSeek: (step: number) => void) => React.ReactNode;
  diagramControls?: React.ReactNode;
  sound?: { enabled: boolean; available?: boolean; toggle: () => void };
@@ -56,7 +57,7 @@ export function PlayerControls({ state, dispatch }: PlaybackProps): React.JSX.El
  * Throughline state; it does not import the demo's scenarios or chapters.
  */
 export function PlayerOptions({
- state, dispatch, chapterControls, diagramControls, sound, narration, inspection, fullscreen,
+ state, dispatch, scenario, chapterControls, diagramControls, sound, narration, inspection, fullscreen,
 }: PlayerOptionsProps): React.JSX.Element {
  const id = useId();
  const [open, setOpen] = useState(false);
@@ -89,7 +90,31 @@ export function PlayerOptions({
   {open && <div id={id} className="options-menu" role="group" aria-label="Player options">
    <section aria-label="Navigation">
     <p className="opt-label">Navigation</p>
-    {chapterControls?.(seek)}
+    <div className="opt-field">
+     <label htmlFor={id + "-scenario"}>Scenario</label>
+     <span className="opt-select">
+      <select id={id + "-scenario"} value={scenario.id} disabled
+       aria-label="Scenario" title="Only the provided compiled trace is available">
+       <option value={scenario.id}>{scenario.title}</option>
+      </select>
+      <PlayerIcon name="chevron" size={12}/>
+     </span>
+    </div>
+    {chapterControls ? chapterControls(seek) : <div className="opt-row">
+     <div className="opt-field">
+      <label htmlFor={id + "-chapter"}>Chapter</label>
+      <span className="opt-select">
+       <select id={id + "-chapter"} disabled aria-label="Chapter" value="">
+        <option value="">No chapters in schema 2</option>
+       </select>
+       <PlayerIcon name="chevron" size={12}/>
+      </span>
+     </div>
+     <button type="button" className="opt-icon" aria-label="Restart chapter"
+      title="No authored chapter available" disabled>
+      <PlayerIcon name="restart" size={14}/>
+     </button>
+    </div>}
     {state.max > 0 && <form className="opt-row go-to" onSubmit={event => {
      event.preventDefault();
      const value = Number(new FormData(event.currentTarget).get("step"));
