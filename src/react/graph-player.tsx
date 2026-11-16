@@ -244,7 +244,7 @@ function StateFallback({ view, selectedId, onSelect, inspector, frameIndex }: {
    })} key={item.id} data-source-entity-ids={id}
     aria-pressed={selectedId === id} onClick={() => onSelect(id)}>
     <strong>{item.label}</strong>
-    <code>entity:{id}</code>
+    <code title="Whole entity">.</code>
     <code>{present ? (cell ? cellText(cell) : "Unknown") : "Absent"}</code>
     <span>{origin}</span>
    </button>;
@@ -429,7 +429,11 @@ export function ThroughlineGraphPlayer({
  // Audio is optional, native, and instantiated only after an explicit click.
  useEffect(() => {
   setSoundAvailable(typeof window.AudioContext === "function");
-  return () => { void audioRef.current?.close().catch(() => {}); };
+  return () => {
+   const audio = audioRef.current;
+   audioRef.current = null;
+   if (audio) void audio.close().catch(() => {});
+  };
  }, []);
  const toggleSound = () => {
   if (soundOn) { setSoundOn(false); return; }
@@ -571,9 +575,15 @@ export function ThroughlineGraphPlayer({
        setSelectedId(trace.artifact.entities[0].id);
       setInspectionMode(current => current === "inspect" ? "explain" : "inspect");
      }}><PlayerIcon name="inspect"/><span>Inspect</span></button>
-    <PlayerOptions state={state} dispatch={dispatch} diagramControls={diagramControls}
+    <PlayerOptions state={state} dispatch={dispatch}
+     scenario={{ id: trace.artifact.id, title: title ?? trace.artifact.title ?? trace.artifact.id }}
+     diagramControls={diagramControls}
      inspection={{ enabled: inspectionMode === "inspect",
-      toggle: () => setInspectionMode(current => current === "inspect" ? "explain" : "inspect") }}
+      toggle: () => {
+       if (inspectionMode === "explain" && !selectedId && trace.artifact.entities.length)
+        setSelectedId(trace.artifact.entities[0].id);
+       setInspectionMode(current => current === "inspect" ? "explain" : "inspect");
+      } }}
      sound={{ enabled: soundOn, available: soundAvailable, toggle: toggleSound }}
      narration={narration ? { enabled: narrating, available: voice.available, toggle: voice.toggle } : undefined}
      fullscreen={{ active: fullscreen, available: fullscreenAvailable, toggle: toggleFullscreen }}/>
