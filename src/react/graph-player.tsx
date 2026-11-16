@@ -13,7 +13,7 @@ import type {
 	Cell, CompiledTrace, Id, ViewDescriptor, ViewItem, ViewKind,
 } from "../v2/model.js";
 import { projectView } from "../v2/views.js";
-import { PlayerControls, PlayerOptions } from "./controls.js";
+import { PlayerControls, PlayerOptions } from "./prototype-controls.js";
 import { useNarration } from "./use-narration.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
 import { SequenceView } from "./sequence-view.js";
