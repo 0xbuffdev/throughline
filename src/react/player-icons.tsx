@@ -1,6 +1,6 @@
 import type * as React from "react";
 
-/** Icon shapes ported directly from the player design prototype. */
+/** Player icon paths used throughout the player chrome. */
 export type IconName =
   | "back"
   | "check"
