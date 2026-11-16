@@ -53,7 +53,7 @@ export function SequenceEvidence({
 	const actorNames = new Map(actors.map(item => [item.id, item.label]));
 	const phases = ["sent", "received", "acknowledged", "processed"] as const;
 	return (
-		<section className="thl-v2-sequence" role="region" aria-label="Message sequence evidence">
+		<section className="thl-v2-sequence" role="region" aria-label="Source-event log and correlation details">
 			<p className="thl-v2-sequence-context">{view.summary}</p>
 			<p className="thl-v2-sequence-caution">
 				Events follow modeled step and event order, not verified network time.
