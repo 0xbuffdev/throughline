@@ -43,6 +43,7 @@
 		"dev": "vite --config playground/vite.config.ts",
 		"preview:build": "vite build --config playground/vite.config.ts",
 		"audit:playground": "node scripts/audit-playground.mjs",
+		"audit:player-design": "node scripts/capture-player-design.mjs",
 		"preview:typecheck": "tsc -p tsconfig.preview.json",
 		"build": "tsdown && node scripts/verify-dist.mjs",
 		"typecheck": "tsc --noEmit",
