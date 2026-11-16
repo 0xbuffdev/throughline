@@ -12,6 +12,7 @@ import {
 } from "./workbench.js";
 import "../src/styles/throughline.css";
 import "./style.css";
+import { PlayerDesignLab } from "./player-design.js";
 
 type Theme = "auto" | "light" | "dark";
 type Viewport = "wide" | "tablet" | "mobile";
@@ -204,6 +205,7 @@ function App() {
 						<span className="brand-section">Playground</span>
 					</a>
 					<nav className="header-nav" aria-label="Resources">
+						<a href="?player-lab=1" className="player-design-nav">Player design <Icon name="arrow" size={15} /></a>
 						<a href="https://github.com/0xbuffdev/throughline/blob/main/docs/grammar.md"
 							target="_blank" rel="noopener noreferrer">Authoring guide <Icon name="arrow" size={15} /></a>
 						<a href="https://github.com/0xbuffdev/throughline"
@@ -463,4 +465,4 @@ function App() {
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing playground root.");
-createRoot(root).render(<StrictMode><App /></StrictMode>);
+createRoot(root).render(<StrictMode>{new URLSearchParams(window.location.search).has("player-lab") ? <PlayerDesignLab /> : <App />}</StrictMode>);
