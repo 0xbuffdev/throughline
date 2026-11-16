@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+
 /* All tokens are local to the player; host themes and CSS remain untouched. */
 .thl {
 	--thl-bg: light-dark(oklch(0.985 0 0), oklch(0.145 0 0));
