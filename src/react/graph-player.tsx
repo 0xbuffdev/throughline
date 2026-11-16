@@ -18,6 +18,7 @@ import { useNarration } from "./use-narration.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
 import { SequenceView } from "./sequence-view.js";
 import { InspectPanel } from "./inspect-panel.js";
+import { PlayerIcon } from "./player-icons.js";
 
 export type ThroughlineGraphPlayerProps = {
 	/** Only a compiler-owned, immutable schema-2 trace is accepted. */
@@ -80,7 +81,7 @@ function GraphDiagram({
 				const item = rect.id && groupsById.get(rect.id);
 				if (!item) return null;
 				return (
-					<g key={item.id} data-group={item.source.groupIds?.[0]}
+					<g key={item.id} className="group-frame" data-group={item.source.groupIds?.[0]}
 						data-source-group-ids={item.source.groupIds?.join(" ")}
 						data-source-entity-ids={item.source.entityIds?.join(" ")}>
 						<rect className="thl-group" x={rect.x} y={rect.y}
@@ -103,7 +104,7 @@ function GraphDiagram({
 					(visitedAt.get(id) ?? Number.POSITIVE_INFINITY) <= frameIndex);
 				const aggregated = Boolean(data(item, "aggregated"));
 				return (
-					<g key={item.id} className={cn("thl-link", {
+					<g key={item.id} className={cn("thl-link links", {
 						"thl-visited": visited,
 						"thl-transferred": sent > 0,
 						"thl-animate": animate && sent > 0,
@@ -134,6 +135,7 @@ function GraphDiagram({
 				const active = Boolean(item.source.entityIds?.includes(selectedId ?? ""));
 				return (
 					<g key={"summary-" + item.id} role="button" tabIndex={0}
+						className="entity summary"
 						data-group-summary={group}
 						data-source-group-ids={item.source.groupIds?.join(" ")}
 						data-source-entity-ids={item.source.entityIds?.join(" ") ?? ""}
@@ -173,6 +175,7 @@ function GraphDiagram({
 				const participating = participants.has(id);
 				return (
 					<g key={item.id} role="button" tabIndex={0}
+						className={cn("entity", { "active": focused, "selected": selected })}
 						data-node={id} data-source-entity-ids={id}
 						data-source-event-ids={item.source.eventIds?.join(" ") ?? ""}
 						aria-label={"Select " + item.label}
@@ -192,10 +195,11 @@ function GraphDiagram({
 							})} />
 						<rect className={cn("thl-ring", { "thl-ring-selected": selected })}
 							x={-4} y={-4} width={rect.w + 8} height={rect.h + 8} rx={4}/>
-						<text className="thl-node-label" x={8} y={19}>
+						<circle cx={12} cy={14} r={3} />
+						<text className="thl-node-label entity-label" x={22} y={19}>
 							{preview(item.label, Math.floor((rect.w - 16) / 7))}
 						</text>
-						<text className={cn("thl-v2-value", { "thl-changed": changed })}
+						<text className={cn("thl-v2-value entity-value", { "thl-changed": changed })}
 							x={8} y={44}>
 							{preview(value ? cellText(value) : "Unknown", Math.floor((rect.w - 16) / 7.4))}
 						</text>
@@ -213,29 +217,40 @@ function GraphDiagram({
 }
 
 /** Inert fallback; full source-linked history inspector UI is TL-U07. */
-function StateFallback({ view, selectedId, onSelect }: {
-	view: ViewDescriptor; selectedId: Id | null; onSelect: (id: Id) => void;
+/** The prototype's four-column state sheet, displaying real committed cells. */
+function StateFallback({ view, selectedId, onSelect, inspector, frameIndex }: {
+ view: ViewDescriptor;
+ selectedId: Id | null;
+ onSelect: (id: Id) => void;
+ inspector: ReturnType<typeof inspectTrace>;
+ frameIndex: number;
 }): React.JSX.Element {
-	return (
-		<div className="thl-v2-fallback" role="region" aria-label="State and event table">
-			{view.diagnostics?.map(diagnostic =>
-				<p key={diagnostic} role="note">{diagnostic}</p>)}
-			<table>
-				<caption>Modeled state at {view.frameId}</caption>
-				<thead><tr><th scope="col">Entity</th><th scope="col">Presence</th><th scope="col">Value</th></tr></thead>
-				<tbody>{view.items.filter(item => item.role === "value").map(item => {
-					const id = item.source.entityIds?.[0] ?? "";
-					const cell = itemCell(item);
-					return <tr key={item.id}>
-						<th scope="row"><button type="button" aria-pressed={selectedId === id}
-							onClick={() => onSelect(id)}>{item.label}</button></th>
-						<td>{data(item, "present") ? "Present" : "Not present"}</td>
-						<td><code>{cell ? cellText(cell) : "Unknown"}</code></td>
-					</tr>;
-				})}</tbody>
-			</table>
-		</div>
-	);
+ const rows = view.items.filter(item => item.role === "value");
+ const changed = new Set(inspector.diff(Math.max(0, frameIndex - 1), frameIndex)
+  .filter(change => change.kind === "write").map(change => change.entityId));
+ return <div className="state-view" role="region" aria-label="State and event table">
+  {view.diagnostics?.map(message => <p key={message} role="note">{message}</p>)}
+  <div className="state-row state-header" aria-hidden="true">
+   <span>ENTITY</span><span>PATH</span><span>COMMITTED VALUE</span><span>ORIGIN</span>
+  </div>
+  {rows.map(item => {
+   const id = item.source.entityIds?.[0] ?? "";
+   const present = data(item, "present") === true;
+   const cell = itemCell(item);
+   const history = inspector.history(id);
+   const latest = history.filter(entry => entry.frameIndex <= frameIndex).at(-1);
+   const origin = latest?.originId ?? (present ? "initial" : "not present");
+   return <button type="button" className={cn("state-row", {
+    "changed": changed.has(id), "future": !present,
+   })} key={item.id} data-source-entity-ids={id}
+    aria-pressed={selectedId === id} onClick={() => onSelect(id)}>
+    <strong>{item.label}</strong>
+    <code>entity:{id}</code>
+    <code>{present ? (cell ? cellText(cell) : "Unknown") : "Absent"}</code>
+    <span>{origin}</span>
+   </button>;
+  })}
+ </div>;
 }
 
 /**
