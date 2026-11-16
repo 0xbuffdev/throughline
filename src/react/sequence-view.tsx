@@ -10,7 +10,7 @@ function field(item: ViewItem, key: string): unknown {
 const PAGE = 120;
 
 /**
- * The prototype's lane visualization, driven only by the schema-2 sequence
+ * The dynamic lane visualization, driven only by the schema-2 sequence
  * projection. Lane identities and events are never hardcoded to the demo.
  * The order is modeled step/event order, not inferred physical chronology.
  */
