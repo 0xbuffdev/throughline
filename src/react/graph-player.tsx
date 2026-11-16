@@ -13,7 +13,7 @@ import type {
 	Cell, CompiledTrace, Id, ViewDescriptor, ViewItem, ViewKind,
 } from "../v2/model.js";
 import { projectView } from "../v2/views.js";
-import { PlayerControls, PlayerOptions } from "./prototype-controls.js";
+import { PlayerControls, PlayerOptions } from "./player-chrome.js";
 import { useNarration } from "./use-narration.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
 import { SequenceView } from "./sequence-view.js";
@@ -216,7 +216,7 @@ function GraphDiagram({
 }
 
 /** Inert fallback; full source-linked history inspector UI is TL-U07. */
-/** The prototype's four-column state sheet, displaying real committed cells. */
+/** The compact four-column state sheet, displaying real committed cells. */
 function StateFallback({ view, selectedId, onSelect, inspector, frameIndex }: {
  view: ViewDescriptor;
  selectedId: Id | null;
@@ -268,7 +268,7 @@ export function ThroughlineGraphPlayer({
 	const svgRef = useRef<SVGSVGElement>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const width = useSceneWidth(canvasRef);
- // Match the prototype: on initially narrow embeds, follow authored action.
+ // On initially narrow embeds, follow authored action.
  useEffect(() => {
   if (followInitialized.current || !canvasRef.current) return;
   followInitialized.current = true;
@@ -323,7 +323,7 @@ export function ThroughlineGraphPlayer({
 	// Never send the former trace's higher frame index into a new, shorter
 	// immutable inspector while React completes that state transition.
 	const frameIndex = Math.min(state.step, trace.frames.length - 1);
-	// The prototype's graph is a stable, pannable 828-unit SVG world, even
+	// The player graph is a stable, pannable 828-unit SVG world, even
  // when the host is a narrow embed. Never reshuffle the authored diagram
  // solely because the container changes width.
  const layout = useMemo(() => layoutGraph(trace, 828), [trace]);
@@ -583,7 +583,7 @@ export function ThroughlineGraphPlayer({
    </div>
    <div className="header-actions">
     <button type="button" className={inspectionMode === "inspect" ? "active" : ""}
-     aria-pressed={inspectionMode === "inspect"} onClick={() => {
+     aria-label="Inspect" aria-pressed={inspectionMode === "inspect"} onClick={() => {
       if (inspectionMode === "explain" && !selectedId && trace.artifact.entities.length)
        setSelectedId(trace.artifact.entities[0].id);
       setInspectionMode(current => current === "inspect" ? "explain" : "inspect");
