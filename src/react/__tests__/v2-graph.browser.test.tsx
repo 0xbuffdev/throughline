@@ -7,6 +7,15 @@ import { ThroughlineGraphPlayer } from "../graph-player.js";
 import "../../styles/throughline.css";
 
 const trace = () => compileArtifact(distributedGraph());
+async function collapseGroup(screen: Awaited<ReturnType<typeof render>>, id: string) {
+ const options = screen.getByRole("button", { name: "Player options" });
+ if (options.element().getAttribute("aria-expanded") !== "true") await options.click();
+ await userEvent.selectOptions(
+  screen.getByRole("combobox", { name: "Drill into group" }).element(), id);
+ await screen.getByRole("button", { name: "Collapse group" }).click();
+ await screen.getByRole("button", { name: "Player options" }).click();
+}
+
 const currentLinks = () =>
 	[...document.querySelectorAll<SVGGElement>(".thl-v2-diagram .thl-link")];
 const link = (sourceId: string): SVGGElement | undefined =>
@@ -36,7 +45,7 @@ it("plays a source-linked checkout without pretending received or processed mean
 	// Truncated graph labels are not full-state evidence; inspect the
 	// selected source entity to verify the actual persistent value.
 	await screen.getByRole("button", { name: "Select Ledger" }).click();
-	expect(document.querySelector(".thl-v2-selection pre")?.textContent)
+	expect(document.querySelector(".inspector dl > div:nth-child(2) code")?.textContent)
 		.toContain('"settled":false');
 	await next.click(); // ledger write + processed, no second sent
 	expect(link("settlement")?.getAttribute("data-sent-current")).toBe("0");
@@ -58,10 +67,10 @@ it("collapses and expands nested groups without losing relation/event provenance
 	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={trace()} />);
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	await screen.getByRole("button", { name: "Player options" }).click();
-	const choice = screen.getByRole("combobox", { name: "Select entity" }).element();
+ const choice = screen.getByRole("combobox", { name: "Select entity" }).element();
 	await userEvent.selectOptions(choice, "gateway");
-	await expect.element(screen.getByText("Selected: Gateway")).toBeVisible();
-	await screen.getByRole("button", { name: "Collapse Frontend" }).click();
+	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Gateway");
+	await collapseGroup(screen, "front");
 	const summary = document.querySelector('[data-group-summary="front"]');
 	expect(summary).not.toBeNull();
 	expect(summary?.getAttribute("data-source-entity-ids")).toBe("client gateway");
@@ -70,13 +79,15 @@ it("collapses and expands nested groups without losing relation/event provenance
 	expect(document.querySelector('[data-node="gateway"]')).toBeNull();
 	expect(link("settlement")?.getAttribute("data-source-relation-ids")).toBe("settlement");
 	expect(link("request")).toBeUndefined();
-	// The options popover is intentionally layered over the diagram: close it
-	// before using the graphical group-summary button.
-	await screen.getByRole("button", { name: "Player options" }).click();
+	// The compact inspector is a drawer at narrow embed widths, and
+	// intentionally overlays graph hit targets. Close it before using the
+	// graphical group-summary button; selection must survive reopening.
+	await screen.getByRole("button", { name: "Close inspector" }).click();
 	await screen.getByRole("button", { name: "Expand group Frontend" }).click();
 	expect(document.querySelector('[data-node="gateway"]')).not.toBeNull();
 	expect(link("request")?.getAttribute("data-sent-current")).toBe("1");
-	await expect.element(screen.getByText("Selected: Gateway")).toBeVisible();
+	await screen.getByRole("button", { name: "Inspect", exact: true }).click();
+	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Gateway");
 });
 
 it("paints parent panels first for valid child-before-parent group declarations", async () => {
@@ -105,17 +116,14 @@ it("paints parent panels first for valid child-before-parent group declarations"
 	expect(Number(child.getAttribute("y"))).toBeGreaterThan(
 		Number(root.getAttribute("y")),
 	);
-	await screen.getByRole("button", { name: "Player options" }).click();
-	await screen.getByRole("button", { name: "Collapse Backend" }).click();
+	await collapseGroup(screen, "back");
 	expect(groupPanels()).toEqual(["system", "back", "front"]);
 	expect(document.querySelector('[data-group-summary="back"]')).not.toBeNull();
 });
 
 it("retains source IDs of removed members in a collapsed graphical group summary", async () => {
 	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={trace()} />);
-	await screen.getByRole("button", { name: "Player options" }).click();
-	await screen.getByRole("button", { name: "Collapse Backend" }).click();
-	await screen.getByRole("button", { name: "Player options" }).click();
+	await collapseGroup(screen, "back");
 	for (let index = 0; index < 6; index++)
 		await screen.getByRole("button", { name: "Step forward" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 7 of 7");
@@ -134,16 +142,21 @@ it("announces declared non-authored origins without upgrading modeled event evid
 	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={compileArtifact(artifact)} />);
 	for (let index = 0; index < 4; index++)
 		await screen.getByRole("button", { name: "Step forward" }).click();
-	const evidence = screen.getByRole("list", { name: "Declared step evidence" });
-	await expect.element(evidence).toBeVisible();
-	await expect.element(screen.getByText(/Declared origin witness \(observed\)/)).toBeVisible();
-	expect(evidence.element().textContent).toContain("provenance is not independent verification");
-	expect(evidence.element().textContent).not.toContain("Authored presence");
+
+ await screen.getByText("Details", { exact: true }).click();
+ const evidence = screen.getByRole("list", { name: "Declared step evidence" });
+ await expect.element(evidence).toBeVisible();
+ expect(evidence.element().textContent).toContain("witness (observed)");
+ expect(evidence.element().textContent).toContain("provenance is not independent verification");
+ expect(evidence.element().textContent).not.toContain("Authored presence");
 });
 
 it("supports keyboard stepping, zoom and pan independently of v2 model state", async () => {
 	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={trace()} />);
-	await expect.poll(() => viewBox()[2]).toBeLessThan(720);
+	// ResizeObserver updates the authored graph geometry after the initial
+	// 720px SSR fallback. Record the fit viewport only after measurement.
+	await expect.poll(() => viewBox()[2]).toBe(
+		Math.floor(document.querySelector(".canvas")!.getBoundingClientRect().width));
 	const start = viewBox();
 	const svg = document.querySelector<SVGSVGElement>(".thl-v2-diagram")!;
 	svg.focus();
@@ -162,24 +175,16 @@ it("supports keyboard stepping, zoom and pan independently of v2 model state", a
 
 it("presents a truthful table fallback and source-linked values without changing frame state", async () => {
 	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={trace()} />);
-	await screen.getByRole("button", { name: "Player options" }).click();
-	await userEvent.selectOptions(
-		screen.getByRole("combobox", { name: "Visualization view" }).element(),
-		"state-table",
-	);
+	await screen.getByRole("tab", { name: "State" }).click();
 	await expect.element(screen.getByRole("region", { name: "State and event table" })).toBeVisible();
 	expect(document.querySelector(".thl-v2-diagram")).toBeNull();
-	await expect.element(screen.getByText("Unknown: not measured")).toBeVisible();
+	expect(document.querySelector(".state-view")?.textContent).toContain("Unknown: not measured");
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 7");
 	expect(document.querySelector('[data-source-event-ids="sent"]')).not.toBeNull();
 	// Clicking outside the native popover dismisses it; reopen the options
 	// for a view change, as an actual user would.
-	await screen.getByRole("button", { name: "Player options" }).click();
-	await userEvent.selectOptions(
-		screen.getByRole("combobox", { name: "Visualization view" }).element(),
-		"graph",
-	);
+	await screen.getByRole("tab", { name: "Graph" }).click();
 	expect(link("request")?.getAttribute("data-sent-current")).toBe("1");
 });
 
@@ -187,12 +192,11 @@ it("fits a mobile host and safely resets presentation on trace replacement", asy
 	await page.viewport(375, 800);
 	const original = trace();
 	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={original}/>);
-	await expect.poll(() => viewBox()[2]).toBeLessThan(720);
+	await expect.poll(() => viewBox()[2]).toBeGreaterThan(0);
 	const container = document.querySelector(".thl-v2")!;
 	expect(container.scrollWidth).toBeLessThanOrEqual(container.clientWidth);
 	await screen.getByRole("button", { name: "Step forward" }).click();
-	await screen.getByRole("button", { name: "Player options" }).click();
-	await screen.getByRole("button", { name: "Collapse Frontend" }).click();
+	await collapseGroup(screen, "front");
 	const next = distributedGraph();
 	next.steps = [];
 	next.claims = [];

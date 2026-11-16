@@ -16,25 +16,25 @@ const correlation = (messageId: string): HTMLLIElement | null =>
 const phase = (messageId: string, name: string): string | undefined =>
 	correlation(messageId)?.querySelector('[data-phase="' + name + '"]')?.textContent?.trim();
 
+async function openEvidence(screen: Awaited<ReturnType<typeof render>>) {
+ const trigger = screen.getByRole("button", { name: "Inspect", exact: true });
+ if (trigger.element().getAttribute("aria-pressed") !== "true") await trigger.click();
+ const details = document.querySelector<HTMLDetailsElement>(".evidence-note");
+ if (details && !details.open)
+  await screen.getByText("CAUSAL EVIDENCE", { exact: true }).click();
+}
 async function openSequence(screen: Awaited<ReturnType<typeof render>>) {
-	await screen.getByRole("button", { name: "Player options" }).click();
-	await userEvent.selectOptions(
-		screen.getByRole("combobox", { name: "Visualization view" }).element(),
-		"sequence",
-	);
-	await screen.getByRole("button", { name: "Player options" }).click();
-	await expect.element(screen.getByRole("region", { name: "Message sequence evidence" }))
-		.toBeVisible();
+ await screen.getByRole("tab", { name: "Sequence" }).click();
+ await openEvidence(screen);
+ await expect.element(screen.getByRole("region", { name: "Message sequence evidence" }))
+  .toBeVisible();
 }
 
 it("uses artifact hint priority and automatic message choice on initial render", async () => {
 	const screen = await render(<ThroughlineGraphPlayer trace={artifact()} />);
 	await expect.element(screen.getByRole("region", { name: "Message sequence evidence" }))
 		.toBeVisible();
-	await screen.getByRole("button", { name: "Player options" }).click();
-	expect((screen.getByRole("combobox", { name: "Visualization view" }).element() as HTMLSelectElement).value)
-		.toBe("sequence");
-	await screen.getByRole("button", { name: "Player options" }).click();
+	await expect.element(screen.getByRole("tab", { name: "Sequence" })).toHaveAttribute("aria-selected", "true");
 
 	const preferred = retryCheckout();
 	preferred.views = [
@@ -45,18 +45,12 @@ it("uses artifact hint priority and automatic message choice on initial render",
 	await screen.rerender(<ThroughlineGraphPlayer trace={compileArtifact(preferred)} />);
 	await expect.element(screen.getByRole("region", { name: "State and event table" }))
 		.toBeVisible();
-	await screen.getByRole("button", { name: "Player options" }).click();
-	const selector = screen.getByRole("combobox", { name: "Visualization view" });
-	expect((selector.element() as HTMLSelectElement).value).toBe("state-table");
-	await userEvent.selectOptions(selector.element(), "graph"); // manual choice wins
-	await screen.getByRole("button", { name: "Player options" }).click();
-	await expect.element(screen.getByRole("img",
-		{ name: "Source-linked graph at current frame" })).toBeVisible();
-	await screen.getByRole("button", { name: "Step forward" }).click();
-	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 10");
-	await screen.getByRole("button", { name: "Player options" }).click();
-	expect((selector.element() as HTMLSelectElement).value).toBe("graph"); // seek never resets manual choice
-	await screen.getByRole("button", { name: "Player options" }).click();
+	await expect.element(screen.getByRole("tab", { name: "State" })).toHaveAttribute("aria-selected", "true");
+ await screen.getByRole("tab", { name: "Graph" }).click(); // manual choice wins
+ await expect.element(screen.getByRole("img", { name: "Source-linked graph at current frame" })).toBeVisible();
+ await screen.getByRole("button", { name: "Step forward" }).click();
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 10");
+ await expect.element(screen.getByRole("tab", { name: "Graph" })).toHaveAttribute("aria-selected", "true");
 
 	const tied = retryCheckout();
 	tied.views = [
@@ -68,8 +62,7 @@ it("uses artifact hint priority and automatic message choice on initial render",
 	await expect.element(screen.getByRole("region", { name: "Message sequence evidence" }))
 		.toBeVisible();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 10");
-	await screen.getByRole("button", { name: "Player options" }).click();
-	expect((selector.element() as HTMLSelectElement).value).toBe("sequence");
+	await expect.element(screen.getByRole("tab", { name: "Sequence" })).toHaveAttribute("aria-selected", "true");
 });
 
 it("does not flag receipt before send within the same atomic step", async () => {
@@ -87,7 +80,8 @@ it("does not flag receipt before send within the same atomic step", async () => 
 	);
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 2");
-	expect(evidence("receipt")?.getAttribute("data-message-phase")).toBe("received");
+ await openEvidence(screen);
+ expect(evidence("receipt")?.getAttribute("data-message-phase")).toBe("received");
 	expect(evidence("receipt")?.textContent).not.toContain("No sent modeled through this step");
 	expect(phase("sameStep", "sent")).toBe("sent: 1");
 	expect(phase("sameStep", "received")).toBe("received: 1");
@@ -98,7 +92,8 @@ it("does not flag receipt before send within the same atomic step", async () => 
 it("shows modeled phases through seeking, no future or imagined acknowledgement", async () => {
 	const screen = await render(<ThroughlineGraphPlayer trace={artifact()} />);
 	await openSequence(screen);
-	await expect.element(screen.getByText("No modeled events through this frame.")).toBeVisible();
+	await expect.element(screen.getByRole("region", { name: "Sequence lane diagram" })
+  .getByText("No modeled events through this frame.")).toBeVisible();
 	expect(evidence("originalSent")).toBeNull();
 	const next = screen.getByRole("button", { name: "Step forward" });
 	await next.click();
@@ -172,30 +167,26 @@ it("preserves frame and source identity switching graph → sequence → graph",
 	await next.click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 10");
 	await screen.getByRole("button", { name: "Select Gateway" }).click();
-	await expect.element(screen.getByText("Selected: Gateway")).toBeVisible();
+	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Gateway");
 	await openSequence(screen);
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 10");
-	expect(document.querySelector('.thl-v2-sequence-actors [data-source-entity-ids="gateway"]')
+	expect(document.querySelector('.sequence-head [data-source-entity-ids="gateway"]')
 		?.getAttribute("aria-pressed")).toBe("true");
-	await screen.getByRole("button", { name: /Client \(present at frame\)/ }).click();
-	await expect.element(screen.getByText("Selected: Client")).toBeVisible();
-	await screen.getByRole("button", { name: "Player options" }).click();
-	await userEvent.selectOptions(
-		screen.getByRole("combobox", { name: "Visualization view" }).element(),
-		"graph",
-	);
+	// The responsive inspector intentionally overlays source lanes. Close it
+	// before selecting another lane, then verify the new selection reopens it.
+	await screen.getByRole("button", { name: "Close inspector" }).click();
+	await screen.getByRole("button", { name: "Inspect Client" }).click();
+	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Client");
+	await screen.getByRole("tab", { name: "Graph" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 10");
 	expect(document.querySelector('[data-node="client"]')?.getAttribute("aria-pressed"))
 		.toBe("true");
 	expect(document.querySelector('[data-node="gateway"]')?.getAttribute("aria-pressed"))
 		.toBe("false");
-	await userEvent.selectOptions(
-		screen.getByRole("combobox", { name: "Visualization view" }).element(),
-		"state-table",
-	);
+	await screen.getByRole("tab", { name: "State" }).click();
 	await expect.element(screen.getByRole("region", { name: "State and event table" }))
 		.toBeVisible();
-	await expect.element(screen.getByText("Selected: Client")).toBeVisible();
+	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Client");
 });
 
 it("works at mobile width and retains chronological source rows", async () => {
@@ -230,6 +221,7 @@ it("mounts at most 120 correlation cards for hundreds of distinct message IDs", 
 	screen.getByRole("group", { name: "Visualization player" }).element().focus();
 	await userEvent.keyboard("{End}");
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 361 of 361");
+ await openEvidence(screen);
 	const cards = () => document.querySelectorAll(
 		".thl-v2-sequence-correlations li[data-message-id]");
 	expect(cards()).toHaveLength(120);
@@ -278,7 +270,8 @@ it("progressively reveals earlier rows without losing source evidence", async ()
 	expect(evidence("event0")).toBeNull();
 	expect(evidence("event159")).not.toBeNull();
 	expect(phase("batch", "sent")).toBe("sent: 160");
-	await screen.getByRole("button", { name: "Show earlier evidence" }).click();
+	await screen.getByRole("region", { name: "Sequence evidence timeline" })
+  .getByRole("button", { name: "Show earlier evidence" }).click();
 	expect(rows()).toHaveLength(160);
 	expect(evidence("event0")).not.toBeNull();
 	expect(evidence("event159")).not.toBeNull();

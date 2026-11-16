@@ -13,11 +13,13 @@ import type {
 	Cell, CompiledTrace, Id, ViewDescriptor, ViewItem, ViewKind,
 } from "../v2/model.js";
 import { projectView } from "../v2/views.js";
-import { PlayerControls, PlayerOptions } from "./controls.js";
+import { PlayerControls, PlayerOptions } from "./player-chrome.js";
 import { useNarration } from "./use-narration.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
 import { SequenceView } from "./sequence-view.js";
+import { SequenceEvidence } from "./sequence-evidence.js";
 import { InspectPanel } from "./inspect-panel.js";
+import { PlayerIcon } from "./player-icons.js";
 
 export type ThroughlineGraphPlayerProps = {
 	/** Only a compiler-owned, immutable schema-2 trace is accepted. */
@@ -212,30 +214,39 @@ function GraphDiagram({
 	);
 }
 
-/** Inert fallback; full source-linked history inspector UI is TL-U07. */
-function StateFallback({ view, selectedId, onSelect }: {
-	view: ViewDescriptor; selectedId: Id | null; onSelect: (id: Id) => void;
+function StateFallback({ view, selectedId, onSelect, inspector, frameIndex }: {
+ view: ViewDescriptor;
+ selectedId: Id | null;
+ onSelect: (id: Id) => void;
+ inspector: ReturnType<typeof inspectTrace>;
+ frameIndex: number;
 }): React.JSX.Element {
-	return (
-		<div className="thl-v2-fallback" role="region" aria-label="State and event table">
-			{view.diagnostics?.map(diagnostic =>
-				<p key={diagnostic} role="note">{diagnostic}</p>)}
-			<table>
-				<caption>Modeled state at {view.frameId}</caption>
-				<thead><tr><th scope="col">Entity</th><th scope="col">Presence</th><th scope="col">Value</th></tr></thead>
-				<tbody>{view.items.filter(item => item.role === "value").map(item => {
-					const id = item.source.entityIds?.[0] ?? "";
-					const cell = itemCell(item);
-					return <tr key={item.id}>
-						<th scope="row"><button type="button" aria-pressed={selectedId === id}
-							onClick={() => onSelect(id)}>{item.label}</button></th>
-						<td>{data(item, "present") ? "Present" : "Not present"}</td>
-						<td><code>{cell ? cellText(cell) : "Unknown"}</code></td>
-					</tr>;
-				})}</tbody>
-			</table>
-		</div>
-	);
+ const rows = view.items.filter(item => item.role === "value");
+ const changed = new Set(inspector.diff(Math.max(0, frameIndex - 1), frameIndex)
+  .flatMap(change => change.kind === "write" ? [change.entityId] : []));
+ return <div className="state-view" role="region" aria-label="State and event table">
+  {view.diagnostics?.map(message => <p key={message} role="note">{message}</p>)}
+  <div className="state-row state-header" aria-hidden="true">
+   <span>ENTITY</span><span>PATH</span><span>COMMITTED VALUE</span><span>ORIGIN</span>
+  </div>
+  {rows.map(item => {
+   const id = item.source.entityIds?.[0] ?? "";
+   const present = data(item, "present") === true;
+   const cell = itemCell(item);
+   const history = inspector.history(id);
+   const latest = history.filter(entry => entry.frameIndex <= frameIndex).at(-1);
+   const origin = latest?.originId ?? (present ? "initial" : "not present");
+   return <button type="button" className={cn("state-row", {
+    "changed": changed.has(id), "future": !present,
+   })} key={item.id} data-source-entity-ids={id}
+    aria-pressed={selectedId === id} onClick={() => onSelect(id)}>
+    <strong>{item.label}</strong>
+    <code title="Whole entity">.</code>
+    <code>{present ? (cell ? cellText(cell) : "Unknown") : "Absent"}</code>
+    <span>{origin}</span>
+   </button>;
+  })}
+ </div>;
 }
 
 /**
@@ -262,6 +273,11 @@ export function ThroughlineGraphPlayer({
 	const [collapsed, setCollapsed] = useState<readonly Id[]>([]);
 	const [viewKind, setViewKind] = useState<ViewKind | undefined>(initialView);
 	const [inspectionMode, setInspectionMode] = useState<"explain" | "inspect">("explain");
+ const [drilled, setDrilled] = useState<Id | null>(null);
+ const [follow, setFollow] = useState(false);
+ const [soundOn, setSoundOn] = useState(false);
+ const [soundAvailable, setSoundAvailable] = useState(false);
+ const audioRef = useRef<AudioContext | null>(null);
 	const [camera, setCamera] = useState<Camera | null>(null);
 	const [fullscreen, setFullscreen] = useState(false);
 	// Capability detection is client-only. SSR and the first hydration render
@@ -275,7 +291,10 @@ export function ThroughlineGraphPlayer({
 		setCamera(null);
 		setViewKind(initialView);
 		setInspectionMode("explain");
-		setNarrating(false);
+  setDrilled(null);
+  setFollow(false);
+  setSoundOn(false);
+  setNarrating(false);
 	}
 	useEffect(() => {
 		if (!narration) setNarrating(false);
@@ -293,14 +312,36 @@ export function ThroughlineGraphPlayer({
 	// Never send the former trace's higher frame index into a new, shorter
 	// immutable inspector while React completes that state transition.
 	const frameIndex = Math.min(state.step, trace.frames.length - 1);
-	const layout = useMemo(() => layoutGraph(trace, width), [trace, width]);
+// Use the unchanged authored graph layout, including container-dependent
+ // geometry, rather than the reference design's fixed demo coordinates.
+ const layout = useMemo(() => layoutGraph(trace, width), [trace, width]);
 	const view = useMemo(() => projectView(inspector, {
 		kind: viewKind, frameIndex,
 		selectedEntityIds: selectedId ? [selectedId] : [],
 		collapsedGroupIds: collapsed,
 	}), [inspector, frameIndex, viewKind, selectedId, collapsed]);
 	const geometry = useMemo(() => layoutGraphView(layout, view), [layout, view]);
-	const effectiveCamera = constrainCamera(layout, camera ?? fitCamera(layout));
+	// Only authored focusEntityIds can drive automatic camera following.
+ const focusIds = frameIndex ? trace.artifact.steps[frameIndex - 1].focusEntityIds ?? [] : [];
+ const focusRects = focusIds.map(id => {
+  const item = view.items.find(candidate => candidate.role === "entity" &&
+   candidate.source.entityIds?.includes(id));
+  return item ? geometry.nodes[item.id] : undefined;
+ }).filter((rect): rect is { x: number; y: number; w: number; h: number } => rect !== undefined);
+ const focusLeft = focusRects.length ? Math.min(...focusRects.map(rect => rect.x)) : 0;
+ const focusRight = focusRects.length ? Math.max(...focusRects.map(rect => rect.x + rect.w)) : 0;
+ const focusTop = focusRects.length ? Math.min(...focusRects.map(rect => rect.y)) : 0;
+ const focusBottom = focusRects.length ? Math.max(...focusRects.map(rect => rect.y + rect.h)) : 0;
+ const followedCamera: Camera | null = focusRects.length ? {
+  centerX: (focusLeft + focusRight) / 2,
+  centerY: (focusTop + focusBottom) / 2,
+  zoom: Math.max(1, Math.min(2.4, 0.8 * Math.min(
+   layout.width / Math.max(1, focusRight - focusLeft),
+   layout.height / Math.max(1, focusBottom - focusTop),
+  ))),
+ } : null;
+ const effectiveCamera = constrainCamera(layout,
+  follow && followedCamera ? followedCamera : camera ?? fitCamera(layout));
 	const presentEntities = new Set(inspector.stateAt(frameIndex).presentEntityIds);
 	const selected = selectedId
 		? trace.artifact.entities.find(entity => entity.id === selectedId)
@@ -337,7 +378,7 @@ export function ThroughlineGraphPlayer({
 		}
 		return present;
 	}, [firstSent, frameIndex, trace]);
-	const manual = (next: Camera) => setCamera(constrainCamera(layout, next));
+	const manual = (next: Camera) => { setFollow(false); setCamera(constrainCamera(layout, next)); };
 	const fit = () => manual(fitCamera(layout));
 	const zoom = (factor: number) => manual(zoomCamera(layout, effectiveCamera, factor));
 	const pan = (dx: number, dy: number) => manual(panCamera(layout, effectiveCamera, dx, dy));
@@ -375,167 +416,302 @@ export function ThroughlineGraphPlayer({
 			setFullscreenError("Fullscreen is unavailable in this browser or embedded view.");
 		}
 	};
-	const controls = (
-		<>
-			<label className="thl-v2-field">View
-				<select aria-label="Visualization view" value={viewKind ?? view.kind}
-					onChange={event => setViewKind(event.currentTarget.value as ViewKind)}>
-					<option value="graph">Graph</option>
-					<option value="sequence">Sequence</option>
-					<option value="state-table">State table</option>
-				</select>
-			</label>
-			<label className="thl-v2-field">Selected entity
-				<select aria-label="Select entity" value={selectedId ?? ""}
-					onChange={event => setSelectedId(event.currentTarget.value || null)}>
-					<option value="">None</option>
-					{trace.artifact.entities.map(entity =>
-						<option key={entity.id} value={entity.id}>{entity.label}</option>)}
-				</select>
-			</label>
-			{(trace.artifact.groups ?? []).map(group =>
-				<button type="button" key={group.id} aria-pressed={collapsed.includes(group.id)}
-					onClick={() => setCollapsed(current => current.includes(group.id)
-						? current.filter(id => id !== group.id) : [...current, group.id])}>
-					{collapsed.includes(group.id) ? "Expand " : "Collapse "}{group.label}
-				</button>)}
-		</>
-	);
-	const keyboardDiagram: React.KeyboardEventHandler<SVGSVGElement> = (event) => {
-		if (event.target !== event.currentTarget) return;
-		const key = event.key;
-		if (key === "+" || key === "=") zoom(1.25);
-		else if (key === "-") zoom(1 / 1.25);
-		else if (key === "0") fit();
-		else if (key === "ArrowLeft") pan(-30, 0);
-		else if (key === "ArrowRight") pan(30, 0);
-		else if (key === "ArrowUp") pan(0, -30);
-		else if (key === "ArrowDown") pan(0, 30);
-		else return;
-		event.preventDefault();
-		event.stopPropagation();
-	};
-	const helpId = useId();
-	const captionId = useId();
-	return (
-		<div ref={rootRef} className={cn("thl", "thl-v2", className)}
-			data-theme={theme} role="group" aria-label="Visualization player"
-			aria-describedby={helpId} aria-keyshortcuts="ArrowLeft ArrowRight Home End Space"
-			tabIndex={0} onKeyDown={onKeyDown}
-			style={{ "--thl-step-ms": stepDelayMs(BASE_STEP_MS, state.speed) + "ms" } as React.CSSProperties}>
-			<p id={helpId} className="thl-sr-only">
-				Focus this player to seek with Left and Right arrows, Home and End,
-				and play or pause with Space. Focus the graph to pan with arrows,
-				zoom with plus or minus, or fit with zero.
-			</p>
-			<p className="thl-sr-only" role="status" aria-atomic="true">{summary}</p>
-			{voice.error && narration && <p role="alert">{voice.error}</p>}
-			{fullscreenError && <p role="alert">{fullscreenError}</p>}
-			<header className="thl-header">
-				<h2 className="thl-title">{title ?? trace.artifact.title ?? "Throughline"}</h2>
-				<PlayerOptions state={state} dispatch={dispatch} diagramControls={controls}
-					narration={narration ? {
-						enabled: narrating, available: voice.available, toggle: voice.toggle,
-					} : undefined}
-					fullscreen={{
-						active: fullscreen, available: fullscreenAvailable,
-						toggle: toggleFullscreen,
-					}}/>
-			</header>
+	
+ // Audio is optional, native, and instantiated only after an explicit click.
+ useEffect(() => {
+  setSoundAvailable(typeof window.AudioContext === "function");
+  return () => {
+   const audio = audioRef.current;
+   audioRef.current = null;
+   if (audio) void audio.close().catch(() => {});
+  };
+ }, []);
+ const toggleSound = () => {
+  if (soundOn) { setSoundOn(false); return; }
+  const Ctx = window.AudioContext;
+  if (!Ctx) return;
+  audioRef.current ??= new Ctx();
+  void audioRef.current.resume().catch(() => {});
+  setSoundOn(true);
+ };
+ useEffect(() => {
+  if (!soundOn || !audioRef.current) return;
+  const audio = audioRef.current;
+  try {
+   const oscillator = audio.createOscillator();
+   const gain = audio.createGain();
+   const now = audio.currentTime;
+   oscillator.frequency.value = 220 * Math.pow(2, frameIndex / Math.max(1, state.max) * 1.5);
+   gain.gain.setValueAtTime(0.0001, now);
+   gain.gain.exponentialRampToValueAtTime(0.06, now + 0.02);
+   gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+   oscillator.connect(gain);
+   gain.connect(audio.destination);
+   oscillator.start();
+   oscillator.stop(now + 0.32);
+  } catch { /* audio is optional */ }
+ }, [frameIndex, soundOn, state.max]);
 
-			<div className="thl-v2-mode" role="group" aria-label="Explain or inspect">
-				<button type="button" aria-pressed={inspectionMode === "explain"}
-					onClick={() => setInspectionMode("explain")}>Explain</button>
-				<button type="button" aria-pressed={inspectionMode === "inspect"}
-					onClick={() => setInspectionMode("inspect")}>Inspect</button>
-			</div>
-			<div className="thl-stage">
-				<div className="thl-viewport">
-					{inspectionMode === "explain" && view.kind === "graph" && <div className="thl-viewport-tools" role="group" aria-label="Graph camera controls">
-						<button type="button" aria-label="Zoom in"
-							disabled={view.kind !== "graph"} onClick={() => zoom(1.25)}>+</button>
-						<button type="button" aria-label="Zoom out"
-							disabled={view.kind !== "graph"} onClick={() => zoom(1 / 1.25)}>−</button>
-						<button type="button" aria-label="Fit to view"
-							disabled={view.kind !== "graph"} onClick={fit}>Fit</button>
-					</div>}
-					<div className="thl-canvas" ref={canvasRef}>
-
-						{inspectionMode === "inspect" ?
-							<InspectPanel trace={trace} inspector={inspector} frameIndex={frameIndex}
-								selectedEntityId={selectedId} onSelectEntity={setSelectedId}
-								onSeek={to => dispatch({ type: "step", to })} />
-							: view.kind === "graph" ? <svg ref={svgRef}
-							className="thl-scene thl-v2-diagram"
-							width="100%" height="100%" viewBox={cameraViewBox(layout, effectiveCamera)}
-							role="img" tabIndex={0} aria-label="Source-linked graph at current frame"
-							aria-describedby={captionId}
-							onKeyDown={keyboardDiagram}
-							onPointerDown={event => {
-								if (event.button !== 0) return;
-								// Source selection and collapse controls own their pointer
-								// sequence. Capturing it on the SVG would steal their click.
-								if ((event.target as Element).closest(
-									'[data-node], [data-group-summary]')) return;
-								dragging.current = { pointerId: event.pointerId,
-									x: event.clientX, y: event.clientY };
-								event.currentTarget.setPointerCapture(event.pointerId);
-							}}
-							onPointerMove={event => {
-								const start = dragging.current;
-								if (!start || start.pointerId !== event.pointerId) return;
-								const bounds = event.currentTarget.getBoundingClientRect();
-								const worldX = effectiveCamera.zoom > 0
-									? (layout.width / effectiveCamera.zoom) / Math.max(bounds.width, 1) : 1;
-								const worldY = effectiveCamera.zoom > 0
-									? (layout.height / effectiveCamera.zoom) / Math.max(bounds.height, 1) : 1;
-								pan((event.clientX - start.x) * worldX,
-									(event.clientY - start.y) * worldY);
-								dragging.current = { ...start, x: event.clientX, y: event.clientY };
-							}}
-							onPointerUp={() => { dragging.current = null; }}
-							onPointerCancel={() => { dragging.current = null; }}>
-							<title>{title ?? trace.artifact.title ?? "Throughline graph"}</title>
-							<desc>{view.summary}</desc>
-							<GraphDiagram view={view} geometry={geometry} frameIndex={frameIndex}
-								selectedId={selectedId}
-								onSelect={setSelectedId}
-								onExpand={id => setCollapsed(current =>
-									current.filter(item => item !== id))}
-								visitedAt={firstSent} participants={participants} animate={motion.animate} />
-						</svg> : view.kind === "sequence"
-							? <SequenceView view={view} selectedId={selectedId}
-								onSelect={setSelectedId} />
-							: <StateFallback view={view}
-								selectedId={selectedId} onSelect={setSelectedId} />}
-					</div>
-				</div>
-				<div className="thl-bottom">
-					<PlayerControls state={state} dispatch={dispatch}/>
-				</div>
-				<details id={captionId} className="thl-v2-caption" open>
-					<summary>{step?.label ?? "Initial state"} — Step {frameIndex + 1}/{trace.frames.length}</summary>
-					<p>{step?.note ?? view.summary}</p>
-					{events.length > 0 && <ol aria-label="Declared step evidence">
-						{events.slice(0, 80).map(item =>
-							<li key={item.id} data-source-event-ids={item.source.eventIds?.join(" ")}>
-								{item.description}
-							</li>)}
-						{events.length > 80 && <li>
-							{events.length - 80} additional declared event(s); use the typed inspector to query all sources.
-						</li>}
-					</ol>}
-				</details>
-				{selected && <section className="thl-v2-selection" aria-label="Selected entity">
-					<h3>Selected: {selected.label}</h3>
-					<p>{presentEntities.has(selected.id) ? "Present in modeled state at this frame" :
-						"Not present in modeled state at this frame; no presence is inferred."}</p>
-					<pre>{selectedValue && selectedValue.status === "known"
-						? cellText(selectedValue) : selectedValue?.status === "unknown"
-							? "Unknown" + (selectedValue.reason ? ": " + selectedValue.reason : "")
-							: "Absent"}</pre>
-				</section>}
-			</div>
-		</div>
-	);
+ const entityFieldId = useId();
+ const groupFieldId = useId();
+ const helpId = useId();
+ const captionId = useId();
+ const currentEvent = step?.events[0];
+ const eventType = !step ? "initial" : currentEvent?.type ?? "no event";
+ const hasWrite = step?.events.some(event => event.type === "write") ?? false;
+ const origins = [...new Set(trace.artifact.origins.map(origin => origin.kind))].join(" + ");
+ const inspectSelected = selected;
+ const inspectValue = inspectSelected ? inspector.valueAt(frameIndex, inspectSelected.id) : null;
+ const inspectPresent = inspectSelected ? presentEntities.has(inspectSelected.id) : false;
+ const inspectHistory = inspectSelected
+  ? inspector.history(inspectSelected.id).filter(entry => entry.frameIndex <= frameIndex)
+  : [];
+ const onSelectEntity = (id: Id) => { setSelectedId(id); setInspectionMode("inspect"); };
+ // Selecting authored elements must never rewrite or reframe their graph
+ // geometry. Zoom/pan/follow are only explicit camera controls.
+ const focusEntity = (id: Id) => onSelectEntity(id);
+ const focusGroup = (id: Id | null) => setDrilled(id);
+ const diagramControls = <>
+  <div className="opt-field">
+   <label htmlFor={entityFieldId}>Select entity</label>
+   <span className="opt-select">
+    <select id={entityFieldId} aria-label="Select entity" value={selectedId ?? ""}
+     onChange={event => { if (event.currentTarget.value) focusEntity(event.currentTarget.value); else setSelectedId(null); }}>
+     <option value="">Choose entity</option>
+     {trace.artifact.entities.map(entity =>
+      <option value={entity.id} key={entity.id}>{entity.label} ({entity.id})</option>)}
+    </select>
+    <PlayerIcon name="chevron" size={12}/>
+   </span>
+  </div>
+  <div className="opt-grid">
+   <button type="button" className={"opt-toggle " + (follow ? "on" : "")}
+    aria-pressed={follow} disabled={view.kind !== "graph"} onClick={() => {
+     if (follow) { setCamera(effectiveCamera); setFollow(false); }
+     else setFollow(true);
+    }}>
+    <PlayerIcon name="focus" size={14}/><span>Follow active</span>
+   </button>
+   <button type="button" className="opt-toggle" disabled={view.kind !== "graph"}
+    onClick={fit}><PlayerIcon name="fit" size={14}/><span>Fit to view</span></button>
+  </div>
+  <nav className="group-nav" aria-label="Group hierarchy">
+   <button type="button" className="opt-icon" aria-label="Return to group overview"
+    onClick={() => focusGroup(null)}><PlayerIcon name="home" size={14}/></button>
+   {drilled && <span className="crumb">/ {trace.artifact.groups?.find(group => group.id === drilled)?.label}</span>}
+   <span className="opt-select grow">
+    <select id={groupFieldId} aria-label="Drill into group" value={drilled ?? ""}
+     disabled={view.kind !== "graph"}
+     onChange={event => focusGroup(event.currentTarget.value || null)}>
+     <option value="">Choose group</option>
+     {(trace.artifact.groups ?? []).map(group =>
+      <option key={group.id} value={group.id}>{group.label}</option>)}
+    </select>
+    <PlayerIcon name="chevron" size={12}/>
+   </span>
+   <button type="button" className="opt-icon" disabled={!drilled || view.kind !== "graph"}
+    aria-label={drilled && collapsed.includes(drilled) ? "Expand group" : "Collapse group"}
+    aria-expanded={drilled ? !collapsed.includes(drilled) : undefined}
+    onClick={() => drilled && setCollapsed(current => current.includes(drilled)
+     ? current.filter(id => id !== drilled) : [...current, drilled])}>
+    <PlayerIcon name={drilled && collapsed.includes(drilled) ? "uncollapse" : "collapse"} size={14}/>
+   </button>
+  </nav>
+ </>;
+ const keyboardDiagram: React.KeyboardEventHandler<SVGSVGElement> = event => {
+  if (event.target !== event.currentTarget) return;
+  const key = event.key;
+  if (key === "+" || key === "=") zoom(1.25);
+  else if (key === "-") zoom(1 / 1.25);
+  else if (key === "0") fit();
+  else if (key === "ArrowLeft") pan(-30, 0);
+  else if (key === "ArrowRight") pan(30, 0);
+  else if (key === "ArrowUp") pan(0, -30);
+  else if (key === "ArrowDown") pan(0, 30);
+  else return;
+  event.preventDefault();
+  event.stopPropagation();
+ };
+ return <div ref={rootRef} className={cn("thl", "thl-v2", "player-shell", className)}
+  data-theme={theme} role="group" aria-label="Visualization player"
+  aria-describedby={helpId} aria-keyshortcuts="ArrowLeft ArrowRight Home End Space"
+  tabIndex={0} onKeyDown={onKeyDown}
+  style={{ "--thl-step-ms": stepDelayMs(BASE_STEP_MS, state.speed) + "ms" } as React.CSSProperties}>
+  <p id={helpId} className="thl-sr-only">Focus this player to seek with Left and Right arrows, Home and End,
+   and play or pause with Space. Focus the graph to pan with arrows, zoom with plus or minus, or fit with zero.</p>
+  <p className="thl-sr-only" role="status" aria-atomic="true">{summary}</p>
+  {voice.error && narration && <p role="alert" className="narration-error">{voice.error}</p>}
+  {fullscreenError && <p role="alert" className="narration-error">{fullscreenError}</p>}
+  <header className="player-header">
+   <div className="title-block">
+    <h2>{title ?? trace.artifact.title ?? "Throughline"}</h2>
+   </div>
+   <div className="header-actions">
+    <button type="button" className={inspectionMode === "inspect" ? "active" : ""}
+     aria-label="Inspect" aria-pressed={inspectionMode === "inspect"} onClick={() => {
+      setInspectionMode(current => current === "inspect" ? "explain" : "inspect");
+     }}><PlayerIcon name="inspect"/><span>Inspect</span></button>
+    <PlayerOptions state={state} dispatch={dispatch}
+     scenario={{ id: trace.artifact.id, title: title ?? trace.artifact.title ?? trace.artifact.id }}
+     diagramControls={diagramControls}
+     inspection={{ enabled: inspectionMode === "inspect",
+      toggle: () => {
+       setInspectionMode(current => current === "inspect" ? "explain" : "inspect");
+      } }}
+     sound={{ enabled: soundOn, available: soundAvailable, toggle: toggleSound }}
+     narration={narration ? { enabled: narrating, available: voice.available, toggle: voice.toggle } : undefined}
+     fullscreen={{ active: fullscreen, available: fullscreenAvailable, toggle: toggleFullscreen }}/>
+   </div>
+  </header>
+  <div className="context-bar">
+   <div className="view-tabs" role="tablist" aria-label="Visualization view">
+    {([["Graph", "graph"], ["Sequence", "sequence"], ["State", "state-table"]] as const)
+     .map(([label, kind]) => <button type="button" key={kind}
+      role="tab" aria-selected={view.kind === kind}
+      className={view.kind === kind ? "active" : ""}
+      onClick={() => setViewKind(kind)}>{label}</button>)}
+   </div>
+   <div className="truth-note"><span>SOURCE</span> {origins} <i/> frame #{frameIndex}</div>
+  </div>
+  <div className={"player-content " + (inspectionMode === "inspect" ? "with-inspector" : "")}>
+   <div className="canvas" ref={canvasRef}>
+    <div className="canvas-meta">
+     <span>FRAME {String(frameIndex).padStart(2, "0")}</span>
+     <strong>{step?.label ?? "Initial state"}</strong>
+     <code>{eventType}</code>
+    </div>
+    {view.kind === "graph" ?
+     <div className="graph-wrap">
+      <svg ref={svgRef} className="graph thl-v2-diagram" role="img" tabIndex={0}
+       viewBox={cameraViewBox(layout, effectiveCamera)}
+       aria-label="Source-linked graph at current frame"
+       aria-describedby={captionId}
+       onKeyDown={keyboardDiagram}
+       onPointerDown={event => {
+        if (event.button !== 0) return;
+        if ((event.target as Element).closest('[data-node], [data-group-summary]')) return;
+        dragging.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+        event.currentTarget.setPointerCapture(event.pointerId);
+       }}
+       onPointerMove={event => {
+        const start = dragging.current;
+        if (!start || start.pointerId !== event.pointerId) return;
+        const bounds = event.currentTarget.getBoundingClientRect();
+        const worldX = effectiveCamera.zoom > 0
+         ? (layout.width / effectiveCamera.zoom) / Math.max(bounds.width, 1) : 1;
+        const worldY = effectiveCamera.zoom > 0
+         ? (layout.height / effectiveCamera.zoom) / Math.max(bounds.height, 1) : 1;
+        pan((event.clientX - start.x) * worldX, (event.clientY - start.y) * worldY);
+        dragging.current = { ...start, x: event.clientX, y: event.clientY };
+       }}
+       onPointerUp={() => { dragging.current = null; }}
+       onPointerCancel={() => { dragging.current = null; }}>
+       <title>{title ?? trace.artifact.title ?? "Throughline graph"}</title>
+       <desc>{view.summary}</desc>
+       <GraphDiagram view={view} geometry={geometry} frameIndex={frameIndex}
+        selectedId={selectedId} onSelect={onSelectEntity}
+        onExpand={id => setCollapsed(current => current.filter(item => item !== id))}
+        visitedAt={firstSent} participants={participants} animate={motion.animate}/>
+      </svg>
+      <div className="canvas-hint">
+       <span>Drag to pan · scroll to zoom · click a node to inspect</span>
+       <div className="zoom-tools" role="toolbar" aria-label="Diagram navigation">
+        <button type="button" aria-label="Zoom out" title="Zoom out" onClick={() => zoom(0.8)}
+         disabled={effectiveCamera.zoom <= 1}><PlayerIcon name="minus" size={12}/></button>
+        <span className="zoom-readout">{Math.round(effectiveCamera.zoom * 100)}%</span>
+        <button type="button" aria-label="Zoom in" title="Zoom in" onClick={() => zoom(1.25)}
+         disabled={effectiveCamera.zoom >= 4}><PlayerIcon name="plus" size={12}/></button>
+        <button type="button" aria-label="Fit to view" title="Fit to view" onClick={fit}>
+         <PlayerIcon name="fit" size={12}/>
+        </button>
+       </div>
+      </div>
+     </div> : view.kind === "sequence"
+     ? <SequenceView view={view} selectedId={selectedId} onSelect={onSelectEntity}/>
+     : <StateFallback view={view} selectedId={selectedId}
+       inspector={inspector} frameIndex={frameIndex} onSelect={onSelectEntity}/>}
+   </div>
+   {inspectionMode === "inspect" && <aside className="inspector" aria-label="Entity inspector">
+    <div className="inspector-top"><span>INSPECT ENTITY</span>
+     <button type="button" aria-label="Close inspector" onClick={() => setInspectionMode("explain")}>×</button>
+    </div>
+    {inspectSelected ? <>
+     <div className="entity-heading">
+      <i/><div><strong>{inspectSelected.label}</strong><code>entity:{inspectSelected.id}</code></div>
+     </div>
+     <dl>
+      <div><dt>Presence</dt><dd><span className="known">
+       {inspectPresent ? "present" : "not present"}</span></dd></div>
+      <div><dt>Current value</dt><dd><code>
+       {!inspectPresent ? "Absent" :
+        inspectValue?.status === "known" ? cellText(inspectValue) :
+        inspectValue?.status === "unknown" ? cellText(inspectValue) : "Absent"}
+      </code></dd></div>
+      <div><dt>Frame</dt><dd>#{frameIndex} · committed</dd></div>
+     </dl>
+     <div className="history-title"><span>RECORDED HISTORY</span><b>{inspectHistory.length}</b></div>
+     {!inspectHistory.length && <p className="history-empty">No writes recorded yet.</p>}
+     {[...inspectHistory].reverse().slice(0, 60).map(entry => <div className="history-item"
+      key={entry.eventId} data-source-event-ids={entry.eventId}>
+      <i/><div><strong>{entry.eventId}</strong>
+       <span>Explicit write · {entry.originId} · frame #{entry.frameIndex}</span>
+       <code>{JSON.stringify(entry.path)}: {entry.after.status === "known"
+        ? cellText(entry.after) : entry.after.status === "unknown"
+         ? cellText(entry.after) : "Absent"}</code>
+      </div>
+     </div>)}
+     {inspectHistory.length > 60 && <p className="history-empty">
+      Showing latest 60 writes; all records available in source inspection.</p>}
+    </> : <p className="history-empty">{trace.artifact.entities.length
+     ? "Choose an entity in the graph or Player options to inspect its state."
+     : "No entities declared."}</p>}
+    <details className="evidence-note">
+     <summary>CAUSAL EVIDENCE</summary>
+     <p>Only explicit modeled dependencies are evidence; no additional event is inferred.</p>
+     <InspectPanel trace={trace} inspector={inspector} frameIndex={frameIndex}
+      selectedEntityId={selectedId} onSelectEntity={setSelectedId}
+      onSeek={to => dispatch({ type: "step", to })}/>
+     {view.kind === "sequence" && <SequenceEvidence view={view} selectedId={selectedId}
+       onSelect={onSelectEntity}/>}
+    </details>
+   </aside>}
+  </div>
+  <footer className="transport"><PlayerControls state={state} dispatch={dispatch}/></footer>
+  <details id={captionId} className="step-caption">
+   <summary>
+    <span className="step-number">{String(frameIndex + 1).padStart(2, "0")}</span>
+    <span className="caption-text">
+     <strong>{step?.label ?? "Initial state"}</strong>
+     <span className="teaser">{step?.note ?? view.summary}</span>
+    </span>
+    <span className={"event-chip " + (hasWrite ? "write" : "")}>{eventType}</span>
+    <span className="caption-expand"><span>Details</span><PlayerIcon name="chevron" size={14}/></span>
+   </summary>
+   <div className="caption-body">
+    <p className="caption-note">{step?.note ?? view.summary}</p>
+    {step && step.events.length > 0 && <ul className="transfers" aria-label="Declared step evidence">
+     {step.events.slice(0, 80).map(event => <li key={event.id}
+      data-source-event-ids={event.id}>
+      {event.type === "message" ? event.phase : event.type} <b>→</b>
+      <code>{event.id}</code>
+      <span className="thl-sr-only">{events.find(item =>
+       item.source.eventIds?.includes(event.id))?.description ?? ""}</span>
+     </li>)}
+     {step.events.length > 80 && <li>{step.events.length - 80} more events; inspect source for details.</li>}
+    </ul>}
+    <details className="state-snapshot">
+     <summary>Inspect state</summary>
+     <dl>{trace.artifact.entities.map(entity => {
+      const present = presentEntities.has(entity.id);
+      const value = present ? inspector.valueAt(frameIndex, entity.id) : null;
+      return <div key={entity.id} data-source-entity-ids={entity.id}>
+       <dt>{entity.label} <span>({entity.id})</span></dt>
+       <dd><code>{!present ? "Absent" : value?.status === "known" ? cellText(value)
+        : value?.status === "unknown" ? cellText(value) : "Absent"}</code></dd>
+      </div>;
+     })}</dl>
+    </details>
+   </div>
+  </details>
+ </div>;
 }

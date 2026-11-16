@@ -11,20 +11,25 @@ import "../../styles/throughline.css";
 const view = () => document.querySelector<HTMLElement>(".thl-v2-inspect");
 const exact = (text: string) => ({ name: text, exact: true } as const);
 const checkout = () => compileArtifact(distributedGraph());
+async function openInspector(screen: Awaited<ReturnType<typeof render>>) {
+ await screen.getByRole("button", exact("Inspect")).click();
+ await screen.getByText("CAUSAL EVIDENCE", { exact: true }).click();
+}
 
-it("uses shared playback frame for Explain and Inspect, including precise explicit changes", async () => {
+
+it("uses shared playback frame for canvas and inspector, including precise explicit changes", async () => {
 	const screen = await render(<ThroughlineGraphPlayer trace={checkout()} initialView="graph" />);
 	await expect.element(screen.getByRole("img",
 		{ name: "Source-linked graph at current frame" })).toBeVisible();
 	for (let i = 0; i < 3; i++)
 		await screen.getByRole("button", { name: "Step forward" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 4 of 7");
-	await screen.getByRole("button", exact("Inspect")).click();
+	await openInspector(screen);
 	await expect.element(screen.getByRole("region", { name: "Evidence inspector" }))
 		.toBeVisible();
 	await expect.element(screen.getByRole("region", { name: "What changed?" }))
 		.toBeVisible();
-	expect(document.querySelector(".thl-v2-diagram")).toBeNull();
+	expect(document.querySelector(".thl-v2-diagram")).not.toBeNull();
 	expect(view()?.textContent).toContain("Explicit modeled write");
 	expect(document.querySelector('tr[data-source-event-ids="settled"]')).not.toBeNull();
 	expect(document.querySelector('tr[data-source-event-ids="processed"]')).toBeNull();
@@ -32,7 +37,7 @@ it("uses shared playback frame for Explain and Inspect, including precise explic
 	await screen.getByRole("button", { name: "Step back" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 7");
 	expect(view()?.textContent).toContain("No explicit write or presence change");
-	await screen.getByRole("button", exact("Explain")).click();
+	await screen.getByRole("button", { name: "Close inspector" }).click();
 	await expect.element(screen.getByRole("img",
 		{ name: "Source-linked graph at current frame" })).toBeVisible();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 7");
@@ -49,7 +54,7 @@ it("shows unknown, absent and known-null path results and original parent-write 
 		}],
 	});
 	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)} />);
-	await screen.getByRole("button", exact("Inspect")).click();
+	await openInspector(screen);
 	await userEvent.selectOptions(
 		screen.getByRole("combobox", { name: "Inspect entity" }).element(), "gateway",
 	);
@@ -86,7 +91,7 @@ it("shows unknown, absent and known-null path results and original parent-write 
 it("keeps message phase evidence separate from persistence while investigating a relation", async () => {
 	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(retryCheckout())}/>);
 	await screen.getByRole("button", { name: "Step forward" }).click();
-	await screen.getByRole("button", exact("Inspect")).click();
+	await openInspector(screen);
 	await expect.element(screen.getByRole("region", { name: "Where did this message go?" }))
 		.toBeVisible();
 	expect(document.querySelector('[data-source-event-ids="originalSent"]')).not.toBeNull();
@@ -115,7 +120,7 @@ it("guides through exact declared dependencies and non-proof editorial claims", 
 	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)}
 		initialView="graph" />);
 	await screen.getByRole("button", { name: "Step forward" }).click();
-	await screen.getByRole("button", exact("Inspect")).click();
+	await openInspector(screen);
 	await expect.element(screen.getByRole("region", { name: "Focused source event" }))
 		.toBeVisible();
 	const focus = document.querySelector<HTMLElement>(".thl-v2-inspect-focus")!;
@@ -144,7 +149,7 @@ it("responds to keyboard seeking at mobile widths with truthful empty evidence",
 	source.claims = [];
 	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)}
 		initialView="state-table" />);
-	await screen.getByRole("button", exact("Inspect")).click();
+	await openInspector(screen);
 	const root = document.querySelector<HTMLElement>(".thl-v2")!;
 	await expect.element(screen.getByRole("region", { name: "Evidence inspector" }))
 		.toBeVisible();
@@ -152,7 +157,7 @@ it("responds to keyboard seeking at mobile widths with truthful empty evidence",
 	expect(view()?.textContent).toContain("No explicit write or presence change");
 	expect(view()?.textContent).toContain("No events are authored in this frame");
 	expect(view()?.textContent).toContain("There is no explicit causal evidence to evaluate");
-	await screen.getByRole("button", exact("Explain")).click();
+	await screen.getByRole("button", { name: "Close inspector" }).click();
 	await expect.element(screen.getByRole("region", { name: "State and event table" }))
 		.toBeVisible();
 	expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
@@ -175,7 +180,7 @@ it("shows exact before/after values after a shared 150-character preview", async
 	const screen = await render(<ThroughlineGraphPlayer
 		trace={compileArtifact(source)} initialView="state-table"/>);
 	await screen.getByRole("button", { name: "Step forward" }).click();
-	await screen.getByRole("button", exact("Inspect")).click();
+	await openInspector(screen);
 	const table = screen.getByRole("table", { name: "Authored changes, in frame/event order" });
 	await expect.element(table).toBeVisible();
 	const row = table.getByRole("row", { name: /longWrite/ });
@@ -220,7 +225,7 @@ it("exposes the recorded timeout observation while leaving modeled client state 
 	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(retryCheckout())}/>);
 	for (let i = 0; i < 3; i++)
 		await screen.getByRole("button", { name: "Step forward" }).click();
-	await screen.getByRole("button", exact("Inspect")).click();
+	await openInspector(screen);
 	const source = screen.getByRole("region", {
 		name: "Recorded source data for event watchTimeout",
 	});
@@ -251,7 +256,7 @@ it("reveals optional authored message payload, escaped as data, without claiming
 	};
 	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)}/>);
 	await screen.getByRole("button", { name: "Step forward" }).click();
-	await screen.getByRole("button", exact("Inspect")).click();
+	await openInspector(screen);
 	const recorded = screen.getByRole("region", {
 		name: "Recorded source data for event originalSent",
 	});
@@ -278,7 +283,7 @@ it("bounds 1,000 claims × 100 cited events with independent page windows and so
 	screen.getByRole("group", { name: "Visualization player" }).element().focus();
 	await userEvent.keyboard("{End}");
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 101 of 101");
-	await screen.getByRole("button", exact("Inspect")).click();
+	await openInspector(screen);
 	const focused = screen.getByRole("region", { name: "Focused source event" });
 	await expect.element(focused).toBeVisible();
 	expect(focused.element().textContent).toContain("Editorial claims (1000)");

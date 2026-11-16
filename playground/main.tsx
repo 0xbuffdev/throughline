@@ -26,11 +26,11 @@ function App() {
 			<div className="preview-shell">
 				<header className="preview-heading">
 					<p className="preview-eyebrow">Throughline / schema-2 development preview</p>
-					<h1>Reference evidence and player review</h1>
+					<h1>Public player layout review</h1>
 					<p>
-						Explore independently checked, authored models. Graphs and sequences
-						reveal declared evidence; they do not execute source code or infer
-						undocumented events.
+						Review the native player on independently checked, authored models.
+            Use the Graph, Sequence, and State tabs, Inspect sidebar, and compact
+            transport across desktop, tablet, and mobile widths.
 					</p>
 				</header>
 
@@ -104,9 +104,10 @@ function App() {
 					<pre><code>{current?.source ?? ""}</code></pre>
 				</details>
 				<p className="preview-footnote">
-					Use Player options to inspect source events, histories and compatible views.
-					The static explanation and questions are a matched baseline, not a
-					claim that improved learning outcomes have been measured.
+					Select a reference model above, then use the player tabs for Graph,
+          Sequence, or State. The Inspect sidebar provides complete source
+          evidence and histories. The static explanation and questions are
+          a matched baseline, not a measured learning-outcome claim.
 				</p>
 			</div>
 		</main>

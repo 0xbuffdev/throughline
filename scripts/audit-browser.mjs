@@ -108,7 +108,7 @@ try {
 	const visual = await player.evaluate(element => ({
 		overflow: element.scrollWidth > element.clientWidth,
 		radius: getComputedStyle(element).getPropertyValue("--thl-radius").trim(),
-		controls: getComputedStyle(element.querySelector(".thl-bottom")).display,
+		controls: getComputedStyle(element.querySelector(".transport")).display,
 		graph: element.querySelector(".thl-v2-diagram") !== null,
 		reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
 	}));
@@ -123,7 +123,9 @@ try {
 	await page.keyboard.press("ArrowRight");
 	assert.match(await page.getByRole("status").textContent(), /Step 3 of 9/);
 	await page.getByRole("button", { name: "Player options" }).tap();
-	await page.getByRole("combobox", { name: "Visualization view" }).selectOption("state-table");
+	assert(await page.getByRole("group", { name: "Player options" }).isVisible());
+ await page.getByRole("button", { name: "Player options" }).tap();
+ await page.getByRole("tab", { name: "State" }).click();
 	assert(await page.getByRole("region", { name: "State and event table" }).isVisible());
 	const state = await page.getByRole("region", { name: "State and event table" }).textContent();
 	assert.match(state, /Modeled call stack/);
