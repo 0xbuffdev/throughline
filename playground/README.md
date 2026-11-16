@@ -24,6 +24,40 @@ as the source library does. Any other nonempty body is descriptive intent:
 it needs independently reviewed materialization and a trusted host's approved
 sidecar. The public playground deliberately does not fabricate that step.
 
+## Player design review (TL-P01)
+
+Open [the Player design review](http://localhost:5173/?player-lab=1) from the
+Playground header, or add `?player-lab=1` to the same deployed Playground URL.
+
+This **review surface is not the new production player**. Its **Live player** mode
+uses the real schema-2 compiler and unchanged native React player, so it exposes
+the current rendering at 260, 320, 375, 768 and 1280 CSS-pixel host widths.
+Select the four verified references, initial graph/sequence/state-table view,
+light/dark/system theme, long-label/no-title cases, or an intentionally
+non-rendered invalid case. Use native transport to inspect initial, middle and
+final steps, select a node and open Inspect. The player may still look cramped:
+that is precisely what TL-P02–TL-P04 are intended to fix.
+
+**Layout study** is an explicitly static anatomy proposal, not a functioning
+renderer, fabricated artifact, working transport or screenshot of shipped UI.
+It previews the intended hierarchy, token treatment and primary control sizes.
+The five regions and design decisions are documented in
+[the source design system](../docs/player-design-system.md).
+
+For reproducible *real browser* review images, first build the Playground, then:
+
+```sh
+pnpm preview:build
+pnpm audit:player-design
+```
+
+Images and the environment manifest are written under
+`.release-evidence/player-design/` (ignored by Git, available as a CI artifact).
+These are **unapproved baseline captures** until manually reviewed. Do not
+replace an actual screenshot with the static layout study or claim that
+screenshot checks prove accessibility. For the complete fixture/interaction
+review, follow [the visual review checklist](../docs/player-design-system.md#visual-review-and-reproducible-fixtures).
+
 ## Local development
 
 From the repository root, with Node.js >=24 and the pinned pnpm:
