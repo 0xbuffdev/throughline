@@ -283,6 +283,10 @@ The Graph and Sequence views only render declared facts.
 A sequence request without message events falls back to a state table
 instead of inventing messages.
 
+## Compact player design review (TL-P01)
+
+The source Playground now includes a [Player design review](playground/README.md#player-design-review-tl-p01) at `/?player-lab=1`. It compares the **existing real schema-2 player** at five fixed embed widths and light/dark themes with a **separately labeled static proposed layout**. The source [player design system](docs/player-design-system.md) documents the component boundaries, token inventory, four-reference fixture matrix, real-browser screenshot capture and review checklist. This work does **not** claim that the production shell or graph renderer is redesigned: those changes belong to TL-P02–TL-P04; TL-P05 owns final quality verification.
+
 ## Interactive authoring playground
 
 [The Throughline Playground](playground) is a public-facing, static authoring
