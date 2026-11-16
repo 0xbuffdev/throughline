@@ -153,7 +153,10 @@ it("announces declared non-authored origins without upgrading modeled event evid
 
 it("supports keyboard stepping, zoom and pan independently of v2 model state", async () => {
 	const screen = await render(<ThroughlineGraphPlayer initialView="graph" trace={trace()} />);
-	await expect.poll(() => viewBox()[2]).toBeGreaterThan(0);
+	// ResizeObserver updates the authored graph geometry after the initial
+	// 720px SSR fallback. Record the fit viewport only after measurement.
+	await expect.poll(() => viewBox()[2]).toBe(
+		Math.floor(document.querySelector(".canvas")!.getBoundingClientRect().width));
 	const start = viewBox();
 	const svg = document.querySelector<SVGSVGElement>(".thl-v2-diagram")!;
 	svg.focus();
