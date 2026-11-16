@@ -2560,10 +2560,22 @@
  padding: 0;
  border: 1px solid var(--thl-line);
  background: var(--thl-bg);
- font-family: "DM Sans", system-ui, sans-serif;
+ font-family: inherit;
  font-size: 12px;
  line-height: 1.5;
  overflow: visible;
+}
+/* Keep the compact shell typography separate from authored graph text.
+ * The SVG inherits the same host font family it used before this UI port. */
+.thl.player-shell .player-header,
+.thl.player-shell .context-bar,
+.thl.player-shell .inspector,
+.thl.player-shell .transport,
+.thl.player-shell .step-caption,
+.thl.player-shell .options-menu,
+.thl.player-shell .sequence-view,
+.thl.player-shell .state-view {
+ font-family: "DM Sans", system-ui, sans-serif;
 }
 .thl.player-shell :is(button, input, select) { font: inherit; }
 .thl.player-shell .thl-v2-sequence,
