@@ -47,20 +47,55 @@ it("keeps the source palette, unchanged graph card dimensions and real authored 
  expect(shell.querySelectorAll("[data-source-event-ids]").length).toBeGreaterThan(0);
 });
 
-it("preserves the player sidebar drawer and control placement at mobile embed widths", async () => {
- await page.viewport(900, 800);
- const screen = await render(<ThroughlineGraphPlayer trace={trace()} initialView="graph"/>);
+it("keeps a 60% inspector overlay, full-player mobile coverage and a single reading scroll", async () => {
+ await page.viewport(1200, 900);
+ const compiled = trace();
+ const screen = await render(<ThroughlineGraphPlayer trace={compiled} initialView="graph"/>);
  const shell = screen.getByRole("group", { name: "Visualization player" }).element();
- for (const width of [768, 375, 260]) {
+ const canvas = shell.querySelector<HTMLElement>(".canvas")!;
+ const svg = shell.querySelector<SVGSVGElement>(".thl-v2-diagram")!;
+ for (const width of [900, 768, 600, 560, 375, 260]) {
   shell.style.width = width + "px";
   await expect.poll(() => Math.round(shell.getBoundingClientRect().width)).toBe(width);
-  expect(shell.scrollWidth).toBeLessThanOrEqual(shell.clientWidth + 2);
+  await expect.poll(() => Number(svg.getAttribute("viewBox")?.split(" ")[2]))
+   .toBe(layoutGraph(compiled, canvas.clientWidth).width);
+  const originalCanvasWidth = canvas.clientWidth;
+  const originalViewBox = svg.getAttribute("viewBox");
+  const originalNode = shell.querySelector('[data-node="client"]')?.getAttribute("transform");
   await screen.getByRole("button", { name: "Inspect", exact: true }).click();
   const inspector = screen.getByRole("complementary", { name: "Entity inspector" });
   await expect.element(inspector).toBeVisible();
-  expect(shell.querySelector(".player-content.with-inspector")).not.toBeNull();
+  const panel = inspector.element();
+  const panelRect = panel.getBoundingClientRect();
+  const playerRect = shell.getBoundingClientRect();
+  const contentRect = shell.querySelector(".player-content")!.getBoundingClientRect();
+  const expectedWidth = width <= 560 ? playerRect.width - 2 : Math.min(contentRect.width * .6, 768);
+  expect(Math.abs(panelRect.width - expectedWidth)).toBeLessThanOrEqual(3);
+  expect(Math.abs(panelRect.right - playerRect.right)).toBeLessThanOrEqual(3);
+  if (width <= 560) {
+   // The mobile inspector covers its entire embedded player, including
+   // header and transport, but never escapes the host page.
+   expect(Math.abs(panelRect.top - playerRect.top)).toBeLessThanOrEqual(3);
+   expect(Math.abs(panelRect.bottom - playerRect.bottom)).toBeLessThanOrEqual(3);
+  } else {
+   expect(Math.abs(panelRect.top - contentRect.top)).toBeLessThanOrEqual(3);
+   expect(Math.abs(panelRect.bottom - contentRect.bottom)).toBeLessThanOrEqual(3);
+  }
+  expect(getComputedStyle(panel).overflowY).toBe("auto");
+  expect(canvas.clientWidth).toBe(originalCanvasWidth);
+  expect(svg.getAttribute("viewBox")).toBe(originalViewBox);
+  expect(shell.querySelector('[data-node="client"]')?.getAttribute("transform")).toBe(originalNode);
   expect(shell.scrollWidth).toBeLessThanOrEqual(shell.clientWidth + 2);
-  await screen.getByRole("button", { name: "Close inspector" }).click();
+  await screen.getByText("CAUSAL EVIDENCE").click();
+  const evidence = panel.querySelector<HTMLElement>(".thl-v2-inspect")!;
+  expect(evidence).not.toBeNull();
+  expect(getComputedStyle(evidence).overflowY).toBe("visible");
+  expect(getComputedStyle(evidence).maxHeight).toBe("none");
+  const close = screen.getByRole("button", { name: "Close inspector" });
+  panel.scrollTop = panel.scrollHeight;
+  await expect.poll(() => close.element().getBoundingClientRect().top -
+   panel.getBoundingClientRect().top).toBeGreaterThanOrEqual(0);
+  await close.click();
  }
  await screen.getByRole("button", { name: "Player options" }).click();
  await expect.element(screen.getByRole("group", { name: "Player options" })).toBeVisible();
