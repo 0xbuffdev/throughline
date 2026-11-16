@@ -47,7 +47,7 @@ it("keeps the source palette, unchanged graph card dimensions and real authored 
  expect(shell.querySelectorAll("[data-source-event-ids]").length).toBeGreaterThan(0);
 });
 
-it("keeps a 60% inspector overlay, full-player mobile coverage and a single reading scroll", async () => {
+it("keeps a 60% inspector overlay, full-width mobile coverage and a single reading scroll", async () => {
  await page.viewport(1200, 900);
  const compiled = trace();
  const screen = await render(<ThroughlineGraphPlayer trace={compiled} initialView="graph"/>);
@@ -72,21 +72,16 @@ it("keeps a 60% inspector overlay, full-player mobile coverage and a single read
   const expectedWidth = width <= 560 ? playerRect.width - 2 : Math.min(contentRect.width * .6, 768);
   expect(Math.abs(panelRect.width - expectedWidth)).toBeLessThanOrEqual(3);
   expect(Math.abs(panelRect.right - playerRect.right)).toBeLessThanOrEqual(3);
-  if (width <= 560) {
-   // The mobile inspector covers its entire embedded player, including
-   // header and transport, but never escapes the host page.
-   expect(Math.abs(panelRect.top - playerRect.top)).toBeLessThanOrEqual(3);
-   expect(Math.abs(panelRect.bottom - playerRect.bottom)).toBeLessThanOrEqual(3);
-  } else {
-   expect(Math.abs(panelRect.top - contentRect.top)).toBeLessThanOrEqual(3);
-   expect(Math.abs(panelRect.bottom - contentRect.bottom)).toBeLessThanOrEqual(3);
-  }
+  // The overlay replaces the visualization surface while the header and
+  // playback controls remain accessible for stepping through evidence.
+  expect(Math.abs(panelRect.top - contentRect.top)).toBeLessThanOrEqual(3);
+  expect(Math.abs(panelRect.bottom - contentRect.bottom)).toBeLessThanOrEqual(3);
   expect(getComputedStyle(panel).overflowY).toBe("auto");
   expect(canvas.clientWidth).toBe(originalCanvasWidth);
   expect(svg.getAttribute("viewBox")).toBe(originalViewBox);
   expect(shell.querySelector('[data-node="client"]')?.getAttribute("transform")).toBe(originalNode);
   expect(shell.scrollWidth).toBeLessThanOrEqual(shell.clientWidth + 2);
-  await screen.getByText("CAUSAL EVIDENCE").click();
+  await screen.getByText("CAUSAL EVIDENCE", { exact: true }).click();
   const evidence = panel.querySelector<HTMLElement>(".thl-v2-inspect")!;
   expect(evidence).not.toBeNull();
   expect(getComputedStyle(evidence).overflowY).toBe("visible");
