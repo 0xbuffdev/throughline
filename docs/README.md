@@ -5,7 +5,7 @@ and render it with the optional native React player.
 
 ## Using Throughline
 
-- [User guide](user-guide.md): native schema-2 player, state/sequence/graph views, navigation,
+- [User guide](user-guide.md): native schema-2 player, supported state/sequence/graph tabs, camera following, responsive inspection, navigation,
   evidence, provenance, Remark and MDX.
 - [Universal thl contract](grammar.md): strict JSON/prose syntax, event semantics,
   limits and diagnostics.

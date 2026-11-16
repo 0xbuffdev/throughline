@@ -55,7 +55,7 @@ it("preserves labeled timeline navigation, explicit evidence and inspect control
 		"Step 2 of " + trace.frames.length);
 
 	await screen.getByRole("button", { name: "Player options" }).click();
-	await expect.element(screen.getByRole("group", { name: "Player options" })).toBeVisible();
+	await expect.element(screen.getByRole("dialog", { name: "Player options" })).toBeVisible();
 	await screen.getByRole("button", { name: "Player options" }).click();
  await screen.getByRole("tab", { name: "State" }).click();
 	await expect.element(screen.getByRole("region", { name: "State and event table" }))
@@ -64,7 +64,7 @@ it("preserves labeled timeline navigation, explicit evidence and inspect control
 		document.querySelector(".thl-v2-table")?.textContent ??
 		document.body.textContent).toContain("Modeled call stack");
 	await screen.getByRole("button", { name: "Inspect", exact: true }).click();
- await screen.getByText("CAUSAL EVIDENCE", { exact: true }).click();
+ await screen.getByText("Changes and evidence", { exact: true }).click();
  await expect.element(screen.getByRole("region", { name: "Evidence inspector" }))
 		.toBeVisible();
 	expect(element.scrollWidth).toBeLessThanOrEqual(element.clientWidth + 2);

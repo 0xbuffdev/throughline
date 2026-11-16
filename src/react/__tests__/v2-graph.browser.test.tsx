@@ -1,3 +1,4 @@
+import { layoutGraph } from "../../v2/graph-layout.js";
 import { expect, it } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
@@ -11,7 +12,7 @@ async function collapseGroup(screen: Awaited<ReturnType<typeof render>>, id: str
  const options = screen.getByRole("button", { name: "Player options" });
  if (options.element().getAttribute("aria-expanded") !== "true") await options.click();
  await userEvent.selectOptions(
-  screen.getByRole("combobox", { name: "Drill into group" }).element(), id);
+  screen.getByRole("combobox", { name: "Focus group" }).element(), id);
  await screen.getByRole("button", { name: "Collapse group" }).click();
  await screen.getByRole("button", { name: "Player options" }).click();
 }
@@ -45,8 +46,9 @@ it("plays a source-linked checkout without pretending received or processed mean
 	// Truncated graph labels are not full-state evidence; inspect the
 	// selected source entity to verify the actual persistent value.
 	await screen.getByRole("button", { name: "Select Ledger" }).click();
-	expect(document.querySelector(".inspector dl > div:nth-child(2) code")?.textContent)
-		.toContain('"settled":false');
+	await screen.getByRole("button", { name: /Show exact current value of ledger/ }).click();
+ expect(screen.getByRole("region", { name: "Exact current value of ledger" }).element().textContent)
+  .toContain('"settled":false');
 	await next.click(); // ledger write + processed, no second sent
 	expect(link("settlement")?.getAttribute("data-sent-current")).toBe("0");
 	expect(link("settlement")?.classList.contains("thl-transferred")).toBe(false);
@@ -165,7 +167,12 @@ it("supports keyboard stepping, zoom and pan independently of v2 model state", a
 	await userEvent.keyboard("{ArrowLeft}");
 	expect(viewBox()).not.toEqual(start);
 	await userEvent.keyboard("0");
-	expect(viewBox()).toEqual(start);
+	const fitted = viewBox();
+ const world = layoutGraph(trace(), Math.floor(document.querySelector(".canvas")!.getBoundingClientRect().width));
+ expect(fitted[0]).toBeLessThanOrEqual(0.01);
+ expect(fitted[1]).toBeLessThanOrEqual(0.01);
+ expect(fitted[0] + fitted[2]).toBeGreaterThanOrEqual(world.width - 0.01);
+ expect(fitted[1] + fitted[3]).toBeGreaterThanOrEqual(world.height - 0.01);
 	screen.getByRole("group", { name: "Visualization player" }).element().focus();
 	await userEvent.keyboard("{ArrowRight}");
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 7");

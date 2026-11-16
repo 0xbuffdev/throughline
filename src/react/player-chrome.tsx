@@ -8,8 +8,6 @@ interface PlaybackProps {
  dispatch: React.Dispatch<SeekAction>;
 }
 interface PlayerOptionsProps extends PlaybackProps {
- scenario: { id: string; title: string };
- chapterControls?: (onSeek: (step: number) => void) => React.ReactNode;
  diagramControls?: React.ReactNode;
  sound?: { enabled: boolean; available?: boolean; toggle: () => void };
  narration?: { enabled: boolean; available: boolean; toggle: () => void };
@@ -37,6 +35,10 @@ export function PlayerControls({ state, dispatch }: PlaybackProps): React.JSX.El
     <PlayerIcon name="forward"/>
    </button>
   </div>
+  <input className="timeline-scrubber" type="range" aria-label="Timeline position"
+   min={0} max={state.max} value={state.step} disabled={state.max < 1}
+   aria-valuetext={`Step ${state.step + 1} of ${state.max + 1}`}
+   onChange={event => dispatch({ type: "step", to: Number(event.currentTarget.value) })}/>
   <div className="transport-meta">
    <span aria-label={`Step ${state.step + 1} of ${state.max + 1}`}>
     <strong>{state.step + 1}</strong> / {state.max + 1}
@@ -57,64 +59,53 @@ export function PlayerControls({ state, dispatch }: PlaybackProps): React.JSX.El
  * Throughline state; it does not import the demo's scenarios or chapters.
  */
 export function PlayerOptions({
- state, dispatch, scenario, chapterControls, diagramControls, sound, narration, inspection, fullscreen,
+ state, dispatch, diagramControls, sound, narration, inspection, fullscreen,
 }: PlayerOptionsProps): React.JSX.Element {
  const id = useId();
  const [open, setOpen] = useState(false);
  const menuRef = useRef<HTMLDivElement>(null);
  const triggerRef = useRef<HTMLButtonElement>(null);
  const stepRef = useRef<HTMLInputElement>(null);
+ const popupRef = useRef<HTMLDivElement>(null);
  useEffect(() => {
   if (!open) return;
-  if (stepRef.current) stepRef.current.value = String(state.step + 1);
-  const onPointer = (event: MouseEvent) => {
+  popupRef.current?.querySelector<HTMLElement>("button, input, select")?.focus();
+  const onPointer = (event: PointerEvent) => {
    if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
   };
   const onKey = (event: KeyboardEvent) => {
-   if (event.key === "Escape") { setOpen(false); triggerRef.current?.focus(); }
+   if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setOpen(false); triggerRef.current?.focus(); }
   };
-  document.addEventListener("mousedown", onPointer);
+  document.addEventListener("pointerdown", onPointer);
   document.addEventListener("keydown", onKey);
   return () => {
-   document.removeEventListener("mousedown", onPointer);
+   document.removeEventListener("pointerdown", onPointer);
    document.removeEventListener("keydown", onKey);
   };
+ }, [open]);
+ useEffect(() => {
+  if (open && stepRef.current) stepRef.current.value = String(state.step + 1);
  }, [open, state.step]);
- const seek = (to: number) => { dispatch({ type: "step", to }); setOpen(false); };
- return <div className="menu-anchor" ref={menuRef}>
+ const seek = (to: number) => { dispatch({ type: "step", to }); setOpen(false); triggerRef.current?.focus(); };
+ return <div className="menu-anchor" ref={menuRef} onBlur={event => {
+  if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+ }}>
   <button ref={triggerRef} type="button" className={`menu-trigger ${open ? "active" : ""}`}
-   aria-label="Player options" title="Player options" aria-haspopup="true"
+   aria-label="Player options" title="Player options" aria-haspopup="dialog"
    aria-expanded={open} aria-controls={id} onClick={() => setOpen(v => !v)}>
    <PlayerIcon name="options"/><span>Options</span><PlayerIcon name="chevron" size={12}/>
   </button>
-  {open && <div id={id} className="options-menu" role="group" aria-label="Player options">
+  {open && <div id={id} ref={popupRef} className="options-menu" role="dialog" aria-label="Player options">
+   <div className="options-heading"><strong>Player options</strong>
+    <button type="button" aria-label="Close options" onClick={() => {
+     setOpen(false); triggerRef.current?.focus();
+    }}>×</button>
+   </div>
    <section aria-label="Navigation">
     <p className="opt-label">Navigation</p>
-    <div className="opt-field">
-     <label htmlFor={id + "-scenario"}>Scenario</label>
-     <span className="opt-select">
-      <select id={id + "-scenario"} value={scenario.id} disabled
-       aria-label="Scenario" title="Only the provided compiled trace is available">
-       <option value={scenario.id}>{scenario.title}</option>
-      </select>
-      <PlayerIcon name="chevron" size={12}/>
-     </span>
-    </div>
-    {chapterControls ? chapterControls(seek) : <div className="opt-row">
-     <div className="opt-field">
-      <label htmlFor={id + "-chapter"}>Chapter</label>
-      <span className="opt-select">
-       <select id={id + "-chapter"} disabled aria-label="Chapter" value="">
-        <option value="">No chapters in schema 2</option>
-       </select>
-       <PlayerIcon name="chevron" size={12}/>
-      </span>
-     </div>
-     <button type="button" className="opt-icon" aria-label="Restart chapter"
-      title="No authored chapter available" disabled>
-      <PlayerIcon name="restart" size={14}/>
-     </button>
-    </div>}
+    <button type="button" className="opt-toggle" onClick={() => seek(0)}>
+     <PlayerIcon name="restart" size={14}/><span>Restart timeline</span>
+    </button>
     {state.max > 0 && <form className="opt-row go-to" onSubmit={event => {
      event.preventDefault();
      const value = Number(new FormData(event.currentTarget).get("step"));

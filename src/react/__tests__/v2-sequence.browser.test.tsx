@@ -21,7 +21,7 @@ async function openEvidence(screen: Awaited<ReturnType<typeof render>>) {
  if (trigger.element().getAttribute("aria-pressed") !== "true") await trigger.click();
  const details = document.querySelector<HTMLDetailsElement>(".evidence-note");
  if (details && !details.open)
-  await screen.getByText("CAUSAL EVIDENCE", { exact: true }).click();
+  await screen.getByText("Changes and evidence", { exact: true }).click();
 }
 async function openSequence(screen: Awaited<ReturnType<typeof render>>) {
  await screen.getByRole("tab", { name: "Sequence" }).click();

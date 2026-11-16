@@ -2,88 +2,14 @@ import type * as React from "react";
 import { useMemo, useState } from "react";
 import { projectInspection, type InspectionClaim, type InspectionEvidence, type InspectionView } from "../v2/inspection.js";
 import type {
-	CompiledTrace, Id, JsonValue, Path, QueryCell, StateChange, TraceInspector,
+	CompiledTrace, Id, Path, StateChange, TraceInspector,
 } from "../v2/model.js";
 import { encodeJson } from "../v2/validator.js";
+import { CellValue, ExactJson } from "./value-display.js";
 
 const PAGE = 60;
-const PREVIEW = 150;
-const EXACT_PART = 1024;
 const CLAIM_PAGE = 12;
 const CITATIONS_PER_CLAIM = 12;
-
-/**
- * Full validated JSON always stays reachable, but the browser mounts only a
- * single 1,024-code-unit fragment on demand. Avoid splitting a surrogate
- * pair across fragments; an escaped JSON string remains exactly readable.
- */
-function jsonFragments(source: string): readonly string[] {
-	const parts: string[] = [];
-	for (let index = 0; index < source.length;) {
-		let end = Math.min(source.length, index + EXACT_PART);
-		if (end < source.length && end > index &&
-			source.charCodeAt(end - 1) >= 0xd800 &&
-			source.charCodeAt(end - 1) <= 0xdbff &&
-			source.charCodeAt(end) >= 0xdc00 &&
-			source.charCodeAt(end) <= 0xdfff) end++;
-		parts.push(source.slice(index, end));
-		index = end;
-	}
-	return parts;
-}
-
-/** Exact, inert, chunked canonical JSON for long cells or source payloads. */
-function ExactJson({ value, label, prefix }: {
-	value: JsonValue; label: string; prefix: string;
-}): React.JSX.Element {
-	const json = useMemo(() => encodeJson(value), [value]);
-	const [expanded, setExpanded] = useState(false);
-	const [part, setPart] = useState(0);
-	const fragments = useMemo(() => expanded ? jsonFragments(json) : [], [expanded, json]);
-	const current = Math.min(part, Math.max(0, fragments.length - 1));
-	const before = fragments.slice(0, current).reduce((n, chunk) => n + chunk.length, 0);
-	const active = fragments[current] ?? "";
-	return <div className="thl-v2-inspect-value">
-		<code>{prefix}{json.length > PREVIEW
-			? json.slice(0, PREVIEW) + "… (truncated preview)" : json}</code>
-		{json.length > PREVIEW && <>
-			<button type="button" aria-expanded={expanded}
-				onClick={() => { setExpanded(open => !open); setPart(0); }}>
-				{expanded ? "Hide exact " : "Show exact "}{label} ({json.length} code units)
-			</button>
-			{expanded && <div className="thl-v2-inspect-exact" role="region"
-				aria-label={"Exact " + label}>
-				<p>Exact canonical JSON, segment {current + 1} of {fragments.length};
-					code units {before + 1}–{before + active.length} of {json.length}.
-					Only the visible segment is mounted. Use the next/previous controls
-					to inspect the complete value without omission.</p>
-				<pre>{active}</pre>
-				<div className="thl-v2-inspect-pager" role="group"
-					aria-label={"Exact " + label + " segments"}>
-					<button type="button" disabled={current === 0}
-						onClick={() => setPart(n => Math.max(0, n - 1))}>
-						Previous value segment
-					</button>
-					<button type="button" disabled={current + 1 >= fragments.length}
-						onClick={() => setPart(n => Math.min(fragments.length - 1, n + 1))}>
-						Next value segment
-					</button>
-				</div>
-			</div>}
-		</>}
-	</div>;
-}
-
-/** Unknown, absent and known null are never interchangeable. */
-function CellValue({ cell, label }: {
-	cell: QueryCell; label: string;
-}): React.JSX.Element {
-	if (cell.status === "absent") return <span>Absent at requested path</span>;
-	if (cell.status === "unknown") return <span>
-		Unknown{cell.reason ? ": " + cell.reason : ""}
-	</span>;
-	return <ExactJson value={cell.value} prefix="Known: " label={label}/>;
-}
 
 function RecordedEvidence({ evidence }: {
 	evidence: InspectionEvidence;
@@ -321,7 +247,7 @@ export function InspectPanel({
 				<p>Changes after <code>{result.fromFrameId}</code> through <code>{currentStep.frameId}</code>:
 					{" "}{changes.length} explicit mutation(s).</p>
 				{changes.length ? <>
-					<table><caption>Authored changes, in frame/event order</caption>
+					<div className="thl-v2-inspect-table-wrap" role="region" aria-label="Authored changes: scroll table horizontally" tabIndex={0}><table><caption>Authored changes, in frame/event order</caption>
 						<thead><tr><th scope="col">Source event</th><th scope="col">Target</th>
 							<th scope="col">Before</th><th scope="col">After</th></tr></thead>
 						<tbody>{currentChanges.values.map(change =>
@@ -340,7 +266,7 @@ export function InspectPanel({
 									? <CellValue cell={change.after} label={"after event " + change.eventId}/>
 									: change.after ? "Present" : "Not present"}</td>
 							</tr>)}</tbody>
-					</table>
+					</table></div>
 					{pager("Changes", currentChanges.page, currentChanges.max, setChangePage)}
 				</> : <p role="note">No explicit write or presence change in this interval.
 					This does not mean no messages or observations occurred.</p>}
@@ -367,7 +293,7 @@ export function InspectPanel({
 					{pathError && <p role="alert">{pathError}</p>}
 					<p>Selected <strong>{result.selected.label}</strong>, path
 						{" "}<code>{pathText(result.selected.path)}</code>.</p>
-					<table>
+					<div className="thl-v2-inspect-table-wrap" role="region" aria-label="Previous and current state: scroll table horizontally" tabIndex={0}><table>
 						<caption>Previous and current modeled state at requested path</caption>
 						<thead><tr><th scope="col">Comparison</th>
 							<th scope="col">Modeled presence</th><th scope="col">Value</th></tr></thead>
@@ -379,10 +305,10 @@ export function InspectPanel({
 							<td>{result.selected.presentAfter ? "Present" : "Not present"}</td>
 							<td><CellValue cell={result.selected.after}
 								label={"selected at frame " + frameIndex}/></td></tr></tbody>
-					</table>
+					</table></div>
 					<h5>Written-path history ({history.length})</h5>
 					{history.length ? <>
-						<table><caption>Only explicit overlapping writes through this frame</caption>
+						<div className="thl-v2-inspect-table-wrap" role="region" aria-label="Written-path history: scroll table horizontally" tabIndex={0}><table><caption>Only explicit overlapping writes through this frame</caption>
 							<thead><tr><th scope="col">Written source</th><th scope="col">Target path</th>
 								<th scope="col">Before at requested path</th>
 								<th scope="col">After at requested path</th></tr></thead>
@@ -398,14 +324,14 @@ export function InspectPanel({
 									<td><CellValue cell={entry.after}
 										label={"history after event " + entry.eventId}/></td>
 								</tr>)}</tbody>
-						</table>
+						</table></div>
 						{pager("History", currentHistory.page, currentHistory.max, setHistoryPage)}
 					</> : <p role="note">No explicit write affects this path through this frame.
 						Unknown and absent are not silently converted to known values.</p>}
 				</> : <p role="note">Select a source entity to inspect known, unknown or absent
 					path values and exact write history.</p>}
 				<details><summary>All modeled entity values ({result.state.length})</summary>
-					<table><caption>Snapshot values, modeled presence is independent</caption>
+					<div className="thl-v2-inspect-table-wrap" role="region" aria-label="Snapshot values: scroll table horizontally" tabIndex={0}><table><caption>Snapshot values, modeled presence is independent</caption>
 						<thead><tr><th scope="col">Entity</th><th scope="col">Presence</th>
 							<th scope="col">Cell</th></tr></thead>
 						<tbody>{result.state.map(row =>
@@ -415,7 +341,7 @@ export function InspectPanel({
 								<td>{row.presentAfter ? "Present" : "Not present"}</td>
 								<td><CellValue cell={row.after} label={"snapshot for entity " + row.entityId}/></td>
 							</tr>)}</tbody>
-					</table>
+					</table></div>
 				</details>
 			</section>
 			<section aria-label="Where did this message go?" className="thl-v2-inspect-section">

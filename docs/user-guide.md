@@ -111,10 +111,33 @@ The player's **Graph** view exposes source-linked semantic objects and
 declared relationships. **Sequence** displays only modeled message
 phases; absent receipts and acknowledgements are not invented.
 **State table** exposes known/unknown cells and explicit writes.
-An incompatible requested view falls back to a truthful state-table.
+Tabs appear only for projections the artifact supports across its entire timeline;
+for example, factorial has Graph and State tabs, while Checkout also has Sequence.
+An incompatible programmatic view request falls back to a truthful state table.
 
-Use the playback controls to step, seek, reverse or inspect the same
-compiler-owned immutable frame. **Explain / Inspect** shows exact
+Use the playback controls or timeline slider to step, seek, reverse or inspect
+the same compiler-owned immutable frame. The graph opens at readable scale and
+centers sparse content. Nodes have compact measurements that remain stable
+through the trace. Directed acyclic relationships use structural levels;
+cycles retain a deterministic centered grid. Nodes show scalar values or collection
+counts rather than raw JSON. Selecting a node opens a value inspector with
+expandable fields; exact source JSON remains available in bounded segments.
+Use **Fit to view** for a whole-scene overview, or **Follow active** to center
+authored focus without automatically magnifying it. Following starts off;
+manual panning, zooming or fitting pauses it until you enable it again.
+Selecting a group in Options centers its existing geometry without moving nodes.
+The inspector opens on the right in wider embeds and as a bottom sheet in narrow
+embeds, leaving playback available. Inspection and causal evidence use the same
+compact typography. Wide evidence tables scroll horizontally inside their own
+labeled regions, while the inspector provides the vertical reading scroll.
+The State view retains native table headers and explicit presence/value labels.
+Sequence reserves declared message participants from the start. Arrows connect
+their lifelines only for explicit sends; receipt, processing and acknowledgement
+remain separate phase markers. Motion occurs only on forward sends and is
+disabled for reduced-motion preferences, direct seeking and rewind.
+Escape closes the inspector or Options and
+returns focus to its control. Options provides timeline restart, direct step
+navigation and supported display controls. **Explain / Inspect** shows exact
 history and evidence IDs, including what remains unknown. Collapsing
 a group and changing presentation cannot change committed state.
 Keyboard-accessible controls and reduced-motion presentation apply;

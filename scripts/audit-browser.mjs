@@ -123,7 +123,7 @@ try {
 	await page.keyboard.press("ArrowRight");
 	assert.match(await page.getByRole("status").textContent(), /Step 3 of 9/);
 	await page.getByRole("button", { name: "Player options" }).tap();
-	assert(await page.getByRole("group", { name: "Player options" }).isVisible());
+	assert(await page.getByRole("dialog", { name: "Player options" }).isVisible());
  await page.getByRole("button", { name: "Player options" }).tap();
  await page.getByRole("tab", { name: "State" }).click();
 	assert(await page.getByRole("region", { name: "State and event table" }).isVisible());

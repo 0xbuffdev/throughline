@@ -13,7 +13,7 @@ const exact = (text: string) => ({ name: text, exact: true } as const);
 const checkout = () => compileArtifact(distributedGraph());
 async function openInspector(screen: Awaited<ReturnType<typeof render>>) {
  await screen.getByRole("button", exact("Inspect")).click();
- await screen.getByText("CAUSAL EVIDENCE", { exact: true }).click();
+ await screen.getByText("Changes and evidence", { exact: true }).click();
 }
 
 

@@ -7,6 +7,21 @@ All notable changes to Throughline are recorded here. Package versions follow
 
 ## [Unreleased]
 
+### Changed
+
+- Port the compact React player layout with measured, stable graph cards,
+  centered rows, structural DAG placement and distinct parallel routes while
+  retaining the existing palette and connector appearance. Dense scenes open
+  at readable scale with pan/zoom and an explicit full-scene Fit action.
+  Authored focus following is optional and pauses for manual navigation.
+  View tabs reflect supported projections. Add timeline scrubbing, bounded
+  Options and a responsive inspector side panel/mobile bottom sheet.
+  Replace repeated node write labels with a compact update marker; exact values,
+  paged structured data, changes and evidence remain in inspection.
+  Sequence lanes remain stable from the initial frame; only explicit sends draw
+  directional arrows, with forward-only motion. Other phases use labeled markers.
+  Restore semantic State tables and contain wide evidence tables locally.
+
 ### Added
 
 - TL-U18 establishes an exact-head, machine-readable schema-2 release-quality gate: deterministic small/moderate/near-limit fixture hashes and compile/index/query/projection/geometry timings with runner metadata; a seeded negative-input sweep; 260px keyboard/semantic-accessibility browser regressions; separately attested Chromium/Firefox/WebKit runs; a checked independent packed SSR consumer at 260/320/375 CSS px; and CI artifacts plus a read-only evidence verifier. Results use hard correctness/resource budgets, not invented CPU or learning-outcome claims. Maintainer review caught incomplete merge-result CI, 12 repeatedly sampled attack strings and vacuously passing empty-edge geometry: these are corrected with a full proposed-merge CI replay, 144 unique seeded malformed inputs (12 mandatory classes) and an all-edges-preserved bounded-geometry gate. Real screen-reader acceptance is **still pending TL-U18** and cannot be reclassified as an automatic DOM test or postponed to TL-U19 without an accepted spec amendment; a dated SHA-bound human test template is provided. Native zoom is also a manual release check. The previously stale manual publisher export map now checks the schema-2 Node entry and `thl` binary. No package was published.

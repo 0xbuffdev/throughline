@@ -2,11 +2,10 @@ import { cn } from "cn";
 import type * as React from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
-	cameraViewBox, constrainCamera, fitCamera, panCamera, zoomCamera,
-	type Camera,
-} from "../layout/viewport.js";
+	cameraViewBox, constrainCamera, fitCamera, initialCamera, fitScale, focusCamera, panCamera, zoomCamera,
+} from "../v2/graph-viewport.js";
+import type { Camera } from "../layout/viewport.js";
 import { BASE_STEP_MS, stepDelayMs } from "../seek.js";
-import { encodeJson } from "../v2/validator.js";
 import { layoutGraph, layoutGraphView } from "../v2/graph-layout.js";
 import { inspectTrace } from "../v2/inspector.js";
 import type {
@@ -17,9 +16,12 @@ import { PlayerControls, PlayerOptions } from "./player-chrome.js";
 import { useNarration } from "./use-narration.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
 import { SequenceView } from "./sequence-view.js";
+import { sequenceActors } from "../v2/sequence-layout.js";
+import { StateView } from "./state-view.js";
 import { SequenceEvidence } from "./sequence-evidence.js";
 import { InspectPanel } from "./inspect-panel.js";
 import { PlayerIcon } from "./player-icons.js";
+import { CellValue, nodeValueLines, summarizeCell, ValueTree } from "./value-display.js";
 
 export type ThroughlineGraphPlayerProps = {
 	/** Only a compiler-owned, immutable schema-2 trace is accepted. */
@@ -29,17 +31,12 @@ export type ThroughlineGraphPlayerProps = {
 	className?: string;
 	/** Optional explicit override. If omitted, accepted artifact hint/auto
 	 * selection determines the initial view consistently across all frames.
-	 * Selecting another view in Player options is a deliberate manual override. */
+	 * Selecting another view tab is a deliberate manual override. */
 	initialView?: ViewKind;
 	/** Native speech is opt-in and remains outside the pure core. */
 	narration?: boolean;
 };
 
-function cellText(cell: Cell): string {
-	return cell.status === "unknown"
-		? "Unknown" + (cell.reason ? ": " + cell.reason : "")
-		: encodeJson(cell.value);
-}
 function preview(text: string, length: number): string {
 	return text.length <= length ? text : text.slice(0, length - 1) + "…";
 }
@@ -69,6 +66,7 @@ function GraphDiagram({
 	participants: ReadonlySet<Id>;
 	animate: boolean;
 }): React.JSX.Element {
+	const diagramId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
 	const entityItems = view.items.filter(item => item.role === "entity");
 	const groups = view.items.filter(item => item.role === "group");
 	const groupsById = new Map(groups.map(item => [item.id, item] as const));
@@ -194,16 +192,21 @@ function GraphDiagram({
 							})} />
 						<rect className={cn("thl-ring", { "thl-ring-selected": selected })}
 							x={-4} y={-4} width={rect.w + 8} height={rect.h + 8} rx={4}/>
-						<text className="thl-node-label" x={8} y={19}>
-							{preview(item.label, Math.floor((rect.w - 16) / 7))}
+						<defs><clipPath id={diagramId + "-" + item.id}>
+                            <rect x={8} y={6} width={rect.w - 16} height={rect.h - 12}/>
+                        </clipPath></defs>
+                        <g clipPath={"url(#" + diagramId + "-" + item.id + ")"}>
+                        <text className="thl-node-label" x={8} y={19}>
+							{preview(item.label, Math.floor((rect.w - 16) / 6.6))}
 						</text>
 						<text className={cn("thl-v2-value", { "thl-changed": changed })}
-							x={8} y={44}>
-							{preview(value ? cellText(value) : "Unknown", Math.floor((rect.w - 16) / 7.4))}
+							x={8} y={36}>
+                            {nodeValueLines(value).map((line, index) => <tspan key={index} x={8} dy={index ? 12 : 0}>
+                             {preview(line, Math.floor((rect.w - 16) / 6.5))}
+                            </tspan>)}
 						</text>
-						{changed && <text x={8} y={62} className="thl-v2-change">
-							Explicit write
-						</text>}
+						{changed && <path className="thl-write-marker" d={"M" + (rect.w - 10) + " 6h4m-4 3h4"} aria-hidden="true"/>}
+                        </g>
 					</g>
 				);
 			})}
@@ -212,41 +215,6 @@ function GraphDiagram({
 					x={geometry.width / 2} y={50}>No present entities at this frame.</text>}
 		</>
 	);
-}
-
-function StateFallback({ view, selectedId, onSelect, inspector, frameIndex }: {
- view: ViewDescriptor;
- selectedId: Id | null;
- onSelect: (id: Id) => void;
- inspector: ReturnType<typeof inspectTrace>;
- frameIndex: number;
-}): React.JSX.Element {
- const rows = view.items.filter(item => item.role === "value");
- const changed = new Set(inspector.diff(Math.max(0, frameIndex - 1), frameIndex)
-  .flatMap(change => change.kind === "write" ? [change.entityId] : []));
- return <div className="state-view" role="region" aria-label="State and event table">
-  {view.diagnostics?.map(message => <p key={message} role="note">{message}</p>)}
-  <div className="state-row state-header" aria-hidden="true">
-   <span>ENTITY</span><span>PATH</span><span>COMMITTED VALUE</span><span>ORIGIN</span>
-  </div>
-  {rows.map(item => {
-   const id = item.source.entityIds?.[0] ?? "";
-   const present = data(item, "present") === true;
-   const cell = itemCell(item);
-   const history = inspector.history(id);
-   const latest = history.filter(entry => entry.frameIndex <= frameIndex).at(-1);
-   const origin = latest?.originId ?? (present ? "initial" : "not present");
-   return <button type="button" className={cn("state-row", {
-    "changed": changed.has(id), "future": !present,
-   })} key={item.id} data-source-entity-ids={id}
-    aria-pressed={selectedId === id} onClick={() => onSelect(id)}>
-    <strong>{item.label}</strong>
-    <code title="Whole entity">.</code>
-    <code>{present ? (cell ? cellText(cell) : "Unknown") : "Absent"}</code>
-    <span>{origin}</span>
-   </button>;
-  })}
- </div>;
 }
 
 /**
@@ -273,6 +241,10 @@ export function ThroughlineGraphPlayer({
 	const [collapsed, setCollapsed] = useState<readonly Id[]>([]);
 	const [viewKind, setViewKind] = useState<ViewKind | undefined>(initialView);
 	const [inspectionMode, setInspectionMode] = useState<"explain" | "inspect">("explain");
+ const inspectorRef = useRef<HTMLElement>(null);
+ const inspectorTriggerRef = useRef<HTMLButtonElement>(null);
+ const inspectorId = useId();
+ const viewPanelId = useId();
  const [drilled, setDrilled] = useState<Id | null>(null);
  const [follow, setFollow] = useState(false);
  const [soundOn, setSoundOn] = useState(false);
@@ -296,6 +268,10 @@ export function ThroughlineGraphPlayer({
   setSoundOn(false);
   setNarrating(false);
 	}
+ useEffect(() => {
+  if (inspectionMode !== "inspect") return;
+  inspectorRef.current?.querySelector<HTMLButtonElement>('[aria-label="Close inspector"]')?.focus();
+ }, [inspectionMode]);
 	useEffect(() => {
 		if (!narration) setNarrating(false);
 	}, [narration]);
@@ -312,6 +288,10 @@ export function ThroughlineGraphPlayer({
 	// Never send the former trace's higher frame index into a new, shorter
 	// immutable inspector while React completes that state transition.
 	const frameIndex = Math.min(state.step, trace.frames.length - 1);
+ const availableViews = useMemo(() =>
+  ([["Graph", "graph"], ["Sequence", "sequence"], ["State", "state-table"]] as const)
+   .filter(([, kind]) => projectView(inspector, { kind, frameIndex: 0 }).kind === kind),
+ [inspector]);
 // Use the unchanged authored graph layout, including container-dependent
  // geometry, rather than the reference design's fixed demo coordinates.
  const layout = useMemo(() => layoutGraph(trace, width), [trace, width]);
@@ -321,10 +301,12 @@ export function ThroughlineGraphPlayer({
 		collapsedGroupIds: collapsed,
 	}), [inspector, frameIndex, viewKind, selectedId, collapsed]);
 	const geometry = useMemo(() => layoutGraphView(layout, view), [layout, view]);
+ const actors = useMemo(() => sequenceActors(trace), [trace]);
 	// Only authored focusEntityIds can drive automatic camera following.
  const focusIds = frameIndex ? trace.artifact.steps[frameIndex - 1].focusEntityIds ?? [] : [];
  const focusRects = focusIds.map(id => {
-  const item = view.items.find(candidate => candidate.role === "entity" &&
+  const item = view.items.find(candidate =>
+   (candidate.role === "entity" || (candidate.role === "group" && data(candidate, "collapsed") === true)) &&
    candidate.source.entityIds?.includes(id));
   return item ? geometry.nodes[item.id] : undefined;
  }).filter((rect): rect is { x: number; y: number; w: number; h: number } => rect !== undefined);
@@ -332,16 +314,25 @@ export function ThroughlineGraphPlayer({
  const focusRight = focusRects.length ? Math.max(...focusRects.map(rect => rect.x + rect.w)) : 0;
  const focusTop = focusRects.length ? Math.min(...focusRects.map(rect => rect.y)) : 0;
  const focusBottom = focusRects.length ? Math.max(...focusRects.map(rect => rect.y + rect.h)) : 0;
- const followedCamera: Camera | null = focusRects.length ? {
-  centerX: (focusLeft + focusRight) / 2,
-  centerY: (focusTop + focusBottom) / 2,
-  zoom: Math.max(1, Math.min(2.4, 0.8 * Math.min(
-   layout.width / Math.max(1, focusRight - focusLeft),
-   layout.height / Math.max(1, focusBottom - focusTop),
-  ))),
- } : null;
- const effectiveCamera = constrainCamera(layout,
-  follow && followedCamera ? followedCamera : camera ?? fitCamera(layout));
+ const [sceneHeight, setSceneHeight] = useState<number | null>(null);
+ useEffect(() => {
+  const svg = svgRef.current;
+  if (!svg || view.kind !== "graph") return;
+  const observer = new ResizeObserver(([entry]) => {
+   if (entry.contentRect.height > 0) setSceneHeight(entry.contentRect.height);
+  });
+  observer.observe(svg);
+  return () => observer.disconnect();
+ }, [view.kind]);
+ const viewport = { width: layout.width, height: sceneHeight ?? Math.min(520, Math.max(240, layout.height)) };
+ const overview = camera ?? initialCamera(layout, viewport);
+  // Following centers the authored focus at the user's existing scale,
+ // zooming out only when a multi-entity focus needs room. It never magnifies.
+ const followedCamera = focusRects.length ? focusCamera(layout, viewport, overview, {
+  x: focusLeft, y: focusTop, w: focusRight - focusLeft, h: focusBottom - focusTop,
+ }) : null;
+ const effectiveCamera = constrainCamera(layout, viewport,
+  follow && followedCamera ? followedCamera : overview);
 	const presentEntities = new Set(inspector.stateAt(frameIndex).presentEntityIds);
 	const selected = selectedId
 		? trace.artifact.entities.find(entity => entity.id === selectedId)
@@ -378,10 +369,10 @@ export function ThroughlineGraphPlayer({
 		}
 		return present;
 	}, [firstSent, frameIndex, trace]);
-	const manual = (next: Camera) => { setFollow(false); setCamera(constrainCamera(layout, next)); };
-	const fit = () => manual(fitCamera(layout));
-	const zoom = (factor: number) => manual(zoomCamera(layout, effectiveCamera, factor));
-	const pan = (dx: number, dy: number) => manual(panCamera(layout, effectiveCamera, dx, dy));
+	const manual = (next: Camera) => { setFollow(false); setCamera(constrainCamera(layout, viewport, next)); };
+	const fit = () => manual(fitCamera(layout, viewport));
+	const zoom = (factor: number) => manual(zoomCamera(layout, viewport, effectiveCamera, factor));
+	const pan = (dx: number, dy: number) => manual(panCamera(layout, viewport, effectiveCamera, dx, dy));
 	const dragging = useRef<{ x: number; y: number; pointerId: number } | null>(null);
 	useEffect(() => {
 		const svg = svgRef.current;
@@ -389,7 +380,11 @@ export function ThroughlineGraphPlayer({
 		const wheel = (event: WheelEvent) => {
 			if (event.ctrlKey || event.metaKey || !event.deltaY) return;
 			const factor = Math.exp(-Math.max(-180, Math.min(180, event.deltaY)) / 300);
-			const next = zoomCamera(layout, effectiveCamera, factor);
+			const matrix = svg.getScreenCTM();
+			const anchor = matrix
+				? new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
+				: undefined;
+			const next = zoomCamera(layout, viewport, effectiveCamera, factor, anchor);
 			if (next.zoom === effectiveCamera.zoom) return;
 			event.preventDefault();
 			manual(next);
@@ -416,7 +411,7 @@ export function ThroughlineGraphPlayer({
 			setFullscreenError("Fullscreen is unavailable in this browser or embedded view.");
 		}
 	};
-	
+
  // Audio is optional, native, and instantiated only after an explicit click.
  useEffect(() => {
   setSoundAvailable(typeof window.AudioContext === "function");
@@ -470,7 +465,15 @@ export function ThroughlineGraphPlayer({
  // Selecting authored elements must never rewrite or reframe their graph
  // geometry. Zoom/pan/follow are only explicit camera controls.
  const focusEntity = (id: Id) => onSelectEntity(id);
- const focusGroup = (id: Id | null) => setDrilled(id);
+ const focusGroup = (id: Id | null) => {
+  setDrilled(id);
+  if (!id) { fit(); return; }
+  const item = view.items.find(candidate => candidate.role === "group" &&
+   candidate.source.groupIds?.includes(id));
+  const rect = item && (geometry.groups.find(group => group.id === item.id) ?? geometry.nodes[item.id]);
+  if (rect) manual({ centerX: rect.x + rect.w / 2, centerY: rect.y + rect.h / 2,
+   zoom: Math.min(2.4, 0.8 * Math.min(viewport.width / rect.w, viewport.height / rect.h)) });
+ };
  const diagramControls = <>
   <div className="opt-field">
    <label htmlFor={entityFieldId}>Select entity</label>
@@ -484,23 +487,12 @@ export function ThroughlineGraphPlayer({
     <PlayerIcon name="chevron" size={12}/>
    </span>
   </div>
-  <div className="opt-grid">
-   <button type="button" className={"opt-toggle " + (follow ? "on" : "")}
-    aria-pressed={follow} disabled={view.kind !== "graph"} onClick={() => {
-     if (follow) { setCamera(effectiveCamera); setFollow(false); }
-     else setFollow(true);
-    }}>
-    <PlayerIcon name="focus" size={14}/><span>Follow active</span>
-   </button>
-   <button type="button" className="opt-toggle" disabled={view.kind !== "graph"}
-    onClick={fit}><PlayerIcon name="fit" size={14}/><span>Fit to view</span></button>
-  </div>
-  <nav className="group-nav" aria-label="Group hierarchy">
+  {view.kind === "graph" && Boolean(trace.artifact.groups?.length) && <nav className="group-nav" aria-label="Group hierarchy">
    <button type="button" className="opt-icon" aria-label="Return to group overview"
     onClick={() => focusGroup(null)}><PlayerIcon name="home" size={14}/></button>
    {drilled && <span className="crumb">/ {trace.artifact.groups?.find(group => group.id === drilled)?.label}</span>}
    <span className="opt-select grow">
-    <select id={groupFieldId} aria-label="Drill into group" value={drilled ?? ""}
+    <select id={groupFieldId} aria-label="Focus group" value={drilled ?? ""}
      disabled={view.kind !== "graph"}
      onChange={event => focusGroup(event.currentTarget.value || null)}>
      <option value="">Choose group</option>
@@ -516,7 +508,7 @@ export function ThroughlineGraphPlayer({
      ? current.filter(id => id !== drilled) : [...current, drilled])}>
     <PlayerIcon name={drilled && collapsed.includes(drilled) ? "uncollapse" : "collapse"} size={14}/>
    </button>
-  </nav>
+  </nav>}
  </>;
  const keyboardDiagram: React.KeyboardEventHandler<SVGSVGElement> = event => {
   if (event.target !== event.currentTarget) return;
@@ -536,7 +528,9 @@ export function ThroughlineGraphPlayer({
   data-theme={theme} role="group" aria-label="Visualization player"
   aria-describedby={helpId} aria-keyshortcuts="ArrowLeft ArrowRight Home End Space"
   tabIndex={0} onKeyDown={onKeyDown}
-  style={{ "--thl-step-ms": stepDelayMs(BASE_STEP_MS, state.speed) + "ms" } as React.CSSProperties}>
+  style={{ "--thl-step-ms": stepDelayMs(BASE_STEP_MS, state.speed) + "ms",
+   "--thl-canvas-height": Math.min(520, Math.max(240, layout.height)) + 80 + "px",
+  } as React.CSSProperties}>
   <p id={helpId} className="thl-sr-only">Focus this player to seek with Left and Right arrows, Home and End,
    and play or pause with Space. Focus the graph to pan with arrows, zoom with plus or minus, or fit with zero.</p>
   <p className="thl-sr-only" role="status" aria-atomic="true">{summary}</p>
@@ -544,15 +538,15 @@ export function ThroughlineGraphPlayer({
   {fullscreenError && <p role="alert" className="narration-error">{fullscreenError}</p>}
   <header className="player-header">
    <div className="title-block">
-    <h2>{title ?? trace.artifact.title ?? "Throughline"}</h2>
+    {(title ?? trace.artifact.title)?.trim() && <h2>{title ?? trace.artifact.title}</h2>}
    </div>
    <div className="header-actions">
-    <button type="button" className={inspectionMode === "inspect" ? "active" : ""}
+    <button ref={inspectorTriggerRef} type="button" aria-controls={inspectorId}
+     aria-expanded={inspectionMode === "inspect"} className={inspectionMode === "inspect" ? "active" : ""}
      aria-label="Inspect" aria-pressed={inspectionMode === "inspect"} onClick={() => {
       setInspectionMode(current => current === "inspect" ? "explain" : "inspect");
      }}><PlayerIcon name="inspect"/><span>Inspect</span></button>
     <PlayerOptions state={state} dispatch={dispatch}
-     scenario={{ id: trace.artifact.id, title: title ?? trace.artifact.title ?? trace.artifact.id }}
      diagramControls={diagramControls}
      inspection={{ enabled: inspectionMode === "inspect",
       toggle: () => {
@@ -565,25 +559,35 @@ export function ThroughlineGraphPlayer({
   </header>
   <div className="context-bar">
    <div className="view-tabs" role="tablist" aria-label="Visualization view">
-    {([["Graph", "graph"], ["Sequence", "sequence"], ["State", "state-table"]] as const)
-     .map(([label, kind]) => <button type="button" key={kind}
-      role="tab" aria-selected={view.kind === kind}
+    {availableViews.map(([label, kind], index) => <button type="button" key={kind}
+      role="tab" id={viewPanelId + "-" + kind} aria-controls={viewPanelId} aria-selected={view.kind === kind}
+      tabIndex={view.kind === kind ? 0 : -1}
       className={view.kind === kind ? "active" : ""}
-      onClick={() => setViewKind(kind)}>{label}</button>)}
+      onKeyDown={event => {
+       const next = event.key === "Home" ? 0 : event.key === "End" ? availableViews.length - 1
+        : event.key === "ArrowRight" ? (index + 1) % availableViews.length
+        : event.key === "ArrowLeft" ? (index + availableViews.length - 1) % availableViews.length : -1;
+       if (next < 0) return;
+       event.preventDefault();
+       setViewKind(availableViews[next][1]); setMotion(current => ({ ...current, animate: false }));
+       event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+      }}
+      onClick={() => { setViewKind(kind); setMotion(current => ({ ...current, animate: false })); }}>{label}</button>)}
    </div>
-   <div className="truth-note"><span>SOURCE</span> {origins} <i/> frame #{frameIndex}</div>
+   <div className="truth-note"><span>Source</span> {origins}</div>
   </div>
   <div className={"player-content " + (inspectionMode === "inspect" ? "with-inspector" : "")}>
-   <div className="canvas" ref={canvasRef}>
+   <div className="canvas" ref={canvasRef} id={viewPanelId}
+    role="tabpanel" aria-labelledby={viewPanelId + "-" + view.kind}>
     <div className="canvas-meta">
-     <span>FRAME {String(frameIndex).padStart(2, "0")}</span>
+
      <strong>{step?.label ?? "Initial state"}</strong>
      <code>{eventType}</code>
     </div>
     {view.kind === "graph" ?
      <div className="graph-wrap">
-      <svg ref={svgRef} className="graph thl-v2-diagram" role="img" tabIndex={0}
-       viewBox={cameraViewBox(layout, effectiveCamera)}
+      <svg ref={svgRef} className="graph thl-scene thl-v2-diagram" role="img" tabIndex={0}
+       viewBox={cameraViewBox(layout, viewport, effectiveCamera)}
        aria-label="Source-linked graph at current frame"
        aria-describedby={captionId}
        onKeyDown={keyboardDiagram}
@@ -597,10 +601,9 @@ export function ThroughlineGraphPlayer({
         const start = dragging.current;
         if (!start || start.pointerId !== event.pointerId) return;
         const bounds = event.currentTarget.getBoundingClientRect();
-        const worldX = effectiveCamera.zoom > 0
-         ? (layout.width / effectiveCamera.zoom) / Math.max(bounds.width, 1) : 1;
-        const worldY = effectiveCamera.zoom > 0
-         ? (layout.height / effectiveCamera.zoom) / Math.max(bounds.height, 1) : 1;
+        const matrix = event.currentTarget.getScreenCTM();
+        const worldX = matrix ? 1 / matrix.a : layout.width / effectiveCamera.zoom / Math.max(bounds.width, 1);
+        const worldY = matrix ? 1 / matrix.d : layout.height / effectiveCamera.zoom / Math.max(bounds.height, 1);
         pan((event.clientX - start.x) * worldX, (event.clientY - start.y) * worldY);
         dragging.current = { ...start, x: event.clientX, y: event.clientY };
        }}
@@ -616,8 +619,12 @@ export function ThroughlineGraphPlayer({
       <div className="canvas-hint">
        <span>Drag to pan · scroll to zoom · click a node to inspect</span>
        <div className="zoom-tools" role="toolbar" aria-label="Diagram navigation">
+        <button type="button" aria-label="Follow active" title="Follow authored focus"
+         aria-pressed={follow} onClick={() => {
+          setCamera(effectiveCamera); setFollow(current => !current);
+         }}><PlayerIcon name="focus" size={12}/></button>
         <button type="button" aria-label="Zoom out" title="Zoom out" onClick={() => zoom(0.8)}
-         disabled={effectiveCamera.zoom <= 1}><PlayerIcon name="minus" size={12}/></button>
+         disabled={effectiveCamera.zoom <= fitScale(layout, viewport)}><PlayerIcon name="minus" size={12}/></button>
         <span className="zoom-readout">{Math.round(effectiveCamera.zoom * 100)}%</span>
         <button type="button" aria-label="Zoom in" title="Zoom in" onClick={() => zoom(1.25)}
          disabled={effectiveCamera.zoom >= 4}><PlayerIcon name="plus" size={12}/></button>
@@ -627,13 +634,18 @@ export function ThroughlineGraphPlayer({
        </div>
       </div>
      </div> : view.kind === "sequence"
-     ? <SequenceView view={view} selectedId={selectedId} onSelect={onSelectEntity}/>
-     : <StateFallback view={view} selectedId={selectedId}
+     ? <SequenceView view={view} actors={actors} present={presentEntities} selectedId={selectedId} onSelect={onSelectEntity} animate={motion.animate && ((state.playing && lastAction?.type === "tick") || (lastAction?.type === "step" && lastAction.animate === true))}/>
+     : <StateView view={view} selectedId={selectedId}
        inspector={inspector} frameIndex={frameIndex} onSelect={onSelectEntity}/>}
    </div>
-   {inspectionMode === "inspect" && <aside className="inspector" aria-label="Entity inspector">
+   {inspectionMode === "inspect" && <aside ref={inspectorRef} id={inspectorId} className="inspector" aria-label="Entity inspector"
+    onKeyDown={event => {
+     if (event.key !== "Escape") return;
+     event.preventDefault(); event.stopPropagation();
+     setInspectionMode("explain"); inspectorTriggerRef.current?.focus();
+    }}>
     <div className="inspector-top"><span>INSPECT ENTITY</span>
-     <button type="button" aria-label="Close inspector" onClick={() => setInspectionMode("explain")}>×</button>
+     <button type="button" aria-label="Close inspector" onClick={() => { setInspectionMode("explain"); inspectorTriggerRef.current?.focus(); }}>×</button>
     </div>
     {inspectSelected ? <>
      <div className="entity-heading">
@@ -642,11 +654,13 @@ export function ThroughlineGraphPlayer({
      <dl>
       <div><dt>Presence</dt><dd><span className="known">
        {inspectPresent ? "present" : "not present"}</span></dd></div>
-      <div><dt>Current value</dt><dd><code>
-       {!inspectPresent ? "Absent" :
-        inspectValue?.status === "known" ? cellText(inspectValue) :
-        inspectValue?.status === "unknown" ? cellText(inspectValue) : "Absent"}
-      </code></dd></div>
+      <div className="current-value"><dt>Current value</dt><dd>
+       <CellValue cell={!inspectPresent ? { status: "absent" } : inspectValue ?? { status: "absent" }}
+        label={"current value of " + inspectSelected.id}/>
+       {inspectPresent && inspectValue?.status === "known" && inspectValue.value !== null &&
+        typeof inspectValue.value === "object" && <ValueTree key={frameIndex + ":" + inspectSelected.id}
+         value={inspectValue.value} name="Browse fields"/>}
+      </dd></div>
       <div><dt>Frame</dt><dd>#{frameIndex} · committed</dd></div>
      </dl>
      <div className="history-title"><span>RECORDED HISTORY</span><b>{inspectHistory.length}</b></div>
@@ -655,9 +669,7 @@ export function ThroughlineGraphPlayer({
       key={entry.eventId} data-source-event-ids={entry.eventId}>
       <i/><div><strong>{entry.eventId}</strong>
        <span>Explicit write · {entry.originId} · frame #{entry.frameIndex}</span>
-       <code>{JSON.stringify(entry.path)}: {entry.after.status === "known"
-        ? cellText(entry.after) : entry.after.status === "unknown"
-         ? cellText(entry.after) : "Absent"}</code>
+       <code>{entry.path.length ? JSON.stringify(entry.path) : "Whole entity"}: {summarizeCell(entry.after)}</code>
       </div>
      </div>)}
      {inspectHistory.length > 60 && <p className="history-empty">
@@ -666,7 +678,7 @@ export function ThroughlineGraphPlayer({
      ? "Choose an entity in the graph or Player options to inspect its state."
      : "No entities declared."}</p>}
     <details className="evidence-note">
-     <summary>CAUSAL EVIDENCE</summary>
+     <summary>Changes and evidence</summary>
      <p>Only explicit modeled dependencies are evidence; no additional event is inferred.</p>
      <InspectPanel trace={trace} inspector={inspector} frameIndex={frameIndex}
       selectedEntityId={selectedId} onSelectEntity={setSelectedId}
@@ -679,7 +691,7 @@ export function ThroughlineGraphPlayer({
   <footer className="transport"><PlayerControls state={state} dispatch={dispatch}/></footer>
   <details id={captionId} className="step-caption">
    <summary>
-    <span className="step-number">{String(frameIndex + 1).padStart(2, "0")}</span>
+
     <span className="caption-text">
      <strong>{step?.label ?? "Initial state"}</strong>
      <span className="teaser">{step?.note ?? view.summary}</span>
@@ -706,8 +718,9 @@ export function ThroughlineGraphPlayer({
       const value = present ? inspector.valueAt(frameIndex, entity.id) : null;
       return <div key={entity.id} data-source-entity-ids={entity.id}>
        <dt>{entity.label} <span>({entity.id})</span></dt>
-       <dd><code>{!present ? "Absent" : value?.status === "known" ? cellText(value)
-        : value?.status === "unknown" ? cellText(value) : "Absent"}</code></dd>
+       <dd><button type="button" onClick={() => onSelectEntity(entity.id)} aria-label={"Inspect state of " + entity.label}>
+        <code>{!present ? "Absent" : summarizeCell(value)}</code><PlayerIcon name="inspect" size={12}/>
+       </button></dd>
       </div>;
      })}</dl>
     </details>
