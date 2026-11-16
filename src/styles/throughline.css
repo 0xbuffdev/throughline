@@ -2295,7 +2295,7 @@
   padding: 0 14px 14px 48px;
   
 }
-@keyframes thl-player-thl-player-reveal-down {
+@keyframes thl-player-reveal-down {
   from {
     opacity: 0;
     transform: translateY(-4px);
@@ -2760,7 +2760,7 @@
  .thl.player-shell .links path.hot { animation: thl-player-flow 0.7s linear infinite; }
  .thl.player-shell .inspector { animation: thl-player-reveal 0.18s ease-out; }
  .thl.player-shell .options-menu { animation: thl-player-pop 0.14s ease-out; }
- .thl.player-shell .caption-body { animation: thl-player-thl-player-reveal-down 0.18s ease-out; }
+ .thl.player-shell .caption-body { animation: thl-player-reveal-down 0.18s ease-out; }
 }
 /* The compact inspector cannot force the host's horizontal scroll at any
  * embed width. Popup controls remain accessible within the player width. */
