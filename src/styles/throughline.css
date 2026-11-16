@@ -2750,11 +2750,9 @@
  max-width: 100%;
 }
 @container (max-width: 560px) {
- /* An embedded mobile player stays inside its host. When the player itself
-    goes fullscreen, the inspector consequently fills that fullscreen view. */
- .thl.player-shell .player-content {
-  position: static;
- }
+ /* The panel fills the visualization at narrow embed widths, while the
+    player header, view tabs, and transport remain operable for inspection
+    across frames. Never take over the embedding document's viewport. */
  .thl.player-shell .player-content .inspector {
   width: 100%;
   max-width: 100%;
