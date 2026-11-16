@@ -17,6 +17,7 @@ import { PlayerControls, PlayerOptions } from "./controls.js";
 import { useNarration } from "./use-narration.js";
 import { usePlayer, useSceneWidth } from "./use-player.js";
 import { SequenceView } from "./sequence-view.js";
+import { SequenceEvidence } from "./sequence-evidence.js";
 import { InspectPanel } from "./inspect-panel.js";
 import { PlayerIcon } from "./player-icons.js";
 
@@ -678,6 +679,8 @@ export function ThroughlineGraphPlayer({
      <InspectPanel trace={trace} inspector={inspector} frameIndex={frameIndex}
       selectedEntityId={selectedId} onSelectEntity={setSelectedId}
       onSeek={to => dispatch({ type: "step", to })}/>
+     {view.kind === "sequence" && <SequenceEvidence view={view} selectedId={selectedId}
+       onSelect={onSelectEntity}/>}
     </details>
    </aside>}
   </div>
