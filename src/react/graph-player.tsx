@@ -482,7 +482,7 @@ export function ThroughlineGraphPlayer({
  const eventType = !step ? "initial" : currentEvent?.type ?? "no event";
  const hasWrite = step?.events.some(event => event.type === "write") ?? false;
  const origins = [...new Set(trace.artifact.origins.map(origin => origin.kind))].join(" + ");
- const inspectSelected = selected ?? trace.artifact.entities[0];
+ const inspectSelected = selected;
  const inspectValue = inspectSelected ? inspector.valueAt(frameIndex, inspectSelected.id) : null;
  const inspectPresent = inspectSelected ? presentEntities.has(inspectSelected.id) : false;
  const inspectHistory = inspectSelected
@@ -584,8 +584,6 @@ export function ThroughlineGraphPlayer({
    <div className="header-actions">
     <button type="button" className={inspectionMode === "inspect" ? "active" : ""}
      aria-label="Inspect" aria-pressed={inspectionMode === "inspect"} onClick={() => {
-      if (inspectionMode === "explain" && !selectedId && trace.artifact.entities.length)
-       setSelectedId(trace.artifact.entities[0].id);
       setInspectionMode(current => current === "inspect" ? "explain" : "inspect");
      }}><PlayerIcon name="inspect"/><span>Inspect</span></button>
     <PlayerOptions state={state} dispatch={dispatch}
@@ -593,8 +591,6 @@ export function ThroughlineGraphPlayer({
      diagramControls={diagramControls}
      inspection={{ enabled: inspectionMode === "inspect",
       toggle: () => {
-       if (inspectionMode === "explain" && !selectedId && trace.artifact.entities.length)
-        setSelectedId(trace.artifact.entities[0].id);
        setInspectionMode(current => current === "inspect" ? "explain" : "inspect");
       } }}
      sound={{ enabled: soundOn, available: soundAvailable, toggle: toggleSound }}
@@ -701,7 +697,9 @@ export function ThroughlineGraphPlayer({
      </div>)}
      {inspectHistory.length > 60 && <p className="history-empty">
       Showing latest 60 writes; all records available in source inspection.</p>}
-    </> : <p className="history-empty">No entities declared.</p>}
+    </> : <p className="history-empty">{trace.artifact.entities.length
+     ? "Choose an entity in the graph or Player options to inspect its state."
+     : "No entities declared."}</p>}
     <details className="evidence-note">
      <summary>CAUSAL EVIDENCE</summary>
      <p>Only explicit modeled dependencies are evidence; no additional event is inferred.</p>
