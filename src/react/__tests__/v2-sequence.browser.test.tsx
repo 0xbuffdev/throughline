@@ -92,7 +92,8 @@ it("does not flag receipt before send within the same atomic step", async () => 
 it("shows modeled phases through seeking, no future or imagined acknowledgement", async () => {
 	const screen = await render(<ThroughlineGraphPlayer trace={artifact()} />);
 	await openSequence(screen);
-	await expect.element(screen.getByText("No modeled events through this frame.")).toBeVisible();
+	await expect.element(screen.getByRole("region", { name: "Sequence lane diagram" })
+  .getByText("No modeled events through this frame.")).toBeVisible();
 	expect(evidence("originalSent")).toBeNull();
 	const next = screen.getByRole("button", { name: "Step forward" });
 	await next.click();
