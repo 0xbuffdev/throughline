@@ -79,11 +79,14 @@ it("collapses and expands nested groups without losing relation/event provenance
 	expect(document.querySelector('[data-node="gateway"]')).toBeNull();
 	expect(link("settlement")?.getAttribute("data-source-relation-ids")).toBe("settlement");
 	expect(link("request")).toBeUndefined();
-	// The options popover is intentionally layered over the diagram: close it
-	// before using the graphical group-summary button.
+	// The compact inspector is a drawer at narrow embed widths, and
+	// intentionally overlays graph hit targets. Close it before using the
+	// graphical group-summary button; selection must survive reopening.
+	await screen.getByRole("button", { name: "Close inspector" }).click();
 	await screen.getByRole("button", { name: "Expand group Frontend" }).click();
 	expect(document.querySelector('[data-node="gateway"]')).not.toBeNull();
 	expect(link("request")?.getAttribute("data-sent-current")).toBe("1");
+	await screen.getByRole("button", { name: "Inspect", exact: true }).click();
 	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Gateway");
 });
 
