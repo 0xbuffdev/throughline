@@ -1159,7 +1159,7 @@
 	padding-block: 0.5rem;
 }
 
-/* Faithful prototype layout; palette intentionally comes from --thl-* above. */
+/* Player layout; palette intentionally comes from --thl-* above. */
 .thl.player-shell{
   background: color-mix(in srgb, var(--thl-panel) 97%, transparent);
   border: 1px solid var(--thl-line);
@@ -2616,7 +2616,7 @@
 /*
  * UI geometry, spacing, typography and responsive behavior are ported from
  * 0xbuffdev/throughline-player. These aliases preserve the canonical palette:
- * no prototype green, orange or hard-coded dark-mode colours enter the package.
+ * no hard-coded design-specific accent colors enter the package.
  * All selectors remain underneath the public .thl.player-shell root.
  */
 .thl.thl-v2.player-shell {
@@ -2683,7 +2683,7 @@
 }
 
 /* The public heading remains h2 for correct embedding, but keeps the exact
- * prototype's h1 appearance. */
+ * compact header appearance. */
 .thl.player-shell .title-block h2 {
  margin: 0;
  font-size: 13px;
