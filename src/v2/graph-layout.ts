@@ -12,7 +12,7 @@ import type { CompiledTrace, Id, ViewDescriptor } from "./model.js";
  */
 const PAD = 12;
 const GAP = 12;
-const NODE_HEIGHT = 74;
+const NODE_HEIGHT = 52;
 const GROUP_HEADER = 26;
 const SUMMARY_HEIGHT = 52;
 
@@ -48,7 +48,7 @@ export function layoutGraph(trace: CompiledTrace, availableWidth = 720): Layout 
 		if (!ids.length) return;
 		const x = PAD + Math.min(depth * 8, 24);
 		const available = Math.max(120, width - x - PAD);
-		const nodeWidth = Math.min(188, available);
+		const nodeWidth = Math.min(116, available);
 		const columns = Math.max(1, Math.floor((available + GAP) / (nodeWidth + GAP)));
 		for (const [index, id] of ids.entries()) {
 			const col = index % columns;
