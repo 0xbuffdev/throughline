@@ -159,8 +159,7 @@ it("supports keyboard stepping, zoom and pan independently of v2 model state", a
 	await userEvent.keyboard("{ArrowLeft}");
 	expect(viewBox()).not.toEqual(start);
 	await userEvent.keyboard("0");
-	expect(viewBox()[2]).toBeCloseTo(828);
- expect(viewBox()[0]).toBeCloseTo(0);
+	expect(viewBox()).toEqual(start);
 	screen.getByRole("group", { name: "Visualization player" }).element().focus();
 	await userEvent.keyboard("{ArrowRight}");
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 7");
