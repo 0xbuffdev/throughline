@@ -1159,6 +1159,7 @@
 
 /* Player layout; palette intentionally comes from --thl-* above. */
 .thl.player-shell{
+  position: relative;
   background: color-mix(in srgb, var(--thl-panel) 97%, transparent);
   border: 1px solid var(--thl-line);
   border-radius: var(--radius);
@@ -2751,9 +2752,6 @@
 @container (max-width: 560px) {
  /* An embedded mobile player stays inside its host. When the player itself
     goes fullscreen, the inspector consequently fills that fullscreen view. */
- .thl.player-shell {
-  position: relative;
- }
  .thl.player-shell .player-content {
   position: static;
  }
