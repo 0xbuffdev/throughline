@@ -21,7 +21,7 @@ const limitWidth = (width: number): number =>
 	Math.max(160, Number.isFinite(width) ? Math.floor(width) : 720);
 
 /**
- * The Figma player uses a stable horizontal group world (828×300 baseline),
+ * The player uses a stable horizontal group world (828×300 baseline),
  * independent of the embed's viewport width. Keep that composition for the
  * public player while allowing the existing narrow-width pure layout for
  * consumers explicitly requesting a smaller geometry.
@@ -30,7 +30,7 @@ const limitWidth = (width: number): number =>
  * always come from the compiled source. The world can extend vertically for
  * larger or nested authored groups, rather than clipping a real entity.
  */
-function prototypeWorld(trace: CompiledTrace, width: number): Layout {
+function horizontalGroupLayout(trace: CompiledTrace, width: number): Layout {
  const { artifact } = trace;
  const groups = artifact.groups ?? [];
  const byParent = new Map<Id | undefined, Id[]>();
@@ -135,7 +135,7 @@ function prototypeWorld(trace: CompiledTrace, width: number): Layout {
 export function layoutGraph(trace: CompiledTrace, availableWidth = 720): Layout {
 	if (availableWidth >= 828 && (trace.artifact.groups?.length ?? 0) > 0 &&
 		trace.artifact.groups!.length <= 8 && trace.artifact.entities.length <= 24)
-		return prototypeWorld(trace, Math.floor(availableWidth));
+		return horizontalGroupLayout(trace, Math.floor(availableWidth));
 	const width = limitWidth(availableWidth);
 	const groups = trace.artifact.groups ?? [];
 	const byParent = new Map<Id | undefined, Id[]>();
