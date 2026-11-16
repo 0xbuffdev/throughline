@@ -467,23 +467,10 @@ export function ThroughlineGraphPlayer({
   ? inspector.history(inspectSelected.id).filter(entry => entry.frameIndex <= frameIndex)
   : [];
  const onSelectEntity = (id: Id) => { setSelectedId(id); setInspectionMode("inspect"); };
- const focusEntity = (id: Id) => {
-  onSelectEntity(id);
-  const item = view.items.find(candidate => candidate.role === "entity" &&
-   candidate.source.entityIds?.includes(id));
-  const rect = item && geometry.nodes[item.id];
-  if (rect && view.kind === "graph")
-   manual({ centerX: rect.x + rect.w / 2, centerY: rect.y + rect.h / 2, zoom: 2 });
- };
- const focusGroup = (id: Id | null) => {
-  setDrilled(id);
-  if (!id) { fit(); return; }
-  const item = view.items.find(candidate => candidate.role === "group" &&
-   candidate.source.groupIds?.includes(id));
-  const rect = item && (geometry.groups.find(rect => rect.id === item.id) ??
-   geometry.nodes[item.id]);
-  if (rect) manual({ centerX: rect.x + rect.w / 2, centerY: rect.y + rect.h / 2, zoom: 2 });
- };
+ // Selecting authored elements must never rewrite or reframe their graph
+ // geometry. Zoom/pan/follow are only explicit camera controls.
+ const focusEntity = (id: Id) => onSelectEntity(id);
+ const focusGroup = (id: Id | null) => setDrilled(id);
  const diagramControls = <>
   <div className="opt-field">
    <label htmlFor={entityFieldId}>Select entity</label>
