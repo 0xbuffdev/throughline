@@ -29,7 +29,7 @@ state-table rather than fabricating messages.
 | [Factorial](../src/reference/factorial.ts) | 4! = 24; stack depth rises to 4, then unwinds to 0 | Graph | `push1`, `return1`, `value2`, `value6`, `factorialResult` |
 | [Matrix multiplication](../src/reference/matrix.ts) | [[1,2],[3,4]] × [[5,6],[7,8]] = [[19,22],[43,50]] | State table | `write00`, `write01`, `write10`, `write11` |
 | [Binary addition](../src/reference/binary.ts) | 1011₂ + 0110₂ = 10001₂ = 17₁₀ | State table | `sumBit0`–`sumBit3`, `leadingCarry`, `decimalSum` |
-| [Distributed checkout](../src/reference/checkout.ts) | Unknown worker outcome until an explicit reply; one charge **only under the fictional idempotent-provider assumption** | Sequence | `chargeFirstSent`, `providerCharged`, `workerTimeout`, `providerDedup`, `resultReceived`, `receiptPaid`, `orderPaid` |
+| [Distributed checkout](../src/reference/checkout.ts) | Explicit API, queue, worker and provider handoffs. The worker's outcome stays unknown until the explicit reply. One charge **only under the fictional idempotent-provider assumption**. | Sequence | `enqueueSent`, `chargeFirstSent`, `providerCharged`, `workerTimeout`, `providerDedup`, `resultReceived`, `receiptPaid`, `orderPaid`, `paymentReportSent` |
 
 ### Factorial — what is actually modeled
 
