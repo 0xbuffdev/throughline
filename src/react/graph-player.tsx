@@ -242,7 +242,7 @@ function GraphDiagram({
  * IDs and playback frame, including the native Explain/Inspect interface.
  */
 export function ThroughlineGraphPlayer(props: ThroughlineGraphPlayerProps): React.JSX.Element {
-	return <GraphPlayer {...props}/>;
+	return <GraphPlayer {...props} DiagramRenderer={undefined}/>;
 }
 
 /** Internal entry shared with the development preview. */

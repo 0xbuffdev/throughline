@@ -17,7 +17,7 @@ const examples = EXAMPLES.map(example => ({
 }));
 
 function App() {
-	const [exampleId, setExampleId] = useState("factorial");
+	const [exampleId, setExampleId] = useState("checkout");
 	const [theme, setTheme] = useState<Theme>("auto");
 	const [viewport, setViewport] = useState<Viewport>("desktop");
 	const current = examples.find(example => example.id === exampleId);
