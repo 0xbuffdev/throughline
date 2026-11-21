@@ -59,7 +59,9 @@ function itemBounds(scene: SVGSVGElement, targets: readonly string[]): Box | und
 		h: Math.max(...points.map(point => point.y)) - y };
 }
 
-function GraphViewport({ diagram, proof, focusIds, groupId, captionId, children, onOpenEvidence }: {
+function GraphViewport({
+	diagram, proof, focusIds, groupId, captionId, children, onOpenEvidence, follow, onFollowChange,
+}: {
 	diagram: RenderedDiagram;
 	proof: DiagramProof;
 	focusIds: DiagramRendererProps["focusIds"];
@@ -67,11 +69,12 @@ function GraphViewport({ diagram, proof, focusIds, groupId, captionId, children,
 	captionId: string;
 	children: React.ReactNode;
 	onOpenEvidence: () => void;
+	follow: boolean;
+	onFollowChange: (enabled: boolean) => void;
 }): React.JSX.Element {
 	const scene = useRef<SVGSVGElement>(null);
 	const [size, setSize] = useState({ width: 720, height: 300 });
 	const [camera, setCamera] = useState<Camera | null>(null);
-	const [follow, setFollow] = useState(false);
 	const [focused, setFocused] = useState<Box>();
 	const drag = useRef<{ id: number; x: number; y: number } | null>(null);
 	const fit = fitCamera(diagram, size);
@@ -102,7 +105,7 @@ function GraphViewport({ diagram, proof, focusIds, groupId, captionId, children,
 	const [groupOverride, setGroupOverride] = useState<string | null>(null);
 	const viewport = group && groupOverride === group.itemId && !follow ? overview : current;
 	const manual = (next: Camera) => {
-		setFollow(false);
+		onFollowChange(false);
 		setGroupOverride(group ? group.itemId : null);
 		setCamera(next);
 	};
@@ -162,7 +165,7 @@ function GraphViewport({ diagram, proof, focusIds, groupId, captionId, children,
 			<button className="mermaid-evidence" type="button" onClick={onOpenEvidence}>Changes and evidence</button>
 			<div className="zoom-tools" role="toolbar" aria-label="Diagram navigation">
 				<button type="button" aria-label="Follow active" aria-pressed={follow} title="Follow authored focus"
-					onClick={() => { setCamera(viewport); setFollow(current => !current); }}>
+					onClick={() => { setCamera(viewport); onFollowChange(!follow); }}>
 					<PlayerIcon name="focus" size={12}/>
 				</button>
 				<button type="button" aria-label="Zoom out" title="Zoom out"
@@ -185,6 +188,7 @@ export function MermaidPlayerDiagram({
 	onSelectEntity, onOpenEvidence, fallback,
 }: DiagramRendererProps): React.JSX.Element {
 	const direction = width < 520 ? "TB" : "LR";
+	const [followedTrace, setFollowedTrace] = useState<typeof trace | null>(null);
 	const [eventWindow, setEventWindow] = useState<{ trace: typeof trace; frame: number; start: number }>();
 	const currentWindow = eventWindow?.trace === trace && eventWindow.frame === frameIndex
 		? eventWindow : undefined;
@@ -291,7 +295,8 @@ export function MermaidPlayerDiagram({
 	</div>;
 	return <div ref={host} className="mermaid-markup" data-mermaid-kind="graph">
 		<GraphViewport key={proof.source} diagram={visible} proof={proof} focusIds={focusIds}
-			groupId={groupId} captionId={captionId} onOpenEvidence={onOpenEvidence}>
+			groupId={groupId} captionId={captionId} onOpenEvidence={onOpenEvidence}
+			follow={followedTrace === trace} onFollowChange={enabled => setFollowedTrace(enabled ? trace : null)}>
 			<g {...interactive} dangerouslySetInnerHTML={markup}/>
 		</GraphViewport>
 	</div>;

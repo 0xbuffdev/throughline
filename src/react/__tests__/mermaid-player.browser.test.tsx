@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 import { render } from "vitest-browser-react";
 import { userEvent } from "vitest/browser";
 import { retryCheckout } from "../../__tests__/v2-sequence-fixture.js";
+import { distributedGraph } from "../../__tests__/v2-graph-fixture.js";
 import { EXAMPLES } from "../../examples.js";
 import { compileArtifact } from "../../v2/compiler.js";
 import { GraphPlayer } from "../graph-player.js";
@@ -100,4 +101,28 @@ it("uses the native state and evidence fallback for an oversized graph", async (
 	await expect.element(screen.getByRole("region", { name: "State and event table" })).toBeVisible();
 	await screen.getByRole("button", { name: "Changes and evidence", exact: true }).click();
 	await expect.element(screen.getByRole("complementary", { name: "Entity inspector" })).toBeVisible();
+}, 60_000);
+
+it("keeps authored focus enabled when a topology change replaces the diagram", async () => {
+	const artifact = distributedGraph();
+	artifact.steps[3].focusEntityIds = ["worker"];
+	const trace = compileArtifact(artifact);
+	const screen = await render(<div style={{ width: 720 }}>
+		<GraphPlayer trace={trace} initialView="graph" DiagramRenderer={MermaidPlayerDiagram}/>
+	</div>);
+	const follow = screen.getByRole("button", { name: "Follow active" });
+	await follow.click();
+	for (let frame = 1; frame <= 4; frame++)
+		await screen.getByRole("button", { name: "Step forward" }).click();
+	const worker = screen.getByRole("button", { name: "Inspect entity Worker" });
+	await expect.element(worker).toHaveAttribute("data-thl-focused", "");
+	const scene = screen.getByRole("group", { name: "Source-linked graph at current frame" });
+	await expect.poll(() => {
+		const node = worker.element().getBoundingClientRect();
+		const canvas = scene.element().getBoundingClientRect();
+		return Math.abs(node.x + node.width / 2 - canvas.x - canvas.width / 2);
+	}).toBeLessThan(2);
+	await expect.element(follow).toHaveAttribute("aria-pressed", "true");
+	await screen.getByRole("button", { name: "Fit to view" }).click();
+	await expect.element(follow).toHaveAttribute("aria-pressed", "false");
 }, 60_000);
