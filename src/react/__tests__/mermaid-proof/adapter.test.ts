@@ -5,7 +5,7 @@ import { projectView } from "../../../v2/views.js";
 import { EXAMPLES } from "../../../examples.js";
 import { distributedGraph } from "../../../__tests__/v2-graph-fixture.js";
 import { retryCheckout } from "../../../__tests__/v2-sequence-fixture.js";
-import { graphProof, label, property, sequenceProof } from "./adapter.js";
+import { graphProof, label, property, sequenceProof } from "../../mermaid/adapter.js";
 
 describe("TL-U26 pure source-to-Mermaid proof", () => {
 	for (const example of EXAMPLES) it("preserves every projected graph source for " + example.id, () => {

@@ -37,6 +37,22 @@ export type ThroughlineGraphPlayerProps = {
 	narration?: boolean;
 };
 
+export type DiagramRendererProps = {
+	trace: CompiledTrace;
+	view: ViewDescriptor;
+	frameIndex: number;
+	width: number;
+	selectedId: Id | null;
+	groupId: Id | null;
+	focusIds: readonly Id[];
+	captionId: string;
+	motion: { revision: number; durationMs: number; forward: boolean };
+	onSelectItem: (itemId: Id) => void;
+	onSelectEntity: (id: Id) => void;
+	onOpenEvidence: () => void;
+	fallback: () => React.ReactNode;
+};
+
 function preview(text: string, length: number): string {
 	return text.length <= length ? text : text.slice(0, length - 1) + "…";
 }
@@ -225,9 +241,17 @@ function GraphDiagram({
  * Graph, sequence and state-table share the SAME indexed inspector, source
  * IDs and playback frame, including the native Explain/Inspect interface.
  */
-export function ThroughlineGraphPlayer({
+export function ThroughlineGraphPlayer(props: ThroughlineGraphPlayerProps): React.JSX.Element {
+	return <GraphPlayer {...props}/>;
+}
+
+/** Internal entry shared with the development preview. */
+export function GraphPlayer({
 	trace, title, className, theme = "auto", narration = false, initialView,
-}: ThroughlineGraphPlayerProps): React.JSX.Element {
+	DiagramRenderer,
+}: ThroughlineGraphPlayerProps & {
+	DiagramRenderer?: React.ComponentType<DiagramRendererProps>;
+}): React.JSX.Element {
 	const inspector = useMemo(() => inspectTrace(trace), [trace]);
 	const canvasRef = useRef<HTMLDivElement>(null);
 	const svgRef = useRef<SVGSVGElement>(null);
@@ -238,6 +262,9 @@ export function ThroughlineGraphPlayer({
 		usePlayer(trace, narration && narrating);
 	const [identity, setIdentity] = useState(trace);
 	const [selectedId, setSelectedId] = useState<Id | null>(null);
+	const [selectedItemId, setSelectedItemId] = useState<Id | null>(null);
+	const [sourceRevision, setSourceRevision] = useState(0);
+	const [evidenceOpen, setEvidenceOpen] = useState(false);
 	const [collapsed, setCollapsed] = useState<readonly Id[]>([]);
 	const [viewKind, setViewKind] = useState<ViewKind | undefined>(initialView);
 	const [inspectionMode, setInspectionMode] = useState<"explain" | "inspect">("explain");
@@ -259,6 +286,9 @@ export function ThroughlineGraphPlayer({
 	if (identity !== trace) {
 		setIdentity(trace);
 		setSelectedId(null);
+		setSelectedItemId(null);
+		setSourceRevision(current => current + 1);
+		setEvidenceOpen(false);
 		setCollapsed([]);
 		setCamera(null);
 		setViewKind(initialView);
@@ -275,10 +305,12 @@ export function ThroughlineGraphPlayer({
 	useEffect(() => {
 		if (!narration) setNarrating(false);
 	}, [narration]);
-	const [motion, setMotion] = useState({ trace, step: state.step, animate: false });
+	const [motion, setMotion] = useState({
+		trace, step: state.step, animate: false, revision: 0, seekRevision,
+	});
 	if (motion.trace !== trace || motion.step !== state.step) {
 		setMotion({
-			trace, step: state.step,
+			trace, step: state.step, revision: motion.revision + 1, seekRevision,
 			animate: motion.trace === trace && state.step === motion.step + 1 &&
 				(lastAction?.type === "tick" ||
 					(lastAction?.type === "step" && lastAction.animate === true)),
@@ -292,16 +324,19 @@ export function ThroughlineGraphPlayer({
   ([["Graph", "graph"], ["Sequence", "sequence"], ["State", "state-table"]] as const)
    .filter(([, kind]) => projectView(inspector, { kind, frameIndex: 0 }).kind === kind),
  [inspector]);
-// Use the unchanged authored graph layout, including container-dependent
- // geometry, rather than the reference design's fixed demo coordinates.
- const layout = useMemo(() => layoutGraph(trace, width), [trace, width]);
+	// The development renderer owns its geometry. The shared shell only needs
+	// a preferred canvas height when its native graph is not mounted.
+	const layout = useMemo<ReturnType<typeof layoutGraph>>(() => DiagramRenderer
+		? { width, height: 340, viewBox: "", nodes: {}, edges: {}, groups: [] }
+		: layoutGraph(trace, width), [DiagramRenderer, trace, width]);
 	const view = useMemo(() => projectView(inspector, {
 		kind: viewKind, frameIndex,
 		selectedEntityIds: selectedId ? [selectedId] : [],
 		collapsedGroupIds: collapsed,
 	}), [inspector, frameIndex, viewKind, selectedId, collapsed]);
-	const geometry = useMemo(() => layoutGraphView(layout, view), [layout, view]);
- const actors = useMemo(() => sequenceActors(trace), [trace]);
+	const geometry = useMemo(() => DiagramRenderer ? layout : layoutGraphView(layout, view),
+		[DiagramRenderer, layout, view]);
+ const actors = useMemo(() => DiagramRenderer ? [] : sequenceActors(trace), [DiagramRenderer, trace]);
 	// Only authored focusEntityIds can drive automatic camera following.
  const focusIds = frameIndex ? trace.artifact.steps[frameIndex - 1].focusEntityIds ?? [] : [];
  const focusRects = focusIds.map(id => {
@@ -352,13 +387,14 @@ export function ThroughlineGraphPlayer({
 	});
 	const firstSent = useMemo(() => {
 		const seen = new Map<Id, number>();
+		if (DiagramRenderer) return seen;
 		for (const [index, step] of trace.artifact.steps.entries())
 			for (const event of step.events) {
 				if (event.type === "message" && event.phase === "sent" &&
 					!seen.has(event.relationId)) seen.set(event.relationId, index + 1);
 			}
 		return seen;
-	}, [trace]);
+	}, [DiagramRenderer, trace]);
 	const participants = useMemo(() => {
 		const present = new Set<Id>();
 		for (const relation of trace.artifact.relations) {
@@ -461,12 +497,35 @@ export function ThroughlineGraphPlayer({
  const inspectHistory = inspectSelected
   ? inspector.history(inspectSelected.id).filter(entry => entry.frameIndex <= frameIndex)
   : [];
- const onSelectEntity = (id: Id) => { setSelectedId(id); setInspectionMode("inspect"); };
+ const onSelectEntity = (id: Id) => {
+  setSelectedId(id);
+  setSelectedItemId(null);
+  setInspectionMode("inspect");
+ };
+ const onOpenEvidence = () => { setEvidenceOpen(true); setInspectionMode("inspect"); };
+ const selectedItem = view.items.find(item => item.id === selectedItemId);
+ const onSelectItem = (id: Id) => {
+  const item = view.items.find(candidate => candidate.id === id);
+  if (!item) return;
+  if (item.role === "entity" && item.source.entityIds?.[0]) {
+   onSelectEntity(item.source.entityIds[0]);
+   return;
+  }
+  if (item.role === "group" && data(item, "collapsed") === true) {
+   setCollapsed(current => current.filter(group => group !== item.source.groupIds?.[0]));
+   return;
+  }
+  setSelectedId(null);
+  setSelectedItemId(item.id);
+  setSourceRevision(current => current + 1);
+  onOpenEvidence();
+ };
  // Selecting authored elements must never rewrite or reframe their graph
  // geometry. Zoom/pan/follow are only explicit camera controls.
  const focusEntity = (id: Id) => onSelectEntity(id);
  const focusGroup = (id: Id | null) => {
   setDrilled(id);
+  if (DiagramRenderer) return;
   if (!id) { fit(); return; }
   const item = view.items.find(candidate => candidate.role === "group" &&
    candidate.source.groupIds?.includes(id));
@@ -584,7 +643,18 @@ export function ThroughlineGraphPlayer({
      <strong>{step?.label ?? "Initial state"}</strong>
      <code>{eventType}</code>
     </div>
-    {view.kind === "graph" ?
+    {DiagramRenderer && view.kind !== "state-table" ?
+     <DiagramRenderer key={view.kind} trace={trace} view={view} frameIndex={frameIndex} width={width}
+      selectedId={selectedId} groupId={drilled} focusIds={focusIds} captionId={captionId}
+      motion={{
+       revision: motion.revision, durationMs: Math.min(700, stepDelayMs(700, state.speed)),
+       forward: motion.animate && motion.seekRevision === seekRevision &&
+        (lastAction?.type === "tick" || (lastAction?.type === "step" && lastAction.animate === true)),
+      }}
+      onSelectItem={onSelectItem} onSelectEntity={onSelectEntity} onOpenEvidence={onOpenEvidence}
+      fallback={() => <StateView view={projectView(inspector, { kind: "state-table", frameIndex })}
+       selectedId={selectedId} inspector={inspector} frameIndex={frameIndex} onSelect={onSelectEntity}/>}/>
+    : view.kind === "graph" ?
      <div className="graph-wrap">
       <svg ref={svgRef} className="graph thl-scene thl-v2-diagram" role="img" tabIndex={0}
        viewBox={cameraViewBox(layout, viewport, effectiveCamera)}
@@ -638,13 +708,14 @@ export function ThroughlineGraphPlayer({
      : <StateView view={view} selectedId={selectedId}
        inspector={inspector} frameIndex={frameIndex} onSelect={onSelectEntity}/>}
    </div>
-   {inspectionMode === "inspect" && <aside ref={inspectorRef} id={inspectorId} className="inspector" aria-label="Entity inspector"
+   {inspectionMode === "inspect" && <aside ref={inspectorRef} id={inspectorId} className="inspector"
+    aria-label={selectedItem ? "Source inspector" : "Entity inspector"}
     onKeyDown={event => {
      if (event.key !== "Escape") return;
      event.preventDefault(); event.stopPropagation();
      setInspectionMode("explain"); inspectorTriggerRef.current?.focus();
     }}>
-    <div className="inspector-top"><span>INSPECT ENTITY</span>
+    <div className="inspector-top"><span>{selectedItem ? "INSPECT SOURCE" : "INSPECT ENTITY"}</span>
      <button type="button" aria-label="Close inspector" onClick={() => { setInspectionMode("explain"); inspectorTriggerRef.current?.focus(); }}>×</button>
     </div>
     {inspectSelected ? <>
@@ -674,14 +745,22 @@ export function ThroughlineGraphPlayer({
      </div>)}
      {inspectHistory.length > 60 && <p className="history-empty">
       Showing latest 60 writes; all records available in source inspection.</p>}
-    </> : <p className="history-empty">{trace.artifact.entities.length
+    </> : selectedItem ? <div className="diagram-source"
+     data-source-relation-ids={selectedItem.source.relationIds?.join(" ")}
+     data-source-event-ids={selectedItem.source.eventIds?.join(" ")}>
+     <strong>{selectedItem.label}</strong>
+     <p>{selectedItem.description}</p>
+    </div> : !evidenceOpen && <p className="history-empty">{trace.artifact.entities.length
      ? "Choose an entity in the graph or Player options to inspect its state."
      : "No entities declared."}</p>}
-    <details className="evidence-note">
+    <details className="evidence-note" open={evidenceOpen}
+     onToggle={event => setEvidenceOpen(event.currentTarget.open)}>
      <summary>Changes and evidence</summary>
      <p>Only explicit modeled dependencies are evidence; no additional event is inferred.</p>
-     <InspectPanel trace={trace} inspector={inspector} frameIndex={frameIndex}
-      selectedEntityId={selectedId} onSelectEntity={setSelectedId}
+     <InspectPanel key={sourceRevision} trace={trace} inspector={inspector} frameIndex={frameIndex}
+      selectedEntityId={selectedId} onSelectEntity={id => { setSelectedId(id); setSelectedItemId(null); }}
+      initialRelationId={selectedItem?.source.relationIds?.[0]}
+      initialEventId={selectedItem?.source.eventIds?.[0]}
       onSeek={to => dispatch({ type: "step", to })}/>
      {view.kind === "sequence" && <SequenceEvidence view={view} selectedId={selectedId}
        onSelect={onSelectEntity}/>}

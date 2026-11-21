@@ -40,8 +40,8 @@ try {
 		const { layoutGraph, layoutGraphView } = await import("/src/v2/graph-layout.ts");
 		const { distributedGraph } = await import("/src/__tests__/v2-graph-fixture.ts");
 		const { retryCheckout } = await import("/src/__tests__/v2-sequence-fixture.ts");
-		const { graphProof, sequenceProof } = await import("/src/react/__tests__/mermaid-proof/adapter.ts");
-		const { renderProof } = await import("/src/react/__tests__/mermaid-proof/render.ts");
+		const { graphProof, sequenceProof } = await import("/src/react/mermaid/adapter.ts");
+		const { renderProof } = await import("/src/react/mermaid/render.ts");
 		const { graphWorkload, sequenceWorkload } = await import("/src/react/__tests__/mermaid-proof/workloads.ts");
 		const mount = svg => {
 			const host = document.createElement("div"); host.innerHTML = svg;

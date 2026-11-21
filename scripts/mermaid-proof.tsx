@@ -5,7 +5,7 @@ import { compileArtifact } from "../src/v2/compiler.js";
 import { inspectTrace } from "../src/v2/inspector.js";
 import { projectView } from "../src/v2/views.js";
 import { ThroughlineGraphPlayer } from "../src/react/graph-player.js";
-import { graphProof, sequenceProof, type ProofElement } from "../src/react/__tests__/mermaid-proof/adapter.js";
+import { graphProof, sequenceProof, type ProofElement } from "../src/react/mermaid/adapter.js";
 import { ProofDiagram } from "../src/react/__tests__/mermaid-proof/diagram.js";
 import { ProofEvidence } from "../src/react/__tests__/mermaid-proof/evidence.js";
 import "../src/styles/throughline.css";

@@ -1,6 +1,6 @@
 # Mermaid feasibility dependency inventory
 
-The TL-U26 experiment pins Mermaid **12.3.0 as a development dependency**. It does not change package exports, runtime dependencies, the player renderer, or the shipped archive. Run `pnpm build` followed by `node scripts/audit-mermaid-proof.mjs` to verify that separation and generate the installed dependency/license inventory. The committed lockfile identifies exact resolved dependencies.
+The feasibility host and local compact-player preview pin Mermaid **12.3.0 as a development dependency**. Run `pnpm build` followed by `node scripts/audit-mermaid-proof.mjs` to check the package boundary and generate the installed dependency and license inventory. The committed lockfile identifies exact resolved dependencies.
 
 The initial inventory contains 115 installed packages reachable from Mermaid's declared dependencies, including type packages. Every package has a license text file. Declared expressions include MIT, ISC, BSD-3-Clause, Apache-2.0, Unlicense, DOMPurify's `(MPL-2.0 OR Apache-2.0)`, and ELK's `EPL-2.0 OR GPL-3.0-or-later`. Khroma 2.1.0 has no manifest license declaration; its installed `license` file contains the MIT license and the Fabio Spampinato/Andrew Maney attribution. The audit preserves that distinction instead of silently treating its metadata as MIT.
 

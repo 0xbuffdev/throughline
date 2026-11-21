@@ -21,7 +21,7 @@ and render it with the optional native React player.
 
 - [Architecture](architecture.md): compiler, trace model, presentation and
   trust boundaries.
-- [Mermaid feasibility](mermaid-feasibility.md): test-only graph/sequence adapter,
+- [Mermaid feasibility](mermaid-feasibility.md): compact player preview, graph and sequence adapter,
   source mapping, synchronized motion proof, measurements and cutover gates.
 - [Reference authoring](authoring.md): building typed, evidence-grounded examples.
 - [Release-quality gate](release-quality.md): measured v2 performance, security, browser evidence and manual accessibility checklist.

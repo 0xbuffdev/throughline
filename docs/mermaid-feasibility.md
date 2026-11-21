@@ -1,16 +1,16 @@
 # Mermaid renderer feasibility
 
-TL-U26 tests Mermaid 12.3.0 against Throughline's existing schema-2 projections. The experiment is isolated from production rendering and from the open player/Playground work. Mermaid integration is scheduled before 0.2.0 publication. Release, publication and real assistive-technology acceptance remain separate actions.
+TL-U26 tests Mermaid 12.3.0 against Throughline's existing schema-2 projections. Mermaid integration is scheduled before 0.2.0 publication. Release, publication and real assistive-technology acceptance remain separate actions.
 
-The candidate is under `src/react/__tests__/mermaid-proof/`; it is excluded from the package build. The pure compiler, six public entry points, immutable trace, source inspector and native State table are unchanged. There is no new Mermaid authoring grammar or second model of transitions.
+Run `pnpm dev` to try the Mermaid renderer in the compact player. Its adapter and viewport live in `src/react/mermaid/`. The playground injects that renderer into the same shell used by the package React entry. The standalone feasibility host remains under `src/react/__tests__/mermaid-proof/`.
 
 ## Decisions supported by the prototype
 
 Graph uses `flowchart LR` or `flowchart TB`, native subgraphs, explicit edge IDs and host-selected styles. Source mapping preserves individual and collapsed relation IDs and removed-member evidence. Labels show short descriptions rather than cell JSON. The unchanged semantic model remains available through source controls and inspection.
 
-Sequence uses explicit participants from the complete modeled message participant set, even at frame zero. No empty-state note or transition box is generated. Only explicit sends produce outbound `-)` arrows. Recorded received, acknowledged and processed phases produce separate notes; writes are not turned into network arrows. The diagram shows at most 40 message phases by default, with a tested upper window of 120. Full source evidence and totals remain separate from that diagram window.
+Sequence uses explicit participants from the complete modeled message participant set, even at frame zero. Only explicit sends produce outbound `-)` arrows. Recorded received, acknowledged and processed phases produce separate notes. The preview lets readers page through windows of 40 message phases. Changes and evidence independently pages through the full event log and shows correlation counts. While the next diagram is being drawn, the player keeps the lane boundaries visible and hides the previous frame's arrows and notes.
 
-Mermaid's autonomous `step` animation is not used. The prototype can add one forward arrowhead and label along existing rendered geometry, driven by a host instruction. It does not reconstruct routes, advance frames, infer delivery, or interpret playback milliseconds as physical duration. Cancellation removes the cue; seeking/backward navigation and reduced motion omit it. Production integration still must connect these instructions to the existing `usePlayer` actions, pause/speed and trace/view replacement lifecycle.
+Graph and Sequence use a single forward cue along the rendered path for an explicit send. The preview drives cues with the existing `usePlayer` actions and respects seeking, pause, speed, view changes and reduced motion. Graph highlights authored focus, such as the factorial stack, independently of transfer animation. A write to that stack is evidence of the new stored value. A graphical push, pop or return between distinct calls requires the artifact to model those calls and relations explicitly.
 
 ## Findings that changed the adapter
 
@@ -20,7 +20,9 @@ Mermaid's autonomous `step` animation is not used. The prototype can add one for
 
 **Explicit edge IDs do not solve DOM mapping by themselves.** Mermaid adds its own SVG prefix and does not retain supplied edge class names. The graph experiment assigns a distinct trusted paint token through documented `classDef` styling, checks that exactly one rendered route carries each token, and binds a host-owned item attribute and CSS variable. Missing or ambiguous mappings fail closed. Essential source selection resolves that attribute through the current descriptor, never through a generated SVG ID, an endpoint guess, label matching or coordinates. Entity mapping uses host-authored classes. Source controls remain available independently of SVG output.
 
-**Sequence motion has a deliberately narrower bridge.** With the flat, outbound-only grammar, a version-pinned cosmetic bridge checks the rendered arrow count against the generated send list before attaching motion markers. Its private SVG selectors are not used for essential selection or inspection. A mismatch disables motion rather than assigning a guessed semantic source. Full production adoption must retain this distinction and exercise duplicate labels, self-messages, same-step batches and window boundaries.
+**Sequence motion needs endpoint verification.** The version-pinned bridge checks the rendered arrow count and each route's from/to IDs against the generated send list before attaching motion markers. A mismatch disables motion. Participant selection uses explicit actor IDs and the exact event records are available through the source inspector.
+
+**Message captions can move lanes.** Chromium measured a 26 CSS-pixel shift in checkout when the first send rendered with a longer caption. Compact captions and fixed base participant widths removed that shift in a repeat through all 20 checkout frames. An integrated regression exercises three lanes before any messages, through a send and receipt, and after a backward seek.
 
 **Escaping and wrapping must be tested together.** SVG-only flowchart labels initially displayed decimal escapes literally. The tested candidate uses Mermaid's generated HTML labels under `securityLevel: "strict"`; author text is still escaped and cannot supply markup. Sequence automatic wrapping split internal entity escapes. The adapter instead wraps plain text before escaping and emits only fixed host-owned line breaks. The punctuation regression includes quotes, apostrophes, angle brackets, ampersands and literal entity-looking input. Hostile labels must never produce scripts, images, links or event-handler attributes.
 
@@ -29,13 +31,13 @@ Mermaid's autonomous `step` animation is not used. The prototype can add one for
 | Area | Current evidence and remaining work |
 | --- | --- |
 | Four canonical references | Pure graph source conservation across every frame and actual browser rendering. Non-message references correctly have no fabricated Sequence sends. |
-| Hierarchy and presence | Nested/collapsed groups, removed-member provenance, parallel edges and self-relations. Current-presence layouts are measured; union-topology layout still needs comparison before choosing a production policy. |
+| Hierarchy and presence | The preview uses current-presence layout. A union-layout trial retained absent edges and changed collapsed labels as constituents changed. Verify the preview camera across topology changes before cutover. |
 | Geometry | Unchanged-topology seek is tested. Narrow hosts retain readable diagram units and scroll rather than shrinking text arbitrarily. Topology changes can relayout and need an explicit production camera policy. |
-| Sequence lanes | Explicit participants reserve the full set from initial state. Final fixed-lane positioning, empty-lane height and bounded-window transitions still need visual acceptance. |
-| Motion | Standalone forward graph/Sequence cues, cancellation and reduced-motion/backward suppression. Production transport integration and all view/trace replacement interactions remain to be verified. |
+| Sequence lanes | The three-lane regression and full checkout example preserve actor positions through initial state, sends and later phases. Final legibility and window-boundary measurements remain open. |
+| Motion | Forward Graph and Sequence cues are exercised through the compact player transport. Production cutover still needs the full transport and lifecycle exercise on the packed player. |
 | Accessibility | Keyboard source selection, exact text controls, SSR/initial hydration and error fallback are tested. Actual screen-reader output and native browser zoom have not been performed. |
 | Cost and dependencies | Pinned development dependency, installed license inventory, preliminary measurements and bounded render policy. Final application initial/lazy bundle, memory and packed candidate rendering are not yet established. |
-| Production UI | Current player is retained. The new compact player layout and responsive sheets are not replaced by this test host. |
+| Production UI | The local playground runs the Mermaid renderer with the compact layout and responsive sheets. The public package entry continues to use the tested native renderer pending parity review. |
 
 This is **not approval to delete the existing renderer or claim TL-U26 complete**. A reviewed go/no-go must distinguish the proven adapter pieces from the remaining production gates. TL-U27–TL-U29 implement the accepted replacement on focused branches. No source ticket is closed merely because this report or a local test exists.
 

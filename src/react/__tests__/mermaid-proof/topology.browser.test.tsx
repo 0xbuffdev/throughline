@@ -4,8 +4,8 @@ import { inspectTrace } from "../../../v2/inspector.js";
 import { projectView } from "../../../v2/views.js";
 import type { ViewDescriptor, ViewItem } from "../../../v2/model.js";
 import { distributedGraph } from "../../../__tests__/v2-graph-fixture.js";
-import { graphProof } from "./adapter.js";
-import { renderProof } from "./render.js";
+import { graphProof } from "../../mermaid/adapter.js";
+import { renderProof } from "../../mermaid/render.js";
 
 it("compares a union layout scaffold with current presence without displaying future entities", async () => {
 	const trace = compileArtifact(distributedGraph()), inspector = inspectTrace(trace);

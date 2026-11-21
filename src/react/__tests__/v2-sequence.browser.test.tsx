@@ -250,7 +250,7 @@ it("mounts at most 120 correlation cards for hundreds of distinct message IDs", 
 		.toHaveLength(120); // independent event paging
 });
 
-it("progressively reveals earlier rows without losing source evidence", async () => {
+it("pages through the full evidence without accumulating mounted rows", async () => {
 	const source = retryCheckout();
 	source.steps = Array.from({ length: 160 }, (_, n) => ({
 		id: "step" + n, label: "Step " + n, events: [{
@@ -272,7 +272,11 @@ it("progressively reveals earlier rows without losing source evidence", async ()
 	expect(phase("batch", "sent")).toBe("sent: 160");
 	await screen.getByRole("region", { name: "Sequence evidence timeline" })
   .getByRole("button", { name: "Show earlier evidence" }).click();
-	expect(rows()).toHaveLength(160);
+	expect(rows()).toHaveLength(40);
 	expect(evidence("event0")).not.toBeNull();
+	expect(evidence("event159")).toBeNull();
+	await screen.getByRole("region", { name: "Sequence evidence timeline" })
+		.getByRole("button", { name: "Show later evidence" }).click();
+	expect(rows()).toHaveLength(120);
 	expect(evidence("event159")).not.toBeNull();
 });

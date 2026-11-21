@@ -2,7 +2,8 @@ import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { compileArtifact, serializeArtifact } from "../src/index.js";
 import { EXAMPLES } from "../src/examples.js";
-import { ThroughlineGraphPlayer } from "../src/react/index.js";
+import { GraphPlayer } from "../src/react/graph-player.js";
+import { MermaidPlayerDiagram } from "../src/react/mermaid/player-diagram.js";
 import "../src/styles/throughline.css";
 import "./style.css";
 
@@ -26,11 +27,9 @@ function App() {
 			<div className="preview-shell">
 				<header className="preview-heading">
 					<p className="preview-eyebrow">Throughline / schema-2 development preview</p>
-					<h1>Public player layout review</h1>
+					<h1>Throughline player preview</h1>
 					<p>
-						Review the native player on independently checked, authored models.
-            Use the Graph, Sequence, and State tabs, Inspect sidebar, and compact
-            transport across desktop, tablet, and mobile widths.
+						Try the Mermaid Graph and Sequence views with the compact player.
 					</p>
 				</header>
 
@@ -68,12 +67,13 @@ function App() {
 
 				<div className="preview-frame" data-width={viewport}>
 					{current ? (
-						<ThroughlineGraphPlayer
+						<GraphPlayer
 							key={current.id}
 							trace={current.trace}
 							title={current.title}
 							theme={theme}
 							narration
+							DiagramRenderer={MermaidPlayerDiagram}
 						/>
 					) : null}
 				</div>

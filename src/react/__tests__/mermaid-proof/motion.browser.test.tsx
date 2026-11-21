@@ -4,9 +4,9 @@ import { inspectTrace } from "../../../v2/inspector.js";
 import { projectView } from "../../../v2/views.js";
 import { distributedGraph } from "../../../__tests__/v2-graph-fixture.js";
 import { retryCheckout } from "../../../__tests__/v2-sequence-fixture.js";
-import { graphProof, sequenceProof } from "./adapter.js";
-import { renderProof } from "./render.js";
-import { animateTransfers } from "./motion.js";
+import { graphProof, sequenceProof } from "../../mermaid/adapter.js";
+import { renderProof } from "../../mermaid/render.js";
+import { animateTransfers } from "../../mermaid/motion.js";
 
 const hosts: HTMLDivElement[] = [];
 afterEach(() => hosts.splice(0).forEach(host => host.remove()));

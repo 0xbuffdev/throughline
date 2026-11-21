@@ -95,6 +95,7 @@ function changeText(change: StateChange): string {
 /** The selected frame's chapter always drives all query results. */
 export function InspectPanel({
 	trace, inspector, frameIndex, selectedEntityId, onSelectEntity, onSeek,
+	initialRelationId = "", initialEventId = "",
 }: {
 	trace: CompiledTrace;
 	inspector: TraceInspector;
@@ -102,13 +103,15 @@ export function InspectPanel({
 	selectedEntityId: Id | null;
 	onSelectEntity: (entityId: Id | null) => void;
 	onSeek: (frameIndex: number) => void;
+	initialRelationId?: Id;
+	initialEventId?: Id;
 }): React.JSX.Element {
 	const [compareFrom, setCompareFrom] = useState<number | null>(null);
 	const [pathInput, setPathInput] = useState("");
 	const [queryPath, setQueryPath] = useState<Path>([]);
 	const [pathError, setPathError] = useState("");
-	const [relationId, setRelationId] = useState<Id>("");
-	const [focusEventId, setFocusEventId] = useState<Id>("");
+	const [relationId, setRelationId] = useState<Id>(initialRelationId);
+	const [focusEventId, setFocusEventId] = useState<Id>(initialEventId);
 	const [changePage, setChangePage] = useState(0);
 	const [historyPage, setHistoryPage] = useState(0);
 	const [transferPage, setTransferPage] = useState(0);

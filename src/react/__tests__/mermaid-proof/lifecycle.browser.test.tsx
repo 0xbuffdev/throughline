@@ -8,9 +8,9 @@ import { compileArtifact } from "../../../v2/compiler.js";
 import { inspectTrace } from "../../../v2/inspector.js";
 import { projectView } from "../../../v2/views.js";
 import { distributedGraph } from "../../../__tests__/v2-graph-fixture.js";
-import { graphProof } from "./adapter.js";
+import { graphProof } from "../../mermaid/adapter.js";
 import { ProofDiagram } from "./diagram.js";
-import { renderProof } from "./render.js";
+import { renderProof } from "../../mermaid/render.js";
 import { graphWorkload } from "./workloads.js";
 
 it("discards late output after rapid seeking and selects exact sources through host controls", async () => {
@@ -18,7 +18,8 @@ it("discards late output after rapid seeking and selects exact sources through h
 	const first = graphProof(trace, projectView(inspector, { kind: "graph", frameIndex: 1 }));
 	const next = graphProof(trace, projectView(inspector, { kind: "graph", frameIndex: 4 }));
 	const pending: ((value: { svg: string; diagramType: string }) => void)[] = [];
-	const renderer: typeof renderProof = () => new Promise(resolve => pending.push(resolve));
+	const renderer: React.ComponentProps<typeof ProofDiagram>["renderer"] =
+		() => new Promise(resolve => pending.push(resolve));
 	let selected: readonly string[] | undefined;
 	const onSelect: React.ComponentProps<typeof ProofDiagram>["onSelect"] = item => {
 		selected = item.source.entityIds;

@@ -9,7 +9,11 @@ let revision = 0;
 export function animateTransfers(host: HTMLElement, proof: DiagramProof, durationMs: number,
 	forward: boolean, reducedMotion: boolean): () => void {
 	const owned: Element[] = [];
-	const cancel = () => owned.forEach(node => node.remove());
+	const labels: Element[] = [];
+	const cancel = () => {
+		owned.forEach(node => node.remove());
+		labels.forEach(node => node.removeAttribute("data-thl-label-in-motion"));
+	};
 	if (!forward || reducedMotion || !Number.isFinite(durationMs)) return cancel;
 	const duration = Math.max(80, Math.min(1500, durationMs));
 	const entries = new Map(proof.elements.filter(entry => entry.current &&
@@ -32,13 +36,15 @@ export function animateTransfers(host: HTMLElement, proof: DiagramProof, duratio
 		cue.setAttribute("data-thl-transfer", entry.itemId); cue.setAttribute("aria-hidden", "true");
 		if (route.hasAttribute("transform")) cue.setAttribute("transform", route.getAttribute("transform")!);
 		const head = document.createElementNS(ns, "g"), triangle = document.createElementNS(ns, "polygon");
-		triangle.setAttribute("points", "7,0 -4,-4 -4,4"); triangle.setAttribute("fill", "#2563eb"); head.append(triangle);
+		triangle.setAttribute("points", "7,0 -4,-4 -4,4");
+		triangle.setAttribute("fill", "var(--thl-active, #2563eb)"); head.append(triangle);
 		const caption = document.createElementNS(ns, "g"), text = document.createElementNS(ns, "text");
 		text.textContent = [...(entry.flowLabel ?? entry.label)].slice(0, 42).join("");
 		text.setAttribute("y", "-13"); text.setAttribute("text-anchor", "middle");
-		text.setAttribute("style", "font:12px Arial,sans-serif;fill:#1d4ed8;stroke:white;stroke-width:3px;paint-order:stroke");
+		text.setAttribute("style", "font:12px Arial,sans-serif;fill:var(--thl-active,#1d4ed8);stroke:var(--thl-bg,white);stroke-width:3px;paint-order:stroke");
 		caption.append(text);
 		for (const [element, rotate] of [[head, "auto"], [caption, "0"]] as const) {
+			if (element === caption && !text.textContent) continue;
 			const animation = document.createElementNS(ns, "animateMotion");
 			animation.setAttribute("dur", duration / 1000 + "s"); animation.setAttribute("repeatCount", "1");
 			animation.setAttribute("rotate", rotate); animation.setAttribute("fill", "freeze");
@@ -47,6 +53,10 @@ export function animateTransfers(host: HTMLElement, proof: DiagramProof, duratio
 			animation.append(reference); element.append(animation); cue.append(element);
 		}
 		route.parentElement.append(definitions, cue); owned.push(definitions, cue);
+		for (const label of host.querySelectorAll('[data-thl-motion-label="' + entry.itemId + '"]')) {
+			label.setAttribute("data-thl-label-in-motion", "");
+			labels.push(label);
+		}
 		for (const animation of cue.querySelectorAll("animateMotion")) animation.beginElement();
 	}
 	const timer = window.setTimeout(cancel, duration + 80);

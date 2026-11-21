@@ -38,10 +38,15 @@ try {
 	mkdirSync(join(consumer, "proof"));
 	// Copy the actual test host/adapter, changing import boundaries only. Runtime
 	// model, query, examples and player imports resolve to the installed tarball.
-	for (const name of ["adapter.ts", "diagram.tsx", "render.ts", "motion.ts", "evidence.tsx"]) {
-		const original = readFileSync(join(root, "src/react/__tests__/mermaid-proof", name), "utf8");
-		const copied = original.replace('"../../../v2/model.js"', '"@0xbuff/throughline"');
-		writeFileSync(join(consumer, "proof", name), copied);
+	for (const name of ["adapter.ts", "diagram.tsx", "render.ts", "motion.ts", "evidence.tsx", "sequence-layout.ts"]) {
+		const directory = name === "sequence-layout.ts" ? "src/v2"
+			: name.endsWith(".tsx") ? "src/react/__tests__/mermaid-proof" : "src/react/mermaid";
+		const original = readFileSync(join(root, directory, name), "utf8");
+		const copied = original.replace(/"\.\.\/(?:\.\.\/)+v2\/model\.js"/g, '"@0xbuff/throughline"')
+			.replaceAll('"../../mermaid/', '"./');
+		writeFileSync(join(consumer, "proof", name), copied
+			.replace('"../../v2/sequence-layout.js"', '"./sequence-layout.js"')
+			.replace('"./model.js"', '"@0xbuff/throughline"'));
 	}
 	let host = readFileSync(join(root, "scripts/mermaid-proof.tsx"), "utf8");
 	for (const [source, target] of [
@@ -50,6 +55,7 @@ try {
 		["../src/v2/views.js", "@0xbuff/throughline"], ["../src/react/graph-player.js", "@0xbuff/throughline/react"],
 		["../src/styles/throughline.css", "@0xbuff/throughline/styles/throughline.css"],
 		["../src/react/__tests__/mermaid-proof/", "./proof/"],
+		["../src/react/mermaid/", "./proof/"],
 	]) host = host.replaceAll(source, target);
 	assert(!host.includes("../src/"), "Host still imports source checkout");
 	writeFileSync(join(consumer, "app.tsx"), host);

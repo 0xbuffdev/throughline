@@ -24,7 +24,7 @@ const PAGE_SIZE = 120;
  * Accessible timeline of ALL modeled message evidence through the selected
  * frame; independent bounded tails of message-ID summaries and event rows
  * are mounted. All correlation totals/source IDs remain in the full pure
- * descriptor and are reachable via explicit progressive disclosure.
+ * descriptor and are reachable by paging.
  * Hiding DOM rows never changes source truth or the projection.
  */
 export function SequenceEvidence({
@@ -34,14 +34,17 @@ export function SequenceEvidence({
 	selectedId: Id | null;
 	onSelect: (id: Id) => void;
 }): React.JSX.Element {
-	const [maxVisible, setMaxVisible] = useState(PAGE_SIZE);
+	const [eventPage, setEventPage] = useState(0);
 	const [correlationPage, setCorrelationPage] = useState(0);
 	const actors = view.items.filter(item => item.role === "entity");
 	const correlations = view.items.filter(item =>
 		item.role === "value" && field(item, "type") === "message-correlation");
 	const evidence = view.items.filter(item => item.role === "event");
-	const start = Math.max(0, evidence.length - maxVisible);
-	const mounted = evidence.slice(start);
+	const eventPages = Math.max(1, Math.ceil(evidence.length / PAGE_SIZE));
+	const eventPageIndex = Math.min(eventPage, eventPages - 1);
+	const eventEnd = evidence.length - eventPageIndex * PAGE_SIZE;
+	const eventStart = Math.max(0, eventEnd - PAGE_SIZE);
+	const mounted = evidence.slice(eventStart, eventEnd);
 	// Fixed 120-item window, even after arbitrary navigation. Page zero
 	// shows the newest message IDs; earlier/later pages retain full source
 	// provenance without ever accumulating an unbounded DOM.
@@ -115,12 +118,13 @@ export function SequenceEvidence({
 				aria-label="Sequence evidence timeline">
 				<h3>Declared event timeline</h3>
 				<p>{evidence.length === 0 ? "No modeled events through this frame." :
-					"Showing " + mounted.length + " of " + evidence.length +
-					" explicit event(s); older rows can be revealed below."}</p>
-				{evidence.length > mounted.length && <button type="button"
-					onClick={() => setMaxVisible(n => Math.min(evidence.length, n + PAGE_SIZE))}>
-					Show earlier evidence
-				</button>}
+					"Showing events " + (eventStart + 1) + "–" + eventEnd + " of " + evidence.length + "."}</p>
+				{eventPages > 1 && <div className="thl-v2-sequence-pages" role="group" aria-label="Sequence evidence pages">
+					<button type="button" disabled={eventPageIndex === eventPages - 1}
+						onClick={() => setEventPage(eventPageIndex + 1)}>Show earlier evidence</button>
+					<button type="button" disabled={!eventPageIndex}
+						onClick={() => setEventPage(eventPageIndex - 1)}>Show later evidence</button>
+				</div>}
 				{mounted.length > 0 && <table>
 					<caption>Source-linked evidence up to {view.frameId}.
 						Message phases and independent state/observation events remain distinct.</caption>

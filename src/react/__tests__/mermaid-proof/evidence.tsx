@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ViewDescriptor, ViewItem } from "../../../v2/model.js";
-import { property } from "./adapter.js";
+import { property } from "../../mermaid/adapter.js";
 
 /** Complete source evidence at the selected frame, independent of SVG windows. */
 export function ProofEvidence({ view, onSelect }: {

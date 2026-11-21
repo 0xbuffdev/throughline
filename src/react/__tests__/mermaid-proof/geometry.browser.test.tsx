@@ -4,8 +4,8 @@ import { inspectTrace } from "../../../v2/inspector.js";
 import { projectView } from "../../../v2/views.js";
 import { layoutGraph, layoutGraphView } from "../../../v2/graph-layout.js";
 import { distributedGraph } from "../../../__tests__/v2-graph-fixture.js";
-import { graphProof, sequenceProof } from "./adapter.js";
-import { renderProof } from "./render.js";
+import { graphProof, sequenceProof } from "../../mermaid/adapter.js";
+import { renderProof } from "../../mermaid/render.js";
 import { graphWorkload, sequenceWorkload } from "./workloads.js";
 
 const hosts: HTMLElement[] = [];

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import type { DiagramProof, ProofElement } from "./adapter.js";
-import { renderProof } from "./render.js";
-import { animateTransfers } from "./motion.js";
+import type { DiagramProof, ProofElement } from "../../mermaid/adapter.js";
+import { renderProof } from "../../mermaid/render.js";
+import { animateTransfers } from "../../mermaid/motion.js";
 
 /** Test-only lifecycle proof. The host retains frame and semantic selection. */
 export function ProofDiagram({ proof, onSelect, renderer = renderProof, motion }: {
 	proof: DiagramProof;
 	onSelect: (source: ProofElement) => void;
-	renderer?: typeof renderProof;
+	renderer?: (proof: DiagramProof, signal?: AbortSignal) => Promise<{ svg: string }>;
 	motion?: { revision: number; durationMs: number; forward: boolean; reducedMotion?: boolean };
 }): React.JSX.Element {
 	const [output, setOutput] = useState<{ source: string; svg?: string; error?: string }>();

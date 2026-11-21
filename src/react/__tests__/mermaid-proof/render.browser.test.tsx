@@ -5,8 +5,8 @@ import { projectView } from "../../../v2/views.js";
 import { EXAMPLES } from "../../../examples.js";
 import { distributedGraph } from "../../../__tests__/v2-graph-fixture.js";
 import { retryCheckout } from "../../../__tests__/v2-sequence-fixture.js";
-import { graphProof, sequenceProof, type DiagramProof } from "./adapter.js";
-import { renderProof } from "./render.js";
+import { graphProof, sequenceProof, type DiagramProof } from "../../mermaid/adapter.js";
+import { renderProof } from "../../mermaid/render.js";
 
 const hosts: HTMLDivElement[] = [];
 afterEach(() => { for (const host of hosts.splice(0)) host.remove(); });
@@ -61,7 +61,22 @@ describe("TL-U26 actual Mermaid parser and browser SVG", () => {
 		// never semantic selection or runtime provenance keys.
 		expect(host.querySelectorAll(".messageLine0, .messageLine1")).toHaveLength(3);
 		expect(host.querySelectorAll(".note")).toHaveLength(6);
-		expect(host.textContent).toContain("localJob");
+		expect(host.querySelector('[data-from="thl_node_1"][data-to="thl_node_1"]')
+			?.getAttribute("data-thl-motion-item")).toBe(proof.elements.at(-1)?.itemId);
+		expect(host.textContent).toContain("Localdispatch");
+		expect(proof.elements.at(-1)?.flowLabel).toBe("Local dispatch · localJob");
+	});
+
+	it("keeps lanes anchored when numeric escapes expand the measured arrow caption", async () => {
+		const source = retryCheckout();
+		source.relations[0].label = "<<<<<🎆🎆🎆🎆🎆";
+		const trace = compileArtifact(source), inspector = inspectTrace(trace);
+		const positions = [];
+		for (const frameIndex of [0, 1]) {
+			const host = await mount(sequenceProof(trace, projectView(inspector, { kind: "sequence", frameIndex })));
+			positions.push([...host.querySelectorAll(".actor-line")].map(line => line.getAttribute("x1")));
+		}
+		expect(positions[1]).toEqual(positions[0]);
 	});
 
 	it("records whether host-authored classes survive on parallel and collapsed source edges", async () => {
