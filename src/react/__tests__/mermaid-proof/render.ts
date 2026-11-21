@@ -16,7 +16,7 @@ async function load(): Promise<Mermaid> {
 				primaryColor: "#f8fafc", primaryTextColor: "#0f172a", primaryBorderColor: "#94a3b8",
 				lineColor: "#64748b", secondaryColor: "#f1f5f9", tertiaryColor: "#ffffff" },
 			flowchart: { useMaxWidth: false, padding: 8, nodeSpacing: 24, rankSpacing: 48 },
-			sequence: { useMaxWidth: false, actorMargin: 36, width: 110, height: 36,
+			sequence: { useMaxWidth: false, actorMargin: 78, width: 110, height: 36,
 				actorFontSize: 12, noteFontSize: 12, messageFontSize: 12,
 				messageMargin: 32, mirrorActors: false, wrap: false },
 		});
@@ -41,6 +41,17 @@ function bindSources(svg: string, proof: DiagramProof): string {
 		const arrows = root.querySelectorAll(".messageLine0, .messageLine1");
 		if (arrows.length === sends.length) arrows.forEach((arrow, index) =>
 			arrow.setAttribute("data-thl-motion-item", sends[index].itemId));
+		{
+			const lifelines = root.querySelectorAll<SVGLineElement>(".actor-line");
+			const actors = proof.elements.filter(entry => entry.role === "entity");
+			if (lifelines.length === actors.length) {
+				const box = root.viewBox.baseVal;
+				const height = Math.max(box.height, 240);
+				root.setAttribute("viewBox", [box.x, box.y, box.width, height].join(" "));
+				root.setAttribute("height", String(height));
+				for (const line of lifelines) line.setAttribute("y2", String(box.y + height - 20));
+			}
+		}
 		return root.outerHTML;
 	}
 	const routes = proof.elements.filter(entry => entry.role === "relation");

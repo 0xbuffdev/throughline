@@ -1,8 +1,10 @@
 import { chromium, firefox, webkit } from "@playwright/test";
-import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { cpus, platform, release } from "node:os";
+import { captureSource, sameSource } from "./mermaid-source-identity.mjs";
+
+const before = captureSource();
 
 const engine = process.argv[2] ?? "chromium";
 const type = { chromium, firefox, webkit }[engine];
@@ -10,7 +12,8 @@ if (!type) throw new Error("Expected chromium, firefox or webkit");
 const base = process.env.THROUGHLINE_PROOF_URL ?? "http://127.0.0.1:5174";
 const output = resolve(process.argv[3] ?? "/tmp/throughline-mermaid-proof-" + engine);
 mkdirSync(output, { recursive: true });
-const browser = await type.launch({ headless: true });
+const customLauncher = engine === "webkit" ? process.env.THROUGHLINE_QA_WEBKIT_EXECUTABLE : undefined;
+const browser = await type.launch({ headless: true, ...(customLauncher ? { executablePath: customLauncher } : {}) });
 try {
 	const page = await browser.newPage({ viewport: { width: 960, height: 900 } });
 	const network = [], errors = [];
@@ -66,7 +69,8 @@ try {
 				graphs.push({ entities, relations, nativeGeometryMs, adapterMs, samplesMs: samples,
 					definitionUnits: proof.source.length, svgBytes: new TextEncoder().encode(svg).length,
 					viewBox: scene.getAttribute("viewBox"), mappedNodes: host.querySelectorAll("[class$=_source]").length,
-					mappedEdges: proof.elements.filter(item => item.role === "relation" && host.querySelector("." + item.id + "_source")).length,
+					mappedEdges: proof.elements.filter(item => item.role === "relation" &&
+						host.querySelectorAll('[data-thl-item-id="' + item.itemId + '"]').length === 1).length,
 					rendered: true }); host.remove();
 			} catch (error) { graphs.push({ entities, relations, rendered: false, error: String(error), definitionUnits: proof.source.length }); }
 		}
@@ -101,12 +105,14 @@ try {
 				renderMs: performance.now() - start, svgBytes: new TextEncoder().encode(svg).length },
 			heap: performance.memory ? { used: performance.memory.usedJSHeapSize, total: performance.memory.totalJSHeapSize } : null };
 	});
-	const report = { sourceSha: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
-		dirty: Boolean(execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim()),
-		mermaid: "12.3.0", engine, browserVersion: browser.version(), platform: platform(), release: release(),
+	const after = captureSource();
+	const sourceStable = sameSource(before, after);
+	const report = { sourceSha: before.sourceSha, dirty: Boolean(before.status), sourceStable,
+		inputFingerprint: before.fingerprint, after,
+		mermaid: "12.3.0", engine, browserVersion: browser.version(), customLauncher: Boolean(customLauncher), platform: platform(), release: release(),
 		cpu: cpus()[0]?.model, network, errors, ...findings };
 	writeFileSync(join(output, "measurements.json"), JSON.stringify(report, null, 2) + "\n");
 	console.log(JSON.stringify({ output, sourceSha: report.sourceSha, dirty: report.dirty,
 		graphs: report.graphs, sequence: report.sequence, network, errors }, null, 2));
-	if (errors.length || network.length) process.exitCode = 1;
+	if (errors.length || network.length || !sourceStable) process.exitCode = 1;
 } finally { await browser.close(); }

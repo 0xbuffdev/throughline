@@ -7,6 +7,7 @@ import { projectView } from "../src/v2/views.js";
 import { ThroughlineGraphPlayer } from "../src/react/graph-player.js";
 import { graphProof, sequenceProof, type ProofElement } from "../src/react/__tests__/mermaid-proof/adapter.js";
 import { ProofDiagram } from "../src/react/__tests__/mermaid-proof/diagram.js";
+import { ProofEvidence } from "../src/react/__tests__/mermaid-proof/evidence.js";
 import "../src/styles/throughline.css";
 
 function App(): React.JSX.Element {
@@ -15,13 +16,14 @@ function App(): React.JSX.Element {
 	const [direction, setDirection] = useState<"LR" | "TB">("LR");
 	const [selected, setSelected] = useState<ProofElement>();
 	const [collapsed, setCollapsed] = useState<string[]>([]);
+	const [sequenceStart, setSequenceStart] = useState<number>();
 	const [motion, setMotion] = useState({ revision: 0, durationMs: 700, forward: false });
 	const trace = useMemo(() => compileArtifact(EXAMPLES[example].artifact), [example]);
 	const inspector = useMemo(() => inspectTrace(trace), [trace]);
 	const view = useMemo(() => projectView(inspector, { kind, frameIndex, collapsedGroupIds: collapsed }),
 		[inspector, kind, frameIndex, collapsed]);
-	const proof = useMemo(() => view.kind === "sequence" ? sequenceProof(trace, view)
-		: view.kind === "graph" ? graphProof(trace, view, direction) : undefined, [trace, view, direction]);
+	const proof = useMemo(() => view.kind === "sequence" ? sequenceProof(trace, view, sequenceStart)
+		: view.kind === "graph" ? graphProof(trace, view, direction) : undefined, [trace, view, direction, sequenceStart]);
 	return <main style={{ maxWidth: 1000, margin: "auto", padding: 12, font: "13px Arial, sans-serif", overflowWrap: "anywhere" }}>
 		<h1>Mermaid feasibility — test host</h1>
 		<p>Candidate rendering only. Production player and public package exports are unchanged.</p>
@@ -29,6 +31,7 @@ function App(): React.JSX.Element {
 			<label>Example <select value={example} onChange={event => {
 				setExample(Number(event.target.value)); setFrame(0); setCollapsed([]); setSelected(undefined);
 				setMotion({ ...motion, forward: false });
+				setSequenceStart(undefined);
 			}}>{EXAMPLES.map((entry, index) => <option key={entry.id} value={index}>{entry.title}</option>)}</select></label>
 			<label>View <select value={kind} onChange={event => { setKind(event.target.value as typeof kind); setMotion({ ...motion, forward: false }); }}>
 				<option value="graph">Graph</option><option value="sequence">Sequence</option>
@@ -48,9 +51,22 @@ function App(): React.JSX.Element {
 			<output>{frameIndex}: {trace.frames[frameIndex].label}</output>
 		</p>
 		<div>{trace.artifact.groups?.map(group => <button key={group.id} aria-pressed={collapsed.includes(group.id)}
-			onClick={() => setCollapsed(current => current.includes(group.id)
-				? current.filter(id => id !== group.id) : [...current, group.id])}>{group.label}</button>)}</div>
+			onClick={() => { setMotion({ ...motion, forward: false }); setCollapsed(current => current.includes(group.id)
+				? current.filter(id => id !== group.id) : [...current, group.id]); }}>{group.label}</button>)}</div>
+		{proof?.kind === "sequence" && <nav aria-label="Sequence event windows">
+			<button disabled={proof.start === 0} onClick={() => {
+				setSequenceStart(Math.max(0, proof.start - 40)); setMotion({ ...motion, forward: false });
+			}}>Earlier events</button>{" "}
+			<span>{proof.visibleEvents ? proof.start + 1 : 0}–{proof.start + proof.visibleEvents} of {proof.totalEvents} message phases</span>{" "}
+			<button disabled={proof.start + proof.visibleEvents >= proof.totalEvents} onClick={() => {
+				setSequenceStart(proof.start + 40); setMotion({ ...motion, forward: false });
+			}}>Later events</button>{" "}
+			<button onClick={() => { setSequenceStart(undefined); setMotion({ ...motion, forward: false }); }}>Latest events</button>
+		</nav>}
 		{proof ? <ProofDiagram proof={proof} onSelect={setSelected} motion={motion} /> : <p role="note">{view.diagnostics?.join(" ")}</p>}
+		<details><summary>Complete evidence at selected frame</summary><ProofEvidence view={view}
+			onSelect={item => setSelected({ id: item.id, itemId: item.id, role: item.role,
+				label: item.label, description: item.description, source: item.source, current: true })} /></details>
 		{selected && <section aria-label="Selected exact source"><h2>{selected.label}</h2>
 			<p>{selected.description}</p><pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(selected.source, null, 2)}</pre>
 			{selected.source.entityIds?.map(id => <pre key={id} style={{ whiteSpace: "pre-wrap" }}>

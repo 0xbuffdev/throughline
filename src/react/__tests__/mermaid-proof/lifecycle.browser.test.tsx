@@ -92,3 +92,15 @@ it("avoids automatic layout work above the measured diagram display budget", asy
 	expect(calls).toBe(0);
 	await expect.element(screen.getByRole("list", { name: "Exact diagram sources" })).toBeVisible();
 });
+
+it("consumes a forward motion revision once and never replays it on a group collapse", async () => {
+	const trace = compileArtifact(distributedGraph()), inspector = inspectTrace(trace);
+	const proof = graphProof(trace, projectView(inspector, { kind: "graph", frameIndex: 1 }));
+	const collapsed = graphProof(trace, projectView(inspector, { kind: "graph", frameIndex: 1, collapsedGroupIds: ["back"] }));
+	const motion = { revision: 1, forward: true, durationMs: 1500 };
+	const screen = await render(<ProofDiagram proof={proof} onSelect={() => {}} motion={motion} />);
+	await expect.poll(() => screen.container.querySelectorAll("[data-thl-transfer]").length).toBe(1);
+	await screen.rerender(<ProofDiagram proof={collapsed} onSelect={() => {}} motion={motion} />);
+	await expect.element(screen.getByRole("group", { name: "Candidate diagram" })).toBeVisible();
+	expect(screen.container.querySelector("[data-thl-transfer]")).toBeNull();
+}, 60_000);

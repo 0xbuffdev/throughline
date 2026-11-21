@@ -13,6 +13,7 @@ export function ProofDiagram({ proof, onSelect, renderer = renderProof, motion }
 	const [output, setOutput] = useState<{ source: string; svg?: string; error?: string }>();
 	const cache = useRef(new Map<string, string>());
 	const diagram = useRef<HTMLDivElement>(null);
+	const instruction = useRef<{ revision: number; proof: DiagramProof; consumed: boolean; canceled: boolean } | undefined>(undefined);
 	const [page, setPage] = useState(0);
 	const oversized = proof.elements.filter(entry => entry.role === "entity").length > 64 ||
 		proof.elements.filter(entry => entry.role === "relation").length > 160;
@@ -38,7 +39,13 @@ export function ProofDiagram({ proof, onSelect, renderer = renderProof, motion }
 	}, [proof.source, renderer, oversized]);
 	const current = output?.source === proof.source ? output : undefined;
 	useEffect(() => {
-		if (!diagram.current || !current?.svg || !motion) return;
+		if (!motion) return;
+		if (!instruction.current || instruction.current.revision !== motion.revision)
+			instruction.current = { revision: motion.revision, proof, consumed: false, canceled: false };
+		const action = instruction.current;
+		if (action.proof !== proof || !motion.forward) action.canceled = true;
+		if (!diagram.current || !current?.svg || action.consumed || action.canceled) return;
+		action.consumed = true;
 		const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
 		const cancel = animateTransfers(diagram.current, proof, motion.durationMs, motion.forward,
 			motion.reducedMotion === true || preference.matches);
@@ -53,7 +60,7 @@ export function ProofDiagram({ proof, onSelect, renderer = renderProof, motion }
 	return <section aria-label="Mermaid feasibility candidate" style={styles}>
 		{!current && <p role="status">Rendering selected frame…</p>}
 		{current?.error && <p role="alert">{current.error}</p>}
-		{current?.svg && <div ref={diagram} aria-label="Candidate diagram" role="group"
+		{current?.svg && <div ref={diagram} aria-label="Candidate diagram" role="group" data-proof-kind={proof.kind}
 			style={{ overflow: "auto", maxWidth: "100%", minHeight: 180 }}
 			onClick={event => {
 				const id = (event.target as Element).closest("[data-thl-item-id]")?.getAttribute("data-thl-item-id");

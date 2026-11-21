@@ -45,6 +45,8 @@ describe("TL-U26 actual Mermaid parser and browser SVG", () => {
 		expect(host.textContent).toContain("Client");
 		expect(host.textContent).toContain("Gateway");
 		expect(host.querySelectorAll(".messageText, .noteText")).toHaveLength(0);
+		for (const line of host.querySelectorAll<SVGLineElement>(".actor-line"))
+			expect(Number(line.getAttribute("y2")) - Number(line.getAttribute("y1"))).toBeGreaterThan(120);
 	});
 
 	it("renders independent phases without invented return arrows, and permits self-sends", async () => {
