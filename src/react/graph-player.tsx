@@ -44,7 +44,6 @@ export type DiagramRendererProps = {
 	width: number;
 	selectedId: Id | null;
 	groupId: Id | null;
-	focusIds: readonly Id[];
 	captionId: string;
 	motion: { revision: number; durationMs: number; forward: boolean };
 	onSelectItem: (itemId: Id) => void;
@@ -306,12 +305,12 @@ export function GraphPlayer({
 		if (!narration) setNarrating(false);
 	}, [narration]);
 	const [motion, setMotion] = useState({
-		trace, step: state.step, animate: false, revision: 0, seekRevision,
+		trace, step: state.step, animate: false, revision: 0, seekRevision, viewKind,
 	});
-	if (motion.trace !== trace || motion.step !== state.step) {
+	if (motion.trace !== trace || motion.step !== state.step || motion.viewKind !== viewKind) {
 		setMotion({
-			trace, step: state.step, revision: motion.revision + 1, seekRevision,
-			animate: motion.trace === trace && state.step === motion.step + 1 &&
+			trace, step: state.step, revision: motion.revision + 1, seekRevision, viewKind,
+			animate: motion.trace === trace && motion.viewKind === viewKind && state.step === motion.step + 1 &&
 				(lastAction?.type === "tick" ||
 					(lastAction?.type === "step" && lastAction.animate === true)),
 		});
@@ -645,7 +644,7 @@ export function GraphPlayer({
     </div>
     {DiagramRenderer && view.kind !== "state-table" ?
      <DiagramRenderer key={view.kind} trace={trace} view={view} frameIndex={frameIndex} width={width}
-      selectedId={selectedId} groupId={drilled} focusIds={focusIds} captionId={captionId}
+      selectedId={selectedId} groupId={drilled} captionId={captionId}
       motion={{
        revision: motion.revision, durationMs: Math.min(700, stepDelayMs(700, state.speed)),
        forward: motion.animate && motion.seekRevision === seekRevision &&

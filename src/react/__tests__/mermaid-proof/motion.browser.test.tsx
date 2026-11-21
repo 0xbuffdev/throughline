@@ -30,7 +30,13 @@ it("moves a directional graph arrow and its label along the modeled route, then 
 	const before = moving.getCTM()!;
 	svg.setCurrentTime(start + .6);
 	const after = moving.getCTM()!;
-	expect(Math.hypot(after.e - before.e, after.f - before.f)).toBeGreaterThan(10);
+	const route = host.querySelector<SVGPathElement>("[data-thl-motion-item]")!;
+	const length = route.getTotalLength();
+	const source = route.getPointAtLength(0).matrixTransform(route.getCTM()!);
+	const destination = route.getPointAtLength(length).matrixTransform(route.getCTM()!);
+	const dx = destination.x - source.x, dy = destination.y - source.y;
+	const progress = ((after.e - before.e) * dx + (after.f - before.f) * dy) / (dx * dx + dy * dy);
+	expect(progress).toBeGreaterThan(0.25);
 	for (const animation of host.querySelectorAll("animateMotion")) expect(animation.getAttribute("repeatCount")).toBe("1");
 	cancel(); expect(host.querySelectorAll("[data-thl-transfer], animateMotion")).toHaveLength(0);
 }, 60_000);
@@ -42,7 +48,7 @@ it("animates explicit Sequence sends with labels, and never turns receipt-only e
 		const host = mount((await renderProof(proof)).svg);
 		const cancel = animateTransfers(host, proof, 600, true, false);
 		expect(host.querySelectorAll("[data-thl-transfer]")).toHaveLength(frameIndex === 1 ? 1 : 0);
-		if (frameIndex === 1) expect(host.querySelector("[data-thl-transfer] text")?.textContent).toBe("Checkout request · order42");
+		if (frameIndex === 1) expect(host.querySelector("[data-thl-transfer] text")?.textContent).toBe("Checkout request");
 		cancel();
 	}
 }, 60_000);

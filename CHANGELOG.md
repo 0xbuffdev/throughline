@@ -21,6 +21,10 @@ All notable changes to Throughline are recorded here. Package versions follow
   Sequence lanes remain stable from the initial frame; only explicit sends draw
   directional arrows, with forward-only motion. Other phases use labeled markers.
   Restore semantic State tables and contain wide evidence tables locally.
+- In the Mermaid preview, emphasize the directed route before its destination
+  and keep local writes in State and Inspect. Use compact Neo flowcharts
+  with current-route captions and keep Sequence headers visible as explicit
+  requests and replies scroll past.
 
 ### Added
 

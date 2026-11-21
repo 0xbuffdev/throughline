@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Box } from "../../layout/types.js";
 import type { Camera } from "../../layout/viewport.js";
 import {
@@ -8,7 +8,7 @@ import {
 import type { DiagramRendererProps } from "../graph-player.js";
 import { PlayerIcon } from "../player-icons.js";
 import { graphProof, sequenceProof, type DiagramProof } from "./adapter.js";
-import { animateTransfers } from "./motion.js";
+import { animateTransfers, paintRoutes } from "./motion.js";
 import { renderProof, type RenderedDiagram } from "./render.js";
 
 const PARTICIPANT_LIMIT = 64;
@@ -59,12 +59,22 @@ function itemBounds(scene: SVGSVGElement, targets: readonly string[]): Box | und
 		h: Math.max(...points.map(point => point.y)) - y };
 }
 
+function keepInView(diagram: RenderedDiagram, size: { width: number; height: number },
+	camera: Camera, bounds: Box): Camera {
+	const halfWidth = size.width / (2 * camera.zoom);
+	const halfHeight = size.height / (2 * camera.zoom);
+	if (bounds.x >= camera.centerX - halfWidth + 12 &&
+		bounds.x + bounds.w <= camera.centerX + halfWidth - 12 &&
+		bounds.y >= camera.centerY - halfHeight + 12 &&
+		bounds.y + bounds.h <= camera.centerY + halfHeight - 12) return camera;
+	return focusCamera(diagram, size, camera, bounds);
+}
+
 function GraphViewport({
-	diagram, proof, focusIds, groupId, captionId, children, onOpenEvidence, follow, onFollowChange,
+	diagram, proof, groupId, captionId, children, onOpenEvidence, follow, onFollowChange,
 }: {
 	diagram: RenderedDiagram;
 	proof: DiagramProof;
-	focusIds: DiagramRendererProps["focusIds"];
 	groupId: DiagramRendererProps["groupId"];
 	captionId: string;
 	children: React.ReactNode;
@@ -75,35 +85,47 @@ function GraphViewport({
 	const scene = useRef<SVGSVGElement>(null);
 	const [size, setSize] = useState({ width: 720, height: 300 });
 	const [camera, setCamera] = useState<Camera | null>(null);
-	const [focused, setFocused] = useState<Box>();
+	const [region, setRegion] = useState<Box>();
 	const drag = useRef<{ id: number; x: number; y: number } | null>(null);
 	const fit = fitCamera(diagram, size);
-	const initial = { ...fit, zoom: Math.max(0.8, fit.zoom) };
+	const initial = { ...fit, zoom: Math.max(0.7, fit.zoom) };
 	const overview = camera ?? initial;
-	const current = focused ? focusCamera(diagram, size, overview, focused) : overview;
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		const svg = scene.current;
 		if (!svg) return;
+		const setViewportSize = ({ width, height }: { width: number; height: number }) => {
+			if (width > 0 && height > 0) setSize(previous =>
+				previous.width === width && previous.height === height ? previous : { width, height });
+		};
+		setViewportSize(svg.getBoundingClientRect());
 		const observer = new ResizeObserver(([entry]) => {
-			const { width, height } = entry.contentRect;
-			if (width > 0 && height > 0) setSize({ width, height });
+			setViewportSize(entry.contentRect);
 		});
 		observer.observe(svg);
 		return () => observer.disconnect();
 	}, []);
 
 	const group = groupId && proof.elements.find(entry => entry.source.groupIds?.[0] === groupId);
-	const focusItems = proof.elements.filter(entry =>
-		(entry.role === "entity" || entry.collapsed) && entry.source.entityIds?.some(id => focusIds.includes(id)));
-	const targets = (follow && focusItems.length ? focusItems.map(entry => entry.itemId)
-		: group ? [group.itemId] : []).join(" ");
+	const targets = proof.elements.filter(entry => entry.role === "relation" && (entry.current || entry.context))
+		.flatMap(entry => [entry.itemId, entry.fromItemId!, entry.toItemId!]).join(" ");
 	useEffect(() => {
-		setFocused(targets && scene.current ? itemBounds(scene.current, targets.split(" ")) : undefined);
-	}, [targets, diagram, size]);
+		if (!follow || !targets || !scene.current) return;
+		const bounds = itemBounds(scene.current, targets.split(" "));
+		if (!bounds) return;
+		setCamera(previous => {
+			const before = previous ?? initial;
+			const next = keepInView(diagram, size, before, bounds);
+			return before === next ? previous : next;
+		});
+	}, [follow, targets, diagram, size]);
+	useEffect(() => {
+		setRegion(group && scene.current ? itemBounds(scene.current, [group.itemId]) : undefined);
+	}, [group && group.itemId, diagram, size]);
 
 	const [groupOverride, setGroupOverride] = useState<string | null>(null);
-	const viewport = group && groupOverride === group.itemId && !follow ? overview : current;
+	const viewport = group && groupOverride !== group.itemId && region
+		? focusCamera(diagram, size, overview, region) : overview;
 	const manual = (next: Camera) => {
 		onFollowChange(false);
 		setGroupOverride(group ? group.itemId : null);
@@ -164,7 +186,7 @@ function GraphViewport({
 		<div className="canvas-hint">
 			<button className="mermaid-evidence" type="button" onClick={onOpenEvidence}>Changes and evidence</button>
 			<div className="zoom-tools" role="toolbar" aria-label="Diagram navigation">
-				<button type="button" aria-label="Follow active" aria-pressed={follow} title="Follow authored focus"
+				<button type="button" aria-label="Follow transfers" aria-pressed={follow} title="Keep active routes in view"
 					onClick={() => { setCamera(viewport); onFollowChange(!follow); }}>
 					<PlayerIcon name="focus" size={12}/>
 				</button>
@@ -183,12 +205,35 @@ function GraphViewport({
 	</div>;
 }
 
+function scrollToSequenceMark(scroller: HTMLElement, host: HTMLElement, current: DiagramProof["elements"][number]): void {
+	const mark = host.querySelector<SVGGraphicsElement>(
+		'[data-thl-motion-item="' + current.itemId + '"], [data-thl-phase-item="' + current.itemId + '"]');
+	if (!mark) return;
+	const viewport = scroller.getBoundingClientRect(), bounds = mark.getBoundingClientRect();
+	const header = host.querySelector("[data-thl-sequence-header]")?.getBoundingClientRect();
+	if (bounds.bottom > viewport.top + scroller.clientHeight - 20 ||
+		bounds.top < (header?.bottom ?? viewport.top) + 36) {
+		scroller.scrollTop += bounds.top - viewport.top - scroller.clientHeight * 0.65;
+	}
+	const margin = 16;
+	if (bounds.width > scroller.clientWidth - margin * 2) {
+		// If both ends cannot fit at a readable size, start at the sender.
+		const sender = current.sent && host.querySelector('[data-thl-item-id="' + current.fromItemId + '"]');
+		const actor = sender ? sender.getBoundingClientRect() : bounds;
+		const center = (actor.left + actor.right) / 2;
+		scroller.scrollLeft += center < (bounds.left + bounds.right) / 2 || !sender
+			? actor.left - viewport.left - margin : actor.right - viewport.left - scroller.clientWidth + margin;
+	} else if (bounds.left < viewport.left + margin || bounds.right > viewport.left + scroller.clientWidth - margin) {
+		scroller.scrollLeft += (bounds.left + bounds.right) / 2 - viewport.left - scroller.clientWidth / 2;
+	}
+}
+
 export function MermaidPlayerDiagram({
-	trace, view, frameIndex, width, selectedId, groupId, focusIds, captionId, motion, onSelectItem,
+	trace, view, frameIndex, width, selectedId, groupId, captionId, motion, onSelectItem,
 	onSelectEntity, onOpenEvidence, fallback,
 }: DiagramRendererProps): React.JSX.Element {
 	const direction = width < 520 ? "TB" : "LR";
-	const [followedTrace, setFollowedTrace] = useState<typeof trace | null>(null);
+	const [unfollowedTrace, setUnfollowedTrace] = useState<typeof trace | null>(null);
 	const [eventWindow, setEventWindow] = useState<{ trace: typeof trace; frame: number; start: number }>();
 	const currentWindow = eventWindow?.trace === trace && eventWindow.frame === frameIndex
 		? eventWindow : undefined;
@@ -208,6 +253,35 @@ export function MermaidPlayerDiagram({
 	const host = useRef<HTMLDivElement>(null);
 	const sequenceScroll = useRef<HTMLDivElement>(null);
 	const { revision, forward, durationMs } = motion;
+	const visible = diagram ?? (proof?.kind === "sequence" ? previous : undefined);
+	const currentSequence = proof?.kind === "sequence" ? proof.elements.filter(entry => entry.current) : undefined;
+	const currentSend = currentSequence?.filter(entry => entry.sent).at(-1);
+	const currentMark = currentSend ?? currentSequence?.at(-1);
+	useEffect(() => {
+		const scroller = sequenceScroll.current;
+		const head = host.current?.querySelector<SVGGElement>("[data-thl-sequence-header]");
+		const svg = head?.ownerSVGElement;
+		if (!scroller || !head || !svg) return;
+		const pinHeader = () => {
+			const scale = svg.getScreenCTM()?.d ?? 1;
+			head.setAttribute("transform", "translate(0 " + scroller.scrollTop / (scale || 1) + ")");
+		};
+		pinHeader();
+		scroller.addEventListener("scroll", pinHeader, { passive: true });
+		return () => scroller.removeEventListener("scroll", pinHeader);
+	}, [visible]);
+
+	useEffect(() => {
+		if (!diagram || !proof || !host.current) return;
+		return paintRoutes(host.current, proof, selectedId);
+	}, [diagram, proof, selectedId]);
+
+	useEffect(() => {
+		if (!diagram || !proof || !host.current || !sequenceScroll.current) return;
+		if (frameIndex === 0) sequenceScroll.current.scrollTo(0, 0);
+		else if (currentMark) scrollToSequenceMark(sequenceScroll.current, host.current, currentMark);
+	}, [diagram, frameIndex, currentMark]);
+
 	const instruction = useRef<{ revision: number; source?: string; handled: boolean } | undefined>(undefined);
 	useEffect(() => {
 		if (!instruction.current || instruction.current.revision !== revision)
@@ -216,38 +290,13 @@ export function MermaidPlayerDiagram({
 		if (!forward || current.source !== proof?.source) current.handled = true;
 		if (!proof || !diagram || !host.current || current.handled) return;
 		current.handled = true;
-		const scroller = sequenceScroll.current;
-		const lastSend = proof.kind === "sequence" && proof.elements.filter(entry => entry.current && entry.sent).at(-1);
-		if (scroller && lastSend) {
-			const route = host.current.querySelector('[data-thl-motion-item="' + lastSend.itemId + '"]');
-			if (route) {
-				const bounds = scroller.getBoundingClientRect();
-				const position = route.getBoundingClientRect();
-				if (position.bottom > bounds.bottom - 24 || position.top < bounds.top + 32)
-					scroller.scrollTop += position.top - bounds.top - scroller.clientHeight / 2;
-			}
-		}
 		const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
-		const cancel = animateTransfers(host.current, proof, durationMs, true, preference.matches);
+		const scroller = sequenceScroll.current;
+		const cancel = animateTransfers(host.current, proof, durationMs, true, preference.matches,
+			scroller && currentSend ? { scroller, itemId: currentSend.itemId } : undefined);
 		preference.addEventListener("change", cancel);
 		return () => { preference.removeEventListener("change", cancel); cancel(); };
-	}, [revision, forward, durationMs, proof, diagram]);
-
-	useEffect(() => {
-		if (!diagram || !proof || !host.current) return;
-		const active = new Set(proof.elements.filter(entry => entry.current).map(entry => entry.itemId));
-		const selected = proof.elements.find(entry => entry.role === "entity" &&
-			entry.source.entityIds?.includes(selectedId ?? ""))?.itemId;
-		const focused = new Set(proof.elements.filter(entry =>
-			(entry.role === "entity" || entry.collapsed) &&
-			entry.source.entityIds?.some(id => focusIds.includes(id))).map(entry => entry.itemId));
-		for (const node of host.current.querySelectorAll("[data-thl-item-id], [data-thl-motion-item]")) {
-			const id = node.getAttribute("data-thl-item-id") ?? "";
-			node.toggleAttribute("data-thl-active", active.has(node.getAttribute("data-thl-motion-item") ?? ""));
-			node.toggleAttribute("data-thl-selected", id === selected);
-			node.toggleAttribute("data-thl-focused", focused.has(id));
-		}
-	}, [diagram, proof, selectedId, focusIds]);
+	}, [revision, forward, durationMs, proof, diagram, currentSend]);
 
 	const select = (event: React.SyntheticEvent) => {
 		const id = (event.target as Element).closest("[data-thl-item-id]")?.getAttribute("data-thl-item-id");
@@ -271,7 +320,6 @@ export function MermaidPlayerDiagram({
 		</div>
 		{fallback()}
 	</div>;
-	const visible = diagram ?? (proof.kind === "sequence" ? previous : undefined);
 	if (!visible) return <p className="mermaid-loading" role="status">Preparing diagram…</p>;
 	const markup = { __html: visible.svg };
 	if (proof.kind === "sequence") return <div className="sequence-view mermaid-sequence" aria-busy={!diagram}>
@@ -294,9 +342,9 @@ export function MermaidPlayerDiagram({
 		</div>
 	</div>;
 	return <div ref={host} className="mermaid-markup" data-mermaid-kind="graph">
-		<GraphViewport key={proof.source} diagram={visible} proof={proof} focusIds={focusIds}
+		<GraphViewport key={proof.source} diagram={visible} proof={proof}
 			groupId={groupId} captionId={captionId} onOpenEvidence={onOpenEvidence}
-			follow={followedTrace === trace} onFollowChange={enabled => setFollowedTrace(enabled ? trace : null)}>
+			follow={unfollowedTrace !== trace} onFollowChange={enabled => setUnfollowedTrace(enabled ? null : trace)}>
 			<g {...interactive} dangerouslySetInnerHTML={markup}/>
 		</GraphViewport>
 	</div>;

@@ -10,8 +10,13 @@ import { MermaidPlayerDiagram } from "../mermaid/player-diagram.js";
 import { graphWorkload } from "./mermaid-proof/workloads.js";
 import "../../styles/throughline.css";
 
-it("keeps three labeled Sequence lanes fixed through a send, receipt and reverse seek", async () => {
+it("keeps three Sequence lanes fixed through a send, receipt and explicit reply", async () => {
 	const artifact = retryCheckout();
+	artifact.relations.push({ id: "reply", from: "gateway", to: "client", label: "Checkout reply" });
+	artifact.steps.splice(3, 0, { id: "sendReply", label: "Gateway sends a reply", events: [
+		{ id: "replySent", originId: "author", type: "message",
+			relationId: "reply", messageId: "reply42", phase: "sent" },
+	] });
 	artifact.steps.push({ id: "ledgerSend", label: "Send to ledger", events: [
 		{ id: "ledgerSent", originId: "author", type: "message",
 			relationId: "write", messageId: "ledgerMessage", phase: "sent" },
@@ -31,7 +36,7 @@ it("keeps three labeled Sequence lanes fixed through a send, receipt and reverse
 
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	await expect.poll(() => diagram.element().querySelector("[data-thl-transfer] text")?.textContent)
-		.toBe("Checkout request · order42");
+		.toBe("Checkout request");
 	expect(lanes()).toEqual(initial);
 	const route = diagram.element().querySelector(".messageLine0");
 	expect(route?.getAttribute("data-from")).toBe("thl_node_0");
@@ -43,11 +48,28 @@ it("keeps three labeled Sequence lanes fixed through a send, receipt and reverse
 	expect(lanes()).toEqual(initial);
 	expect(diagram.element().querySelectorAll(".messageLine0")).toHaveLength(1);
 	expect(diagram.element().querySelector("[data-thl-transfer]")).toBeNull();
+	expect(diagram.element().querySelector(".messageLine0[data-thl-route-context]")).not.toBeNull();
+	expect(diagram.element().querySelector("[data-thl-phase-item][data-thl-active]")).not.toBeNull();
 
 	await screen.getByRole("button", { name: "Step back" }).click();
 	await expect.poll(() => diagram.element().querySelector(".noteText")).toBeNull();
 	expect(lanes()).toEqual(initial);
 	expect(diagram.element().querySelector("[data-thl-transfer]")).toBeNull();
+
+	const next = screen.getByRole("button", { name: "Step forward" });
+	await next.click();
+	await expect.poll(() => diagram.element().querySelector(".messageLine0[data-thl-route-context]")).not.toBeNull();
+	await next.click();
+	await expect.poll(() => diagram.element().querySelector("[data-thl-source], [data-thl-destination]")).toBeNull();
+	await next.click();
+	await expect.poll(() => diagram.element().querySelector("[data-thl-transfer] text")?.textContent).toBe("Checkout reply");
+	const reply = diagram.element().querySelector(".messageLine0[data-thl-active]")!;
+	expect(reply.getAttribute("data-from")).toBe("thl_node_1");
+	expect(reply.getAttribute("data-to")).toBe("thl_node_0");
+	expect(Number(reply.getAttribute("x2"))).toBeLessThan(Number(reply.getAttribute("x1")));
+	await expect.element(screen.getByRole("button", { name: "Inspect participant Client" }))
+		.toHaveAttribute("data-thl-destination", "");
+	expect(lanes()).toEqual(initial);
 	await screen.getByRole("button", { name: "Changes and evidence", exact: true }).click();
 	await expect.element(screen.getByRole("region", { name: "Source-event log and correlation details" })).toBeVisible();
 	await userEvent.keyboard("{Escape}");
@@ -70,6 +92,12 @@ it("updates Graph transfer paint without relayout and opens the exact source in 
 	expect(route.element()).toBe(path);
 	expect(path.getAttribute("d")).toBe(geometry);
 	await expect.element(route).toHaveAttribute("data-thl-active", "");
+	const sourceNode = screen.getByRole("button", { name: "Inspect entity Customer" });
+	const targetNode = screen.getByRole("button", { name: "Inspect entity Checkout API" });
+	await expect.element(sourceNode).toHaveAttribute("data-thl-source", "");
+	await expect.element(targetNode).toHaveAttribute("data-thl-destination", "");
+	await expect.element(route).not.toHaveAttribute("data-thl-route-in-motion");
+	expect(getComputedStyle(path).markerEnd).toContain("thl-current");
 	(path as SVGElement).focus();
 	await userEvent.keyboard("{Enter}");
 	await expect.element(screen.getByRole("complementary", { name: "Source inspector" })).toBeVisible();
@@ -78,18 +106,19 @@ it("updates Graph transfer paint without relayout and opens the exact source in 
 	expect(source?.getAttribute("data-source-event-ids")).toBe("requestSent");
 }, 60_000);
 
-it("shows supported tabs and authored focus for factorial without fabricating transfers", async () => {
+it("keeps graph playback neutral on a write-only step", async () => {
 	const trace = compileArtifact(EXAMPLES.find(example => example.id === "factorial")!.artifact);
 	const screen = await render(<div style={{ width: 375 }}>
 		<GraphPlayer trace={trace} DiagramRenderer={MermaidPlayerDiagram}/>
 	</div>);
 	const diagram = screen.getByRole("group", { name: "Source-linked graph at current frame" });
 	await expect.element(diagram).toBeVisible();
+	const camera = diagram.element().getAttribute("viewBox");
 	expect(screen.getByRole("tablist").element().textContent).toBe("GraphState");
 	await screen.getByRole("button", { name: "Step forward" }).click();
-	await expect.element(screen.getByRole("button", { name: "Inspect entity Modeled call stack" }))
-		.toHaveAttribute("data-thl-focused", "");
-	expect(diagram.element().querySelector("[data-thl-transfer]")).toBeNull();
+	expect(diagram.element().querySelector("[data-thl-active], [data-thl-source], [data-thl-destination], [data-thl-transfer]"))
+		.toBeNull();
+	expect(diagram.element().getAttribute("viewBox")).toBe(camera);
 	await screen.getByRole("tab", { name: "State" }).click();
 	await expect.element(screen.getByRole("region", { name: "State and event table" })).toBeVisible();
 }, 60_000);
@@ -103,26 +132,88 @@ it("uses the native state and evidence fallback for an oversized graph", async (
 	await expect.element(screen.getByRole("complementary", { name: "Entity inspector" })).toBeVisible();
 }, 60_000);
 
-it("keeps authored focus enabled when a topology change replaces the diagram", async () => {
+it("keeps the follow preference through topology without jumping to unrelated focus", async () => {
 	const artifact = distributedGraph();
 	artifact.steps[3].focusEntityIds = ["worker"];
 	const trace = compileArtifact(artifact);
 	const screen = await render(<div style={{ width: 720 }}>
 		<GraphPlayer trace={trace} initialView="graph" DiagramRenderer={MermaidPlayerDiagram}/>
 	</div>);
-	const follow = screen.getByRole("button", { name: "Follow active" });
-	await follow.click();
+	const follow = screen.getByRole("button", { name: "Follow transfers" });
+	await expect.element(follow).toHaveAttribute("aria-pressed", "true");
 	for (let frame = 1; frame <= 4; frame++)
 		await screen.getByRole("button", { name: "Step forward" }).click();
 	const worker = screen.getByRole("button", { name: "Inspect entity Worker" });
-	await expect.element(worker).toHaveAttribute("data-thl-focused", "");
-	const scene = screen.getByRole("group", { name: "Source-linked graph at current frame" });
-	await expect.poll(() => {
-		const node = worker.element().getBoundingClientRect();
-		const canvas = scene.element().getBoundingClientRect();
-		return Math.abs(node.x + node.width / 2 - canvas.x - canvas.width / 2);
-	}).toBeLessThan(2);
+	await expect.element(worker).toBeInTheDocument();
+	await expect.element(worker).not.toHaveAttribute("data-thl-destination");
+	await expect.element(worker).not.toHaveAttribute("data-thl-source");
 	await expect.element(follow).toHaveAttribute("aria-pressed", "true");
 	await screen.getByRole("button", { name: "Fit to view" }).click();
 	await expect.element(follow).toHaveAttribute("aria-pressed", "false");
+}, 60_000);
+
+it("shows the graph reply in its declared direction and does not restart it when switching views", async () => {
+	const artifact = retryCheckout();
+	artifact.relations.push({ id: "reply", from: "gateway", to: "client", label: "Checkout reply" });
+	artifact.steps.splice(1, 0, { id: "sendReply", label: "Gateway sends a reply", events: [
+		{ id: "replySent", originId: "author", type: "message",
+			relationId: "reply", messageId: "reply42", phase: "sent" },
+	] });
+	const trace = compileArtifact(artifact);
+	const screen = await render(<div style={{ width: 375 }}>
+		<GraphPlayer trace={trace} initialView="graph" DiagramRenderer={MermaidPlayerDiagram}/>
+	</div>);
+	const next = screen.getByRole("button", { name: "Step forward" });
+	const reply = screen.getByRole("button", { name: "Inspect relation Checkout reply" });
+	await expect.element(reply).toBeInTheDocument();
+	await next.click();
+	await expect.element(screen.getByRole("button", { name: "Inspect relation Checkout request" }))
+		.toHaveAttribute("data-thl-active", "");
+	await next.click();
+	await expect.element(reply).toHaveAttribute("data-thl-active", "");
+	const path = reply.element() as SVGPathElement;
+	const routeStart = path.getPointAtLength(0).matrixTransform(path.getScreenCTM()!);
+	const routeEnd = path.getPointAtLength(path.getTotalLength()).matrixTransform(path.getScreenCTM()!);
+	const gateway = screen.getByRole("button", { name: "Inspect entity Gateway" });
+	await expect.element(gateway).toHaveAttribute("data-thl-source", "");
+	const { x, y, width, height } = gateway.element().getBoundingClientRect();
+	const distance = (point: DOMPoint) => Math.hypot(point.x - x - width / 2, point.y - y - height / 2);
+	expect(distance(routeStart)).toBeLessThan(distance(routeEnd));
+	await screen.getByRole("tab", { name: "Sequence" }).click();
+	const sequence = screen.getByRole("region", { name: "Source-linked sequence at current frame" });
+	await expect.poll(() => sequence.element().querySelector("[data-thl-motion-item][data-thl-active]")).not.toBeNull();
+	expect(sequence.element().querySelector("[data-thl-transfer]")).toBeNull();
+}, 60_000);
+
+it("follows a wide Sequence arrow across a narrow viewport in both directions", async () => {
+	const artifact = retryCheckout();
+	artifact.relations[0].to = "ledger";
+	artifact.relations.push({ id: "reply", from: "ledger", to: "client", label: "Ledger reply" });
+	artifact.steps.splice(1, 0, { id: "sendReply", label: "Ledger sends a reply", events: [
+		{ id: "replySent", originId: "author", type: "message",
+			relationId: "reply", messageId: "reply42", phase: "sent" },
+	] });
+	artifact.steps.push({ id: "ledgerSend", label: "Send to ledger", events: [
+		{ id: "ledgerSent", originId: "author", type: "message",
+			relationId: "write", messageId: "ledgerMessage", phase: "sent" },
+	] });
+	const screen = await render(<div style={{ width: 260 }}>
+		<GraphPlayer trace={compileArtifact(artifact)} initialView="sequence" DiagramRenderer={MermaidPlayerDiagram}/>
+	</div>);
+	const sequence = screen.getByRole("region", { name: "Source-linked sequence at current frame" });
+	await expect.element(sequence).toBeVisible();
+	const scrollLeft = () => sequence.element().scrollLeft;
+	const next = screen.getByRole("button", { name: "Step forward" });
+	await next.click();
+	await expect.poll(scrollLeft).toBeGreaterThan(80);
+	await expect.poll(() => sequence.element().querySelector("[data-thl-route-in-motion]")).toBeNull();
+	const outgoing = scrollLeft();
+	await next.click();
+	await expect.poll(() => sequence.element().querySelector(".messageLine0[data-thl-active]")?.getAttribute("data-from"))
+		.toBe("thl_node_2");
+	await expect.poll(scrollLeft).toBeLessThan(outgoing - 25);
+	await expect.poll(() => {
+		const client = screen.getByRole("button", { name: "Inspect participant Client" }).element();
+		return client.getBoundingClientRect().left - sequence.element().getBoundingClientRect().left;
+	}).toBeGreaterThan(8);
 }, 60_000);

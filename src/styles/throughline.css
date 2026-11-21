@@ -1471,43 +1471,80 @@
 
 /* The Mermaid preview uses the same canvas, chrome and theme tokens. */
 .thl.player-shell .mermaid-markup {
- --thl-diagram-edge: var(--thl-muted);
+ --thl-diagram-edge: color-mix(in oklch, var(--thl-muted) 65%, var(--thl-bg));
 }
-.thl.player-shell .mermaid-markup [data-thl-active] {
+.thl.player-shell .mermaid-markup :is([data-thl-active], [data-thl-route-context]) {
  --thl-diagram-edge: var(--thl-active);
  --thl-diagram-edge-width: 2.5px;
+}
+.thl.player-shell .mermaid-markup [data-thl-motion-item]:is([data-thl-active], [data-thl-route-context]) {
+ marker-end: var(--thl-direction-marker) !important;
+}
+.thl.player-shell .mermaid-markup [data-thl-motion-item][data-thl-route-in-motion] {
+ marker-end: none !important;
+}
+.thl.player-shell .mermaid-markup [data-thl-motion-item][data-thl-route-context] {
+ --thl-diagram-edge-width: 1.75px;
+ stroke-dasharray: 4 3 !important;
 }
 .thl.player-shell .mermaid-markup [data-thl-item-id] { cursor: pointer; }
 .thl.player-shell .mermaid-markup [data-thl-item-id]:focus-visible {
  outline: 2px solid var(--thl-active);
  outline-offset: 2px;
 }
-.thl.player-shell .mermaid-markup :is(.node rect, .node polygon, .actor-top) {
+.thl.player-shell .mermaid-markup :is(.node > :is(rect, polygon, path), .actor-top) {
  fill: var(--thl-panel) !important;
- stroke: var(--thl-muted) !important;
+ stroke: var(--thl-diagram-edge) !important;
 }
-.thl.player-shell .mermaid-markup :is([data-thl-focused], [data-thl-selected], [data-thl-item-id]:hover) :is(rect, polygon) {
+.thl.player-shell .mermaid-markup[data-mermaid-kind="graph"] :is(.node rect, .cluster rect) {
+ filter: none !important;
+}
+.thl.player-shell .mermaid-markup:not([data-mermaid-pending])
+ :is([data-thl-source], [data-thl-destination]:not([data-thl-cue-running])) > :is(rect, polygon, path),
+.thl.player-shell .mermaid-markup :is([data-thl-selected], .node[data-thl-item-id]:hover, [data-et="participant"]:hover) > :is(rect, polygon, path) {
  fill: var(--thl-focus-bg) !important;
  stroke: var(--thl-active) !important;
 }
-.thl.player-shell .mermaid-markup svg .cluster rect,
 .thl.player-shell .mermaid-markup svg .note {
  fill: var(--thl-bg) !important;
  stroke: var(--thl-line) !important;
 }
-.thl.player-shell .mermaid-markup svg :is(.nodeLabel, .edgeLabel) { color: var(--thl-text) !important; }
-.thl.player-shell .mermaid-markup svg .edgeLabel :is(p, span) { background: var(--thl-bg) !important; }
+.thl.player-shell .mermaid-markup svg .cluster rect {
+ fill: color-mix(in oklch, var(--thl-panel) 55%, var(--thl-bg)) !important;
+ stroke: var(--thl-line) !important;
+ rx: 8px;
+}
+.thl.player-shell .mermaid-markup svg .nodeLabel { color: var(--thl-text) !important; }
 .thl.player-shell .mermaid-markup svg :is(.messageText, .noteText, .noteText tspan, text.actor, text.actor tspan) {
  fill: var(--thl-text) !important;
 }
-.thl.player-shell .mermaid-markup svg :is(.labelBkg, .edgeLabel rect) { fill: var(--thl-bg) !important; }
+.thl.player-shell .mermaid-markup svg [data-thl-phase-item][data-thl-active] .note {
+ stroke: var(--thl-active) !important;
+}
+.thl.player-shell .mermaid-markup svg .messageText:is([data-thl-active], [data-thl-route-context]) {
+ fill: var(--thl-active) !important;
+}
 .thl.player-shell .mermaid-markup svg :is(.actor-line, .messageLine0, .messageLine1) {
  stroke: var(--thl-diagram-edge) !important;
 }
+.thl.player-shell .mermaid-markup svg .actor-line { stroke-dasharray: 3 4; }
 .thl.player-shell .mermaid-markup svg :is(.messageLine0, .messageLine1)[data-thl-active] { stroke-width: 2px; }
 .thl.player-shell .mermaid-markup svg marker :is(path, polygon) {
- fill: var(--thl-muted) !important;
- stroke: var(--thl-muted) !important;
+ fill: var(--thl-diagram-edge) !important;
+ stroke: var(--thl-diagram-edge) !important;
+}
+.thl.player-shell .mermaid-markup svg marker[data-thl-direction-marker] :is(path, polygon) {
+ fill: var(--thl-active) !important;
+ stroke: var(--thl-active) !important;
+}
+.thl.player-shell .mermaid-markup svg text.thl-route-caption {
+ font: 600 12px Arial, sans-serif;
+ fill: var(--thl-active) !important;
+ stroke: var(--thl-bg);
+ stroke-width: 4px;
+ stroke-linejoin: round;
+ paint-order: stroke;
+ pointer-events: none;
 }
 .thl.player-shell svg [data-thl-transfer] { pointer-events: none; }
 .thl.player-shell svg [data-thl-label-in-motion] { visibility: hidden; }

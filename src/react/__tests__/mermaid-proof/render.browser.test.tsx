@@ -64,7 +64,7 @@ describe("TL-U26 actual Mermaid parser and browser SVG", () => {
 		expect(host.querySelector('[data-from="thl_node_1"][data-to="thl_node_1"]')
 			?.getAttribute("data-thl-motion-item")).toBe(proof.elements.at(-1)?.itemId);
 		expect(host.textContent).toContain("Localdispatch");
-		expect(proof.elements.at(-1)?.flowLabel).toBe("Local dispatch · localJob");
+		expect(proof.elements.at(-1)?.flowLabel).toBe("Local dispatch");
 	});
 
 	it("keeps lanes anchored when numeric escapes expand the measured arrow caption", async () => {
