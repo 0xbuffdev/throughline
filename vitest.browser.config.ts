@@ -10,6 +10,7 @@ if (!["chromium", "firefox", "webkit"].includes(requestedBrowser)) {
 const browser = requestedBrowser as "chromium" | "firefox" | "webkit";
 
 export default defineConfig({
+	optimizeDeps: { include: ["react", "react-dom/client", "react-dom/server", "mermaid"] },
 	test: {
 		css: true,
 		include: ["src/**/__tests__/**/*.browser.test.tsx"],
