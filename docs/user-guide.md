@@ -143,10 +143,9 @@ a group and changing presentation cannot change committed state.
 Keyboard-accessible controls and reduced-motion presentation apply;
 narration is optional and must not alter the model.
 
-The standalone development preview opens with `pnpm dev` from the
-source repository and displays all four references at desktop, tablet
-and mobile widths. It includes the matched prose baseline so evidence
-can be reviewed next to the live state representation.
+Run `pnpm dev` from the source repository to open the checkout player preview
+at desktop, tablet or mobile widths. The preview includes checkout's explanation
+and source evidence.
 
 ## Markdown and MDX hosts
 

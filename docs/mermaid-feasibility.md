@@ -2,7 +2,7 @@
 
 TL-U26 tests Mermaid 12.3.0 against Throughline's existing schema-2 projections. Mermaid integration is scheduled before 0.2.0 publication. Release, publication and real assistive-technology acceptance remain separate actions.
 
-Run `pnpm dev` to try the Mermaid renderer in the compact player. Its adapter and viewport live in `src/react/mermaid/`. The playground injects that renderer into the same shell used by the package React entry. The standalone feasibility host remains under `src/react/__tests__/mermaid-proof/`.
+Run `pnpm dev` to try the Mermaid renderer with the checkout reference in the compact player. Its adapter and viewport live in `src/react/mermaid/`. The playground injects that renderer into the same shell used by the package React entry. The standalone feasibility host remains under `src/react/__tests__/mermaid-proof/`.
 
 ## Decisions supported by the prototype
 
