@@ -35,10 +35,6 @@ export function PlayerControls({ state, dispatch }: PlaybackProps): React.JSX.El
     <PlayerIcon name="forward"/>
    </button>
   </div>
-  <input className="timeline-scrubber" type="range" aria-label="Timeline position"
-   min={0} max={state.max} value={state.step} disabled={state.max < 1}
-   aria-valuetext={`Step ${state.step + 1} of ${state.max + 1}`}
-   onChange={event => dispatch({ type: "step", to: Number(event.currentTarget.value) })}/>
   <div className="transport-meta">
    <span aria-label={`Step ${state.step + 1} of ${state.max + 1}`}>
     <strong>{state.step + 1}</strong> / {state.max + 1}

@@ -1265,7 +1265,6 @@
 .thl.player-shell .transport-meta { gap: 12px; color: var(--thl-muted); font: 10px/1 var(--thl-ui-mono); }
 .thl.player-shell .transport-meta strong { color: var(--thl-text); }
 .thl.player-shell .speed { min-width: 44px; font-size: 10px; }
-.thl.player-shell .timeline-scrubber { flex: 1; min-width: 24px; width: 100%; margin: 0; height: 32px; accent-color: var(--thl-active); cursor: pointer; }
 
 /* Bounded nonmodal popover; form controls keep their labels at every embed width. */
 .thl.player-shell .menu-anchor { position: static; }
@@ -1599,7 +1598,6 @@
 }
 @container (max-width: 330px) {
  .thl.player-shell .transport { flex-wrap: wrap; gap: 4px; }
- .thl.player-shell .timeline-scrubber { order: 1; flex-basis: 100%; }
  .thl.player-shell .value-tree dl > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }
 @media (prefers-reduced-motion: no-preference) {

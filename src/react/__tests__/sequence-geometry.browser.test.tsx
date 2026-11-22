@@ -29,8 +29,7 @@ it("reserves all lanes from the initial frame and aligns sends with their endpoi
 	const shell = screen.getByRole("group", { name: "Visualization player" }).element();
 	for (const width of [900, 375, 260]) {
 		shell.style.width = width + "px";
-		const slider = screen.getByRole("slider", { name: "Timeline position" });
-		slider.element().focus(); await userEvent.keyboard("{Home}");
+		shell.focus(); await userEvent.keyboard("{Home}");
 		await expect.poll(() => Math.round(shell.getBoundingClientRect().width)).toBe(width);
 		const centers = () => [...shell.querySelectorAll(".lifelines i")].map(node => {
 			const r = node.getBoundingClientRect(); return r.x + r.width / 2;
@@ -60,8 +59,11 @@ it("animates a forward send but settles seek, rewind and view changes", async ()
 	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source())}/>);
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(document.querySelectorAll(".seq-animate")).toHaveLength(1);
-	const slider = screen.getByRole("slider", { name: "Timeline position" });
-	slider.element().focus(); await userEvent.keyboard("{ArrowRight}");
+	expect(screen.getByRole("slider").query()).toBeNull();
+	await screen.getByRole("button", { name: "Player options", exact: true }).click();
+	const options = screen.getByRole("dialog", { name: "Player options" });
+	await options.getByRole("spinbutton", { name: "Go to step" }).fill("3");
+	await options.getByRole("button", { name: "Go", exact: true }).click();
 	expect(document.querySelectorAll(".seq-animate")).toHaveLength(0);
 	await screen.getByRole("button", { name: "Step back" }).click();
 	expect(document.querySelectorAll(".seq-animate")).toHaveLength(0);

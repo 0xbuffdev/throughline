@@ -14,8 +14,8 @@ All notable changes to Throughline are recorded here. Package versions follow
   retaining the existing palette and connector appearance. Dense scenes open
   at readable scale with pan/zoom and an explicit full-scene Fit action.
   Authored focus following is optional and pauses for manual navigation.
-  View tabs reflect supported projections. Add timeline scrubbing, bounded
-  Options and a responsive inspector side panel/mobile bottom sheet.
+  View tabs reflect supported projections. Keep direct step navigation in
+  Options and add a responsive inspector side panel/mobile bottom sheet.
   Replace repeated node write labels with a compact update marker; exact values,
   paged structured data, changes and evidence remain in inspection.
   Sequence lanes remain stable from the initial frame; only explicit sends draw

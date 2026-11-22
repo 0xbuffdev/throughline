@@ -12,8 +12,7 @@ it("keeps the overview scale and shows compact stack summaries instead of JSON",
  const shell = screen.getByRole("group", { name: "Visualization player" }).element();
  for (const width of [900, 375, 260]) {
   shell.style.width = width + "px";
-  const slider = screen.getByRole("slider", { name: "Timeline position" });
-  slider.element().focus();
+  shell.focus();
   await userEvent.keyboard("{Home}");
   await expect.poll(() => Number(shell.querySelector("svg.graph")?.getAttribute("viewBox")?.split(" ")[2])).toBe(width - 2);
   const overview = shell.querySelector("svg.graph")!.getAttribute("viewBox");

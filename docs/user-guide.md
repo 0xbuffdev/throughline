@@ -115,8 +115,8 @@ Tabs appear only for projections the artifact supports across its entire timelin
 for example, factorial has Graph and State tabs, while Checkout also has Sequence.
 An incompatible programmatic view request falls back to a truthful state table.
 
-Use the playback controls or timeline slider to step, seek, reverse or inspect
-the same compiler-owned immutable frame. The graph opens at readable scale and
+Use the playback controls to step backward or forward. Choose **Go to step**
+in Options to open a specific frame. The graph opens at readable scale and
 centers sparse content. Nodes have compact measurements that remain stable
 through the trace. Directed acyclic relationships use structural levels;
 cycles retain a deterministic centered grid. Nodes show scalar values or collection

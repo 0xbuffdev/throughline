@@ -227,7 +227,7 @@ it("keeps Options inside a narrow embed, dismisses with Escape and restores insp
  await expect.element(inspect).toHaveFocus();
 });
 
-it("follows a collapsed focus summary and scrubs frames without mutating compiled state", async () => {
+it("follows a collapsed focus summary and seeks without mutating compiled state", async () => {
  const { factorialReference } = await import("../../reference/factorial.js");
  const compiled = compileArtifact(factorialReference.artifact);
  const before = JSON.stringify(compiled.frames);
@@ -248,8 +248,7 @@ it("follows a collapsed focus summary and scrubs frames without mutating compile
  expect(matrix.e + box.x + box.width).toBeLessThanOrEqual(x + w);
  expect(matrix.f + box.y + box.height).toBeLessThanOrEqual(y + h);
  await screen.getByRole("button", { name: "Expand group Authored recursive evaluation" }).click();
- const slider = screen.getByRole("slider", { name: "Timeline position" });
- slider.element().focus();
+ screen.getByRole("group", { name: "Visualization player" }).element().focus();
  await userEvent.keyboard("{End}");
  await expect.element(screen.getByRole("status")).toHaveTextContent("Step 9 of 9");
  expect(document.querySelector('[data-node="result"] .thl-v2-value')?.textContent).toBe("24");
