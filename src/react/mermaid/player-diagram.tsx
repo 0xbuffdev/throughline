@@ -231,11 +231,19 @@ function scrollToSequenceMark(scroller: HTMLElement, host: HTMLElement,
 	if (bounds.bottom > bottomLimit) scroller.scrollTop += bounds.bottom - bottomLimit + margin;
 	else if (top < topLimit) scroller.scrollTop += top - topLimit;
 
-	let focus = bounds;
-	if (bounds.width > scroller.clientWidth - margin * 2) {
-		const actorId = animate && current.sent ? current.fromItemId : current.toItemId;
-		const actor = actorId && host.querySelector('[data-thl-item-id="' + actorId + '"]');
-		focus = (current.sent && actor ? actor.getBoundingClientRect() : caption) ?? bounds;
+	const participantBounds = (id: string | undefined) => id
+		? host.querySelector('[data-thl-sequence-header] [data-thl-item-id="' + id + '"]')?.getBoundingClientRect()
+		: undefined;
+	const sender = participantBounds(current.fromItemId);
+	const recipient = participantBounds(current.toItemId);
+	const span = {
+		left: Math.min(bounds.left, sender?.left ?? Infinity, recipient?.left ?? Infinity),
+		right: Math.max(bounds.right, sender?.right ?? -Infinity, recipient?.right ?? -Infinity),
+	};
+	const availableWidth = scroller.clientWidth - margin * 2;
+	let focus = span.right - span.left <= availableWidth ? span : bounds;
+	if (bounds.width > availableWidth) {
+		focus = (current.sent ? (animate ? sender : recipient) : caption) ?? bounds;
 	}
 	const left = viewport.left + margin, right = viewport.left + scroller.clientWidth - margin;
 	if (focus.left < left) scroller.scrollLeft += focus.left - left;

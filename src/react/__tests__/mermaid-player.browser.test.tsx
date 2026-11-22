@@ -69,6 +69,13 @@ it("keeps three Sequence lanes fixed through a send, receipt and explicit reply"
 	expect(Number(reply.getAttribute("x2"))).toBeLessThan(Number(reply.getAttribute("x1")));
 	await expect.element(screen.getByRole("button", { name: "Inspect participant Client" }))
 		.toHaveAttribute("data-thl-destination", "");
+	const viewport = diagram.element();
+	const visibleRight = viewport.getBoundingClientRect().left + viewport.clientWidth;
+	for (const label of ["Client", "Gateway"]) {
+		const header = screen.getByRole("button", { name: "Inspect participant " + label }).element().getBoundingClientRect();
+		expect(header.left).toBeGreaterThanOrEqual(viewport.getBoundingClientRect().left);
+		expect(header.right).toBeLessThanOrEqual(visibleRight);
+	}
 	expect(lanes()).toEqual(initial);
 	await screen.getByRole("button", { name: "Changes and evidence", exact: true }).click();
 	await expect.element(screen.getByRole("region", { name: "Source-event log and correlation details" })).toBeVisible();
@@ -157,6 +164,10 @@ it("keeps the selected Graph tab free of State content during loading", async ()
 	const observer = new MutationObserver(() => { if (unexpected()) flashes.push(true); });
 	observer.observe(pane, { childList: true, subtree: true, attributes: true });
 	try {
+		screen.getByRole("tab", { name: "State" }).element().focus();
+		await userEvent.keyboard("{ArrowRight}");
+		await expect.element(graphTab).toHaveFocus();
+		await expect.element(graphTab).toHaveAttribute("aria-selected", "false");
 		await graphTab.click();
 		await expect.element(screen.getByRole("group", { name: "Source-linked graph at current frame" })).toBeVisible();
 		expect(unexpected()).toBe(false);
