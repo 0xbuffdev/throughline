@@ -11,6 +11,7 @@ export type ProofElement = Readonly<{
 	source: SourceIds;
 	current: boolean;
 	context?: boolean;
+	visited?: boolean;
 	strokeToken?: string;
 	sent?: boolean;
 	flowLabel?: string;
@@ -107,7 +108,7 @@ function result(kind: DiagramProof["kind"], lines: string[], elements: ProofElem
 }
 
 export function graphProof(trace: CompiledTrace, view: ViewDescriptor,
-	direction: "LR" | "TB" = "LR"): DiagramProof {
+	direction: "LR" | "TB" = "LR", visitedRelations?: ReadonlySet<string>): DiagramProof {
 	if (view.kind !== "graph") throw new Error("Graph descriptor required");
 	const visible = view.items.filter(item => ["entity", "group", "relation"].includes(item.role));
 	if (visible.length > 1_400) throw new Error("Graph proof work limit exceeded");
@@ -159,7 +160,8 @@ export function graphProof(trace: CompiledTrace, view: ViewDescriptor,
 		lines.push("classDef " + entry.id + "_source stroke:" + entry.strokeToken + ",stroke-width:1.5px");
 	}
 	return result("graph", lines, elements.map((entry, index) => entry.role === "relation"
-		? Object.freeze({ ...entry, flowLabel: relationLabel(visible[index]) ?? "" }) : entry));
+		? Object.freeze({ ...entry, flowLabel: relationLabel(visible[index]) ?? "",
+			visited: entry.source.relationIds?.some(id => visitedRelations?.has(id)) }) : entry));
 }
 
 export function sequenceProof(trace: CompiledTrace, view: ViewDescriptor,
@@ -177,7 +179,7 @@ export function sequenceProof(trace: CompiledTrace, view: ViewDescriptor,
 	for (const actor of actors) {
 		const id = "thl_" + actor.itemId;
 		actorIds.set(actor.entityId, id);
-		lines.push("participant " + id + " as " + wrappedLabel(actor.label, 15, 3));
+		lines.push("participant " + id + " as " + wrappedLabel(actor.label, 14, 3));
 		elements.push(Object.freeze({ id, itemId: actor.itemId, role: "entity",
 			label: actor.label, description: "Modeled message participant, not evidence of current presence.",
 			source: Object.freeze({ entityIds: Object.freeze([actor.entityId]) }), current: false }));
@@ -202,14 +204,14 @@ export function sequenceProof(trace: CompiledTrace, view: ViewDescriptor,
 		// Mermaid expands lanes for long adjacent messages. Bound their labels
 		// independently of the participant labels and retain the full captions
 		// in source inspection. The arrow already encodes the sent phase.
-		const caption = phase === "sent" ? wrappedLabel(flowLabel, 12, 4, true)
-			: label(String(phase)) + "<br/>" + wrappedLabel(messageId, 16, 3, true);
+		const caption = phase === "sent" ? wrappedLabel(flowLabel, 15, 3, true)
+			: label(String(phase)) + "<br/>" + wrappedLabel(messageId, 16, 1, true);
 		// Identical rows can occur on different pages. Include the generated
 		// event ID so cached SVG bindings always identify the correct event.
 		lines.push("%% " + entry.id);
 		if (phase === "sent") lines.push(from + "-)" + to + ": " + caption);
 		else lines.push("Note over " + (from === to ? to : from + "," + to) + ": " + caption);
-		elements.push(Object.freeze({ ...entry, flowLabel,
+		elements.push(Object.freeze({ ...entry, flowLabel, visited: !entry.current,
 			context: entry.sent && !entry.current && followupIds.has(property(item, "messageId")) }));
 	}
 	return result("sequence", lines, elements, window.length, events.length, start,

@@ -23,9 +23,10 @@ async function load(): Promise<Mermaid> {
 			flowchart: { useMaxWidth: false, padding: 8, minNodeWidth: 64,
 				nodeSpacing: 24, rankSpacing: 48 },
 			elk: { preset: "modelOrder", keepEntryNodeOnTop: true, orientFeedbackEdges: true },
-			sequence: { useMaxWidth: false, actorMargin: 34, width: 112, height: 42,
-				actorFontSize: 12, noteFontSize: 12, messageFontSize: 12,
-				messageMargin: 32, mirrorActors: false, wrap: false, wrapPadding: 4,
+			sequence: { useMaxWidth: false, actorMargin: 24, width: 100, height: 40,
+				actorFontSize: 11, noteFontSize: 11, messageFontSize: 11,
+				diagramMarginX: 10, diagramMarginY: 8, noteMargin: 6,
+				messageMargin: 18, mirrorActors: false, wrap: false, wrapPadding: 4,
 				rightAngles: true },
 		});
 		return mermaid;
@@ -42,14 +43,16 @@ function bindDirection(root: SVGSVGElement, route: SVGElement): void {
 	const id = reference.slice(5, -1);
 	const marker = [...root.querySelectorAll("marker")].find(node => node.id === id);
 	if (!marker) throw new Error("Rendered route has no destination marker");
-	const emphasis = id + "-thl-current";
-	if (!marker.parentElement?.querySelector('[id="' + emphasis + '"]')) {
-		const variant = marker.cloneNode(true) as SVGMarkerElement;
-		variant.id = emphasis;
-		variant.setAttribute("data-thl-direction-marker", "");
-		marker.after(variant);
+	for (const state of ["current", "visited"] as const) {
+		const emphasis = id + "-thl-" + state;
+		if (!marker.parentElement?.querySelector('[id="' + emphasis + '"]')) {
+			const variant = marker.cloneNode(true) as SVGMarkerElement;
+			variant.id = emphasis;
+			variant.setAttribute("data-thl-direction-marker", state);
+			marker.after(variant);
+		}
+		route.style.setProperty("--thl-direction-" + state + "-marker", "url(#" + emphasis + ")");
 	}
-	route.style.setProperty("--thl-direction-marker", "url(#" + emphasis + ")");
 }
 
 /** Bind host-authored paint tokens, not Mermaid's private IDs/classes/ordering.
@@ -106,7 +109,7 @@ function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiagram, "s
 		if (lifelines.length !== actors.length) throw new Error("Rendered participant lanes unavailable");
 		const box = root.viewBox.baseVal;
 		const { x, y, width } = box;
-		const height = Math.max(box.height + 18, 240);
+		const height = Math.max(box.height + 18, 180);
 		root.setAttribute("viewBox", [x, y, width, height].join(" "));
 		for (const line of lifelines) line.setAttribute("y2", String(y + height - 8));
 		const head = document.createElementNS(svgNS, "g");

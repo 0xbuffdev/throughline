@@ -44,7 +44,23 @@ it("keeps the source palette, compact measured cards and real authored frame", a
  await screen.getByRole("button", { name: "Step forward" }).click();
  await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 7");
  expect(shell.querySelector(".canvas-meta")?.textContent).not.toContain("FRAME 01");
+ expect(shell.querySelector(".canvas-meta .step-number")?.textContent).toBe("Step 2 of 7");
  expect(shell.querySelectorAll("[data-source-event-ids]").length).toBeGreaterThan(0);
+});
+
+it("docks the inspector beside the visualization in a wide embed", async () => {
+ await page.viewport(1200, 850);
+ const screen = await render(<div style={{ width: 1100 }}>
+  <ThroughlineGraphPlayer trace={trace()} initialView="graph"/>
+ </div>);
+ await screen.getByRole("button", { name: "Inspect", exact: true }).click();
+ const shell = screen.getByRole("group", { name: "Visualization player" }).element();
+ const canvas = screen.getByRole("tabpanel").element().getBoundingClientRect();
+ const inspector = screen.getByRole("complementary", { name: "Workflow inspector" }).element();
+ expect(Math.abs(canvas.right - inspector.getBoundingClientRect().left)).toBeLessThanOrEqual(2);
+ expect(canvas.width).toBeGreaterThan(inspector.clientWidth);
+ expect(shell.scrollWidth).toBeLessThanOrEqual(shell.clientWidth);
+ await expect.element(screen.getByRole("button", { name: "Step forward" })).toBeVisible();
 });
 
 it("keeps a bounded side panel, mobile bottom sheet and a single reading scroll", async () => {

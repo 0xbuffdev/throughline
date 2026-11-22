@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { projectInspection, type InspectionClaim, type InspectionEvidence, type InspectionView } from "../v2/inspection.js";
 import type {
 	CompiledTrace, Id, Path, SemanticEvent, StateChange, TraceInspector,
@@ -57,7 +57,14 @@ export function InspectPanel({ trace, inspector, frameIndex, target, showSource,
 	const visibleEvents = step?.events.slice(0, 8) ?? [];
 	const present = entity && trace.frames[frameIndex].snapshot.presentEntityIds.includes(entity.id);
 	const value = entity && present ? inspector.valueAt(frameIndex, entity.id) : undefined;
+	const collection = value?.status === "known" && value.value !== null && typeof value.value === "object"
+		? value.value : undefined;
+	const fields = collection && !Array.isArray(collection) ? Object.values(collection) : [];
+	const inlineFields = fields.length > 0 && fields.length <= 3 &&
+		fields.every(field => field === null || typeof field !== "object");
 	const latest = entity ? inspector.history(entity.id).filter(entry => entry.frameIndex <= frameIndex).at(-1) : undefined;
+	const beforeUpdate = latest && summarizeCell(latest.before);
+	const afterUpdate = latest && summarizeCell(latest.after);
 	const [queryEntity, setQueryEntity] = useState<Id | null>(entity?.id ?? null);
 
 	function eventText(event: SemanticEvent): string {
@@ -83,7 +90,7 @@ export function InspectPanel({ trace, inspector, frameIndex, target, showSource,
 		<div className="inspect-summary" data-source-relation-ids={relationIds.join(" ") || undefined}
 			data-source-event-ids={message?.id ?? selectedEvent?.id} data-source-entity-ids={entity?.id}>
 			{target.kind === "step" && <>
-				<h3>{step?.label ?? "Initial state"}</h3>
+				<h3>This step</h3>
 				{visibleEvents.length ? <ul aria-label="Events in this step">{visibleEvents.map(event =>
 					<li key={event.id} data-source-event-ids={event.id}>
 						{isMessage(event) ? <button type="button" onClick={() => onSelect({
@@ -96,12 +103,14 @@ export function InspectPanel({ trace, inspector, frameIndex, target, showSource,
 				<h3>{entity.label}</h3>
 				<dl>
 					<div className="current-value"><dt>Current value</dt><dd>
-						{value ? <CellValue cell={value} label={"current value of " + entity.id}/> : "Absent at this step"}
-						{value?.status === "known" && value.value !== null && typeof value.value === "object" &&
-							<ValueTree key={frameIndex + ":" + entity.id} value={value.value} name="Browse fields"/>}
+						{collection ? <>
+							<ValueTree key={frameIndex + ":" + entity.id} value={collection} name="Browse fields" inline={inlineFields}/>
+							<ExactJson value={collection} prefix="" label={"current value of " + entity.id} compact/>
+						</> : value ? <CellValue cell={value} label={"current value of " + entity.id}/> : "Absent at this step"}
 					</dd></div>
 					<div><dt>Latest update</dt><dd>{latest ? <span data-source-event-ids={latest.eventId}>
-						{summarizeCell(latest.before)} → {summarizeCell(latest.after)} · Step {latest.frameIndex + 1}
+						Step {latest.frameIndex + 1}{latest.path.length > 0 && " · " + latest.path.join(" › ")}
+						{beforeUpdate !== afterUpdate && <span className="value-change">{beforeUpdate} → {afterUpdate}</span>}
 					</span> : "No updates yet."}</dd></div>
 				</dl>
 			</>}
@@ -124,8 +133,9 @@ export function InspectPanel({ trace, inspector, frameIndex, target, showSource,
 				<AdvancedInspection trace={trace} inspector={inspector} frameIndex={frameIndex}
 					selectedEntityId={queryEntity} onSelectEntity={setQueryEntity} onSeek={onSeek}
 					initialRelationId={message?.relationId ?? relation?.id ?? relationIds[0]}
-					initialEventId={selectedEventId ?? message?.id}/>
-				{children}
+					initialEventId={selectedEventId ?? message?.id} openSequenceLog={showSource}>
+					{children}
+				</AdvancedInspection>
 			</>}
 		</details>
 	</>;
@@ -219,7 +229,7 @@ function changeText(change: StateChange): string {
 /** The selected frame's chapter always drives all query results. */
 function AdvancedInspection({
 	trace, inspector, frameIndex, selectedEntityId, onSelectEntity, onSeek,
-	initialRelationId = "", initialEventId = "",
+	initialRelationId = "", initialEventId = "", openSequenceLog, children,
 }: {
 	trace: CompiledTrace;
 	inspector: TraceInspector;
@@ -229,7 +239,11 @@ function AdvancedInspection({
 	onSeek: (frameIndex: number) => void;
 	initialRelationId?: Id;
 	initialEventId?: Id;
+	openSequenceLog: boolean;
+	children?: React.ReactNode;
 }): React.JSX.Element {
+	const toolGroup = useId();
+	const eventTool = useRef<HTMLDetailsElement>(null);
 	const [compareFrom, setCompareFrom] = useState<number | null>(null);
 	const [pathInput, setPathInput] = useState("");
 	const [queryPath, setQueryPath] = useState<Path>([]);
@@ -254,10 +268,7 @@ function AdvancedInspection({
 	const effectiveFocus = focusEventId &&
 		(eventFrames.get(focusEventId) ?? Infinity) <= frameIndex
 		? focusEventId : currentEvents[0]?.id;
-	const relation = trace.artifact.relations.find(r => r.id === relationId) ??
-		trace.artifact.relations.find(r => selectedEntityId &&
-			(r.from === selectedEntityId || r.to === selectedEntityId)) ??
-		trace.artifact.relations[0];
+	const relation = trace.artifact.relations.find(r => r.id === relationId);
 	const result: InspectionView = useMemo(() => projectInspection(inspector, {
 		frameIndex,
 		compareFromIndex: effectiveFrom,
@@ -267,8 +278,16 @@ function AdvancedInspection({
 	}), [inspector, frameIndex, effectiveFrom, selectedEntityId, queryPath, relation, effectiveFocus]);
 
 	const inspectEvent = (evidence: InspectionEvidence): void => {
-		setFocusEventId(evidence.eventId);
-		onSeek(evidence.frameIndex);
+		focusEvent(evidence.eventId, evidence.frameIndex);
+	};
+	const focusEvent = (id: Id, frame: number): void => {
+		setFocusEventId(id);
+		onSeek(frame);
+		const tool = eventTool.current;
+		if (tool && !tool.open) {
+			tool.open = true;
+			tool.querySelector("summary")?.focus();
+		}
 	};
 	const inspectChange = (change: StateChange): void => {
 		if (change.kind === "write") {
@@ -277,8 +296,7 @@ function AdvancedInspection({
 			setQueryPath(change.path);
 			setPathError("");
 		} else if (change.target === "entity") onSelectEntity(change.targetId);
-		setFocusEventId(change.eventId);
-		onSeek(change.frameIndex);
+		focusEvent(change.eventId, change.frameIndex);
 	};
 	const commitPath = (input: string): void => {
 		try {
@@ -345,221 +363,232 @@ function AdvancedInspection({
 	return (
 		<section className="thl-v2-inspect" role="region" aria-label="Evidence inspector">
 			<header className="thl-v2-inspect-header">
-				<h3>Inspect — {currentStep.label}</h3>
-				<p>Frame {frameIndex + 1} of {inspector.frameCount}, ID <code>{currentStep.frameId}</code>.
-					{currentStep.note ? " " + currentStep.note : ""}</p>
-				{currentStep.time && <p>
-					{currentStep.time.kind === "logical"
-						? "Declared logical tick " + currentStep.time.tick
-						: "Declared wall-clock timestamp " + currentStep.time.iso8601}.
-					This metadata does not establish elapsed duration or cause.
-				</p>}
-				<p className="thl-v2-inspect-limit">{result.evidenceLimits}</p>
+				<p>Frame ID <code>{currentStep.frameId}</code></p>
 			</header>
-			<section aria-label="What changed?" className="thl-v2-inspect-section">
-				<h4>What changed?</h4>
-				<p>Only explicit writes and presence changes are listed. Same-value
-					writes remain visible; message and observation events do not create writes.</p>
-				<label>Compare from frame (zero-based)
-					<input type="number" min={0} max={frameIndex}
-						value={effectiveFrom} aria-label="Compare from frame"
-						onChange={event => {
-							const n = Number(event.currentTarget.value);
-							if (Number.isSafeInteger(n) && n >= 0 && n <= frameIndex) {
-								setCompareFrom(n);
-								setChangePage(0);
-							}
-						}}/>
-				</label>
-				<p>Changes after <code>{result.fromFrameId}</code> through <code>{currentStep.frameId}</code>:
-					{" "}{changes.length} explicit mutation(s).</p>
-				{changes.length ? <>
-					<div className="thl-v2-inspect-table-wrap" role="region" aria-label="Authored changes: scroll table horizontally" tabIndex={0}><table><caption>Authored changes, in frame/event order</caption>
-						<thead><tr><th scope="col">Source event</th><th scope="col">Target</th>
-							<th scope="col">Before</th><th scope="col">After</th></tr></thead>
-						<tbody>{currentChanges.values.map(change =>
-							<tr key={change.eventId} data-source-event-ids={change.eventId}
-								data-frame-index={frameOf(change)}>
-								<th scope="row"><button type="button" onClick={() => inspectChange(change)}>
-									{change.eventId} (frame {change.frameIndex})
-								</button></th>
-								<td>{changeText(change)}{change.kind === "write" &&
-									encodeJson(change.before) === encodeJson(change.after)
-									? " — explicit same-value write" : ""}</td>
-								<td>{change.kind === "write"
-									? <CellValue cell={change.before} label={"before event " + change.eventId}/>
-									: change.before ? "Present" : "Not present"}</td>
-								<td>{change.kind === "write"
-									? <CellValue cell={change.after} label={"after event " + change.eventId}/>
-									: change.after ? "Present" : "Not present"}</td>
-							</tr>)}</tbody>
-					</table></div>
-					{pager("Changes", currentChanges.page, currentChanges.max, setChangePage)}
-				</> : <p role="note">No explicit write or presence change in this interval.
-					This does not mean no messages or observations occurred.</p>}
-			</section>
-			<section aria-label="What do we know?" className="thl-v2-inspect-section">
-				<h4>What do we know?</h4>
-				<label>Source entity
-					<select aria-label="Inspect entity" value={selectedEntityId ?? ""}
-						onChange={event => chooseEntity(event.currentTarget.value)}>
-						<option value="">Choose entity</option>
-						{result.state.map(entity => <option key={entity.entityId}
-							value={entity.entityId}>{entity.label}</option>)}
-					</select>
-				</label>
-				{result.selected ? <>
-					<form onSubmit={event => { event.preventDefault(); commitPath(pathInput); }}>
-						<label>Path (JSON array, empty for whole entity)
-							<input type="text" aria-label="Inspect path" value={pathInput}
-								maxLength={512} onChange={event => setPathInput(event.currentTarget.value)}
-								placeholder={'["balance"]'}/>
-						</label>
-						<button type="submit">Inspect path</button>
-					</form>
-					{pathError && <p role="alert">{pathError}</p>}
-					<p>Selected <strong>{result.selected.label}</strong>, path
-						{" "}<code>{pathText(result.selected.path)}</code>.</p>
-					<div className="thl-v2-inspect-table-wrap" role="region" aria-label="Previous and current state: scroll table horizontally" tabIndex={0}><table>
-						<caption>Previous and current modeled state at requested path</caption>
-						<thead><tr><th scope="col">Comparison</th>
-							<th scope="col">Modeled presence</th><th scope="col">Value</th></tr></thead>
-						<tbody><tr><th scope="row">From frame {effectiveFrom}</th>
-							<td>{result.selected.presentBefore ? "Present" : "Not present"}</td>
-							<td><CellValue cell={result.selected.before}
-								label={"selected before frame " + effectiveFrom}/></td></tr>
-						<tr><th scope="row">Current frame {frameIndex}</th>
-							<td>{result.selected.presentAfter ? "Present" : "Not present"}</td>
-							<td><CellValue cell={result.selected.after}
-								label={"selected at frame " + frameIndex}/></td></tr></tbody>
-					</table></div>
-					<h5>Written-path history ({history.length})</h5>
-					{history.length ? <>
-						<div className="thl-v2-inspect-table-wrap" role="region" aria-label="Written-path history: scroll table horizontally" tabIndex={0}><table><caption>Only explicit overlapping writes through this frame</caption>
-							<thead><tr><th scope="col">Written source</th><th scope="col">Target path</th>
-								<th scope="col">Before at requested path</th>
-								<th scope="col">After at requested path</th></tr></thead>
-							<tbody>{currentHistory.values.map(entry =>
-								<tr key={entry.eventId} data-source-event-ids={entry.eventId}>
-									<th scope="row"><button type="button" onClick={() => {
-										setFocusEventId(entry.eventId);
-										onSeek(entry.frameIndex);
-									}}>{entry.eventId} (frame {entry.frameIndex})</button></th>
-									<td>{pathText(entry.path)}</td>
-									<td><CellValue cell={entry.before}
-										label={"history before event " + entry.eventId}/></td>
-									<td><CellValue cell={entry.after}
-										label={"history after event " + entry.eventId}/></td>
+			<details name={toolGroup} className="inspect-tool">
+				<summary>Compare steps</summary>
+				<section aria-label="What changed?" className="thl-v2-inspect-section">
+					{currentStep.time && <p>
+						{currentStep.time.kind === "logical"
+							? "Declared logical tick " + currentStep.time.tick
+							: "Declared wall-clock timestamp " + currentStep.time.iso8601}.
+						This metadata does not establish elapsed duration or cause.
+					</p>}
+					<p>Only explicit writes and presence changes are listed. Same-value
+						writes remain visible; message and observation events do not create writes.</p>
+					<label>Compare from step
+						<input type="number" min={1} max={frameIndex + 1}
+							value={effectiveFrom + 1}
+							onChange={event => {
+								const n = Number(event.currentTarget.value) - 1;
+								if (Number.isSafeInteger(n) && n >= 0 && n <= frameIndex) {
+									setCompareFrom(n);
+									setChangePage(0);
+								}
+							}}/>
+					</label>
+					<p>Changes after <code>{result.fromFrameId}</code> through <code>{currentStep.frameId}</code>:
+						{" "}{changes.length} explicit mutation(s).</p>
+					{changes.length ? <>
+						<div className="thl-v2-inspect-table-wrap" role="region" aria-label="Authored changes: scroll table horizontally" tabIndex={0}><table><caption>Authored changes, in frame/event order</caption>
+							<thead><tr><th scope="col">Source event</th><th scope="col">Target</th>
+								<th scope="col">Before</th><th scope="col">After</th></tr></thead>
+							<tbody>{currentChanges.values.map(change =>
+								<tr key={change.eventId} data-source-event-ids={change.eventId}
+									data-frame-index={frameOf(change)}>
+									<th scope="row"><button type="button" onClick={() => inspectChange(change)}>
+										{change.eventId} (step {change.frameIndex + 1})
+									</button></th>
+									<td>{changeText(change)}{change.kind === "write" &&
+										encodeJson(change.before) === encodeJson(change.after)
+										? " — explicit same-value write" : ""}</td>
+									<td>{change.kind === "write"
+										? <CellValue cell={change.before} label={"before event " + change.eventId}/>
+										: change.before ? "Present" : "Not present"}</td>
+									<td>{change.kind === "write"
+										? <CellValue cell={change.after} label={"after event " + change.eventId}/>
+										: change.after ? "Present" : "Not present"}</td>
 								</tr>)}</tbody>
 						</table></div>
-						{pager("History", currentHistory.page, currentHistory.max, setHistoryPage)}
-					</> : <p role="note">No explicit write affects this path through this frame.
-						Unknown and absent are not silently converted to known values.</p>}
-				</> : <p role="note">Select a source entity to inspect known, unknown or absent
-					path values and exact write history.</p>}
-				<details><summary>All modeled entity values ({result.state.length})</summary>
-					<div className="thl-v2-inspect-table-wrap" role="region" aria-label="Snapshot values: scroll table horizontally" tabIndex={0}><table><caption>Snapshot values, modeled presence is independent</caption>
-						<thead><tr><th scope="col">Entity</th><th scope="col">Presence</th>
-							<th scope="col">Cell</th></tr></thead>
-						<tbody>{result.state.map(row =>
-							<tr key={row.entityId} data-source-entity-ids={row.entityId}>
-								<th scope="row"><button type="button" onClick={() => chooseEntity(row.entityId)}>
-									{row.label}</button></th>
-								<td>{row.presentAfter ? "Present" : "Not present"}</td>
-								<td><CellValue cell={row.after} label={"snapshot for entity " + row.entityId}/></td>
-							</tr>)}</tbody>
-					</table></div>
-				</details>
-			</section>
-			<section aria-label="Where did this message go?" className="thl-v2-inspect-section">
-				<h4>Where did this message go?</h4>
-				<p>Source-linked phase evidence only. An authored send does not
-					imply receipt, processing, acknowledgement or persistence.</p>
-				{trace.artifact.relations.length ? <>
+						{pager("Changes", currentChanges.page, currentChanges.max, setChangePage)}
+					</> : <p role="note">No explicit write or presence change in this interval.
+						This does not mean no messages or observations occurred.</p>}
+				</section>
+			</details>
+			<details name={toolGroup} className="inspect-tool">
+				<summary>Values and write history</summary>
+				<section aria-label="What do we know?" className="thl-v2-inspect-section">
+					<label>Source entity
+						<select aria-label="Inspect entity" value={selectedEntityId ?? ""}
+							onChange={event => chooseEntity(event.currentTarget.value)}>
+							<option value="">Choose entity</option>
+							{result.state.map(entity => <option key={entity.entityId}
+								value={entity.entityId}>{entity.label}</option>)}
+						</select>
+					</label>
+					{result.selected ? <>
+						<form onSubmit={event => { event.preventDefault(); commitPath(pathInput); }}>
+							<label>Path (JSON array, empty for whole entity)
+								<input type="text" aria-label="Inspect path" value={pathInput}
+									maxLength={512} onChange={event => setPathInput(event.currentTarget.value)}/>
+							</label>
+							<button type="submit">Inspect path</button>
+						</form>
+						{pathError && <p role="alert">{pathError}</p>}
+						<p>Selected <strong>{result.selected.label}</strong>, path
+							{" "}<code>{pathText(result.selected.path)}</code>.</p>
+						<div className="thl-v2-inspect-table-wrap" role="region" aria-label="Previous and current state: scroll table horizontally" tabIndex={0}><table>
+							<caption>Previous and current modeled state at requested path</caption>
+							<thead><tr><th scope="col">Comparison</th>
+								<th scope="col">Modeled presence</th><th scope="col">Value</th></tr></thead>
+							<tbody><tr><th scope="row">Step {effectiveFrom + 1}</th>
+								<td>{result.selected.presentBefore ? "Present" : "Not present"}</td>
+								<td><CellValue cell={result.selected.before}
+									label={"selected at comparison step " + (effectiveFrom + 1)}/></td></tr>
+							<tr><th scope="row">Current step {frameIndex + 1}</th>
+								<td>{result.selected.presentAfter ? "Present" : "Not present"}</td>
+								<td><CellValue cell={result.selected.after}
+									label={"selected at current step " + (frameIndex + 1)}/></td></tr></tbody>
+						</table></div>
+						<h5>Written-path history ({history.length})</h5>
+						{history.length ? <>
+							<div className="thl-v2-inspect-table-wrap" role="region" aria-label="Written-path history: scroll table horizontally" tabIndex={0}><table><caption>Only explicit overlapping writes through this frame</caption>
+								<thead><tr><th scope="col">Written source</th><th scope="col">Target path</th>
+									<th scope="col">Before at requested path</th>
+									<th scope="col">After at requested path</th></tr></thead>
+								<tbody>{currentHistory.values.map(entry =>
+									<tr key={entry.eventId} data-source-event-ids={entry.eventId}>
+										<th scope="row"><button type="button" onClick={() => focusEvent(entry.eventId, entry.frameIndex)}>
+											{entry.eventId} (step {entry.frameIndex + 1})</button></th>
+										<td>{pathText(entry.path)}</td>
+										<td><CellValue cell={entry.before}
+											label={"history before event " + entry.eventId}/></td>
+										<td><CellValue cell={entry.after}
+											label={"history after event " + entry.eventId}/></td>
+									</tr>)}</tbody>
+							</table></div>
+							{pager("History", currentHistory.page, currentHistory.max, setHistoryPage)}
+						</> : <p role="note">No explicit write affects this path through this frame.
+							Unknown and absent are not silently converted to known values.</p>}
+					</> : <p role="note">Select a source entity to inspect known, unknown or absent
+						path values and exact write history.</p>}
+					<details><summary>All modeled entity values ({result.state.length})</summary>
+						<div className="thl-v2-inspect-table-wrap" role="region" aria-label="Snapshot values: scroll table horizontally" tabIndex={0}><table><caption>Snapshot values, modeled presence is independent</caption>
+							<thead><tr><th scope="col">Entity</th><th scope="col">Presence</th>
+								<th scope="col">Cell</th></tr></thead>
+							<tbody>{result.state.map(row =>
+								<tr key={row.entityId} data-source-entity-ids={row.entityId}>
+									<th scope="row"><button type="button" onClick={() => chooseEntity(row.entityId)}>
+										{row.label}</button></th>
+									<td>{row.presentAfter ? "Present" : "Not present"}</td>
+									<td><CellValue cell={row.after} label={"snapshot for entity " + row.entityId}/></td>
+								</tr>)}</tbody>
+						</table></div>
+					</details>
+				</section>
+			</details>
+			{trace.artifact.relations.length > 0 && <details name={toolGroup} className="inspect-tool">
+				<summary>Message phases</summary>
+				<section aria-label="Where did this message go?" className="thl-v2-inspect-section">
+					<p>Source-linked phase evidence only. An authored send does not
+						imply receipt, processing, acknowledgement or persistence.</p>
 					<label>Declared relation
 						<select aria-label="Inspect relation" value={relation?.id ?? ""}
 							onChange={event => { setRelationId(event.currentTarget.value); setTransferPage(0); }}>
+							<option value="">Choose connection</option>
 							{trace.artifact.relations.map(relation =>
 								<option key={relation.id} value={relation.id}>
 									{relation.label ?? relation.id} ({relation.from} → {relation.to})
 								</option>)}
 						</select>
 					</label>
-					<p>{result.relation?.explanation}</p>
-					{transfer.length ? <>
-						<p>{transfer.length} explicitly modeled phase event(s) through this frame.</p>
-						<ol>{currentTransfer.values.map(evidence =>
-							<li key={evidence.eventId} data-source-event-ids={evidence.eventId}
-								data-source-relation-ids={relation?.id}>
-								<strong>{evidence.event.type === "message"
-									? evidence.event.phase : evidence.event.type}</strong>,
-								{" "}source <code>{evidence.eventId}</code>,
-								{" "}{evidence.description}
-								{" "}{eventButton(evidence)}
-							</li>)}</ol>
-						{pager("Transfers", currentTransfer.page, currentTransfer.max, setTransferPage)}
-					</> : <p role="note">No message phase evidence on this relation through
-						the selected frame. Delivery and failure are not established.</p>}
-				</> : <p role="note">No declared relations to inspect.</p>}
-			</section>
-			<section aria-label="Why and evidence?" className="thl-v2-inspect-section">
-				<h4>Why? What evidence supports this?</h4>
-				<p>Inspect the authored event, its declared origin and only explicit
-					earlier-event dependencies. Temporal adjacency is not evidence of cause.</p>
-				{stepEvidence.length ? <>
-					<p>Current chapter: {stepEvidence.length} modeled event(s).</p>
-					<ul aria-label="Current chapter source events">
-						{currentEvidence.values.map(evidence =>
-							<li key={evidence.eventId}>
-								{eventButton(evidence)}
-								{" "}{evidence.description}
-							</li>)}
-					</ul>
-					{pager("Events", currentEvidence.page, currentEvidence.max, setEventPage)}
-				</> : <p role="note">No events are authored in this frame.</p>}
-				{result.focused ? <div className="thl-v2-inspect-focus"
-					aria-label="Focused source event" role="region"
-					data-source-event-ids={result.focused.evidence.eventId}>
-					<h5>Event {result.focused.evidence.eventId}</h5>
-					<p>{result.focused.evidence.description}</p>
-					<p>Declared frame <code>{result.focused.evidence.frameId}</code>;
-						{" "}source origin <code>{result.focused.evidence.origin.id}</code>
-						{" "}({result.focused.evidence.origin.kind}).</p>
-					<RecordedEvidence evidence={result.focused.evidence}/>
-					{result.focused.dependencies.length ?
-						<><p>Explicitly declared dependencies ({result.focused.dependencies.length});
-							this does not establish completeness or scientific causality.</p>
-							<ul>{currentDependencies.values.map(dep =>
-								<li key={dep.eventId}>{eventButton(dep)} — {dep.description}</li>)}</ul>
-							{pager("Dependencies", currentDependencies.page, currentDependencies.max,
-								setDependencyPage)}</>
-						: <p role="note">No explicit causal dependency is modeled for this event.
-							No cause is inferred from nearby events.</p>}
-					{claims.length ? <>
-						<h5>Editorial claims ({claims.length})</h5>
-						<p>Showing {currentClaims.length} of {claims.length} authored claims.
-							Each claim also has an independently bounded source-evidence page.</p>
-						<ul aria-label="Claims citing focused event">
-							{currentClaims.map(claim => <ClaimCard key={claim.claim.id}
-								claim={claim} onInspect={inspectEvent}/>)}
+					{relation && <>
+						<p>{result.relation?.explanation}</p>
+						{transfer.length ? <>
+							<p>{transfer.length} explicitly modeled phase event(s) through this frame.</p>
+							<ol>{currentTransfer.values.map(evidence =>
+								<li key={evidence.eventId} data-source-event-ids={evidence.eventId}
+									data-source-relation-ids={relation.id}>
+									<strong>{evidence.event.type === "message"
+										? evidence.event.phase : evidence.event.type}</strong>,
+									{" "}source <code>{evidence.eventId}</code>,
+									{" "}{evidence.description}
+									{" "}{eventButton(evidence)}
+								</li>)}</ol>
+							{pager("Transfers", currentTransfer.page, currentTransfer.max, setTransferPage)}
+						</> : <p role="note">No message phase evidence on this relation through
+							the selected frame. Delivery and failure are not established.</p>}
+					</>}
+				</section>
+			</details>}
+			<details name={toolGroup} ref={eventTool} className="inspect-tool">
+				<summary>Events and evidence</summary>
+				<section aria-label="Why and evidence?" className="thl-v2-inspect-section">
+					<p>Inspect the authored event, its declared origin and only explicit
+						earlier-event dependencies. Temporal adjacency is not evidence of cause.</p>
+					{stepEvidence.length ? <>
+						<p>Current chapter: {stepEvidence.length} modeled event(s).</p>
+						<ul aria-label="Current chapter source events">
+							{currentEvidence.values.map(evidence =>
+								<li key={evidence.eventId}>
+									{eventButton(evidence)}
+									{" "}{evidence.description}
+								</li>)}
 						</ul>
-						{totalClaimPages > 1 && <div className="thl-v2-inspect-pager"
-							role="group" aria-label="Editorial claim pages">
-							<button type="button" disabled={activeClaimPage === 0}
-								onClick={() => setClaimPage(n => Math.max(0, n - 1))}>
-								Previous claims page
-							</button>
-							<span>Page {activeClaimPage + 1} of {totalClaimPages}</span>
-							<button type="button" disabled={activeClaimPage + 1 >= totalClaimPages}
-								onClick={() => setClaimPage(n => Math.min(totalClaimPages - 1, n + 1))}>
-								Next claims page
-							</button>
-						</div>}
-					</>
-						: <p role="note">No editorial claim cites this event.</p>}
-				</div> : <p role="note">No authored event is selected.
-					There is no explicit causal evidence to evaluate at this frame.</p>}
-			</section>
+						{pager("Events", currentEvidence.page, currentEvidence.max, setEventPage)}
+					</> : <p role="note">No events are authored in this frame.</p>}
+					{result.focused ? <div className="thl-v2-inspect-focus"
+						aria-label="Focused source event" role="region"
+						data-source-event-ids={result.focused.evidence.eventId}>
+						<h5>Event {result.focused.evidence.eventId}</h5>
+						<p>{result.focused.evidence.description}</p>
+						<p>Declared frame <code>{result.focused.evidence.frameId}</code>;
+							{" "}source origin <code>{result.focused.evidence.origin.id}</code>
+							{" "}({result.focused.evidence.origin.kind}).</p>
+						<RecordedEvidence evidence={result.focused.evidence}/>
+						{result.focused.dependencies.length ?
+							<><p>Explicitly declared dependencies ({result.focused.dependencies.length});
+								this does not establish completeness or scientific causality.</p>
+								<ul>{currentDependencies.values.map(dep =>
+									<li key={dep.eventId}>{eventButton(dep)} — {dep.description}</li>)}</ul>
+								{pager("Dependencies", currentDependencies.page, currentDependencies.max,
+									setDependencyPage)}</>
+							: <p role="note">No explicit causal dependency is modeled for this event.
+								No cause is inferred from nearby events.</p>}
+						{claims.length ? <>
+							<h5>Editorial claims ({claims.length})</h5>
+							<p>Showing {currentClaims.length} of {claims.length} authored claims.
+								Each claim also has an independently bounded source-evidence page.</p>
+							<ul aria-label="Claims citing focused event">
+								{currentClaims.map(claim => <ClaimCard key={claim.claim.id}
+									claim={claim} onInspect={inspectEvent}/>)}
+							</ul>
+							{totalClaimPages > 1 && <div className="thl-v2-inspect-pager"
+								role="group" aria-label="Editorial claim pages">
+								<button type="button" disabled={activeClaimPage === 0}
+									onClick={() => setClaimPage(n => Math.max(0, n - 1))}>
+									Previous claims page
+								</button>
+								<span>Page {activeClaimPage + 1} of {totalClaimPages}</span>
+								<button type="button" disabled={activeClaimPage + 1 >= totalClaimPages}
+									onClick={() => setClaimPage(n => Math.min(totalClaimPages - 1, n + 1))}>
+									Next claims page
+								</button>
+							</div>}
+						</>
+							: <p role="note">No editorial claim cites this event.</p>}
+					</div> : <p role="note">No authored event is selected.
+						There is no explicit causal evidence to evaluate at this frame.</p>}
+				</section>
+			</details>
+			{children && <details name={toolGroup} className="inspect-tool" open={openSequenceLog}>
+				<summary>Sequence log</summary>
+				{children}
+			</details>}
+			<details name={toolGroup} className="inspect-tool">
+				<summary>Evidence limits</summary>
+				<p className="thl-v2-inspect-limit">{result.evidenceLimits}</p>
+			</details>
 		</section>
 	);
 }

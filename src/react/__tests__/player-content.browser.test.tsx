@@ -50,7 +50,7 @@ it("uses a compact evidence scale and contains long source values at narrow embe
    expect(table.parentElement?.classList.contains("thl-v2-inspect-table-wrap")).toBe(true);
  }
  expect(panel.querySelector(".current-value")?.textContent).not.toContain("x".repeat(100));
- await screen.getByRole("button", { name: /Show exact current value of stack/ }).click();
+ await screen.getByRole("button", { name: /Show JSON for current value of stack/ }).click();
  const exact = screen.getByRole("region", { name: "Exact current value of stack", exact: true });
  await expect.element(exact).toBeVisible();
  expect(exact.element().querySelector("pre")!.textContent.length).toBeLessThanOrEqual(1024);
@@ -73,7 +73,7 @@ it("browses structured fields without mounting a large tree or omitting exact so
  const first = root.querySelector<HTMLDetailsElement>("dl .value-tree")!;
  first.open = true;
  await expect.poll(() => first.textContent).toContain('"factorial(8)"');
- await screen.getByRole("button", { name: /Show exact current value of stack/ }).click();
+ await screen.getByRole("button", { name: /Show JSON for current value of stack/ }).click();
  expect(screen.getByRole("region", { name: "Exact current value of stack" }).element().textContent)
   .toContain('"factorial(19)"');
 });

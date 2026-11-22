@@ -115,8 +115,9 @@ Tabs appear only for projections the artifact supports across its entire timelin
 for example, factorial has Graph and State tabs, while Checkout also has Sequence.
 An incompatible programmatic view request falls back to a truthful state table.
 
-Use the playback controls to step backward or forward. Choose **Go to step**
-in Options to open a specific frame. The graph opens at readable scale and
+Use the playback controls to step backward or forward. The number and title
+above the diagram identify the current step. Choose **Go to step** in Options
+to open a specific step. The graph opens at readable scale and
 centers sparse content. Nodes have compact measurements that remain stable
 through the trace. Directed acyclic relationships use structural levels;
 cycles retain a deterministic centered grid. Nodes show scalar values or collection
@@ -126,10 +127,10 @@ Use **Fit to view** for a whole-scene overview, or **Follow active** to center
 authored focus without automatically magnifying it. Following starts off;
 manual panning, zooming or fitting pauses it until you enable it again.
 Selecting a group in Options centers its existing geometry without moving nodes.
-The inspector opens on the right in wider embeds and as a bottom sheet in narrow
-embeds, leaving playback available. Inspection and causal evidence use the same
-compact typography. Wide evidence tables scroll horizontally inside their own
-labeled regions, while the inspector provides the vertical reading scroll.
+The inspector docks beside the diagram in wide embeds, opens over its right
+edge at intermediate widths and becomes a bottom sheet in narrow embeds.
+Playback stays available, and the inspector header shows the same step number
+and title. Evidence tables scroll horizontally inside their own labeled regions.
 The State view retains native table headers and explicit presence/value labels.
 Sequence reserves declared message participants from the start. Arrows connect
 their lifelines only for explicit sends; receipt, processing and acknowledgement
@@ -140,7 +141,8 @@ returns focus to its control. Options provides timeline restart, direct step
 navigation and supported display controls. **Inspect** summarizes the current
 step. Select a node or State row for its current value and latest update. Select
 an arrow to see the sender, recipient and recorded phases. Expand **Source
-details** for exact values, history, frame comparisons and source evidence IDs.
+details** and open a tool to compare steps, query a value or read source
+events. Comparisons use the same step numbers as playback.
 Collapsing a group and changing presentation cannot change committed state.
 Keyboard-accessible controls and reduced-motion presentation apply;
 narration is optional and must not alter the model.

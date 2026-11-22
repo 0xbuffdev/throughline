@@ -11,9 +11,10 @@ import "../../styles/throughline.css";
 const view = () => document.querySelector<HTMLElement>(".thl-v2-inspect");
 const exact = (text: string) => ({ name: text, exact: true } as const);
 const checkout = () => compileArtifact(distributedGraph());
-async function openInspector(screen: Awaited<ReturnType<typeof render>>) {
+async function openInspector(screen: Awaited<ReturnType<typeof render>>, tool?: string) {
  await screen.getByRole("button", exact("Inspect")).click();
  await screen.getByText("Source details", { exact: true }).click();
+ if (tool) await screen.getByText(tool, { exact: true }).click();
 }
 
 
@@ -31,8 +32,11 @@ it("uses shared playback frame for canvas and inspector, including precise expli
 	await screen.getByText("Source details", { exact: true }).click();
 	await expect.element(screen.getByRole("region", { name: "Evidence inspector" }))
 		.toBeVisible();
+	expect(document.querySelectorAll(".inspect-tool[open]")).toHaveLength(0);
+	await screen.getByText("Compare steps", { exact: true }).click();
 	await expect.element(screen.getByRole("region", { name: "What changed?" }))
 		.toBeVisible();
+	await expect.element(screen.getByRole("spinbutton", { name: "Compare from step" })).toHaveValue(3);
 	expect(document.querySelector(".thl-v2-diagram")).not.toBeNull();
 	expect(view()?.textContent).toContain("Explicit modeled write");
 	expect(document.querySelector('tr[data-source-event-ids="settled"]')).not.toBeNull();
@@ -51,11 +55,13 @@ it("starts with the selected entity and keeps full history available in Source d
 	const screen = await render(<ThroughlineGraphPlayer trace={checkout()} initialView="state-table" />);
 	for (let i = 0; i < 3; i++) await screen.getByRole("button", { name: "Step forward" }).click();
 	await screen.getByRole("button", { name: "Ledger", exact: true }).click();
-	await expect.element(screen.getByText("This entity", { exact: true })).toBeVisible();
 	const panel = screen.getByRole("complementary", { name: "Workflow inspector" });
+	await expect.element(panel.getByText("Step 4 of 7", { exact: true })).toBeVisible();
 	await expect.element(panel.getByText("Latest update", { exact: true })).toBeVisible();
 	expect(view()).toBeNull();
 	await screen.getByText("Source details", { exact: true }).click();
+	expect(panel.element().querySelectorAll(".inspect-tool[open]")).toHaveLength(0);
+	await screen.getByText("Values and write history", { exact: true }).click();
 	await expect.element(panel.getByRole("table", { name: "Only explicit overlapping writes through this frame" }))
 		.toBeVisible();
 });
@@ -71,7 +77,7 @@ it("shows unknown, absent and known-null path results and original parent-write 
 		}],
 	});
 	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)} />);
-	await openInspector(screen);
+	await openInspector(screen, "Values and write history");
 	await userEvent.selectOptions(
 		screen.getByRole("combobox", { name: "Inspect entity" }).element(), "gateway",
 	);
@@ -108,9 +114,12 @@ it("shows unknown, absent and known-null path results and original parent-write 
 it("keeps message phase evidence separate from persistence while investigating a relation", async () => {
 	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(retryCheckout())}/>);
 	await screen.getByRole("button", { name: "Step forward" }).click();
-	await openInspector(screen);
+	await openInspector(screen, "Message phases");
 	await expect.element(screen.getByRole("region", { name: "Where did this message go?" }))
 		.toBeVisible();
+	const relation = screen.getByRole("combobox", { name: "Inspect relation" });
+	await expect.element(relation).toHaveValue("");
+	await userEvent.selectOptions(relation.element(), "request");
 	expect(document.querySelector('[data-source-event-ids="originalSent"]')).not.toBeNull();
 	expect(view()?.textContent).toContain("A sent event alone cannot establish receipt");
 	expect(view()?.textContent).toContain("explicitly modeled phase event(s) through this frame");
@@ -137,7 +146,7 @@ it("guides through exact declared dependencies and non-proof editorial claims", 
 	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)}
 		initialView="graph" />);
 	await screen.getByRole("button", { name: "Step forward" }).click();
-	await openInspector(screen);
+	await openInspector(screen, "Events and evidence");
 	await expect.element(screen.getByRole("region", { name: "Focused source event" }))
 		.toBeVisible();
 	const focus = document.querySelector<HTMLElement>(".thl-v2-inspect-focus")!;
@@ -197,7 +206,7 @@ it("shows exact before/after values after a shared 150-character preview", async
 	const screen = await render(<ThroughlineGraphPlayer
 		trace={compileArtifact(source)} initialView="state-table"/>);
 	await screen.getByRole("button", { name: "Step forward" }).click();
-	await openInspector(screen);
+	await openInspector(screen, "Compare steps");
 	const table = screen.getByRole("table", { name: "Authored changes, in frame/event order" });
 	await expect.element(table).toBeVisible();
 	const row = table.getByRole("row", { name: /longWrite/ });
@@ -228,6 +237,8 @@ it("shows exact before/after values after a shared 150-character preview", async
 	// component rather than a second, truncating data interpretation.
 	// No before/current path table exists until an entity is selected.
 	expect(view()?.textContent).not.toContain("Previous and current modeled state at requested path");
+	await screen.getByText("Values and write history", { exact: true }).click();
+	expect(document.querySelectorAll(".inspect-tool[open]")).toHaveLength(1);
 	await userEvent.selectOptions(
 		screen.getByRole("combobox", { name: "Inspect entity" }).element(), "value",
 	);
@@ -242,7 +253,7 @@ it("exposes the recorded timeout observation while leaving modeled client state 
 	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(retryCheckout())}/>);
 	for (let i = 0; i < 3; i++)
 		await screen.getByRole("button", { name: "Step forward" }).click();
-	await openInspector(screen);
+	await openInspector(screen, "Events and evidence");
 	const source = screen.getByRole("region", {
 		name: "Recorded source data for event watchTimeout",
 	});
@@ -251,6 +262,7 @@ it("exposes the recorded timeout observation while leaving modeled client state 
 	expect(source.element().getAttribute("data-source-entity-ids")).toBe("client");
 	expect(source.element().textContent).toContain("no acknowledgement recorded yet");
 	expect(source.element().textContent).toContain("does not write or");
+	await screen.getByText("Values and write history", { exact: true }).click();
 	await userEvent.selectOptions(
 		screen.getByRole("combobox", { name: "Inspect entity" }).element(), "client",
 	);
@@ -273,7 +285,7 @@ it("reveals optional authored message payload, escaped as data, without claiming
 	};
 	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)}/>);
 	await screen.getByRole("button", { name: "Step forward" }).click();
-	await openInspector(screen);
+	await openInspector(screen, "Events and evidence");
 	const recorded = screen.getByRole("region", {
 		name: "Recorded source data for event originalSent",
 	});
@@ -300,7 +312,7 @@ it("bounds 1,000 claims × 100 cited events with independent page windows and so
 	screen.getByRole("group", { name: "Visualization player" }).element().focus();
 	await userEvent.keyboard("{End}");
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 101 of 101");
-	await openInspector(screen);
+	await openInspector(screen, "Events and evidence");
 	const focused = screen.getByRole("region", { name: "Focused source event" });
 	await expect.element(focused).toBeVisible();
 	expect(focused.element().textContent).toContain("Editorial claims (1000)");

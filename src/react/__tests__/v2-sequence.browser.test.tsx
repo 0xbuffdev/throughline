@@ -22,6 +22,9 @@ async function openEvidence(screen: Awaited<ReturnType<typeof render>>) {
  const details = document.querySelector<HTMLDetailsElement>(".evidence-note");
  if (details && !details.open)
   await screen.getByText("Source details", { exact: true }).click();
+ const log = [...document.querySelectorAll<HTMLDetailsElement>(".inspect-tool")]
+  .find(tool => tool.querySelector("summary")?.textContent === "Sequence log");
+ if (log && !log.open) await screen.getByText("Sequence log", { exact: true }).click();
 }
 async function openSequence(screen: Awaited<ReturnType<typeof render>>) {
  await screen.getByRole("tab", { name: "Sequence" }).click();

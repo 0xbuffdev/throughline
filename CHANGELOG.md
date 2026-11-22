@@ -22,11 +22,17 @@ All notable changes to Throughline are recorded here. Package versions follow
   directional arrows, with forward-only motion. Other phases use labeled markers.
   Restore semantic State tables and contain wide evidence tables locally.
 - In the Mermaid preview, emphasize the directed route before its destination
-  and keep local writes in State and Inspect. Use compact Neo flowcharts
+  and keep local writes in State and Inspect. Use compact flowcharts
   with current-route captions and keep Sequence headers visible as explicit
   requests and replies scroll past.
-- Open Inspect on the current step, selected transfer or selected entity.
-  Expand Source details for exact values, history and evidence.
+- Show the current step number and title in the canvas and the inspector.
+  Inspect opens on the current step, selected transfer or selected entity.
+  Small records show their fields directly. Source details opens comparison,
+  value and evidence tools individually. Wide players dock the inspector
+  beside the diagram.
+- Give Mermaid Graph and Sequence their own loading states. Earlier routed
+  sends retain a muted highlight. Compact Sequence lanes follow the current
+  event inside the player and keep participant headers visible.
 
 ### Added
 

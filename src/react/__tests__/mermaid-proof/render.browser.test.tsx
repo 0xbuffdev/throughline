@@ -63,7 +63,7 @@ describe("TL-U26 actual Mermaid parser and browser SVG", () => {
 		expect(host.querySelectorAll(".note")).toHaveLength(6);
 		expect(host.querySelector('[data-from="thl_node_1"][data-to="thl_node_1"]')
 			?.getAttribute("data-thl-motion-item")).toBe(proof.elements.at(-1)?.itemId);
-		expect(host.textContent).toContain("Localdispatch");
+		expect(host.textContent).toMatch(/Local\s*dispatch/);
 		expect(proof.elements.at(-1)?.flowLabel).toBe("Local dispatch");
 	});
 

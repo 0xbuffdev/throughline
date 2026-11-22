@@ -46,7 +46,7 @@ it("plays a source-linked checkout without pretending received or processed mean
 	// Truncated graph labels are not full-state evidence; inspect the
 	// selected source entity to verify the actual persistent value.
 	await screen.getByRole("button", { name: "Select Ledger" }).click();
-	await screen.getByRole("button", { name: /Show exact current value of ledger/ }).click();
+	await screen.getByRole("button", { name: /Show JSON for current value of ledger/ }).click();
  expect(screen.getByRole("region", { name: "Exact current value of ledger" }).element().textContent)
   .toContain('"settled":false');
 	await next.click(); // ledger write + processed, no second sent
@@ -149,6 +149,7 @@ it("announces declared non-authored origins without upgrading modeled event evid
  await screen.getByText("Details", { exact: true }).click();
  await screen.getByRole("button", { name: "Inspect this step", exact: true }).click();
  await screen.getByText("Source details", { exact: true }).click();
+ await screen.getByText("Events and evidence", { exact: true }).click();
  const evidence = screen.getByRole("list", { name: "Current chapter source events" });
  await expect.element(evidence).toBeVisible();
  expect(evidence.element().textContent).toContain("witness (observed)");

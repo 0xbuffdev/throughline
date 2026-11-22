@@ -36,9 +36,6 @@ export function PlayerControls({ state, dispatch }: PlaybackProps): React.JSX.El
    </button>
   </div>
   <div className="transport-meta">
-   <span aria-label={`Step ${state.step + 1} of ${state.max + 1}`}>
-    <strong>{state.step + 1}</strong> / {state.max + 1}
-   </span>
    <button type="button" className="speed" aria-label={`Playback speed ${state.speed}x`}
     title="Playback speed" onClick={() => {
      const index = SPEEDS.indexOf(state.speed);

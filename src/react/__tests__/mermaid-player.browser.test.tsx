@@ -104,7 +104,7 @@ it("updates Graph transfer paint without relayout and opens the exact source in 
 	const source = screen.container.querySelector(".inspect-summary");
 	expect(source?.getAttribute("data-source-relation-ids")).toBe("request");
 	expect(source?.getAttribute("data-source-event-ids")).toBe("requestSent");
-	await expect.element(screen.getByText("This transfer", { exact: true })).toBeVisible();
+	await expect.element(screen.getByRole("heading", { name: "Checkout request", exact: true })).toBeVisible();
 	expect(screen.container.querySelector(".thl-v2-inspect")).toBeNull();
 }, 60_000);
 
@@ -117,7 +117,7 @@ it("inspects the exact message when selecting a drawn sequence arrow, including 
 	(arrow.element() as SVGElement).focus();
 	await userEvent.keyboard("{Enter}");
 	const panel = screen.getByRole("complementary", { name: "Workflow inspector" });
-	await expect.element(panel.getByText("This transfer", { exact: true })).toBeVisible();
+	await expect.element(panel.getByText("Step 2 of 10", { exact: true })).toBeVisible();
 	const phase = (name: string) => panel.getByText(name, { exact: true }).element().nextElementSibling?.textContent;
 	expect(phase("sent")).toBe("Recorded");
 	expect(phase("received")).toBe("Not recorded");
@@ -144,6 +144,26 @@ it("keeps graph playback neutral on a write-only step", async () => {
 	expect(diagram.element().getAttribute("viewBox")).toBe(camera);
 	await screen.getByRole("tab", { name: "State" }).click();
 	await expect.element(screen.getByRole("region", { name: "State and event table" })).toBeVisible();
+}, 60_000);
+
+it("keeps the selected Graph tab free of State content during loading", async () => {
+	const trace = compileArtifact(EXAMPLES.find(example => example.id === "checkout")!.artifact);
+	const screen = await render(<GraphPlayer trace={trace} initialView="state-table" DiagramRenderer={MermaidPlayerDiagram}/>);
+	const pane = screen.getByRole("tabpanel").element();
+	const graphTab = screen.getByRole("tab", { name: "Graph" });
+	const unexpected = () => graphTab.element().getAttribute("aria-selected") === "true" &&
+		pane.querySelector(".state-view") !== null;
+	const flashes: boolean[] = [];
+	const observer = new MutationObserver(() => { if (unexpected()) flashes.push(true); });
+	observer.observe(pane, { childList: true, subtree: true, attributes: true });
+	try {
+		await graphTab.click();
+		await expect.element(screen.getByRole("group", { name: "Source-linked graph at current frame" })).toBeVisible();
+		expect(unexpected()).toBe(false);
+		expect(flashes).toEqual([]);
+	} finally {
+		observer.disconnect();
+	}
 }, 60_000);
 
 it("uses the native state and evidence fallback for an oversized graph", async () => {
@@ -194,6 +214,11 @@ it("shows the graph reply in its declared direction and does not restart it when
 		.toHaveAttribute("data-thl-active", "");
 	await next.click();
 	await expect.element(reply).toHaveAttribute("data-thl-active", "");
+	const request = screen.getByRole("button", { name: "Inspect relation Checkout request" });
+	await expect.element(request).toHaveAttribute("data-thl-visited", "");
+	await expect.element(request).not.toHaveAttribute("data-thl-active");
+	expect(getComputedStyle(request.element()).stroke).not.toBe(getComputedStyle(reply.element()).stroke);
+	expect(getComputedStyle(request.element()).markerEnd).toContain("thl-visited");
 	const path = reply.element() as SVGPathElement;
 	const routeStart = path.getPointAtLength(0).matrixTransform(path.getScreenCTM()!);
 	const routeEnd = path.getPointAtLength(path.getTotalLength()).matrixTransform(path.getScreenCTM()!);
@@ -205,7 +230,14 @@ it("shows the graph reply in its declared direction and does not restart it when
 	await screen.getByRole("tab", { name: "Sequence" }).click();
 	const sequence = screen.getByRole("region", { name: "Source-linked sequence at current frame" });
 	await expect.poll(() => sequence.element().querySelector("[data-thl-motion-item][data-thl-active]")).not.toBeNull();
+	expect(sequence.element().querySelector("[data-thl-motion-item][data-thl-visited]")).not.toBeNull();
 	expect(sequence.element().querySelector("[data-thl-transfer]")).toBeNull();
+	await screen.getByRole("tab", { name: "Graph" }).click();
+	await expect.element(request).toHaveAttribute("data-thl-visited", "");
+	await screen.getByRole("group", { name: "Visualization player" }).element().focus();
+	await userEvent.keyboard("{Home}");
+	await expect.element(request).not.toHaveAttribute("data-thl-visited");
+	await expect.element(reply).not.toHaveAttribute("data-thl-visited");
 }, 60_000);
 
 it("follows a wide Sequence arrow across a narrow viewport in both directions", async () => {
@@ -239,4 +271,30 @@ it("follows a wide Sequence arrow across a narrow viewport in both directions", 
 		const client = screen.getByRole("button", { name: "Inspect participant Client" }).element();
 		return client.getBoundingClientRect().left - sequence.element().getBoundingClientRect().left;
 	}).toBeGreaterThan(8);
+}, 60_000);
+
+it("follows the latest recorded Sequence event vertically and resets on rewind", async () => {
+	const trace = compileArtifact(EXAMPLES.find(example => example.id === "checkout")!.artifact);
+	const screen = await render(<div style={{ width: 375 }}>
+		<GraphPlayer trace={trace} initialView="sequence" DiagramRenderer={MermaidPlayerDiagram}/>
+	</div>);
+	const player = screen.getByRole("group", { name: "Visualization player" }).element() as HTMLElement;
+	player.style.setProperty("--thl-canvas-height", "270px");
+	const sequence = screen.getByRole("region", { name: "Source-linked sequence at current frame" });
+	await expect.element(sequence).toBeVisible();
+	const scroller = sequence.element();
+	const initialViewport = scroller.getBoundingClientRect();
+	player.focus();
+	await userEvent.keyboard("{End}");
+	await expect.poll(() => scroller.scrollTop).toBeGreaterThan(0);
+	const header = scroller.querySelector("[data-thl-sequence-header]")!.getBoundingClientRect();
+	expect(Math.abs(header.top - initialViewport.top)).toBeLessThanOrEqual(2);
+	const current = [...scroller.querySelectorAll("[data-thl-motion-item], [data-thl-phase-item]")].at(-1)!;
+	const bounds = current.getBoundingClientRect();
+	expect(bounds.top).toBeGreaterThan(header.bottom);
+	expect(bounds.bottom).toBeLessThanOrEqual(initialViewport.bottom);
+	await userEvent.keyboard("{Home}");
+	await expect.poll(() => sequence.element().scrollTop).toBe(0);
+	expect(sequence.element().scrollLeft).toBe(0);
+	expect(sequence.element().querySelector("[data-thl-motion-item], [data-thl-phase-item]")).toBeNull();
 }, 60_000);

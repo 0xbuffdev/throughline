@@ -38,6 +38,7 @@ function placeGraphCaption(route: SVGGeometryElement, caption: SVGTextElement, o
 export function paintRoutes(host: HTMLElement, proof: DiagramProof, selectedId: string | null): () => void {
 	const elements = new Map(proof.elements.map(entry => [entry.itemId, entry]));
 	const sources = new Set<string>(), destinations = new Set<string>();
+	const visitedNodes = new Set<string>();
 	const owned: SVGTextElement[] = [];
 	let occupied: DOMRect[] | undefined;
 	for (const route of host.querySelectorAll<SVGGeometryElement>("[data-thl-motion-item]")) {
@@ -45,6 +46,11 @@ export function paintRoutes(host: HTMLElement, proof: DiagramProof, selectedId: 
 		const entry = elements.get(itemId);
 		route.toggleAttribute("data-thl-active", entry?.current === true);
 		route.toggleAttribute("data-thl-route-context", entry?.context === true);
+		route.toggleAttribute("data-thl-visited", entry?.visited === true);
+		if (entry?.visited) {
+			if (entry.fromItemId) visitedNodes.add(entry.fromItemId);
+			if (entry.toItemId) visitedNodes.add(entry.toItemId);
+		}
 		if (!entry || (!entry.current && !entry.context)) continue;
 		if (entry.fromItemId) sources.add(entry.fromItemId);
 		if (entry.toItemId) destinations.add(entry.toItemId);
@@ -66,11 +72,15 @@ export function paintRoutes(host: HTMLElement, proof: DiagramProof, selectedId: 
 			entry.source.entityIds?.includes(selectedId ?? "") === true);
 		node.toggleAttribute("data-thl-source", sources.has(id));
 		node.toggleAttribute("data-thl-destination", destinations.has(id));
+		if (entry?.role === "entity" || entry?.role === "group") {
+			node.toggleAttribute("data-thl-visited", visitedNodes.has(id));
+		}
 	}
 	for (const node of host.querySelectorAll("[data-thl-phase-item], [data-thl-motion-label]")) {
 		const id = node.getAttribute("data-thl-phase-item") ?? node.getAttribute("data-thl-motion-label")!;
 		node.toggleAttribute("data-thl-active", elements.get(id)?.current === true);
 		node.toggleAttribute("data-thl-route-context", elements.get(id)?.context === true);
+		node.toggleAttribute("data-thl-visited", elements.get(id)?.visited === true);
 	}
 	return () => owned.forEach(node => node.remove());
 }

@@ -45,6 +45,7 @@ export type DiagramRendererProps = {
 	selectedId: Id | null;
 	groupId: Id | null;
 	captionId: string;
+	firstSent: ReadonlyMap<Id, number>;
 	motion: { revision: number; durationMs: number; forward: boolean };
 	onSelectItem: (itemId: Id) => void;
 	onSelectEntity: (id: Id) => void;
@@ -378,8 +379,13 @@ export function GraphPlayer({
   follow && followedCamera ? followedCamera : overview);
 	const presentEntities = new Set(inspector.stateAt(frameIndex).presentEntityIds);
 	const step = frameIndex ? trace.artifact.steps[frameIndex - 1] : undefined;
-	const summary = "Step " + (frameIndex + 1) + " of " + trace.frames.length +
-		": " + (step?.label ?? "Initial state") + ". " + view.summary;
+	const stepNumber = "Step " + (frameIndex + 1) + " of " + trace.frames.length;
+	const stepLabel = step?.label ?? "Initial state";
+	const eventCount = step?.events.length ?? 0;
+	const captionNote = step?.note ?? (step
+		? eventCount + (eventCount === 1 ? " modeled event in this step." : " modeled events in this step.")
+		: "Initial values and relationships.");
+	const summary = stepNumber + ": " + stepLabel + ". " + view.summary;
 	const spoken = summary + (step?.note ? " " + step.note : "");
 	const voice = useNarration({
 		trace, step: frameIndex, text: spoken, seekRevision,
@@ -389,14 +395,13 @@ export function GraphPlayer({
 	});
 	const firstSent = useMemo(() => {
 		const seen = new Map<Id, number>();
-		if (DiagramRenderer) return seen;
 		for (const [index, step] of trace.artifact.steps.entries())
 			for (const event of step.events) {
 				if (event.type === "message" && event.phase === "sent" &&
 					!seen.has(event.relationId)) seen.set(event.relationId, index + 1);
 			}
 		return seen;
-	}, [DiagramRenderer, trace]);
+	}, [trace]);
 	const participants = useMemo(() => {
 		const present = new Set<Id>();
 		for (const relation of trace.artifact.relations) {
@@ -489,9 +494,6 @@ export function GraphPlayer({
  const groupFieldId = useId();
  const helpId = useId();
  const captionId = useId();
- const currentEvent = step?.events[0];
- const eventType = !step ? "initial" : currentEvent?.type ?? "no event";
- const hasWrite = step?.events.some(event => event.type === "write") ?? false;
  const origins = [...new Set(trace.artifact.origins.map(origin => origin.kind))].join(" + ");
  const openInspection = (target: InspectionTarget, source = false) => {
   setSelectedId(target.kind === "entity" ? target.entityId : null);
@@ -627,7 +629,10 @@ export function GraphPlayer({
         : event.key === "ArrowLeft" ? (index + availableViews.length - 1) % availableViews.length : -1;
        if (next < 0) return;
        event.preventDefault();
-       setViewKind(availableViews[next][1]); setMotion(current => ({ ...current, animate: false }));
+       if (!DiagramRenderer) {
+        setViewKind(availableViews[next][1]);
+        setMotion(current => ({ ...current, animate: false }));
+       }
        event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
       }}
       onClick={() => { setViewKind(kind); setMotion(current => ({ ...current, animate: false })); }}>{label}</button>)}
@@ -638,12 +643,11 @@ export function GraphPlayer({
    <div className="canvas" ref={canvasRef} id={viewPanelId}
     role="tabpanel" aria-labelledby={viewPanelId + "-" + view.kind}>
     <div className="canvas-meta">
-
-     <strong>{step?.label ?? "Initial state"}</strong>
-     <code>{eventType}</code>
+     <span className="step-number">{stepNumber}</span>
+     <strong title={stepLabel}>{stepLabel}</strong>
     </div>
     {DiagramRenderer && view.kind !== "state-table" ?
-     <DiagramRenderer key={view.kind} trace={trace} view={view} frameIndex={frameIndex} width={width}
+     <DiagramRenderer trace={trace} view={view} frameIndex={frameIndex} width={width} firstSent={firstSent}
       selectedId={selectedId} groupId={drilled} captionId={captionId}
       motion={{
        revision: motion.revision, durationMs: Math.min(700, stepDelayMs(700, state.speed)),
@@ -716,9 +720,11 @@ export function GraphPlayer({
      event.preventDefault(); event.stopPropagation();
      closeInspection();
     }}>
-    <div className="inspector-top"><span>{
-     { step: "This step", entity: "This entity", transfer: "This transfer", event: "This event" }[inspection.kind]
-    }</span>
+    <div className="inspector-top">
+     <div>
+      <span className="step-number">{stepNumber}</span>
+      <strong title={stepLabel}>{stepLabel}</strong>
+     </div>
      <button type="button" aria-label="Close inspector" onClick={closeInspection}>×</button>
     </div>
     <InspectPanel key={sourceRevision} trace={trace} inspector={inspector} frameIndex={frameIndex}
@@ -732,16 +738,14 @@ export function GraphPlayer({
   <footer className="transport"><PlayerControls state={state} dispatch={dispatch}/></footer>
   <details id={captionId} className="step-caption">
    <summary>
-
     <span className="caption-text">
-     <strong>{step?.label ?? "Initial state"}</strong>
-     <span className="teaser">{step?.note ?? view.summary}</span>
+     <strong>Step notes</strong>
+     <span className="teaser">{captionNote}</span>
     </span>
-    <span className={"event-chip " + (hasWrite ? "write" : "")}>{eventType}</span>
     <span className="caption-expand"><span>Details</span><PlayerIcon name="chevron" size={14}/></span>
    </summary>
    <div className="caption-body">
-    <p className="caption-note">{step?.note ?? view.summary}</p>
+    <p className="caption-note">{captionNote}</p>
     <button type="button" className="mermaid-evidence" onClick={() => openInspection({ kind: "step" })}>
      Inspect this step
     </button>
