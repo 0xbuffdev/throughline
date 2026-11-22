@@ -28,6 +28,20 @@ Graph and Sequence use a single forward cue along the rendered path for an expli
 
 **Escaping and wrapping must be tested together.** SVG-only flowchart labels initially displayed decimal escapes literally. The tested candidate uses Mermaid's generated HTML labels under `securityLevel: "strict"`; author text is still escaped and cannot supply markup. Sequence automatic wrapping split internal entity escapes. The adapter instead wraps plain text before escaping and emits only fixed host-owned line breaks. The punctuation regression includes quotes, apostrophes, angle brackets, ampersands and literal entity-looking input. Hostile labels must never produce scripts, images, links or event-handler attributes.
 
+## Installed React prototype
+
+A separate package prototype wired Mermaid into the public React entry and loaded
+the pinned renderer after hydration. A Vite host installed its tarball and tested
+Checkout in Chromium, Firefox and WebKit at 260–1,280 CSS pixels. The host hydrated
+the server-rendered player, reserved the five initial Sequence lanes and opened
+the exact transfer from both Graph and Sequence. The first checkout-only host
+loaded 335 kB gzip through initial Sequence and another 497 kB opening Graph.
+
+The next prototype showed State during startup and used the pinned Mermaid ESM
+distribution alongside the host's ordinary Mermaid import. All three browsers
+preserved the host's theme and rendered its standalone diagram. Both trials
+blocked external resource requests and recorded zero attempts.
+
 ## Outstanding cutover gates
 
 | Area | Current evidence and remaining work |

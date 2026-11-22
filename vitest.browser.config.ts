@@ -11,7 +11,7 @@ const browser = requestedBrowser as "chromium" | "firefox" | "webkit";
 const webkitExecutable = browser === "webkit" ? process.env.THROUGHLINE_QA_WEBKIT_EXECUTABLE : undefined;
 
 export default defineConfig({
-	optimizeDeps: { include: ["react", "react-dom/client", "react-dom/server", "mermaid"] },
+	optimizeDeps: { include: ["react", "react-dom/client", "react-dom/server", "mermaid/dist/mermaid.esm.min.mjs"] },
 	test: {
 		css: true,
 		include: ["src/**/__tests__/**/*.browser.test.tsx"],
