@@ -7,8 +7,39 @@ All notable changes to Throughline are recorded here. Package versions follow
 
 ## [Unreleased]
 
+### Changed
+
+- Port the compact React player layout with measured, stable graph cards,
+  centered rows, structural DAG placement and distinct parallel routes while
+  retaining the existing palette and connector appearance. Dense scenes open
+  at readable scale with pan/zoom and an explicit full-scene Fit action.
+  Authored focus following is optional and pauses for manual navigation.
+  View tabs reflect supported projections. Keep direct step navigation in
+  Options and add a responsive inspector side panel/mobile bottom sheet.
+  Replace repeated node write labels with a compact update marker; exact values,
+  paged structured data, changes and evidence remain in inspection.
+  Sequence lanes remain stable from the initial frame; only explicit sends draw
+  directional arrows, with forward-only motion. Other phases use labeled markers.
+  Restore semantic State tables and contain wide evidence tables locally.
+- In the Mermaid preview, emphasize the directed route before its destination
+  and keep local writes in State and Inspect. Use compact flowcharts
+  with current-route captions and keep Sequence headers visible as explicit
+  requests and replies scroll past.
+- Show the current step number and title in the canvas and the inspector.
+  Inspect opens on the current step, selected transfer or selected entity.
+  Small records show their fields directly. Source details opens comparison,
+  value and evidence tools individually. Wide players dock the inspector
+  beside the diagram.
+- Give Mermaid Graph and Sequence their own loading states. Earlier routed
+  sends retain a muted highlight. Compact Sequence lanes follow the current
+  event inside the player and keep participant headers visible.
+
 ### Added
 
+- A test-only Mermaid 12.3.0 feasibility host and source-linked Graph/Sequence
+  adapters, bounded rendering and motion regressions, dependency inventory and
+  reproducible browser measurements. The local playground uses the same
+  compact player with Mermaid Graph and Sequence and the native State table.
 - TL-U18 establishes an exact-head, machine-readable schema-2 release-quality gate: deterministic small/moderate/near-limit fixture hashes and compile/index/query/projection/geometry timings with runner metadata; a seeded negative-input sweep; 260px keyboard/semantic-accessibility browser regressions; separately attested Chromium/Firefox/WebKit runs; a checked independent packed SSR consumer at 260/320/375 CSS px; and CI artifacts plus a read-only evidence verifier. Results use hard correctness/resource budgets, not invented CPU or learning-outcome claims. Maintainer review caught incomplete merge-result CI, 12 repeatedly sampled attack strings and vacuously passing empty-edge geometry: these are corrected with a full proposed-merge CI replay, 144 unique seeded malformed inputs (12 mandatory classes) and an all-edges-preserved bounded-geometry gate. Real screen-reader acceptance is **still pending TL-U18** and cannot be reclassified as an automatic DOM test or postponed to TL-U19 without an accepted spec amendment; a dated SHA-bound human test template is provided. Native zoom is also a manual release check. The previously stale manual publisher export map now checks the schema-2 Node entry and `thl` binary. No package was published.
 - TL-U10 adds a separately packed Node 24+ `thl` CLI with strict
   `validate`, `materialize` and `check` commands. Materialization computes

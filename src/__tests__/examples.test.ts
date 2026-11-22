@@ -236,6 +236,17 @@ describe("TL-U09 — first-party schema-2 reference contract", () => {
 		expect(edge?.source.eventIds).toEqual(["chargeFirstSent"]);
 		expect((edge?.data as { sentCurrent?: number }).sentCurrent).toBe(1);
 		expectPhases(firstSequence, "paymentFirst", 1, 0, 0, 0, ["chargeFirstSent"]);
+		for (const [stepId, eventId, from, to] of [
+			["queuePayment", "enqueueSent", "api", "queue"],
+			["queueRetry", "rescheduleSent", "worker", "queue"],
+			["sendReply", "resultSent", "provider", "worker"],
+			["reportPayment", "paymentReportSent", "worker", "api"],
+			["notifyCustomer", "noticeSent", "api", "customer"],
+		] as const) {
+			const sequence = atStep(trace, stepId, "sequence");
+			const event = sequence.items.find(item => item.role === "event" && item.source.eventIds?.includes(eventId));
+			expect(event?.data).toMatchObject({ phase: "sent", fromEntityId: from, toEntityId: to });
+		}
 		for (const kind of ["graph", "state-table"] as const) {
 			expectProjectedCell(atStep(trace, "sendCharge", kind), kind,
 				"provider", { status: "known", value: { chargedKeys: [], count: 0 } });

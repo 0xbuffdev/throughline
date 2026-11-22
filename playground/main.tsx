@@ -1,51 +1,34 @@
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { compileArtifact, serializeArtifact } from "../src/index.js";
-import { EXAMPLES } from "../src/examples.js";
-import { ThroughlineGraphPlayer } from "../src/react/index.js";
+import { checkoutReference } from "../src/reference/checkout.js";
+import { GraphPlayer } from "../src/react/graph-player.js";
+import { MermaidPlayerDiagram } from "../src/react/mermaid/player-diagram.js";
 import "../src/styles/throughline.css";
 import "./style.css";
 
 type Theme = "auto" | "light" | "dark";
 type Viewport = "desktop" | "tablet" | "mobile";
 
-const examples = EXAMPLES.map(example => ({
-	...example,
-	trace: compileArtifact(example.artifact),
-	source: "~~~thl\n" + serializeArtifact(example.artifact) + "\n~~~",
-}));
+const trace = compileArtifact(checkoutReference.artifact);
+const source = "~~~thl\n" + serializeArtifact(checkoutReference.artifact) + "\n~~~";
 
 function App() {
-	const [exampleId, setExampleId] = useState("factorial");
 	const [theme, setTheme] = useState<Theme>("auto");
 	const [viewport, setViewport] = useState<Viewport>("desktop");
-	const current = examples.find(example => example.id === exampleId);
 
 	return (
 		<main className="preview-app" data-theme={theme}>
 			<div className="preview-shell">
 				<header className="preview-heading">
 					<p className="preview-eyebrow">Throughline / schema-2 development preview</p>
-					<h1>Reference evidence and player review</h1>
+					<h1>Throughline player preview</h1>
 					<p>
-						Explore independently checked, authored models. Graphs and sequences
-						reveal declared evidence; they do not execute source code or infer
-						undocumented events.
+						Try the Mermaid Graph and Sequence views with the compact player.
 					</p>
 				</header>
 
 				<section className="preview-toolbar" aria-label="Preview settings">
-					<label htmlFor="preview-example">
-						Reference model
-						<select
-							id="preview-example"
-							value={exampleId}
-							onChange={event => setExampleId(event.currentTarget.value)}
-						>
-							{examples.map(example =>
-								<option key={example.id} value={example.id}>{example.title}</option>)}
-						</select>
-					</label>
 					<label htmlFor="preview-theme">
 						Theme
 						<select id="preview-theme" value={theme}
@@ -67,47 +50,38 @@ function App() {
 				</section>
 
 				<div className="preview-frame" data-width={viewport}>
-					{current ? (
-						<ThroughlineGraphPlayer
-							key={current.id}
-							trace={current.trace}
-							title={current.title}
-							theme={theme}
-							narration
-						/>
-					) : null}
+					<GraphPlayer
+						trace={trace}
+						title={checkoutReference.title}
+						theme={theme}
+						narration
+						DiagramRenderer={MermaidPlayerDiagram}
+					/>
 				</div>
 
-				{current && (
-					<section aria-label="Matched static explanation and comprehension">
-						<h2>Static explanation</h2>
-						<p>{current.explanation}</p>
-						<h3>Comprehension questions</h3>
-						<ol>
-							{current.questions.map(question => (
-								<li key={question.id}>
-									<strong>{question.question}</strong>
-									<p>{question.expectedAnswer}</p>
-									<small>Evidence: {question.evidenceEventIds.join(", ")}</small>
-								</li>
-							))}
-						</ol>
-						<h3>Evidence limits</h3>
-						<ul>
-							{current.caveats.map(text => <li key={text}>{text}</li>)}
-						</ul>
-					</section>
-				)}
+				<section aria-label="Matched static explanation and comprehension">
+					<h2>Static explanation</h2>
+					<p>{checkoutReference.explanation}</p>
+					<h3>Comprehension questions</h3>
+					<ol>
+						{checkoutReference.questions.map(question => (
+							<li key={question.id}>
+								<strong>{question.question}</strong>
+								<p>{question.expectedAnswer}</p>
+								<small>Evidence: {question.evidenceEventIds.join(", ")}</small>
+							</li>
+						))}
+					</ol>
+					<h3>Evidence limits</h3>
+					<ul>
+						{checkoutReference.caveats.map(text => <li key={text}>{text}</li>)}
+					</ul>
+				</section>
 
 				<details className="preview-source">
 					<summary>View strict schema-2 thl source</summary>
-					<pre><code>{current?.source ?? ""}</code></pre>
+					<pre><code>{source}</code></pre>
 				</details>
-				<p className="preview-footnote">
-					Use Player options to inspect source events, histories and compatible views.
-					The static explanation and questions are a matched baseline, not a
-					claim that improved learning outcomes have been measured.
-				</p>
 			</div>
 		</main>
 	);

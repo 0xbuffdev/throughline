@@ -33,8 +33,15 @@ export function routeEdges(
 	relations: Relation[],
 	nodes: Record<string, Box>,
 	groups: Layout["groups"] = [],
+	options: { separateParallel?: boolean } = {},
 ): Record<string, Edge> {
 	const edges: Record<string, Edge> = {};
+	const siblings = new Map<string, Relation[]>();
+	if (options.separateParallel) for (const relation of relations) {
+		const key = JSON.stringify([relation.from, relation.to].sort());
+		const list = siblings.get(key) ?? [];
+		list.push(relation); siblings.set(key, list);
+	}
 	// Use one geometry snapshot for all links rather than allocating per link.
 	const boxes = Object.values(nodes);
 	for (const relation of relations) {
@@ -93,6 +100,51 @@ export function routeEdges(
 			],
 			angle: Math.atan2(to[1] - c2[1], to[0] - c2[0]),
 		};
+	}
+
+	// Explicit parallel/reciprocal routes retain individual identities. The
+	// optional policy leaves historical consumers' geometry unchanged.
+	for (const list of siblings.values()) {
+		if (list.length < 2) continue;
+		for (const [index, relation] of list.entries()) {
+			const edge = edges[relation.id];
+			if (!edge) continue;
+			const a = nodes[relation.from], b = nodes[relation.to];
+			const offset = (index / (list.length - 1) - .5) * 36;
+			const dx = b.x + b.w / 2 - a.x - a.w / 2;
+			const dy = b.y + b.h / 2 - a.y - a.h / 2;
+			if (relation.from === relation.to) {
+				const reach = 24 + index / (list.length - 1) * 24;
+				edge.d = `M${edge.from[0]} ${edge.from[1]}C${edge.from[0] + reach} ${edge.from[1] + reach} ${edge.to[0] - reach} ${edge.to[1] + reach} ${edge.to[0]} ${edge.to[1]}`;
+				edge.label = [(edge.from[0] + edge.to[0]) / 2, edge.from[1] + reach * .75];
+				edge.angle = Math.atan2(-reach, reach);
+				continue;
+			}
+			// Separate simple curves. Bypass routes keep their obstacle-safe
+			// corridors; offset their corridor instead of cutting through cards.
+			const curve = /^M[^C]+C([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+)$/.exec(edge.d);
+			if (curve) {
+				const horizontal = Math.abs(dx) > Math.abs(dy);
+				const values = curve.slice(1).map(Number);
+				const axis = horizontal ? 1 : 0;
+				values[axis] += offset;
+				values[axis + 2] += offset;
+				edge.d = `M${edge.from[0]} ${edge.from[1]}C${values.join(" ")}`;
+				edge.label[axis] += offset * .75;
+				edge.angle = Math.atan2(edge.to[1] - values[3], edge.to[0] - values[2]);
+			} else {
+				const distance = index / (list.length - 1) * 16;
+				if (Math.abs(dx) > Math.abs(dy)) {
+					const y = Math.max(a.y + a.h, b.y + b.h, edge.label[1]) + 12 + distance;
+					edge.d = `M${edge.from[0]} ${edge.from[1]}V${y}H${edge.to[0]}V${edge.to[1]}`;
+					edge.label[1] = y;
+				} else {
+					const x = Math.min(a.x, b.x, edge.label[0]) - 10 - distance;
+					edge.d = `M${edge.from[0]} ${edge.from[1]}H${x}V${edge.to[1]}H${edge.to[0]}`;
+					edge.label[0] = x;
+				}
+			}
+		}
 	}
 
 	// Inline labels never cover node values or other accepted labels. A dense

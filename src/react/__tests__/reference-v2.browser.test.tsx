@@ -35,7 +35,10 @@ it("shows exact checkout message phases and persistence evidence as the user ste
 	);
 	const region = screen.getByRole("region", { name: "Message sequence evidence", exact: true });
 	await expect.element(region).toBeVisible();
-	const next = screen.getByRole("button", { name: "Step forward" });
+ await screen.getByRole("button", { name: "Inspect", exact: true }).click();
+ await screen.getByText("Source details", { exact: true }).click();
+ await screen.getByText("Sequence log", { exact: true }).click();
+ const next = screen.getByRole("button", { name: "Step forward" });
 	let frame = 0;
 	const advanceTo = async (stepId: string) => {
 		const target = trace.frames.findIndex(item => item.id === stepId);

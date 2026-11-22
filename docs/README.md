@@ -5,10 +5,12 @@ and render it with the optional native React player.
 
 ## Using Throughline
 
-- [User guide](user-guide.md): native schema-2 player, state/sequence/graph views, navigation,
+- [User guide](user-guide.md): native schema-2 player, supported state/sequence/graph tabs, camera following, responsive inspection, navigation,
   evidence, provenance, Remark and MDX.
 - [Universal thl contract](grammar.md): strict JSON/prose syntax, event semantics,
   limits and diagnostics.
+- [Model a file import](authoring.md#model-a-file-import): author a send, a
+  receipt and an update in one Markdown fence.
 - [Reference catalog](catalog.md): factorial, matrix, binary and checkout.
 - [Offline CLI and trusted Node host](cli.md): validate, materialize,
   editorial-review gate, check and confinement boundaries.
@@ -21,6 +23,8 @@ and render it with the optional native React player.
 
 - [Architecture](architecture.md): compiler, trace model, presentation and
   trust boundaries.
+- [Mermaid feasibility](mermaid-feasibility.md): compact player preview, graph and sequence adapter,
+  source mapping, synchronized motion proof, measurements and cutover gates.
 - [Reference authoring](authoring.md): building typed, evidence-grounded examples.
 - [Release-quality gate](release-quality.md): measured v2 performance, security, browser evidence and manual accessibility checklist.
 - [Release procedure](releasing.md): exact verification commands, signing,
