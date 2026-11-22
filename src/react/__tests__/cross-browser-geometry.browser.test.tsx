@@ -22,7 +22,7 @@ it("keeps all desktop, tablet and phone toolbar controls inside their bounds wit
 
 	for (const [width, height] of [[1600, 900], [960, 850], [375, 850], [320, 750]] as const) {
 		await page.viewport(width, height);
-		await expect.poll(() => Math.round(document.documentElement.clientWidth)).toBe(width);
+		await expect.poll(() => window.innerWidth).toBe(width);
 		await expect.poll(() => player.scrollWidth <= player.clientWidth).toBe(true);
 
 		const boundary = player.getBoundingClientRect();

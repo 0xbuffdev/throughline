@@ -1420,7 +1420,9 @@
 .thl.player-shell .state-view tr[data-written="true"] { box-shadow: inset 2px 0 var(--thl-change); }
 .thl.player-shell .state-view tr[data-selected="true"] { background: var(--thl-focus-bg); }
 .thl.player-shell .sequence-view { display: flex; flex-direction: column; }
-.thl.player-shell .seq-scroll { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--thl-line); }
+.thl.player-shell .seq-scroll {
+ flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; border: 1px solid var(--thl-line);
+}
 .thl.player-shell .sequence-head { display: grid; position: sticky; top: 0; z-index: 3; min-height: 36px; background: var(--thl-panel); border-bottom: 1px solid var(--thl-line); }
 .thl.player-shell .sequence-head > span { display: flex; min-width: 0; border-right: 1px solid var(--thl-line); }
 .thl.player-shell .sequence-head button { width: 100%; padding: 6px; border: 0; background: transparent; color: var(--thl-text); font-size: var(--thl-ui-small); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
