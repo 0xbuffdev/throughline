@@ -25,6 +25,8 @@ All notable changes to Throughline are recorded here. Package versions follow
   and keep local writes in State and Inspect. Use compact Neo flowcharts
   with current-route captions and keep Sequence headers visible as explicit
   requests and replies scroll past.
+- Open Inspect on the current step, selected transfer or selected entity.
+  Expand Source details for exact values, history and evidence.
 
 ### Added
 

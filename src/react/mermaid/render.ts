@@ -75,19 +75,29 @@ function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiagram, "s
 			throw new Error("Rendered message mapping unavailable");
 		arrows.forEach((node, index) => {
 			const arrow = node as SVGElement;
-			const id = sends[index].itemId;
+			const { itemId: id, flowLabel } = sends[index];
 			arrow.setAttribute("data-thl-motion-item", id);
+			arrow.setAttribute("data-thl-item-id", id);
 			bindDirection(root, arrow);
+			const name = "Inspect transfer " + (flowLabel ?? sends[index].label);
+			const caption = arrow.previousElementSibling;
+			if (caption?.matches(".messageText")) bindItem(caption, id, name);
+			else bindItem(arrow, id, name);
 			for (let label = arrow.previousElementSibling; label?.matches(".messageText");
 				label = label.previousElementSibling) {
 				label.setAttribute("data-thl-motion-label", id);
+				label.setAttribute("data-thl-item-id", id);
 			}
 		});
 		const phases = proof.elements.filter(entry => entry.role === "event" && !entry.sent);
 		const notes = [...root.querySelectorAll(".note")];
 		if (notes.length !== phases.length || notes.some(note => !note.parentElement?.querySelector(".noteText")))
 			throw new Error("Rendered message phase mapping unavailable");
-		notes.forEach((note, index) => note.parentElement!.setAttribute("data-thl-phase-item", phases[index].itemId));
+		notes.forEach((note, index) => {
+			const entry = phases[index];
+			note.parentElement!.setAttribute("data-thl-phase-item", entry.itemId);
+			bindItem(note.parentElement!, entry.itemId, "Inspect " + entry.label);
+		});
 
 		const lifelines = root.querySelectorAll<SVGLineElement>(".actor-line");
 		const actors = proof.elements.filter(entry => entry.role === "entity");

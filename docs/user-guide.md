@@ -137,9 +137,11 @@ remain separate phase markers. Motion occurs only on forward sends and is
 disabled for reduced-motion preferences, direct seeking and rewind.
 Escape closes the inspector or Options and
 returns focus to its control. Options provides timeline restart, direct step
-navigation and supported display controls. **Explain / Inspect** shows exact
-history and evidence IDs, including what remains unknown. Collapsing
-a group and changing presentation cannot change committed state.
+navigation and supported display controls. **Inspect** summarizes the current
+step. Select a node or State row for its current value and latest update. Select
+an arrow to see the sender, recipient and recorded phases. Expand **Source
+details** for exact values, history, frame comparisons and source evidence IDs.
+Collapsing a group and changing presentation cannot change committed state.
 Keyboard-accessible controls and reduced-motion presentation apply;
 narration is optional and must not alter the model.
 

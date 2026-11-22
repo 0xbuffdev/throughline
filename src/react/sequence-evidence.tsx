@@ -28,11 +28,12 @@ const PAGE_SIZE = 120;
  * Hiding DOM rows never changes source truth or the projection.
  */
 export function SequenceEvidence({
-	view, selectedId, onSelect,
+	view, selectedId, onSelect, onInspect,
 }: {
 	view: ViewDescriptor;
 	selectedId: Id | null;
 	onSelect: (id: Id) => void;
+	onInspect: (id: Id) => void;
 }): React.JSX.Element {
 	const [eventPage, setEventPage] = useState(0);
 	const [correlationPage, setCorrelationPage] = useState(0);
@@ -156,6 +157,7 @@ export function SequenceEvidence({
 							<th scope="row">
 								<details><summary>{item.label}</summary>
 									<p>{item.description}</p>
+									<button type="button" onClick={() => onInspect(item.id)}>Inspect {item.label}</button>
 								</details>
 							</th>
 							<td>{message ? <code>{text(field(item, "messageId"))}</code> : "—"}</td>

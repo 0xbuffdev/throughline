@@ -21,7 +21,7 @@ async function openEvidence(screen: Awaited<ReturnType<typeof render>>) {
  if (trigger.element().getAttribute("aria-pressed") !== "true") await trigger.click();
  const details = document.querySelector<HTMLDetailsElement>(".evidence-note");
  if (details && !details.open)
-  await screen.getByText("Changes and evidence", { exact: true }).click();
+  await screen.getByText("Source details", { exact: true }).click();
 }
 async function openSequence(screen: Awaited<ReturnType<typeof render>>) {
  await screen.getByRole("tab", { name: "Sequence" }).click();
@@ -167,7 +167,7 @@ it("preserves frame and source identity switching graph → sequence → graph",
 	await next.click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 10");
 	await screen.getByRole("button", { name: "Select Gateway" }).click();
-	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Gateway");
+	expect(document.querySelector(".inspector .inspect-summary h3")?.textContent).toContain("Gateway");
 	await openSequence(screen);
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 10");
 	expect(document.querySelector('.sequence-head [data-source-entity-ids="gateway"]')
@@ -176,7 +176,7 @@ it("preserves frame and source identity switching graph → sequence → graph",
 	// before selecting another lane, then verify the new selection reopens it.
 	await screen.getByRole("button", { name: "Close inspector" }).click();
 	await screen.getByRole("button", { name: "Inspect Client" }).click();
-	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Client");
+	expect(document.querySelector(".inspector .inspect-summary h3")?.textContent).toContain("Client");
 	await screen.getByRole("tab", { name: "Graph" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 10");
 	expect(document.querySelector('[data-node="client"]')?.getAttribute("aria-pressed"))
@@ -186,7 +186,7 @@ it("preserves frame and source identity switching graph → sequence → graph",
 	await screen.getByRole("tab", { name: "State" }).click();
 	await expect.element(screen.getByRole("region", { name: "State and event table" }))
 		.toBeVisible();
-	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Client");
+	expect(document.querySelector(".inspector .inspect-summary h3")?.textContent).toContain("Client");
 });
 
 it("works at mobile width and retains chronological source rows", async () => {

@@ -34,8 +34,8 @@ it("uses a compact evidence scale and contains long source values at narrow embe
  const shell = screen.getByRole("group", { name: "Visualization player" }).element();
  shell.style.width = "375px";
  await screen.getByRole("button", { name: "Select Modeled call stack", exact: true }).click();
- await screen.getByText("Changes and evidence", { exact: true }).click();
- const panel = screen.getByRole("complementary", { name: "Entity inspector" }).element();
+ await screen.getByText("Source details", { exact: true }).click();
+ const panel = screen.getByRole("complementary", { name: "Workflow inspector" }).element();
  for (const width of [900, 375, 260]) {
   shell.style.width = width + "px";
   await expect.poll(() => Math.round(shell.getBoundingClientRect().width)).toBe(width);
@@ -62,7 +62,7 @@ it("browses structured fields without mounting a large tree or omitting exact so
  source.initialState.stack = { status: "known", value: Array.from({ length: 20 }, (_, n) => ({ n, call: `factorial(${n})` })) };
  const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)}/>);
  await screen.getByRole("button", { name: "Select Modeled call stack", exact: true }).click();
- const panel = screen.getByRole("complementary", { name: "Entity inspector" }).element();
+ const panel = screen.getByRole("complementary", { name: "Workflow inspector" }).element();
  const root = panel.querySelector<HTMLDetailsElement>(".current-value .value-tree")!;
  expect(root.querySelector("dl")).toBeNull();
  await screen.getByText("Browse fields", { exact: true }).click();

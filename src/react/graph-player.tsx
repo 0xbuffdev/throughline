@@ -19,9 +19,9 @@ import { SequenceView } from "./sequence-view.js";
 import { sequenceActors } from "../v2/sequence-layout.js";
 import { StateView } from "./state-view.js";
 import { SequenceEvidence } from "./sequence-evidence.js";
-import { InspectPanel } from "./inspect-panel.js";
+import { InspectPanel, type InspectionTarget } from "./inspect-panel.js";
 import { PlayerIcon } from "./player-icons.js";
-import { CellValue, nodeValueLines, summarizeCell, ValueTree } from "./value-display.js";
+import { nodeValueLines, summarizeCell } from "./value-display.js";
 
 export type ThroughlineGraphPlayerProps = {
 	/** Only a compiler-owned, immutable schema-2 trace is accepted. */
@@ -69,13 +69,14 @@ function itemCell(item: ViewItem): Cell | null {
 
 /** One semantic view descriptor, with no special-case v1 domain knowledge. */
 function GraphDiagram({
-	view, geometry, frameIndex, selectedId, onSelect, onExpand, visitedAt, participants, animate,
+	view, geometry, frameIndex, selectedId, onSelect, onInspect, onExpand, visitedAt, participants, animate,
 }: {
 	view: ViewDescriptor;
 	geometry: ReturnType<typeof layoutGraphView>;
 	frameIndex: number;
 	selectedId: Id | null;
 	onSelect: (id: Id) => void;
+	onInspect: (id: Id) => void;
 	onExpand: (id: Id) => void;
 	visitedAt: ReadonlyMap<Id, number>;
 	participants: ReadonlySet<Id>;
@@ -124,12 +125,22 @@ function GraphDiagram({
 						"thl-animate": animate && sent > 0,
 						"thl-aggregate-active": aggregated && sent > 0,
 						"thl-aggregate-visited": aggregated && visited,
-					})} data-source-relation-ids={relationIds.join(" ")}
+					})} role="button" tabIndex={0} aria-label={"Inspect relation " + item.label}
+						onPointerDown={event => event.stopPropagation()}
+						onClick={() => onInspect(item.id)}
+						onKeyDown={event => {
+							if (event.key !== "Enter" && event.key !== " ") return;
+							event.preventDefault();
+							event.stopPropagation();
+							onInspect(item.id);
+						}} data-source-relation-ids={relationIds.join(" ")}
 						data-source-event-ids={item.source.eventIds?.join(" ") ?? ""}
 						data-sent-current={String(sent)}
 						data-visited={String(visited)}>
 						<title>{item.description}</title>
 						<desc>{item.description}</desc>
+						<path className="thl-edge-hit" d={line.d} fill="none" stroke="transparent"
+							strokeWidth={14} pointerEvents="stroke" />
 						<path key={animate && sent > 0 ? "sent-" + frameIndex : "steady"}
 							className="thl-edge" d={line.d} pathLength={1} />
 						<polygon points="0,0 -7,-3.5 -7,3.5"
@@ -261,12 +272,11 @@ export function GraphPlayer({
 		usePlayer(trace, narration && narrating);
 	const [identity, setIdentity] = useState(trace);
 	const [selectedId, setSelectedId] = useState<Id | null>(null);
-	const [selectedItemId, setSelectedItemId] = useState<Id | null>(null);
 	const [sourceRevision, setSourceRevision] = useState(0);
-	const [evidenceOpen, setEvidenceOpen] = useState(false);
+	const [showSource, setShowSource] = useState(false);
 	const [collapsed, setCollapsed] = useState<readonly Id[]>([]);
 	const [viewKind, setViewKind] = useState<ViewKind | undefined>(initialView);
-	const [inspectionMode, setInspectionMode] = useState<"explain" | "inspect">("explain");
+	const [inspection, setInspection] = useState<InspectionTarget | null>(null);
  const inspectorRef = useRef<HTMLElement>(null);
  const inspectorTriggerRef = useRef<HTMLButtonElement>(null);
  const inspectorId = useId();
@@ -285,22 +295,21 @@ export function GraphPlayer({
 	if (identity !== trace) {
 		setIdentity(trace);
 		setSelectedId(null);
-		setSelectedItemId(null);
 		setSourceRevision(current => current + 1);
-		setEvidenceOpen(false);
+		setShowSource(false);
 		setCollapsed([]);
 		setCamera(null);
 		setViewKind(initialView);
-		setInspectionMode("explain");
+		setInspection(null);
   setDrilled(null);
   setFollow(false);
   setSoundOn(false);
   setNarrating(false);
 	}
  useEffect(() => {
-  if (inspectionMode !== "inspect") return;
+  if (!inspection) return;
   inspectorRef.current?.querySelector<HTMLButtonElement>('[aria-label="Close inspector"]')?.focus();
- }, [inspectionMode]);
+ }, [inspection, sourceRevision]);
 	useEffect(() => {
 		if (!narration) setNarrating(false);
 	}, [narration]);
@@ -368,12 +377,6 @@ export function GraphPlayer({
  const effectiveCamera = constrainCamera(layout, viewport,
   follow && followedCamera ? followedCamera : overview);
 	const presentEntities = new Set(inspector.stateAt(frameIndex).presentEntityIds);
-	const selected = selectedId
-		? trace.artifact.entities.find(entity => entity.id === selectedId)
-		: undefined;
-	const selectedValue = selected ? inspector.valueAt(frameIndex, selected.id) : null;
-	const events = view.items.filter(item => item.role === "event" &&
-		(view.kind !== "sequence" || data(item, "current") === true));
 	const step = frameIndex ? trace.artifact.steps[frameIndex - 1] : undefined;
 	const summary = "Step " + (frameIndex + 1) + " of " + trace.frames.length +
 		": " + (step?.label ?? "Initial state") + ". " + view.summary;
@@ -490,19 +493,19 @@ export function GraphPlayer({
  const eventType = !step ? "initial" : currentEvent?.type ?? "no event";
  const hasWrite = step?.events.some(event => event.type === "write") ?? false;
  const origins = [...new Set(trace.artifact.origins.map(origin => origin.kind))].join(" + ");
- const inspectSelected = selected;
- const inspectValue = inspectSelected ? inspector.valueAt(frameIndex, inspectSelected.id) : null;
- const inspectPresent = inspectSelected ? presentEntities.has(inspectSelected.id) : false;
- const inspectHistory = inspectSelected
-  ? inspector.history(inspectSelected.id).filter(entry => entry.frameIndex <= frameIndex)
-  : [];
- const onSelectEntity = (id: Id) => {
-  setSelectedId(id);
-  setSelectedItemId(null);
-  setInspectionMode("inspect");
+ const openInspection = (target: InspectionTarget, source = false) => {
+  setSelectedId(target.kind === "entity" ? target.entityId : null);
+  setInspection(target);
+  setShowSource(source);
+  setSourceRevision(current => current + 1);
  };
- const onOpenEvidence = () => { setEvidenceOpen(true); setInspectionMode("inspect"); };
- const selectedItem = view.items.find(item => item.id === selectedItemId);
+ const onSelectEntity = (entityId: Id) => openInspection({ kind: "entity", entityId });
+ const onOpenEvidence = () => openInspection({ kind: "step" }, true);
+ const closeInspection = () => {
+  setInspection(null);
+  inspectorTriggerRef.current?.focus();
+ };
+ const toggleInspection = () => inspection ? closeInspection() : openInspection({ kind: "step" });
  const onSelectItem = (id: Id) => {
   const item = view.items.find(candidate => candidate.id === id);
   if (!item) return;
@@ -514,10 +517,12 @@ export function GraphPlayer({
    setCollapsed(current => current.filter(group => group !== item.source.groupIds?.[0]));
    return;
   }
-  setSelectedId(null);
-  setSelectedItemId(item.id);
-  setSourceRevision(current => current + 1);
-  onOpenEvidence();
+  const eventId = item.role === "event" ? item.source.eventIds?.[0] : undefined;
+  if (item.source.relationIds?.length && (item.role === "relation" || data(item, "type") === "message"))
+   openInspection({
+   kind: "transfer", relationIds: item.source.relationIds, eventId,
+  });
+  else if (eventId) openInspection({ kind: "event", eventId });
  };
  // Selecting authored elements must never rewrite or reframe their graph
  // geometry. Zoom/pan/follow are only explicit camera controls.
@@ -600,16 +605,11 @@ export function GraphPlayer({
    </div>
    <div className="header-actions">
     <button ref={inspectorTriggerRef} type="button" aria-controls={inspectorId}
-     aria-expanded={inspectionMode === "inspect"} className={inspectionMode === "inspect" ? "active" : ""}
-     aria-label="Inspect" aria-pressed={inspectionMode === "inspect"} onClick={() => {
-      setInspectionMode(current => current === "inspect" ? "explain" : "inspect");
-     }}><PlayerIcon name="inspect"/><span>Inspect</span></button>
+     aria-expanded={!!inspection} className={inspection ? "active" : ""}
+     aria-label="Inspect" aria-pressed={!!inspection} onClick={toggleInspection}><PlayerIcon name="inspect"/><span>Inspect</span></button>
     <PlayerOptions state={state} dispatch={dispatch}
      diagramControls={diagramControls}
-     inspection={{ enabled: inspectionMode === "inspect",
-      toggle: () => {
-       setInspectionMode(current => current === "inspect" ? "explain" : "inspect");
-      } }}
+     inspection={{ enabled: !!inspection, toggle: toggleInspection }}
      sound={{ enabled: soundOn, available: soundAvailable, toggle: toggleSound }}
      narration={narration ? { enabled: narrating, available: voice.available, toggle: voice.toggle } : undefined}
      fullscreen={{ active: fullscreen, available: fullscreenAvailable, toggle: toggleFullscreen }}/>
@@ -634,7 +634,7 @@ export function GraphPlayer({
    </div>
    <div className="truth-note"><span>Source</span> {origins}</div>
   </div>
-  <div className={"player-content " + (inspectionMode === "inspect" ? "with-inspector" : "")}>
+  <div className={"player-content " + (inspection ? "with-inspector" : "")}>
    <div className="canvas" ref={canvasRef} id={viewPanelId}
     role="tabpanel" aria-labelledby={viewPanelId + "-" + view.kind}>
     <div className="canvas-meta">
@@ -681,12 +681,12 @@ export function GraphPlayer({
        <title>{title ?? trace.artifact.title ?? "Throughline graph"}</title>
        <desc>{view.summary}</desc>
        <GraphDiagram view={view} geometry={geometry} frameIndex={frameIndex}
-        selectedId={selectedId} onSelect={onSelectEntity}
+        selectedId={selectedId} onSelect={onSelectEntity} onInspect={onSelectItem}
         onExpand={id => setCollapsed(current => current.filter(item => item !== id))}
         visitedAt={firstSent} participants={participants} animate={motion.animate}/>
       </svg>
       <div className="canvas-hint">
-       <span>Drag to pan · scroll to zoom · click a node to inspect</span>
+       <span>Drag to pan · scroll to zoom · select a node or arrow to inspect</span>
        <div className="zoom-tools" role="toolbar" aria-label="Diagram navigation">
         <button type="button" aria-label="Follow active" title="Follow authored focus"
          aria-pressed={follow} onClick={() => {
@@ -703,67 +703,30 @@ export function GraphPlayer({
        </div>
       </div>
      </div> : view.kind === "sequence"
-     ? <SequenceView view={view} actors={actors} present={presentEntities} selectedId={selectedId} onSelect={onSelectEntity} animate={motion.animate && ((state.playing && lastAction?.type === "tick") || (lastAction?.type === "step" && lastAction.animate === true))}/>
+     ? <SequenceView view={view} actors={actors} present={presentEntities} selectedId={selectedId}
+       onSelect={onSelectEntity} onInspect={onSelectItem}
+       animate={motion.animate && ((state.playing && lastAction?.type === "tick") || (lastAction?.type === "step" && lastAction.animate === true))}/>
      : <StateView view={view} selectedId={selectedId}
        inspector={inspector} frameIndex={frameIndex} onSelect={onSelectEntity}/>}
    </div>
-   {inspectionMode === "inspect" && <aside ref={inspectorRef} id={inspectorId} className="inspector"
-    aria-label={selectedItem ? "Source inspector" : "Entity inspector"}
+   {inspection && <aside ref={inspectorRef} id={inspectorId} className="inspector"
+    aria-label="Workflow inspector"
     onKeyDown={event => {
      if (event.key !== "Escape") return;
      event.preventDefault(); event.stopPropagation();
-     setInspectionMode("explain"); inspectorTriggerRef.current?.focus();
+     closeInspection();
     }}>
-    <div className="inspector-top"><span>{selectedItem ? "INSPECT SOURCE" : "INSPECT ENTITY"}</span>
-     <button type="button" aria-label="Close inspector" onClick={() => { setInspectionMode("explain"); inspectorTriggerRef.current?.focus(); }}>×</button>
+    <div className="inspector-top"><span>{
+     { step: "This step", entity: "This entity", transfer: "This transfer", event: "This event" }[inspection.kind]
+    }</span>
+     <button type="button" aria-label="Close inspector" onClick={closeInspection}>×</button>
     </div>
-    {inspectSelected ? <>
-     <div className="entity-heading">
-      <i/><div><strong>{inspectSelected.label}</strong><code>entity:{inspectSelected.id}</code></div>
-     </div>
-     <dl>
-      <div><dt>Presence</dt><dd><span className="known">
-       {inspectPresent ? "present" : "not present"}</span></dd></div>
-      <div className="current-value"><dt>Current value</dt><dd>
-       <CellValue cell={!inspectPresent ? { status: "absent" } : inspectValue ?? { status: "absent" }}
-        label={"current value of " + inspectSelected.id}/>
-       {inspectPresent && inspectValue?.status === "known" && inspectValue.value !== null &&
-        typeof inspectValue.value === "object" && <ValueTree key={frameIndex + ":" + inspectSelected.id}
-         value={inspectValue.value} name="Browse fields"/>}
-      </dd></div>
-      <div><dt>Frame</dt><dd>#{frameIndex} · committed</dd></div>
-     </dl>
-     <div className="history-title"><span>RECORDED HISTORY</span><b>{inspectHistory.length}</b></div>
-     {!inspectHistory.length && <p className="history-empty">No writes recorded yet.</p>}
-     {[...inspectHistory].reverse().slice(0, 60).map(entry => <div className="history-item"
-      key={entry.eventId} data-source-event-ids={entry.eventId}>
-      <i/><div><strong>{entry.eventId}</strong>
-       <span>Explicit write · {entry.originId} · frame #{entry.frameIndex}</span>
-       <code>{entry.path.length ? JSON.stringify(entry.path) : "Whole entity"}: {summarizeCell(entry.after)}</code>
-      </div>
-     </div>)}
-     {inspectHistory.length > 60 && <p className="history-empty">
-      Showing latest 60 writes; all records available in source inspection.</p>}
-    </> : selectedItem ? <div className="diagram-source"
-     data-source-relation-ids={selectedItem.source.relationIds?.join(" ")}
-     data-source-event-ids={selectedItem.source.eventIds?.join(" ")}>
-     <strong>{selectedItem.label}</strong>
-     <p>{selectedItem.description}</p>
-    </div> : !evidenceOpen && <p className="history-empty">{trace.artifact.entities.length
-     ? "Choose an entity in the graph or Player options to inspect its state."
-     : "No entities declared."}</p>}
-    <details className="evidence-note" open={evidenceOpen}
-     onToggle={event => setEvidenceOpen(event.currentTarget.open)}>
-     <summary>Changes and evidence</summary>
-     <p>Only explicit modeled dependencies are evidence; no additional event is inferred.</p>
-     <InspectPanel key={sourceRevision} trace={trace} inspector={inspector} frameIndex={frameIndex}
-      selectedEntityId={selectedId} onSelectEntity={id => { setSelectedId(id); setSelectedItemId(null); }}
-      initialRelationId={selectedItem?.source.relationIds?.[0]}
-      initialEventId={selectedItem?.source.eventIds?.[0]}
-      onSeek={to => dispatch({ type: "step", to })}/>
+    <InspectPanel key={sourceRevision} trace={trace} inspector={inspector} frameIndex={frameIndex}
+     target={inspection} showSource={showSource} onSelect={openInspection}
+     onSeek={to => dispatch({ type: "step", to })}>
      {view.kind === "sequence" && <SequenceEvidence view={view} selectedId={selectedId}
-       onSelect={onSelectEntity}/>}
-    </details>
+       onSelect={onSelectEntity} onInspect={onSelectItem}/>}
+    </InspectPanel>
    </aside>}
   </div>
   <footer className="transport"><PlayerControls state={state} dispatch={dispatch}/></footer>
@@ -779,29 +742,9 @@ export function GraphPlayer({
    </summary>
    <div className="caption-body">
     <p className="caption-note">{step?.note ?? view.summary}</p>
-    {step && step.events.length > 0 && <ul className="transfers" aria-label="Declared step evidence">
-     {step.events.slice(0, 80).map(event => <li key={event.id}
-      data-source-event-ids={event.id}>
-      {event.type === "message" ? event.phase : event.type} <b>→</b>
-      <code>{event.id}</code>
-      <span className="thl-sr-only">{events.find(item =>
-       item.source.eventIds?.includes(event.id))?.description ?? ""}</span>
-     </li>)}
-     {step.events.length > 80 && <li>{step.events.length - 80} more events; inspect source for details.</li>}
-    </ul>}
-    <details className="state-snapshot">
-     <summary>Inspect state</summary>
-     <dl>{trace.artifact.entities.map(entity => {
-      const present = presentEntities.has(entity.id);
-      const value = present ? inspector.valueAt(frameIndex, entity.id) : null;
-      return <div key={entity.id} data-source-entity-ids={entity.id}>
-       <dt>{entity.label} <span>({entity.id})</span></dt>
-       <dd><button type="button" onClick={() => onSelectEntity(entity.id)} aria-label={"Inspect state of " + entity.label}>
-        <code>{!present ? "Absent" : summarizeCell(value)}</code><PlayerIcon name="inspect" size={12}/>
-       </button></dd>
-      </div>;
-     })}</dl>
-    </details>
+    <button type="button" className="mermaid-evidence" onClick={() => openInspection({ kind: "step" })}>
+     Inspect this step
+    </button>
    </div>
   </details>
  </div>;

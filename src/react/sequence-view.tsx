@@ -11,12 +11,13 @@ function field(item: ViewItem, key: string): unknown {
 const PAGE = 120;
 
 /** Layout reserves declared actors; evidence stays frame-scoped. */
-export function SequenceView({ view, actors, present, selectedId, onSelect, animate = false }: {
+export function SequenceView({ view, actors, present, selectedId, onSelect, onInspect, animate = false }: {
 	view: ViewDescriptor;
 	actors: readonly SequenceActor[];
 	present: ReadonlySet<Id>;
 	selectedId: Id | null;
 	onSelect: (id: Id) => void;
+	onInspect: (id: Id) => void;
 	animate?: boolean;
 }): React.JSX.Element {
 	const [identity, setIdentity] = useState(actors);
@@ -69,7 +70,8 @@ export function SequenceView({ view, actors, present, selectedId, onSelect, anim
 							data-message-id={message ? String(field(item, "messageId")) : undefined}
 							data-message-phase={phase} data-current-frame={String(current)} title={item.description}>
 							<span className="seq-label"><b>{String(start + offset + 1).padStart(2, "0")}</b>
-								<code>{item.label}</code></span>
+								<button type="button" aria-label={"Inspect " + item.label}
+									onClick={() => onInspect(item.id)}><code>{item.label}</code></button></span>
 							{sent ? <span className={"seq-line" + (animate && current ? " seq-animate" : "")}
 								key={animate && current ? item.id + "-" + view.frameId : item.id}
 								style={{ left: left + "%", width: (self ? 36 / lanes : span) + "%" }}

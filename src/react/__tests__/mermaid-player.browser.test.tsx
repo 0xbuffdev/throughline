@@ -100,10 +100,33 @@ it("updates Graph transfer paint without relayout and opens the exact source in 
 	expect(getComputedStyle(path).markerEnd).toContain("thl-current");
 	(path as SVGElement).focus();
 	await userEvent.keyboard("{Enter}");
-	await expect.element(screen.getByRole("complementary", { name: "Source inspector" })).toBeVisible();
-	const source = screen.container.querySelector(".diagram-source");
+	await expect.element(screen.getByRole("complementary", { name: "Workflow inspector" })).toBeVisible();
+	const source = screen.container.querySelector(".inspect-summary");
 	expect(source?.getAttribute("data-source-relation-ids")).toBe("request");
 	expect(source?.getAttribute("data-source-event-ids")).toBe("requestSent");
+	await expect.element(screen.getByText("This transfer", { exact: true })).toBeVisible();
+	expect(screen.container.querySelector(".thl-v2-inspect")).toBeNull();
+}, 60_000);
+
+it("inspects the exact message when selecting a drawn sequence arrow, including when seeking backwards", async () => {
+	const trace = compileArtifact(retryCheckout());
+	const screen = await render(<GraphPlayer trace={trace} initialView="sequence" DiagramRenderer={MermaidPlayerDiagram}/>);
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	const arrow = screen.getByRole("button", { name: /^Inspect transfer / });
+	await expect.element(arrow).toBeVisible();
+	(arrow.element() as SVGElement).focus();
+	await userEvent.keyboard("{Enter}");
+	const panel = screen.getByRole("complementary", { name: "Workflow inspector" });
+	await expect.element(panel.getByText("This transfer", { exact: true })).toBeVisible();
+	const phase = (name: string) => panel.getByText(name, { exact: true }).element().nextElementSibling?.textContent;
+	expect(phase("sent")).toBe("Recorded");
+	expect(phase("received")).toBe("Not recorded");
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	expect(phase("received")).toBe("Recorded");
+	await screen.getByRole("button", { name: "Step back" }).click();
+	await screen.getByRole("button", { name: "Step back" }).click();
+	await expect.element(panel.getByText("This event is outside the current step history.")).toBeVisible();
+	expect(panel.element().querySelector('[data-source-event-ids="originalSent"]')).toBeNull();
 }, 60_000);
 
 it("keeps graph playback neutral on a write-only step", async () => {
@@ -129,7 +152,7 @@ it("uses the native state and evidence fallback for an oversized graph", async (
 	await expect.element(screen.getByText("This diagram exceeds the preview display limit.")).toBeVisible();
 	await expect.element(screen.getByRole("region", { name: "State and event table" })).toBeVisible();
 	await screen.getByRole("button", { name: "Changes and evidence", exact: true }).click();
-	await expect.element(screen.getByRole("complementary", { name: "Entity inspector" })).toBeVisible();
+	await expect.element(screen.getByRole("complementary", { name: "Workflow inspector" })).toBeVisible();
 }, 60_000);
 
 it("keeps the follow preference through topology without jumping to unrelated focus", async () => {

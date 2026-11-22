@@ -63,7 +63,7 @@ it("keeps a bounded side panel, mobile bottom sheet and a single reading scroll"
   const originalViewBox = svg.getAttribute("viewBox");
   const originalNode = shell.querySelector('[data-node="client"]')?.getAttribute("transform");
   await screen.getByRole("button", { name: "Inspect", exact: true }).click();
-  const inspector = screen.getByRole("complementary", { name: "Entity inspector" });
+  const inspector = screen.getByRole("complementary", { name: "Workflow inspector" });
   await expect.element(inspector).toBeVisible();
   const panel = inspector.element();
   const panelRect = panel.getBoundingClientRect();
@@ -81,7 +81,7 @@ it("keeps a bounded side panel, mobile bottom sheet and a single reading scroll"
   expect(svg.getAttribute("viewBox")).toBe(originalViewBox);
   expect(shell.querySelector('[data-node="client"]')?.getAttribute("transform")).toBe(originalNode);
   expect(shell.scrollWidth).toBeLessThanOrEqual(shell.clientWidth + 2);
-  await screen.getByText("Changes and evidence", { exact: true }).click();
+  await screen.getByText("Source details", { exact: true }).click();
   const evidence = panel.querySelector<HTMLElement>(".thl-v2-inspect")!;
   expect(evidence).not.toBeNull();
   expect(getComputedStyle(evidence).overflowY).toBe("visible");
@@ -223,7 +223,7 @@ it("keeps Options inside a narrow embed, dismisses with Escape and restores insp
  await inspect.click();
  await expect.element(screen.getByRole("button", { name: "Close inspector" })).toHaveFocus();
  await userEvent.keyboard("{Escape}");
- expect(screen.getByRole("complementary", { name: "Entity inspector" }).query()).toBeNull();
+ expect(screen.getByRole("complementary", { name: "Workflow inspector" }).query()).toBeNull();
  await expect.element(inspect).toHaveFocus();
 });
 

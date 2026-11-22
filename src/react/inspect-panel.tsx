@@ -2,10 +2,134 @@ import type * as React from "react";
 import { useMemo, useState } from "react";
 import { projectInspection, type InspectionClaim, type InspectionEvidence, type InspectionView } from "../v2/inspection.js";
 import type {
-	CompiledTrace, Id, Path, StateChange, TraceInspector,
+	CompiledTrace, Id, Path, SemanticEvent, StateChange, TraceInspector,
 } from "../v2/model.js";
+import { summarizeCell } from "../v2/value-summary.js";
 import { encodeJson } from "../v2/validator.js";
-import { CellValue, ExactJson } from "./value-display.js";
+import { CellValue, ExactJson, ValueTree } from "./value-display.js";
+
+export type InspectionTarget =
+	| { kind: "step" }
+	| { kind: "entity"; entityId: Id }
+	| { kind: "transfer"; relationIds: readonly Id[]; eventId?: Id }
+	| { kind: "event"; eventId: Id };
+
+const PHASES = ["sent", "received", "processed", "acknowledged"] as const;
+type Message = Extract<SemanticEvent, { type: "message" }>;
+
+function isMessage(event: SemanticEvent): event is Message {
+	return event.type === "message";
+}
+
+export function InspectPanel({ trace, inspector, frameIndex, target, showSource, onSelect, onSeek, children }: {
+	trace: CompiledTrace;
+	inspector: TraceInspector;
+	frameIndex: number;
+	target: InspectionTarget;
+	showSource: boolean;
+	onSelect: (target: InspectionTarget) => void;
+	onSeek: (frameIndex: number) => void;
+	children?: React.ReactNode;
+}): React.JSX.Element {
+	const [sourceOpen, setSourceOpen] = useState(showSource);
+	const { artifact } = trace;
+	const step = artifact.steps[frameIndex - 1];
+	const entity = target.kind === "entity" ? artifact.entities.find(item => item.id === target.entityId) : undefined;
+	const entityLabel = (id: Id) => artifact.entities.find(item => item.id === id)?.label ?? id;
+	const relationLabel = (id: Id) => artifact.relations.find(item => item.id === id)?.label ?? id;
+	const selectedEventId = "eventId" in target ? target.eventId : undefined;
+	const relationIds = target.kind === "transfer" ? target.relationIds : [];
+	const relation = relationIds.length === 1 ? artifact.relations.find(item => item.id === relationIds[0]) : undefined;
+	const currentMessages = step?.events.filter(isMessage).filter(event => relationIds.includes(event.relationId)) ?? [];
+	const messageIds = new Set(currentMessages.map(event => event.messageId));
+	const messageEvents = useMemo(() => target.kind === "transfer" ? artifact.steps.slice(0, frameIndex)
+		.flatMap(chapter => chapter.events.filter(isMessage).filter(event => target.relationIds.includes(event.relationId)))
+		: [], [artifact, frameIndex, target]);
+	const message = selectedEventId ? messageEvents.find(event => event.id === selectedEventId)
+		: messageIds.size === 1 ? currentMessages[0] : undefined;
+	const phases = new Set(messageEvents.filter(event => (!message || event.messageId === message.messageId))
+		.map(event => event.phase));
+	const selectedEvent = target.kind === "event" && artifact.steps.slice(0, frameIndex)
+		.some(chapter => chapter.events.some(event => event.id === target.eventId))
+		? inspector.eventById(target.eventId) : undefined;
+	const changes = target.kind === "step" ? inspector.diff(Math.max(0, frameIndex - 1), frameIndex) : [];
+	const changed = new Map(changes.map(change => [change.eventId, change]));
+	const visibleEvents = step?.events.slice(0, 8) ?? [];
+	const present = entity && trace.frames[frameIndex].snapshot.presentEntityIds.includes(entity.id);
+	const value = entity && present ? inspector.valueAt(frameIndex, entity.id) : undefined;
+	const latest = entity ? inspector.history(entity.id).filter(entry => entry.frameIndex <= frameIndex).at(-1) : undefined;
+	const [queryEntity, setQueryEntity] = useState<Id | null>(entity?.id ?? null);
+
+	function eventText(event: SemanticEvent): string {
+		if (event.type === "message") {
+			const route = artifact.relations.find(item => item.id === event.relationId)!;
+			const phase = event.phase[0].toUpperCase() + event.phase.slice(1);
+			return phase + " · " + entityLabel(route.from) + " → " + entityLabel(route.to);
+		}
+		if (event.type === "observation") return "Observation · " + entityLabel(event.entityId);
+		if (event.type === "write") {
+			const change = changed.get(event.id);
+			const name = entityLabel(event.entityId) + (event.path.length ? " · " + event.path.join(" › ") : "");
+			if (change?.kind !== "write") return "Set " + name;
+			const before = summarizeCell(change.before);
+			const after = summarizeCell(change.after);
+			return before === after ? "Set " + name + " · " + after : name + " · " + before + " → " + after;
+		}
+		const name = event.target === "entity" ? entityLabel(event.targetId) : relationLabel(event.targetId);
+		return name + (event.present ? " became present" : " became absent");
+	}
+
+	return <>
+		<div className="inspect-summary" data-source-relation-ids={relationIds.join(" ") || undefined}
+			data-source-event-ids={message?.id ?? selectedEvent?.id} data-source-entity-ids={entity?.id}>
+			{target.kind === "step" && <>
+				<h3>{step?.label ?? "Initial state"}</h3>
+				{visibleEvents.length ? <ul aria-label="Events in this step">{visibleEvents.map(event =>
+					<li key={event.id} data-source-event-ids={event.id}>
+						{isMessage(event) ? <button type="button" onClick={() => onSelect({
+							kind: "transfer", relationIds: [event.relationId], eventId: event.id,
+						})}>{eventText(event)}</button> : eventText(event)}
+					</li>)}</ul> : <p>{step ? "No events in this step." : "The workflow starts with its initial values."}</p>}
+				{step && step.events.length > visibleEvents.length && <p>{step.events.length - visibleEvents.length} more events in Source details.</p>}
+			</>}
+			{entity && <>
+				<h3>{entity.label}</h3>
+				<dl>
+					<div className="current-value"><dt>Current value</dt><dd>
+						{value ? <CellValue cell={value} label={"current value of " + entity.id}/> : "Absent at this step"}
+						{value?.status === "known" && value.value !== null && typeof value.value === "object" &&
+							<ValueTree key={frameIndex + ":" + entity.id} value={value.value} name="Browse fields"/>}
+					</dd></div>
+					<div><dt>Latest update</dt><dd>{latest ? <span data-source-event-ids={latest.eventId}>
+						{summarizeCell(latest.before)} → {summarizeCell(latest.after)} · Step {latest.frameIndex + 1}
+					</span> : "No updates yet."}</dd></div>
+				</dl>
+			</>}
+			{target.kind === "transfer" && <>
+				<h3>{relation ? relationLabel(relation.id) : relationIds.length + " connections"}</h3>
+				{relation && <p>{entityLabel(relation.from)} → {entityLabel(relation.to)}</p>}
+				{selectedEventId && !message ? <p>This event is outside the current step history.</p>
+					: relation ? <dl className="inspect-phases" aria-label={message ? "Phases for this message" : "Phases on this connection"}>
+						{PHASES.map(phase => <div key={phase}><dt>{phase}</dt><dd>{phases.has(phase) ? "Recorded" : "Not recorded"}</dd></div>)}
+					</dl> : <ul aria-label="Connections">{relationIds.slice(0, 8).map(id => <li key={id}>
+						<button type="button" onClick={() => onSelect({ kind: "transfer", relationIds: [id] })}>{relationLabel(id)}</button>
+					</li>)}</ul>}
+				{messageIds.size > 1 && !message && <p>Source details lists individual events for this step.</p>}
+			</>}
+			{target.kind === "event" && <h3>{selectedEvent ? eventText(selectedEvent) : "Event outside the current step history"}</h3>}
+		</div>
+		<details className="evidence-note" open={sourceOpen} onToggle={event => setSourceOpen(event.currentTarget.open)}>
+			<summary>Source details</summary>
+			{sourceOpen && <>
+				<AdvancedInspection trace={trace} inspector={inspector} frameIndex={frameIndex}
+					selectedEntityId={queryEntity} onSelectEntity={setQueryEntity} onSeek={onSeek}
+					initialRelationId={message?.relationId ?? relation?.id ?? relationIds[0]}
+					initialEventId={selectedEventId ?? message?.id}/>
+				{children}
+			</>}
+		</details>
+	</>;
+}
 
 const PAGE = 60;
 const CLAIM_PAGE = 12;
@@ -93,7 +217,7 @@ function changeText(change: StateChange): string {
 		: "Presence " + change.target + " " + change.targetId;
 }
 /** The selected frame's chapter always drives all query results. */
-export function InspectPanel({
+function AdvancedInspection({
 	trace, inspector, frameIndex, selectedEntityId, onSelectEntity, onSeek,
 	initialRelationId = "", initialEventId = "",
 }: {

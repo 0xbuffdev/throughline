@@ -13,7 +13,7 @@ const exact = (text: string) => ({ name: text, exact: true } as const);
 const checkout = () => compileArtifact(distributedGraph());
 async function openInspector(screen: Awaited<ReturnType<typeof render>>) {
  await screen.getByRole("button", exact("Inspect")).click();
- await screen.getByText("Changes and evidence", { exact: true }).click();
+ await screen.getByText("Source details", { exact: true }).click();
 }
 
 
@@ -24,7 +24,11 @@ it("uses shared playback frame for canvas and inspector, including precise expli
 	for (let i = 0; i < 3; i++)
 		await screen.getByRole("button", { name: "Step forward" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 4 of 7");
-	await openInspector(screen);
+	await screen.getByRole("button", exact("Inspect")).click();
+	await expect.element(screen.getByText("This step", { exact: true })).toBeVisible();
+	await expect.element(screen.getByRole("list", { name: "Events in this step" })).toBeVisible();
+	expect(view()).toBeNull();
+	await screen.getByText("Source details", { exact: true }).click();
 	await expect.element(screen.getByRole("region", { name: "Evidence inspector" }))
 		.toBeVisible();
 	await expect.element(screen.getByRole("region", { name: "What changed?" }))
@@ -41,6 +45,19 @@ it("uses shared playback frame for canvas and inspector, including precise expli
 	await expect.element(screen.getByRole("img",
 		{ name: "Source-linked graph at current frame" })).toBeVisible();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 7");
+});
+
+it("starts with the selected entity and keeps full history available in Source details", async () => {
+	const screen = await render(<ThroughlineGraphPlayer trace={checkout()} initialView="state-table" />);
+	for (let i = 0; i < 3; i++) await screen.getByRole("button", { name: "Step forward" }).click();
+	await screen.getByRole("button", { name: "Ledger", exact: true }).click();
+	await expect.element(screen.getByText("This entity", { exact: true })).toBeVisible();
+	const panel = screen.getByRole("complementary", { name: "Workflow inspector" });
+	await expect.element(panel.getByText("Latest update", { exact: true })).toBeVisible();
+	expect(view()).toBeNull();
+	await screen.getByText("Source details", { exact: true }).click();
+	await expect.element(panel.getByRole("table", { name: "Only explicit overlapping writes through this frame" }))
+		.toBeVisible();
 });
 
 it("shows unknown, absent and known-null path results and original parent-write history", async () => {

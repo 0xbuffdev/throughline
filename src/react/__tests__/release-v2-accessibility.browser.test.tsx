@@ -64,7 +64,7 @@ it("preserves labeled timeline navigation, explicit evidence and inspect control
 		document.querySelector(".thl-v2-table")?.textContent ??
 		document.body.textContent).toContain("Modeled call stack");
 	await screen.getByRole("button", { name: "Inspect", exact: true }).click();
- await screen.getByText("Changes and evidence", { exact: true }).click();
+ await screen.getByText("Source details", { exact: true }).click();
  await expect.element(screen.getByRole("region", { name: "Evidence inspector" }))
 		.toBeVisible();
 	expect(element.scrollWidth).toBeLessThanOrEqual(element.clientWidth + 2);

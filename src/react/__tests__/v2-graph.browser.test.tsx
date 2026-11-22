@@ -71,7 +71,7 @@ it("collapses and expands nested groups without losing relation/event provenance
 	await screen.getByRole("button", { name: "Player options" }).click();
  const choice = screen.getByRole("combobox", { name: "Select entity" }).element();
 	await userEvent.selectOptions(choice, "gateway");
-	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Gateway");
+	expect(document.querySelector(".inspector .inspect-summary h3")?.textContent).toContain("Gateway");
 	await collapseGroup(screen, "front");
 	const summary = document.querySelector('[data-group-summary="front"]');
 	expect(summary).not.toBeNull();
@@ -88,8 +88,9 @@ it("collapses and expands nested groups without losing relation/event provenance
 	await screen.getByRole("button", { name: "Expand group Frontend" }).click();
 	expect(document.querySelector('[data-node="gateway"]')).not.toBeNull();
 	expect(link("request")?.getAttribute("data-sent-current")).toBe("1");
+	expect(document.querySelector('[data-node="gateway"]')?.getAttribute("aria-pressed")).toBe("true");
 	await screen.getByRole("button", { name: "Inspect", exact: true }).click();
-	expect(document.querySelector(".inspector .entity-heading")?.textContent).toContain("Gateway");
+	await expect.element(screen.getByText("This step", { exact: true })).toBeVisible();
 });
 
 it("paints parent panels first for valid child-before-parent group declarations", async () => {
@@ -146,10 +147,12 @@ it("announces declared non-authored origins without upgrading modeled event evid
 		await screen.getByRole("button", { name: "Step forward" }).click();
 
  await screen.getByText("Details", { exact: true }).click();
- const evidence = screen.getByRole("list", { name: "Declared step evidence" });
+ await screen.getByRole("button", { name: "Inspect this step", exact: true }).click();
+ await screen.getByText("Source details", { exact: true }).click();
+ const evidence = screen.getByRole("list", { name: "Current chapter source events" });
  await expect.element(evidence).toBeVisible();
  expect(evidence.element().textContent).toContain("witness (observed)");
- expect(evidence.element().textContent).toContain("provenance is not independent verification");
+ expect(evidence.element().textContent).toContain("provenance label is not independent verification");
  expect(evidence.element().textContent).not.toContain("Authored presence");
 });
 
@@ -188,6 +191,7 @@ it("presents a truthful table fallback and source-linked values without changing
 	expect(document.querySelector(".state-view")?.textContent).toContain("Unknown: not measured");
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 7");
+	await screen.getByRole("button", { name: "Inspect", exact: true }).click();
 	expect(document.querySelector('[data-source-event-ids="sent"]')).not.toBeNull();
 	// Clicking outside the native popover dismisses it; reopen the options
 	// for a view change, as an actual user would.
