@@ -285,9 +285,9 @@ instead of inventing messages.
 
 ## Local development preview
 
-[The Vite playground](playground) uses the current **source** versions
-of the four schema-2 artifacts and the native player. With Node.js 24+
-and the repository's pinned pnpm version:
+[The Vite playground](playground) uses the checkout reference and the current
+player source, with Mermaid Graph and Sequence and the State table.
+Use Node.js 24+ and the repository's pinned pnpm version.
 
 ~~~sh
 pnpm install --frozen-lockfile
