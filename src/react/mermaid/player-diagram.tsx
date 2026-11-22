@@ -250,6 +250,12 @@ function scrollToSequenceMark(scroller: HTMLElement, host: HTMLElement,
 	else if (focus.right > right) scroller.scrollLeft += focus.right - right;
 }
 
+function pinSequenceHeader(scroller: HTMLElement, host: HTMLElement): void {
+	const header = host.querySelector<SVGGElement>("[data-thl-sequence-header]");
+	const scale = header?.ownerSVGElement?.getScreenCTM()?.d || 1;
+	header?.setAttribute("transform", "translate(0 " + scroller.scrollTop / scale + ")");
+}
+
 export function MermaidPlayerDiagram({
 	trace, view, frameIndex, width, selectedId, groupId, captionId, firstSent, motion, onSelectItem,
 	onSelectEntity, onOpenEvidence, fallback,
@@ -283,13 +289,9 @@ export function MermaidPlayerDiagram({
 		(!currentWindow && proof?.kind === "sequence" && proof.visibleEvents ? proof.elements.at(-1) : undefined);
 	useLayoutEffect(() => {
 		const scroller = sequenceScroll.current;
-		const head = host.current?.querySelector<SVGGElement>("[data-thl-sequence-header]");
-		const svg = head?.ownerSVGElement;
-		if (!scroller || !head || !svg) return;
-		const pinHeader = () => {
-			const scale = svg.getScreenCTM()?.d ?? 1;
-			head.setAttribute("transform", "translate(0 " + scroller.scrollTop / (scale || 1) + ")");
-		};
+		const markup = host.current;
+		if (!visible || proof?.kind !== "sequence" || !scroller || !markup) return;
+		const pinHeader = () => pinSequenceHeader(scroller, markup);
 		pinHeader();
 		scroller.addEventListener("scroll", pinHeader, { passive: true });
 		return () => scroller.removeEventListener("scroll", pinHeader);
@@ -305,6 +307,7 @@ export function MermaidPlayerDiagram({
 		if (frameIndex === 0 || (currentWindow && !currentMark)) sequenceScroll.current.scrollTo(0, 0);
 		else if (currentMark) scrollToSequenceMark(sequenceScroll.current, host.current, currentMark,
 			forward && currentMark === currentSend && !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+		pinSequenceHeader(sequenceScroll.current, host.current);
 	}, [diagram, frameIndex, currentMark?.itemId, currentWindow?.start, width]);
 
 	const instruction = useRef<{ revision: number; source?: string; handled: boolean } | undefined>(undefined);

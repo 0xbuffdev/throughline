@@ -34,9 +34,16 @@ it("keeps three Sequence lanes fixed through a send, receipt and explicit reply"
 	await expect.element(screen.getByRole("button", { name: "Inspect participant Ledger" })).toBeInTheDocument();
 	expect(diagram.element().querySelector(".messageText, .noteText")).toBeNull();
 
+	const cues = new Set<string>();
+	const observer = new MutationObserver(records => {
+		for (const record of records) for (const node of record.addedNodes) {
+			if (node instanceof Element && node.matches("[data-thl-transfer]"))
+				cues.add(node.querySelector("text")?.textContent ?? "");
+		}
+	});
+	observer.observe(screen.getByRole("tabpanel").element(), { childList: true, subtree: true });
 	await screen.getByRole("button", { name: "Step forward" }).click();
-	await expect.poll(() => diagram.element().querySelector("[data-thl-transfer] text")?.textContent)
-		.toBe("Checkout request");
+	await expect.poll(() => cues.has("Checkout request")).toBe(true);
 	expect(lanes()).toEqual(initial);
 	const route = diagram.element().querySelector(".messageLine0");
 	expect(route?.getAttribute("data-from")).toBe("thl_node_0");
@@ -62,7 +69,8 @@ it("keeps three Sequence lanes fixed through a send, receipt and explicit reply"
 	await next.click();
 	await expect.poll(() => diagram.element().querySelector("[data-thl-source], [data-thl-destination]")).toBeNull();
 	await next.click();
-	await expect.poll(() => diagram.element().querySelector("[data-thl-transfer] text")?.textContent).toBe("Checkout reply");
+	await expect.poll(() => cues.has("Checkout reply")).toBe(true);
+	observer.disconnect();
 	const reply = diagram.element().querySelector(".messageLine0[data-thl-active]")!;
 	expect(reply.getAttribute("data-from")).toBe("thl_node_1");
 	expect(reply.getAttribute("data-to")).toBe("thl_node_0");
@@ -294,7 +302,6 @@ it("follows the latest recorded Sequence event vertically and resets on rewind",
 	const sequence = screen.getByRole("region", { name: "Source-linked sequence at current frame" });
 	await expect.element(sequence).toBeVisible();
 	const scroller = sequence.element();
-	const initialViewport = scroller.getBoundingClientRect();
 	await screen.getByRole("button", { name: "Player options" }).click();
 	const replyStep = trace.frames.findIndex(frame => frame.id === "sendReply") + 1;
 	await screen.getByRole("spinbutton", { name: "Go to step" }).fill(String(replyStep));
@@ -305,13 +312,14 @@ it("follows the latest recorded Sequence event vertically and resets on rewind",
 	expect(provider.element().getBoundingClientRect().right).toBeLessThanOrEqual(visibleRight + 1);
 	player.focus();
 	await userEvent.keyboard("{End}");
-	await expect.poll(() => scroller.scrollTop).toBeGreaterThan(0);
-	const header = scroller.querySelector("[data-thl-sequence-header]")!.getBoundingClientRect();
-	expect(Math.abs(header.top - initialViewport.top)).toBeLessThanOrEqual(2);
-	const current = [...scroller.querySelectorAll("[data-thl-motion-item], [data-thl-phase-item]")].at(-1)!;
-	const bounds = current.getBoundingClientRect();
-	expect(bounds.top).toBeGreaterThan(header.bottom);
-	expect(bounds.bottom).toBeLessThanOrEqual(initialViewport.bottom);
+	await expect.poll(() => {
+		const header = scroller.querySelector("[data-thl-sequence-header]")?.getBoundingClientRect();
+		const current = scroller.querySelector('[aria-label="Inspect received · noticeReceived"][data-thl-active]');
+		const mark = current?.getBoundingClientRect();
+		const viewport = scroller.getBoundingClientRect();
+		return Boolean(scroller.scrollTop > 0 && header && mark &&
+			Math.abs(header.top - viewport.top) <= 2 && mark.top > header.bottom && mark.bottom <= viewport.bottom);
+	}).toBe(true);
 	await userEvent.keyboard("{Home}");
 	await expect.poll(() => sequence.element().scrollTop).toBe(0);
 	expect(sequence.element().scrollLeft).toBe(0);
