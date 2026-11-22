@@ -1569,7 +1569,9 @@
 .thl.player-shell .mermaid-scroll {
  min-height: 0; flex: 1; overflow: auto; overscroll-behavior: contain; overflow-anchor: none; scrollbar-gutter: stable;
 }
-.thl.player-shell .mermaid-scroll .mermaid-markup { display: grid; justify-items: center; min-width: max-content; }
+.thl.player-shell .mermaid-scroll .mermaid-markup {
+ display: grid; justify-items: center; min-width: max-content; padding-inline: 12px;
+}
 .thl.player-shell .mermaid-scroll svg { display: block; }
 .thl.player-shell .mermaid-status {
  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px;

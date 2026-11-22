@@ -295,6 +295,14 @@ it("follows the latest recorded Sequence event vertically and resets on rewind",
 	await expect.element(sequence).toBeVisible();
 	const scroller = sequence.element();
 	const initialViewport = scroller.getBoundingClientRect();
+	await screen.getByRole("button", { name: "Player options" }).click();
+	const replyStep = trace.frames.findIndex(frame => frame.id === "sendReply") + 1;
+	await screen.getByRole("spinbutton", { name: "Go to step" }).fill(String(replyStep));
+	await screen.getByRole("button", { name: "Go", exact: true }).click();
+	const provider = screen.getByRole("button", { name: "Inspect participant Simulated provider charges" });
+	await expect.element(provider).toHaveAttribute("data-thl-source", "");
+	const visibleRight = scroller.getBoundingClientRect().left + scroller.clientWidth;
+	expect(provider.element().getBoundingClientRect().right).toBeLessThanOrEqual(visibleRight + 1);
 	player.focus();
 	await userEvent.keyboard("{End}");
 	await expect.poll(() => scroller.scrollTop).toBeGreaterThan(0);

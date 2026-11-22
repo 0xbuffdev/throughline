@@ -179,7 +179,7 @@ export function sequenceProof(trace: CompiledTrace, view: ViewDescriptor,
 	for (const actor of actors) {
 		const id = "thl_" + actor.itemId;
 		actorIds.set(actor.entityId, id);
-		lines.push("participant " + id + " as " + wrappedLabel(actor.label, 14, 3));
+		lines.push("participant " + id + " as " + wrappedLabel(actor.label, 15, 3));
 		elements.push(Object.freeze({ id, itemId: actor.itemId, role: "entity",
 			label: actor.label, description: "Modeled message participant, not evidence of current presence.",
 			source: Object.freeze({ entityIds: Object.freeze([actor.entityId]) }), current: false }));
@@ -204,7 +204,7 @@ export function sequenceProof(trace: CompiledTrace, view: ViewDescriptor,
 		// Mermaid expands lanes for long adjacent messages. Bound their labels
 		// independently of the participant labels and retain the full captions
 		// in source inspection. The arrow already encodes the sent phase.
-		const caption = phase === "sent" ? wrappedLabel(flowLabel, 15, 3, true)
+		const caption = phase === "sent" ? wrappedLabel(flowLabel, 12, 4, true)
 			: label(String(phase)) + "<br/>" + wrappedLabel(messageId, 16, 1, true);
 		// Identical rows can occur on different pages. Include the generated
 		// event ID so cached SVG bindings always identify the correct event.
