@@ -8,7 +8,9 @@ let serial = Promise.resolve();
 let identity = 0;
 
 async function load(): Promise<Mermaid> {
-	return library ??= import("mermaid").then(({ default: mermaid }) => {
+	// Use Mermaid's separate ESM distribution so a host's ordinary package
+	// import can keep its own site configuration and diagram queue.
+	return library ??= import("mermaid/dist/mermaid.esm.min.mjs").then(({ default: mermaid }) => {
 		mermaid.initialize({
 			startOnLoad: false, securityLevel: "strict", suppressErrorRendering: true, htmlLabels: true,
 			theme: "base", look: "classic", layout: "elk",

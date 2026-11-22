@@ -320,7 +320,10 @@ export function MermaidPlayerDiagram({
 		</div>
 		{fallback()}
 	</div>;
-	if (!visible) return <p className="mermaid-loading" role="status">Preparing diagram…</p>;
+	if (!visible) return <div className="mermaid-fallback">
+		<p className="mermaid-loading" role="status">Preparing diagram…</p>
+		{fallback()}
+	</div>;
 	const markup = { __html: visible.svg };
 	if (proof.kind === "sequence") return <div className="sequence-view mermaid-sequence" aria-busy={!diagram}>
 		<div ref={sequenceScroll} className="mermaid-scroll" role="region" aria-label="Source-linked sequence at current frame"
