@@ -9,6 +9,8 @@ and render it with the optional native React player.
   evidence, provenance, Remark and MDX.
 - [Universal thl contract](grammar.md): strict JSON/prose syntax, event semantics,
   limits and diagnostics.
+- [Model a file import](authoring.md#model-a-file-import): author a send, a
+  receipt and an update in one Markdown fence.
 - [Reference catalog](catalog.md): factorial, matrix, binary and checkout.
 - [Offline CLI and trusted Node host](cli.md): validate, materialize,
   editorial-review gate, check and confinement boundaries.
