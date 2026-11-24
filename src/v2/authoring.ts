@@ -137,7 +137,10 @@ export function validateSidecarManifest(input: unknown): SidecarManifest {
 	const entries: SidecarEntry[] = [];
 	const seen = new Set<string>();
 	for (let i = 0; i < manifest.entries.length; i++) {
-		const row = dataRecord(manifest.entries[i], [
+		const slot = Object.getOwnPropertyDescriptor(manifest.entries, String(i));
+		if (!slot || !slot.enumerable || !("value" in slot))
+			reject("THL_MANIFEST", "entries[" + i + "] must be an own data value");
+		const row = dataRecord(slot.value, [
 			"document", "ordinal", "intentSha256", "artifactPath", "artifactSha256", "review",
 		], "entries[" + i + "]");
 		const document = artifactRelativePath(row.document as string);

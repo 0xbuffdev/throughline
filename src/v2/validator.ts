@@ -54,6 +54,40 @@ function wellFormed(text: string, path: string): void {
 
 class Budget {
 	private units = 0;
+	private bytes = 0;
+
+	/** Exact canonical UTF-8 size, charged before allocating encoded JSON. */
+	chargeBytes(count: number, path: string): void {
+		this.bytes += count;
+		if (this.bytes > ARTIFACT_LIMITS.artifactBytes)
+			fail(path, "serialized artifact exceeds 4 MiB UTF-8");
+	}
+
+	stringBytes(text: string, path: string): void {
+		// Every UTF-16 unit needs at least one UTF-8/escaped JSON byte.
+		// Reject enormous strings before scanning them, even repeated aliases.
+		if (text.length + 2 > ARTIFACT_LIMITS.artifactBytes - this.bytes)
+			fail(path, "serialized artifact exceeds 4 MiB UTF-8");
+		let size = 2; // quotation marks
+		for (let i = 0; i < text.length; i++) {
+			const code = text.charCodeAt(i);
+			if (code >= 0xd800 && code <= 0xdbff) {
+				const low = text.charCodeAt(++i);
+				if (!(low >= 0xdc00 && low <= 0xdfff))
+					fail(path, "lone UTF-16 high surrogate is not valid JSON text");
+				size += 4;
+			} else if (code >= 0xdc00 && code <= 0xdfff) {
+				fail(path, "lone UTF-16 low surrogate is not valid JSON text");
+			} else if (code === 0x22 || code === 0x5c ||
+				code === 8 || code === 9 || code === 10 || code === 12 || code === 13) {
+				size += 2;
+			} else if (code < 0x20) size += 6;
+			else size += code < 0x80 ? 1 : code < 0x800 ? 2 : 3;
+			if (size > ARTIFACT_LIMITS.artifactBytes - this.bytes)
+				fail(path, "serialized artifact exceeds 4 MiB UTF-8");
+		}
+		this.chargeBytes(size, path);
+	}
 	visit(path: string): void {
 		if (++this.units > ARTIFACT_LIMITS.validationUnits)
 			fail(path, "validation work limit exceeded (1,000,000 units)");
@@ -75,13 +109,17 @@ function detachJson(
 	if (depth > ARTIFACT_LIMITS.jsonDepth)
 		fail(path, "JSON nesting exceeds 32");
 	budget.visit(path);
-	if (input === null || typeof input === "boolean") return input;
+	if (input === null || typeof input === "boolean") {
+		budget.chargeBytes(input === false ? 5 : 4, path);
+		return input;
+	}
 	if (typeof input === "string") {
-		wellFormed(input, path);
+		budget.stringBytes(input, path);
 		return input;
 	}
 	if (typeof input === "number") {
 		if (!Number.isFinite(input)) fail(path, "JSON numbers must be finite");
+		budget.chargeBytes(JSON.stringify(input).length, path);
 		return input;
 	}
 	if (typeof input !== "object") fail(path, "expected JSON data");
@@ -95,11 +133,16 @@ function detachJson(
 		fail(path, "expected an ordinary JSON array");
 
 	ancestors.add(input);
+	if (isArray && input.length > ARTIFACT_LIMITS.validationUnits)
+		fail(path, "array exceeds validation work limit");
+	// Arbitrary JS records have no cheap own-key count: enumeration itself
+	// allocates a key list before incremental budget checks. The data-only
+	// boundary is not a sandbox for proxies or preallocated hostile objects.
 	const keys = Reflect.ownKeys(input);
+	budget.chargeBytes(2, path); // container delimiters
 	if (isArray) {
 		const length = input.length;
-		if (length > ARTIFACT_LIMITS.validationUnits)
-			fail(path, "array exceeds validation work limit");
+		budget.chargeBytes(Math.max(0, length - 1), path); // commas
 		if (keys.length !== length + 1)
 			fail(path, "array must be dense and contain no extra properties");
 		const copy: unknown[] = [];
@@ -125,10 +168,12 @@ function detachJson(
 	// Null-prototype data records never invoke inherited accessors on assignment
 	// and cannot inherit host-defined toJSON methods.
 	const copy: RecordValue = Object.create(null) as RecordValue;
+	budget.chargeBytes(Math.max(0, keys.length - 1), path); // commas
 	for (const key of keys) {
 		if (typeof key !== "string") fail(path, "symbol keys are not JSON data");
+		budget.stringBytes(key, path);
+		budget.chargeBytes(1, path); // colon
 		budget.visit(path + "." + key);
-		wellFormed(key, path);
 		if (UNSAFE_KEYS.has(key)) fail(path + "." + key, "unsafe record key");
 		const desc = Object.getOwnPropertyDescriptor(input, key);
 		if (!desc || !desc.enumerable || !("value" in desc))
@@ -212,7 +257,7 @@ function member(id: unknown, ids: ReadonlySet<string>, path: string): string {
 }
 
 function pathSegments(input: unknown, path: string): void {
-	for (const [i, segment] of array(input, path).entries()) {
+	for (const [i, segment] of array(input, path, ARTIFACT_LIMITS.jsonDepth).entries()) {
 		const at = path + "[" + i + "]";
 		if (typeof segment === "string") {
 			wellFormed(segment, at);
@@ -288,7 +333,7 @@ function validateStructured(data: unknown): VisualArtifact {
 	}
 
 	const groups = new Map<string, string | undefined>();
-	for (const [i, item] of array(v.groups ?? [], "$.groups", ARTIFACT_LIMITS.groups).entries()) {
+	for (const [i, item] of array(has(v, "groups") ? v.groups : [], "$.groups", ARTIFACT_LIMITS.groups).entries()) {
 		const p = "$.groups[" + i + "]";
 		const r = record(item, p, ["id", "label"], ["parentId"]);
 		const id = identifier(r.id, p + ".id");
@@ -409,7 +454,7 @@ function validateStructured(data: unknown): VisualArtifact {
 	}
 
 	const claims = new Set<string>();
-	for (const [i, item] of array(v.claims ?? [], "$.claims", ARTIFACT_LIMITS.claims).entries()) {
+	for (const [i, item] of array(has(v, "claims") ? v.claims : [], "$.claims", ARTIFACT_LIMITS.claims).entries()) {
 		const p = "$.claims[" + i + "]";
 		const r = record(item, p,
 			["id", "text", "kind", "originId", "evidenceEventIds", "review"]);
@@ -421,7 +466,7 @@ function validateStructured(data: unknown): VisualArtifact {
 			member(e, eventIds, p + ".evidenceEventIds[" + j + "]");
 		enumeration(r.review, p + ".review", new Set(["unreviewed", "reviewed"]));
 	}
-	for (const [i, item] of array(v.views ?? [], "$.views").entries()) {
+	for (const [i, item] of array(has(v, "views") ? v.views : [], "$.views").entries()) {
 		const p = "$.views[" + i + "]";
 		const r = record(item, p, ["kind", "priority"]);
 		enumeration(r.kind, p + ".kind", VIEW_KINDS);
@@ -445,10 +490,15 @@ function inspect(input: unknown, budget: Budget): VisualArtifact {
 	if (!version || !("value" in version) || version.value !== ARTIFACT_SCHEMA_VERSION)
 		fail("$.schemaVersion", "unsupported artifact schema; expected 2");
 	const data = detachJson(input, "$", 0, budget, new WeakSet());
+	return finishArtifact(data);
+}
+
+/** Only detached or parser-owned data may reach this boundary. */
+function finishArtifact(data: unknown): VisualArtifact {
+	if (!data || typeof data !== "object" || Array.isArray(data) ||
+		(data as RecordValue).schemaVersion !== ARTIFACT_SCHEMA_VERSION)
+		fail("$.schemaVersion", "unsupported artifact schema; expected 2");
 	const validated = validateStructured(data);
-	const json = encodeJson(validated);
-	if (new TextEncoder().encode(json).byteLength > ARTIFACT_LIMITS.artifactBytes)
-		fail("$", "serialized artifact exceeds 4 MiB UTF-8");
 	freezeJson(validated);
 	return validated;
 }
@@ -464,11 +514,14 @@ export function validateArtifact(input: unknown): VisualArtifact {
 }
 
 /**
- * Strict JSON lexical gate. JSON.parse alone loses duplicate object keys and
- * must never silently choose the last value. The parser is inert and bounded.
+ * Decode strict JSON directly into owned data, with one structural budget.
+ * Each value and property/array slot is charged exactly as in detachJson.
+ * No second full parse or detach traversal is needed. Native JSON.parse is
+ * used only for a single already-scanned string token (escape decoding).
  */
-function rejectDuplicateJsonKeys(source: string, budget: Budget): void {
+function decodeStrictJson(source: string, budget: Budget): unknown {
 	let cursor = 0;
+	const numberToken = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
 	const whitespace = (): void => {
 		while (cursor < source.length && /[\u0020\u0009\u000a\u000d]/.test(source[cursor]))
 			cursor++;
@@ -492,89 +545,99 @@ function rejectDuplicateJsonKeys(source: string, budget: Budget): void {
 		}
 		return syntax("unterminated string");
 	};
-	const scanValue = (depth: number): void => {
+	const scanValue = (depth: number, path: string): unknown => {
 		if (depth > ARTIFACT_LIMITS.jsonDepth) syntax("JSON nesting exceeds 32");
-		budget.visit("$");
+		budget.visit(path);
 		whitespace();
 		const char = source[cursor];
 		if (char === "{") {
 			cursor++;
-			const seen = new Set<string>();
+			budget.chargeBytes(2, path);
+			const value: RecordValue = Object.create(null) as RecordValue;
 			whitespace();
-			if (source[cursor] === "}") { cursor++; return; }
+			if (source[cursor] === "}") { cursor++; return value; }
 			for (;;) {
 				whitespace();
 				const key = scanString();
-				budget.visit("$." + key);
-				if (seen.has(key)) syntax("duplicate object key: " + key);
-				seen.add(key);
+				budget.stringBytes(key, path);
+				const at = path + "." + key;
+				budget.visit(at);
+				if (has(value, key)) syntax("duplicate object key: " + key);
+				if (UNSAFE_KEYS.has(key)) fail(at, "unsafe record key");
+				budget.chargeBytes(1, path);
 				whitespace();
 				if (source[cursor++] !== ":") syntax("expected colon");
-				scanValue(depth + 1);
+				value[key] = scanValue(depth + 1, at);
 				whitespace();
 				const next = source[cursor++];
-				if (next === "}") return;
+				if (next === "}") return value;
 				if (next !== ",") syntax("expected comma or closing brace");
+				budget.chargeBytes(1, path);
 			}
 		}
 		if (char === "[") {
 			cursor++;
+			budget.chargeBytes(2, path);
+			const value: unknown[] = [];
 			whitespace();
-			if (source[cursor] === "]") { cursor++; return; }
-			for (;;) {
-				budget.visit("$[]");
-				scanValue(depth + 1);
+			if (source[cursor] === "]") { cursor++; return value; }
+			for (let i = 0;; i++) {
+				const at = path + "[" + i + "]";
+				budget.visit(at);
+				Object.defineProperty(value, String(i), {
+					value: scanValue(depth + 1, at), enumerable: true,
+					writable: true, configurable: true,
+				});
 				whitespace();
 				const next = source[cursor++];
-				if (next === "]") return;
+				if (next === "]") return value;
 				if (next !== ",") syntax("expected comma or closing bracket");
+				budget.chargeBytes(1, path);
 			}
 		}
-		if (char === '"') { scanString(); return; }
-		for (const token of ["true", "false", "null"]) {
-			if (source.startsWith(token, cursor)) { cursor += token.length; return; }
+		if (char === '"') {
+			const value = scanString();
+			budget.stringBytes(value, path);
+			return value;
 		}
-		const match = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/.exec(source.slice(cursor));
+		for (const [token, value] of [["true", true], ["false", false], ["null", null]] as const) {
+			if (source.startsWith(token, cursor)) {
+				cursor += token.length;
+				budget.chargeBytes(token.length, path);
+				return value;
+			}
+		}
+		numberToken.lastIndex = cursor;
+		const match = numberToken.exec(source);
 		if (!match) return syntax("expected JSON value");
-		if (!Number.isFinite(Number(match[0]))) syntax("nonfinite JSON number");
+		const value = Number(match[0]);
+		if (!Number.isFinite(value)) syntax("nonfinite JSON number");
 		cursor += match[0].length;
+		budget.chargeBytes(JSON.stringify(value).length, path);
+		return value;
 	};
-	scanValue(0);
+	const value = scanValue(0, "$");
 	whitespace();
 	if (cursor !== source.length) syntax("unexpected trailing content");
+	return value;
 }
 
-/**
- * Parse bounded JSON data without losing duplicate keys. The Node-only sidecar
- * loader uses this lexical gate before the manifest's exact shape validator.
- * This is deliberately not the public artifact-deserialization entry point.
- */
+/** Parse bounded strict JSON for the Node-only sidecar loader. */
 export function parseStrictJsonData(source: string): unknown {
 	if (typeof source !== "string") fail("$", "expected strict JSON text");
-	if (new TextEncoder().encode(source).byteLength > ARTIFACT_LIMITS.artifactBytes)
+	if (source.length > ARTIFACT_LIMITS.artifactBytes ||
+		new TextEncoder().encode(source).byteLength > ARTIFACT_LIMITS.artifactBytes)
 		fail("$", "JSON input exceeds 4 MiB UTF-8");
-	rejectDuplicateJsonKeys(source, new Budget());
-	try {
-		return JSON.parse(source) as unknown;
-	} catch {
-		return fail("$", "invalid JSON text");
-	}
+	return decodeStrictJson(source, new Budget());
 }
 
-/** Parse serialized artifacts, rejecting duplicate JSON keys before decoding. */
+/** Parse directly into owned schema-2 data under one traversal budget. */
 export function parseArtifactJson(source: string): VisualArtifact {
 	if (typeof source !== "string") fail("$", "expected JSON text");
-	if (new TextEncoder().encode(source).byteLength > ARTIFACT_LIMITS.artifactBytes)
+	if (source.length > ARTIFACT_LIMITS.artifactBytes ||
+		new TextEncoder().encode(source).byteLength > ARTIFACT_LIMITS.artifactBytes)
 		fail("$", "serialized artifact exceeds 4 MiB UTF-8");
-	const budget = new Budget();
-	rejectDuplicateJsonKeys(source, budget);
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(source) as unknown;
-	} catch {
-		fail("$", "invalid JSON text");
-	}
-	return inspect(parsed, budget);
+	return finishArtifact(decodeStrictJson(source, new Budget()));
 }
 
 /**

@@ -6,6 +6,7 @@ import {
 	ArtifactValidationError,
 	ARTIFACT_LIMITS,
 	compileArtifact,
+	inspectTrace,
 	serializeArtifact,
 	type Cell,
 	type SemanticEvent,
@@ -478,4 +479,43 @@ describe("TL-U03 — compiler resource-boundary regression", () => {
 		}
 		throw new Error("The 8M budget must count array slots AND their string values");
 	}, 60_000);
+});
+
+
+describe("Compiled state depth boundary", () => {
+	it("allows depth 32 and rejects a nested replacement that makes state unreachable", () => {
+		const input = authored();
+		const nested = (count: number): import("../index.js").JsonValue => {
+			let value: import("../index.js").JsonValue = 0;
+			for (let i = 0; i < count; i++) value = { a: value };
+			return value;
+		};
+		input.initialState.worker = { status: "known", value: nested(25) };
+		input.steps = [];
+		addStep(input, [write("deep", "worker", Array(25).fill("a"),
+			{ status: "known", value: nested(7) })], "deepStep");
+		const trace = compileArtifact(input);
+		expect(trace.frames.length).toBe(2);
+		const inspector = inspectTrace(trace);
+		expect(inspector.valueAt(1, "worker", Array(32).fill("a"))).toEqual({ status: "known", value: 0 });
+		expect(() => inspector.valueAt(1, "worker", Array(33).fill("a"))).toThrow(/depth 32/);
+		addStep(input, [write("tooDeep", "worker", Array(32).fill("a"),
+			{ status: "known", value: { a: 1 } })], "tooDeepStep");
+		assertCompilerRejects(input, "$.steps[1].events[0].value", /compiled value nesting exceeds query depth 32/);
+	});
+});
+
+
+it("keeps mixed record/array replacements inspectable at the depth ceiling", () => {
+	const input = authored();
+	const wrap = (path: (string | number)[]): import("../index.js").JsonValue =>
+		path.reduceRight<import("../index.js").JsonValue>((value, key) =>
+			typeof key === "number" ? [value] : { [key]: value }, 42);
+	const path = Array.from({ length: 32 }, (_, i) => i % 2 ? 0 : "a");
+	input.initialState.worker = { status: "known", value: wrap(path.slice(0, 24)) };
+	input.steps = [];
+	addStep(input, [write("mixed", "worker", path.slice(0, 24),
+		{ status: "known", value: wrap(path.slice(24)) })], "mixedStep");
+	expect(inspectTrace(compileArtifact(input)).valueAt(1, "worker", path))
+		.toEqual({ status: "known", value: 42 });
 });
