@@ -162,6 +162,25 @@ try {
 		"## Semantic model\n\n~~~thl\n" + counterJson + "\n~~~\n\n" +
 		"~~~mermaid\ngraph TD\n~~~\n\n" + "~~~thl\n" + prompt + "\n~~~\n");
 	assert.match(cli("validate", "artifacts/counter.json", "--root", fixtureRoot), /THL_OK validate/);
+	// Real independently installed CLI, no filesystem mocks and no writer
+	// holding the FIFO open. A watchdog kills even a blocking native open.
+	if (process.platform !== "win32") {
+		const fifo = join(fixtureRoot, "artifacts", "pipe.json");
+		const made = spawnSync("mkfifo", [fifo], { timeout: 2_000, killSignal: "SIGKILL", encoding: "utf8" });
+		assert.ifError(made.error);
+		assert.equal(made.status, 0, made.stderr);
+		try {
+			const rejected = spawnSync(process.execPath, [cliPath, "validate", "artifacts/pipe.json", "--root", fixtureRoot], {
+				cwd: consumer, encoding: "utf8", timeout: 10_000, killSignal: "SIGKILL",
+			});
+			assert.ifError(rejected.error);
+			assert.equal(rejected.signal, null);
+			assert.equal(rejected.status, 1);
+			assert.match(rejected.stderr, /THL_IO.*regular file.*pipe\.json/);
+		} finally {
+			rmSync(fifo, { force: true });
+		}
+	}
 	const before = spawnSync("node", [cliPath, "check", "docs", "--root", fixtureRoot],
 		{ cwd: consumer, encoding: "utf8" });
 	assert.notEqual(before.status, 0);

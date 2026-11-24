@@ -192,7 +192,13 @@ export type MaterializationOptions = Readonly<{
  * JSON needs no manifest. Prose requires an exact reviewed materialization.
  */
 export function resolveThlBody(body: string, options: MaterializationOptions = {}): VisualArtifact {
-	const parsed = parseThlBody(body);
+	return resolveParsedThlBody(parseThlBody(body), options);
+}
+
+/** Internal host path: resolve the result of parseThlBody without classifying
+ * or parsing it twice. Callers must supply parser-owned data. This helper
+ * is deliberately not exported by the package entrypoint. */
+export function resolveParsedThlBody(parsed: ThlBody, options: MaterializationOptions = {}): VisualArtifact {
 	let artifact: VisualArtifact;
 	if (parsed.kind === "artifact") {
 		artifact = parsed.value;

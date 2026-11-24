@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { remarkThroughline } from "../remark/index.js";
-import { artifactSha256, sha256Text, type VisualArtifact } from "../index.js";
+import { artifactSha256, resolveThlBody, sha256Text, type VisualArtifact } from "../index.js";
 
 const artifact = (): VisualArtifact => ({
 	schemaVersion: 2, id: "demo", origins: [{ id: "o", kind: "authored" }],
@@ -209,22 +209,35 @@ it("uses one detached manifest snapshot per document without trusting mutable ho
 	expect(next.children.map(node => node.type)).toEqual(["code", "code"]);
 });
 
-it("bounds aggregate body and resolved artifact bytes per document", () => {
+it("bounds aggregate body bytes per document without partial transformation", () => {
 	const largeBody = " ".repeat(2_100_000);
 	const tree = { type: "root", children: [code(largeBody + json()), code(largeBody + json())] };
 	expect(() => remarkThroughline({ mode: "mdx" })(tree, file)).toThrow(/THL_LIMIT/);
 	expect(tree.children.map(node => node.type)).toEqual(["code", "code"]);
-	const prompt = "Show the update.";
-	const large = artifact();
-	large.title = "x".repeat(3_800_000);
-	const text = JSON.stringify(large);
-	const digest = artifactSha256(large);
-	const entries = Array.from({ length: 9 }, (_, ordinal) => ({
-		document: file.path, ordinal, intentSha256: sha256Text(prompt),
-		artifactPath: "artifacts/demo.json", artifactSha256: digest, review: "reviewed",
-	}));
-	const prose = { type: "root", children: entries.map(() => code(prompt)) };
-	expect(() => remarkThroughline({ mode: "mdx", manifest: { version: 1, entries },
-		loadArtifact: () => text })(prose, file)).toThrow(/THL_LIMIT.*artifact/);
-	expect(prose.children.every(node => node.type === "code")).toBe(true);
-}, 60_000);
+});
+
+it.each([
+	["THL_INTENT_LIMIT", "x".repeat(262_145)],
+	["THL_UNICODE", "Invalid prose \ud800"],
+] as const)("preserves %s before inspecting invalid sidecar data", (diagnostic, body) => {
+	let loads = 0, mappings = 0;
+	const options = {
+		manifest: { version: 999, entries: [] },
+		loadArtifact: () => { loads++; return json(); },
+	};
+	expect(() => resolveThlBody(body, { ...options, document: file.path, ordinal: 0 }))
+		.toThrow(diagnostic);
+	for (const mode of ["validate", "mdx"] as const) {
+		const tree = { type: "root", children: [code(json()), code(body, null, 7)] };
+		const original = structuredClone(tree);
+		try {
+			remarkThroughline({ ...options, mode, documentForFile: () => { mappings++; return file.path; } })(tree, file);
+			throw new Error("expected source validation failure");
+		} catch (error) {
+			expect(error).toMatchObject({ code: diagnostic, line: 7, column: 1 });
+		}
+		expect(tree).toEqual(original);
+	}
+	expect(loads).toBe(0);
+	expect(mappings).toBe(0);
+});

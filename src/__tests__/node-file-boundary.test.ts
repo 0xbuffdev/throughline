@@ -106,3 +106,27 @@ it.skipIf(process.platform === "win32")("detects ancestor replacement after temp
 	expect(fs.readdirSync(outside)).toEqual(["manifest.json"]);
 	expect(fs.readFileSync(join(root, "moved", "manifest.json"), "utf8")).toBe("original");
 });
+
+
+it.skipIf(process.platform === "win32")("documents the empty temporary file side effect of a parent swap before exclusive open", () => {
+	const root = directory(), outside = directory();
+	const parent = join(root, "nested");
+	fs.mkdirSync(parent);
+	fs.writeFileSync(join(parent, "manifest.json"), "original");
+	fs.writeFileSync(join(outside, "manifest.json"), "outside-original");
+	hooks.beforeOpen = () => {
+		fs.renameSync(parent, join(root, "moved"));
+		fs.symlinkSync(outside, parent, "dir");
+	};
+	expect(() => new TrustedContentRoot(root).writeManifest("nested/manifest.json", "new data")).toThrow(/THL_PATH/);
+	expect(fs.readFileSync(join(outside, "manifest.json"), "utf8")).toBe("outside-original");
+	expect(fs.readFileSync(join(root, "moved", "manifest.json"), "utf8")).toBe("original");
+	// Outside the supported stable-root threat model: pathname creation
+	// has already occurred before identity checks observe the substitution.
+	// Cleanup intentionally does not unlink through the replaced parent.
+	const temporary = fs.readdirSync(outside).filter(name => name !== "manifest.json");
+	expect(temporary).toHaveLength(1);
+	expect(temporary[0]).toMatch(/^\.manifest\.json\.[0-9a-f]{24}\.tmp$/);
+	expect(fs.statSync(join(outside, temporary[0])).size).toBe(0);
+	expect(fs.readFileSync(join(outside, temporary[0]), "utf8")).toBe("");
+});

@@ -1,5 +1,5 @@
 import {
-	artifactRelativePath, resolveThlBody, ThroughlineAuthoringError, validateSidecarManifest,
+	artifactRelativePath, parseThlBody, resolveParsedThlBody, ThroughlineAuthoringError, validateSidecarManifest,
 	type MaterializationOptions, type SidecarManifest,
 } from "../v2/authoring.js";
 import { ArtifactValidationError, serializeArtifact } from "../v2/validator.js";
@@ -112,15 +112,15 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 					fail("THL_SYNTAX", "expected a thl body string");
 				try {
 					budget.body(node.value as string);
-					// Only prose requires a sidecar key. Direct JSON remains valid
-					// with a missing/absolute VFile path and no host mapping.
-					if ((node.value as string).trim() &&
-						!(node.value as string).trimStart().startsWith("{")) {
+					// Validate/classify the source before touching a manifest or
+					// mapping a document. Only a valid intent needs a sidecar.
+					const parsed = parseThlBody(node.value as string);
+					if (parsed.kind === "intent") {
 						document = mappedDocument();
 						if (!manifest && options.manifest && options.loadArtifact)
 							manifest = validateSidecarManifest(options.manifest);
 					}
-					const artifact = resolveThlBody(node.value as string, {
+					const artifact = resolveParsedThlBody(parsed, {
 						...(document !== undefined ? { document } : {}),
 						ordinal: currentOrdinal,
 						...(manifest !== undefined ? { manifest } : {}),
