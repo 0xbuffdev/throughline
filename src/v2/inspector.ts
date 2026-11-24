@@ -194,7 +194,7 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 	// did not declare causality, not that a different cause was discovered.
 	for (const event of eventsById.values()) {
 		const dependencies = Object.freeze(
-			(event.dependsOn ?? []).map((id) => eventsById.get(id)!));
+			[...new Set(event.dependsOn ?? [])].map((id) => eventsById.get(id)!));
 		dependenciesByEvent.set(event.id, dependencies);
 		evidenceByEvent.set(event.id, Object.freeze({
 			status: dependencies.length ? "explicit" as const : "unmodeled" as const,
@@ -206,7 +206,7 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 		claimsByEvent.set(event.id, []);
 	}
 	for (const claim of artifact.claims ?? [])
-		for (const eventId of claim.evidenceEventIds)
+		for (const eventId of new Set(claim.evidenceEventIds))
 			claimsByEvent.get(eventId)!.push(claim);
 
 	// Expose frozen views, never the mutable Maps or index-building arrays.

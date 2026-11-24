@@ -406,3 +406,26 @@ describe("TL-U07 — pure Explain/Inspect projection", () => {
 		}));
 	}, 60_000);
 });
+
+
+it("indexes repeated evidence references once without rewriting authored source", () => {
+	const source = distributedGraph();
+	source.steps[1].events[0].dependsOn = ["sent", "sent"];
+	source.claims = [{ id: "duplicates", text: "Editorial claim", kind: "causal",
+		originId: "author", review: "unreviewed",
+		evidenceEventIds: ["sent", "sent", "workerOff", "workerOff"] }];
+	const trace = compileArtifact(source);
+	const query = inspectTrace(trace);
+	expect(trace.artifact.steps[1].events[0].dependsOn).toEqual(["sent", "sent"]);
+	expect(trace.artifact.claims![0].evidenceEventIds).toEqual(source.claims[0].evidenceEventIds);
+	expect(query.dependenciesOf("received").map(event => event.id)).toEqual(["sent"]);
+	expect(query.causalEvidenceOf("received").dependencies.map(event => event.id)).toEqual(["sent"]);
+	expect(query.claimsForEvent("sent").map(claim => claim.id)).toEqual(["duplicates"]);
+	const focused = projectInspection(query, { frameIndex: 2, eventId: "sent" }).focused!;
+	expect(focused.claims).toHaveLength(1);
+	expect(focused.claims[0].modeledEvidence.map(evidence => evidence.eventId)).toEqual(["sent"]);
+	expect(focused.claims[0].unmodeledUntilLater).toBe(1);
+	const final = projectInspection(query, { frameIndex: 6, eventId: "sent" }).focused!;
+	expect(final.claims[0].modeledEvidence.map(evidence => evidence.eventId)).toEqual(["sent", "workerOff"]);
+	expect(final.claims[0].unmodeledUntilLater).toBe(0);
+});

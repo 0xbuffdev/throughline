@@ -356,3 +356,41 @@ it("bounds 1,000 claims × 100 cited events with independent page windows and so
 	expect(document.querySelector(".thl-v2")!.scrollWidth)
 		.toBeLessThanOrEqual(document.querySelector(".thl-v2")!.clientWidth);
 }, 60_000);
+
+
+it("shows retained cells for absent entities, including writes while absent and later presence", async () => {
+	const source = distributedGraph();
+	source.steps = [
+		{ id: "queuedUpdate", label: "Update absent worker", events: [
+			{ id: "queuedWrite", originId: "author", type: "write", entityId: "worker",
+				path: [], value: { status: "known", value: null } },
+			{ id: "stillAbsent", originId: "author", type: "topology", target: "entity",
+				targetId: "worker", present: false },
+		] },
+		{ id: "activate", label: "Activate worker", events: [
+			{ id: "activateWorker", originId: "author", type: "topology", target: "entity",
+				targetId: "worker", present: true },
+		] },
+	];
+	source.claims = [];
+	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)} initialView="state-table"/>);
+	const worker = () => document.querySelector('.state-view tr[data-source-entity-ids="worker"]')!;
+	expect(worker().textContent).toContain("Not present");
+	expect(worker().textContent).toContain("Retained modeled cell");
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	expect(worker().textContent).toContain("Not present");
+	expect(worker().textContent).toContain("Known: null");
+	expect(worker().textContent).toContain("queuedWrite");
+	await screen.getByRole("button", { name: "Worker", exact: true }).click();
+	const panel = screen.getByRole("complementary", { name: "Workflow inspector" });
+	expect(panel.element().textContent).toContain("Retained modeled cell");
+	expect(panel.element().textContent).toContain("Known: null");
+	await screen.getByRole("button", { name: "Close inspector" }).click();
+	await screen.getByRole("button", { name: "Inspect event stillAbsent" }).click();
+	expect(panel.element().querySelector("h3")?.textContent).toContain("presence asserted absent (unchanged)");
+	await screen.getByRole("button", { name: "Close inspector" }).click();
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	expect(worker().textContent).not.toContain("Not present");
+	expect(worker().textContent).not.toContain("Retained modeled cell");
+	expect(worker().textContent).toContain("Known: null");
+});

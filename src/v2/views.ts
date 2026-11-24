@@ -144,7 +144,7 @@ function eventDescription(event: SemanticEvent, origin: Origin): string {
 				"; the atomic step commits this change.";
 			break;
 		case "topology":
-			meaning = "Modeled presence change " + event.id + ": " + event.target +
+			meaning = "Modeled presence assertion " + event.id + ": " + event.target +
 				" " + event.targetId + (event.present ? " present" : " absent") + ".";
 			break;
 	}
