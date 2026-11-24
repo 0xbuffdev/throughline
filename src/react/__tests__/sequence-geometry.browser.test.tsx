@@ -77,10 +77,17 @@ it("provides actual state-table associations and an optional title", async () =>
 	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source())}/>);
 	expect(screen.getByRole("heading", { name: "Throughline", exact: true }).query()).toBeNull();
 	await screen.getByRole("tab", { name: "State", exact: true }).click();
-	await expect.element(screen.getByRole("table", { name: "Modeled state at @initial" })).toBeVisible();
-	for (const name of ["Entity", "Presence", "Current value", "Last write"])
-		await expect.element(screen.getByRole("columnheader", { name, exact: true })).toBeVisible();
-	await expect.element(screen.getByRole("rowheader", { name: "B", exact: true })).toBeVisible();
-	await expect.element(screen.getByRole("cell", { name: "Unknown", exact: true })).toBeVisible();
-	await expect.element(screen.getByRole("cell", { name: "Known: null", exact: true })).toBeVisible();
+	const state = screen.getByRole("table", { name: "Modeled state at @initial" });
+	await expect.element(state).toBeVisible();
+	for (const name of ["Entity", "Presence", "Modeled cell value", "Last write"])
+		await expect.element(state.getByRole("columnheader", { name, exact: true })).toBeVisible();
+	await expect.element(state.getByRole("rowheader", { name: "B", exact: true })).toBeVisible();
+	await expect.element(state.getByRole("cell", { name: "Unknown", exact: true })).toBeVisible();
+	await expect.element(state.getByRole("cell", { name: "Known: null", exact: true })).toBeVisible();
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	const evidence = screen.getByRole("table", { name: "Current frame event evidence" });
+	await expect.element(evidence).toBeVisible();
+	for (const name of ["Event", "Declared origin", "Source evidence"])
+		await expect.element(evidence.getByRole("columnheader", { name, exact: true })).toBeVisible();
+	await expect.element(evidence.getByRole("rowheader", { name: "Inspect event sent · send1", exact: true })).toBeVisible();
 });

@@ -298,7 +298,7 @@ never imaginary intermediate states or inferred causal effects.
 query. Missing or incompatible keys/indices inside a known value return
 `{status:"absent"}`, distinct from `{status:"known",value:null}`. Values
 on declared but initially absent entities remain queryable separately from
-modeled presence. Paths reuse the schema's safe string/index vocabulary and
+modeled presence. State-table and compact inspector present retained cells explicitly beside separate presence labels, including known null and unknown cells. The State view (including renderer fallback) also exposes current-frame event evidence in pages of at most 40 source-linked rows; it does not infer additional phases or writes. Repeated authored dependency and claim citation IDs remain intact in the original artifact, but derived query and inspection evidence enumerates distinct IDs in first-occurrence order; repeated citations do not add evidentiary weight. Redundant topology assertions retain their event identity without implying an actual change. Paths reuse the schema's safe string/index vocabulary and
 are limited to depth 32 at the read boundary. Invalid frame indexes and
 undeclared IDs throw `TraceQueryError` rather than disguising invalid input
 as an absent value.

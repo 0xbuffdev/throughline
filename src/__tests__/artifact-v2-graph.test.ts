@@ -198,7 +198,7 @@ describe("TL-U05 — v2 graph projection and truthful source identities", () => 
 		expect(entity.data).toMatchObject({
 			type: "topology", originId: "simulation", originKind: "simulated",
 		});
-		expect(entity.description).toContain("Modeled presence change workerOn");
+		expect(entity.description).toContain("Modeled presence assertion workerOn");
 		expect(entity.description).toContain("Declared origin simulation (simulated)");
 		expect(entity.description).toContain("not independent verification");
 		expect(entity.source.eventIds).toEqual(["workerOn"]);
@@ -451,4 +451,19 @@ describe("TL-U05 — v2 graph projection and truthful source identities", () => 
 			compileProjectRouteMs: Number(duration.toFixed(1)),
 		}));
 	}, 60_000);
+});
+
+
+it("keeps redundant topology assertions as explicit evidence without claiming a transition", () => {
+	const artifact = distributedGraph();
+	artifact.steps[0].events.push({ id: "stillPresent", originId: "author",
+		type: "topology", target: "entity", targetId: "client", present: true });
+	const query = inspectTrace(compileArtifact(artifact));
+	const table = projectView(query, { kind: "state-table", frameIndex: 1 });
+	const event = table.items.find(item => item.source.eventIds?.includes("stillPresent"))!;
+	expect(event.description).toContain("Modeled presence assertion stillPresent");
+	expect(event.description).not.toContain("presence change");
+	expect(query.diff(0, 1)).toContainEqual(expect.objectContaining({
+		kind: "presence", eventId: "stillPresent", before: true, after: true,
+	}));
 });

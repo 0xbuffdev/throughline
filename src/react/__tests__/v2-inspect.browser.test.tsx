@@ -356,3 +356,75 @@ it("bounds 1,000 claims × 100 cited events with independent page windows and so
 	expect(document.querySelector(".thl-v2")!.scrollWidth)
 		.toBeLessThanOrEqual(document.querySelector(".thl-v2")!.clientWidth);
 }, 60_000);
+
+
+it("shows retained cells throughout absence, writes, activation and removal", async () => {
+	const source = distributedGraph();
+	source.initialState!.worker = { status: "unknown", reason: "not sampled" };
+	source.entities.push({ id: "staging", label: "Staging", initiallyPresent: false });
+	source.initialState!.staging = { status: "known", value: { nested: { recorded: true } } };
+	source.steps = [
+		{ id: "queuedUpdate", label: "Update absent worker", events: [
+			{ id: "queuedWrite", originId: "author", type: "write", entityId: "worker",
+				path: [], value: { status: "known", value: null } },
+			{ id: "stillAbsent", originId: "author", type: "topology", target: "entity",
+				targetId: "worker", present: false },
+		] },
+		{ id: "activate", label: "Activate worker", events: [
+			{ id: "activateWorker", originId: "author", type: "topology", target: "entity",
+				targetId: "worker", present: true },
+		] },
+		{ id: "remove", label: "Remove worker", events: [
+			{ id: "removeWorker", originId: "author", type: "topology", target: "entity",
+				targetId: "worker", present: false },
+		] },
+	];
+	source.claims = [];
+	const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)} initialView="state-table"/>);
+	const worker = () => document.querySelector('.state-view tr[data-source-entity-ids="worker"]')!;
+	expect(worker().textContent).toContain("Not present");
+	expect(worker().textContent).toContain("Retained modeled cell");
+	expect(worker().textContent).toContain("Unknown: not sampled");
+	await screen.getByRole("button", { name: "Worker", exact: true }).click();
+	const panel = screen.getByRole("complementary", { name: "Workflow inspector" });
+	expect(panel.element().textContent).toContain("Retained modeled cell");
+	expect(panel.element().textContent).toContain("Unknown: not sampled");
+	await screen.getByRole("button", { name: "Close inspector" }).click();
+	await screen.getByRole("button", { name: "Staging", exact: true }).click();
+	expect(panel.element().textContent).toContain("Not present");
+	expect(panel.element().textContent).toContain("Retained modeled cell");
+	await screen.getByText("Source details", { exact: true }).click();
+	await screen.getByText("Values and write history", { exact: true }).click();
+	await panel.getByRole("textbox", { name: "Inspect path" }).fill('["nested","missing"]');
+	await panel.getByRole("button", { name: "Inspect path" }).click();
+	const queried = panel.getByRole("table", { name: "Previous and current modeled state at requested path" });
+	expect(queried.element().textContent).toContain("Absent at requested path");
+	expect(queried.element().textContent).not.toContain("Unknown");
+	await screen.getByRole("button", { name: "Close inspector" }).click();
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	expect(worker().textContent).toContain("Not present");
+	expect(worker().textContent).toContain("Known: null");
+	expect(worker().textContent).toContain("queuedWrite");
+	await screen.getByRole("button", { name: "Worker", exact: true }).click();
+	expect(panel.element().textContent).toContain("Retained modeled cell");
+	expect(panel.element().textContent).toContain("Known: null");
+	await screen.getByRole("button", { name: "Close inspector" }).click();
+	await screen.getByRole("button", { name: "Inspect event topology · stillAbsent", exact: true }).click();
+	expect(panel.element().querySelector("h3")?.textContent).toContain("presence asserted absent (unchanged)");
+	expect(panel.element().querySelector("h3")?.textContent).not.toContain("became absent");
+	await screen.getByRole("button", { name: "Close inspector" }).click();
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	expect(worker().textContent).not.toContain("Not present");
+	expect(worker().textContent).not.toContain("Retained modeled cell");
+	expect(worker().textContent).toContain("Known: null");
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	expect(worker().textContent).toContain("Not present");
+	expect(worker().textContent).toContain("Retained modeled cell");
+	expect(worker().textContent).toContain("Known: null");
+	expect(worker().textContent).toContain("queuedWrite");
+	await screen.getByRole("button", { name: "Worker", exact: true }).click();
+	expect(panel.element().textContent).toContain("Not present");
+	expect(panel.element().textContent).toContain("Retained modeled cell");
+	expect(panel.element().textContent).toContain("Known: null");
+	expect(panel.element().querySelector('.inspect-summary [data-source-event-ids="queuedWrite"]')).not.toBeNull();
+});

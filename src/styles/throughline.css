@@ -1431,6 +1431,10 @@
 .thl.player-shell .state-view td > span { display: block; }
 .thl.player-shell .state-view tr[data-written="true"] { box-shadow: inset 2px 0 var(--thl-change); }
 .thl.player-shell .state-view tr[data-selected="true"] { background: var(--thl-focus-bg); }
+.thl.player-shell .state-events { padding: 12px 0; min-width: 0; }
+.thl.player-shell .state-events h3 { margin: 8px 0; font-size: var(--thl-ui-small); }
+.thl.player-shell .state-events p { margin: 8px 0; overflow-wrap: anywhere; }
+.thl.player-shell .state-event-pages { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 0; }
 .thl.player-shell .sequence-view { display: flex; flex-direction: column; }
 .thl.player-shell .seq-scroll {
  flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; border: 1px solid var(--thl-line);

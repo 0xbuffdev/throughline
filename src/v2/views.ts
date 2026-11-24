@@ -132,7 +132,7 @@ function eventDescription(event: SemanticEvent, origin: Origin): string {
 	switch (event.type) {
 		case "message":
 			meaning = "Explicit " + event.phase + " message evidence " + event.id +
-				" on relation " + event.relationId +
+				" on relation " + event.relationId + ", message " + event.messageId +
 				". No other message phase or destination persistence is implied.";
 			break;
 		case "observation":
@@ -144,7 +144,7 @@ function eventDescription(event: SemanticEvent, origin: Origin): string {
 				"; the atomic step commits this change.";
 			break;
 		case "topology":
-			meaning = "Modeled presence change " + event.id + ": " + event.target +
+			meaning = "Modeled presence assertion " + event.id + ": " + event.target +
 				" " + event.targetId + (event.present ? " present" : " absent") + ".";
 			break;
 	}

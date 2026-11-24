@@ -15,7 +15,8 @@ const PARTICIPANT_LIMIT = 64;
 const RELATION_LIMIT = 160;
 const CACHE_LIMIT = 3;
 
-function useDiagram(proof: DiagramProof | undefined, trace: DiagramRendererProps["trace"], frameIndex: number) {
+function useDiagram(proof: DiagramProof | undefined, trace: DiagramRendererProps["trace"], frameIndex: number,
+	renderDiagram: typeof renderProof) {
 	const source = proof?.source;
 	const cache = useRef(new Map<string, RenderedDiagram>());
 	const [result, setResult] = useState<{
@@ -30,7 +31,7 @@ function useDiagram(proof: DiagramProof | undefined, trace: DiagramRendererProps
 			return;
 		}
 		const request = new AbortController();
-		void renderProof(proof, request.signal).then(diagram => {
+		void renderDiagram(proof, request.signal).then(diagram => {
 			if (request.signal.aborted) return;
 			cache.current.set(source, diagram);
 			if (cache.current.size > CACHE_LIMIT)
@@ -41,7 +42,7 @@ function useDiagram(proof: DiagramProof | undefined, trace: DiagramRendererProps
 		});
 		return () => request.abort();
 	// Source includes every geometry input and excludes current-frame paint.
-	}, [source, trace]);
+	}, [source, trace, renderDiagram]);
 	const sameView = result?.trace === trace && result.kind === proof?.kind;
 	return {
 		current: sameView && source === result.source ? result.diagram : undefined,
@@ -256,10 +257,20 @@ function pinSequenceHeader(scroller: HTMLElement, host: HTMLElement): void {
 	header?.setAttribute("transform", "translate(0 " + scroller.scrollTop / scale + ")");
 }
 
-export function MermaidPlayerDiagram({
+/** Internal adapter factory. Production uses renderProof; tests can inject a
+ * deterministic asynchronous renderer rejection without replacing the player. */
+export function createMermaidPlayerDiagram(renderDiagram: typeof renderProof) {
+	return function Renderer(props: DiagramRendererProps): React.JSX.Element {
+		return <MermaidPlayerDiagramImpl {...props} renderDiagram={renderDiagram}/>;
+	};
+}
+
+export const MermaidPlayerDiagram = createMermaidPlayerDiagram(renderProof);
+
+function MermaidPlayerDiagramImpl({
 	trace, view, frameIndex, width, selectedId, groupId, captionId, firstSent, motion, onSelectItem,
-	onSelectEntity, onOpenEvidence, fallback,
-}: DiagramRendererProps): React.JSX.Element {
+	onSelectEntity, onOpenEvidence, fallback, renderDiagram,
+}: DiagramRendererProps & { renderDiagram: typeof renderProof }): React.JSX.Element {
 	const direction = width < 520 ? "TB" : "LR";
 	const [unfollowedTrace, setUnfollowedTrace] = useState<typeof trace | null>(null);
 	const [eventWindow, setEventWindow] = useState<{ trace: typeof trace; frame: number; start: number }>();
@@ -278,7 +289,7 @@ export function MermaidPlayerDiagram({
 		if (candidate.elements.filter(entry => entry.role === "entity").length <= PARTICIPANT_LIMIT)
 			return candidate;
 	}, [trace, view, direction, currentWindow, firstSent, frameIndex]);
-	const { current: diagram, previous } = useDiagram(proof, trace, frameIndex);
+	const { current: diagram, previous } = useDiagram(proof, trace, frameIndex, renderDiagram);
 	const host = useRef<HTMLDivElement>(null);
 	const sequenceScroll = useRef<HTMLDivElement>(null);
 	const { revision, forward, durationMs } = motion;

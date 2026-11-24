@@ -263,9 +263,10 @@ export function projectInspection(
 		const evidence = evidenceFor(fact, index);
 		const causal = inspector.causalEvidenceOf(fact.id);
 		const claims = inspector.claimsForEvent(fact.id).map(claim => {
-			const visible = claim.evidenceEventIds.filter(id =>
+			const references = [...new Set(claim.evidenceEventIds)];
+			const visible = references.filter(id =>
 				index.events.get(id)!.frameIndex <= request.frameIndex);
-			const pending = claim.evidenceEventIds.length - visible.length;
+			const pending = references.length - visible.length;
 			return freeze({
 				claim,
 				origin: index.origins.get(claim.originId)!,

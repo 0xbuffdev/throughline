@@ -52,11 +52,11 @@ export function InspectPanel({ trace, inspector, frameIndex, target, showSource,
 	const selectedEvent = target.kind === "event" && artifact.steps.slice(0, frameIndex)
 		.some(chapter => chapter.events.some(event => event.id === target.eventId))
 		? inspector.eventById(target.eventId) : undefined;
-	const changes = target.kind === "step" ? inspector.diff(Math.max(0, frameIndex - 1), frameIndex) : [];
+	const changes = inspector.diff(Math.max(0, frameIndex - 1), frameIndex);
 	const changed = new Map(changes.map(change => [change.eventId, change]));
 	const visibleEvents = step?.events.slice(0, 8) ?? [];
 	const present = entity && trace.frames[frameIndex].snapshot.presentEntityIds.includes(entity.id);
-	const value = entity && present ? inspector.valueAt(frameIndex, entity.id) : undefined;
+	const value = entity ? inspector.valueAt(frameIndex, entity.id) : undefined;
 	const collection = value?.status === "known" && value.value !== null && typeof value.value === "object"
 		? value.value : undefined;
 	const fields = collection && !Array.isArray(collection) ? Object.values(collection) : [];
@@ -83,7 +83,11 @@ export function InspectPanel({ trace, inspector, frameIndex, target, showSource,
 			return before === after ? "Set " + name + " · " + after : name + " · " + before + " → " + after;
 		}
 		const name = event.target === "entity" ? entityLabel(event.targetId) : relationLabel(event.targetId);
-		return name + (event.present ? " became present" : " became absent");
+		const change = changed.get(event.id);
+		const assertion = name + (event.present ? " · presence asserted present" : " · presence asserted absent");
+		if (change?.kind !== "presence") return assertion;
+		return change.before === change.after ? assertion + " (unchanged)"
+			: name + (change.after ? " became present" : " became absent");
 	}
 
 	return <>
@@ -102,11 +106,13 @@ export function InspectPanel({ trace, inspector, frameIndex, target, showSource,
 			{entity && <>
 				<h3>{entity.label}</h3>
 				<dl>
-					<div className="current-value"><dt>Current value</dt><dd>
+					<div><dt>Presence</dt><dd>{present ? "Present" : "Not present"}</dd></div>
+					<div className="current-value"><dt>{present ? "Current value" : "Retained modeled cell"}</dt><dd>
+						{!present && <p>Entity not present; the modeled cell is retained independently of presence.</p>}
 						{collection ? <>
 							<ValueTree key={frameIndex + ":" + entity.id} value={collection} name="Browse fields" inline={inlineFields}/>
 							<ExactJson value={collection} prefix="" label={"current value of " + entity.id} compact/>
-						</> : value ? <CellValue cell={value} label={"current value of " + entity.id}/> : "Absent at this step"}
+						</> : value ? <CellValue cell={value} label={"current value of " + entity.id}/> : "No modeled cell"}
 					</dd></div>
 					<div><dt>Latest update</dt><dd>{latest ? <span data-source-event-ids={latest.eventId}>
 						Step {latest.frameIndex + 1}{latest.path.length > 0 && " · " + latest.path.join(" › ")}

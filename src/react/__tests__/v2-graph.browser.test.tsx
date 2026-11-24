@@ -135,6 +135,9 @@ it("retains source IDs of removed members in a collapsed graphical group summary
 	expect(summary?.getAttribute("data-source-entity-ids")).toBe("ledger worker");
 	expect(summary?.getAttribute("data-source-relation-ids")).toBe("task");
 	expect(summary?.getAttribute("data-source-event-ids")).toBe("taskOff workerOff");
+	expect(summary?.querySelector(".thl-summary-count")?.textContent).toContain("1 present entity");
+	await expect.element(screen.getByRole("button", { name: "Expand group Backend — 1 present entity", exact: true })).toBeVisible();
+	expect(summary?.querySelector(".thl-summary-count")?.textContent).not.toContain("2 present entities");
 	expect(document.querySelector('[data-node="worker"]')).toBeNull();
 	expect(link("task")).toBeUndefined();
 });
@@ -216,4 +219,33 @@ it("fits a mobile host and safely resets presentation on trace replacement", asy
 	await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 1");
 	expect(document.querySelector('[data-group-summary="front"]')).toBeNull();
 	await expect.element(screen.getByRole("button", { name: "Play", exact: true })).toBeDisabled();
+});
+
+
+it("pages current-frame events without inferring phases or mounting unbounded rows", async () => {
+	const artifact = distributedGraph();
+	artifact.steps[0].events.push(...Array.from({ length: 81 }, (_, i) => ({
+		id: "observe" + i, originId: "witness", type: "observation" as const,
+		entityId: "gateway", value: { status: "known" as const, value: i },
+	})));
+	const screen = await render(<ThroughlineGraphPlayer initialView="state-table" trace={compileArtifact(artifact)}/>);
+	const region = screen.getByRole("region", { name: "State and event table" });
+	expect(region.element().textContent).toContain("No events are authored in this frame");
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	const events = screen.getByRole("table", { name: "Current frame event evidence" });
+	expect(events.element().querySelectorAll("tbody tr")).toHaveLength(40);
+	expect(events.element().textContent).toContain("sent · sent");
+	expect(events.element().textContent).toContain("witness (observed)");
+	expect(events.element().querySelector('[data-source-event-ids="observe80"]')).toBeNull();
+	await region.getByRole("button", { name: "Next event page" }).click();
+	await region.getByRole("button", { name: "Next event page" }).click();
+	expect(events.element().querySelectorAll("tbody tr")).toHaveLength(2);
+	await events.getByRole("button", { name: "Inspect event observation · observe80", exact: true }).click();
+	expect(document.querySelector(".inspect-summary h3")?.textContent).toContain("Observation");
+	await screen.getByRole("button", { name: "Close inspector" }).click();
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	expect(events.element().querySelectorAll("tbody tr")).toHaveLength(2);
+	expect(events.element().textContent).toContain("received · received");
+	expect(events.element().textContent).toContain("observation · evidence");
+	expect(events.element().textContent).not.toContain("observe80");
 });
