@@ -1,7 +1,9 @@
 import {
-	artifactRelativePath, resolveThlBody, ThroughlineAuthoringError, type MaterializationOptions,
+	artifactRelativePath, parseThlBody, resolveParsedThlBody, ThroughlineAuthoringError, validateSidecarManifest,
+	type MaterializationOptions, type SidecarManifest,
 } from "../v2/authoring.js";
 import { ArtifactValidationError, serializeArtifact } from "../v2/validator.js";
+import { AUTHORING_LIMITS, DocumentAuthoringBudget } from "../v2/authoring-limits.js";
 
 /** Dependency-free structural mdast and VFile contract. */
 type MarkdownNode = {
@@ -59,6 +61,8 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 
 	return (tree: MarkdownRoot, file: DiagnosticFile): void => {
 		let ordinal = 0;
+		let manifest: SidecarManifest | undefined;
+		const budget = new DocumentAuthoringBudget();
 		const changes: Array<{ siblings: readonly MarkdownNode[]; index: number; node: MarkdownNode }> = [];
 		// VFile paths are often absolute. Never infer a repository-relative
 		// locator by stripping an arbitrary prefix or trusting process.cwd().
@@ -107,17 +111,23 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 				if (typeof node.value !== "string")
 					fail("THL_SYNTAX", "expected a thl body string");
 				try {
-					// Only prose requires a sidecar key. Direct JSON remains valid
-					// with a missing/absolute VFile path and no host mapping.
-					if ((node.value as string).trim() &&
-						!(node.value as string).trimStart().startsWith("{"))
+					budget.body(node.value as string);
+					// Validate/classify the source before touching a manifest or
+					// mapping a document. Only a valid intent needs a sidecar.
+					const parsed = parseThlBody(node.value as string);
+					if (parsed.kind === "intent") {
 						document = mappedDocument();
-					const artifact = resolveThlBody(node.value as string, {
+						if (!manifest && options.manifest && options.loadArtifact)
+							manifest = validateSidecarManifest(options.manifest);
+					}
+					const artifact = resolveParsedThlBody(parsed, {
 						...(document !== undefined ? { document } : {}),
 						ordinal: currentOrdinal,
-						...(options.manifest !== undefined ? { manifest: options.manifest } : {}),
+						...(manifest !== undefined ? { manifest } : {}),
 						...(options.loadArtifact ? { loadArtifact: options.loadArtifact } : {}),
 					});
+					const json = serializeArtifact(artifact);
+					budget.artifact(json);
 					if (mode === "mdx") {
 						if (!siblings || index === undefined)
 							fail("THL_SYNTAX", "thl code node must have a Markdown parent");
@@ -130,7 +140,7 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 								attributes: [{
 									type: "mdxJsxAttribute",
 									name: "artifactJson",
-									value: serializeArtifact(artifact),
+									value: json,
 								}],
 								children: [],
 								...(node.position ? { position: node.position } : {}),
@@ -149,10 +159,28 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 					throw error;
 				}
 			}
-			for (const [childIndex, child] of (node.children ?? []).entries())
-				visit(child, node.children, childIndex);
 		};
-		visit(tree);
+		const limit = (reason: string): never => file.fail("THL_LIMIT: " + reason,
+			{ source: "@0xbuff/throughline", ruleId: "THL_LIMIT" });
+		// Iterative depth-first traversal, with bounded pending storage. Count
+		// all code nodes, not just thl, like the Node discovery path.
+		const pending: { node: MarkdownNode; depth: number; siblings?: readonly MarkdownNode[]; index?: number }[] =
+			[{ node: tree, depth: 0 }];
+		let visited = 0, codeNodes = 0;
+		while (pending.length) {
+			const { node, depth, siblings, index } = pending.pop()!;
+			if (++visited > AUTHORING_LIMITS.astNodes || depth > AUTHORING_LIMITS.astDepth)
+				limit("Markdown/MDX AST exceeds work or depth budget");
+			if (node.type === "code" && ++codeNodes > AUTHORING_LIMITS.codeNodes)
+				limit("too many Markdown/MDX code nodes");
+			visit(node, siblings, index);
+			if (node.children) {
+				if (visited + pending.length + node.children.length > AUTHORING_LIMITS.astNodes)
+					limit("Markdown/MDX AST exceeds work budget");
+				for (let i = node.children.length - 1; i >= 0; i--)
+					pending.push({ node: node.children[i], depth: depth + 1, siblings: node.children, index: i });
+			}
+		}
 		for (const { siblings, index, node } of changes)
 			(siblings as MarkdownNode[])[index] = node;
 	};

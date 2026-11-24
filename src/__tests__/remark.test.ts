@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { remarkThroughline } from "../remark/index.js";
-import { artifactSha256, sha256Text, type VisualArtifact } from "../index.js";
+import { artifactSha256, resolveThlBody, sha256Text, type VisualArtifact } from "../index.js";
 
 const artifact = (): VisualArtifact => ({
 	schemaVersion: 2, id: "demo", origins: [{ id: "o", kind: "authored" }],
@@ -170,4 +170,74 @@ describe("TL-U08 Remark validation", () => {
 		}
 	});
 
+});
+
+
+it("bounds deep and wide host trees without partially transforming earlier fences", () => {
+	const cases: Node[] = [
+		{ type: "root", children: [code(json()), ...Array.from({ length: 100_000 }, () => ({ type: "paragraph" }))] },
+		{ type: "root", children: [code(json()), Array.from({ length: 129 }).reduce<Node>(
+			child => ({ type: "blockquote", children: [child] }), { type: "paragraph" })] },
+		{ type: "root", children: [code(json()), ...Array.from({ length: 10_000 }, () => ({ type: "code", lang: "js", value: "" }))] },
+	];
+	for (const tree of cases) {
+		const original = tree.children![0];
+		expect(() => remarkThroughline({ mode: "mdx" })(tree as { type: string; children: Node[] }, file)).toThrow(/THL_LIMIT/);
+		expect(tree.children![0]).toBe(original);
+		expect(original.type).toBe("code");
+	}
+});
+
+it("uses one detached manifest snapshot per document without trusting mutable host entries", () => {
+	const prompt = "Show the update.";
+	const raw = { version: 1, entries: [0, 1].map(ordinal => ({
+		document: file.path, ordinal, intentSha256: sha256Text(prompt),
+		artifactPath: "artifacts/demo.json", artifactSha256: artifactSha256(artifact()),
+		review: "reviewed" as "reviewed" | "unreviewed",
+	})) };
+	let loads = 0;
+	const transform = remarkThroughline({ mode: "mdx", manifest: raw, loadArtifact: () => {
+		if (++loads === 1) raw.entries[1].review = "unreviewed";
+		return json();
+	} });
+	const tree = { type: "root", children: [code(prompt), code(prompt)] };
+	transform(tree, file);
+	expect(loads).toBe(2);
+	expect(tree.children.map(node => node.type)).toEqual(["mdxJsxFlowElement", "mdxJsxFlowElement"]);
+	const next = { type: "root", children: [code(prompt), code(prompt)] };
+	expect(() => transform(next, file)).toThrow(/THL_UNREVIEWED/);
+	expect(next.children.map(node => node.type)).toEqual(["code", "code"]);
+});
+
+it("bounds aggregate body bytes per document without partial transformation", () => {
+	const largeBody = " ".repeat(2_100_000);
+	const tree = { type: "root", children: [code(largeBody + json()), code(largeBody + json())] };
+	expect(() => remarkThroughline({ mode: "mdx" })(tree, file)).toThrow(/THL_LIMIT/);
+	expect(tree.children.map(node => node.type)).toEqual(["code", "code"]);
+});
+
+it.each([
+	["THL_INTENT_LIMIT", "x".repeat(262_145)],
+	["THL_UNICODE", "Invalid prose \ud800"],
+] as const)("preserves %s before inspecting invalid sidecar data", (diagnostic, body) => {
+	let loads = 0, mappings = 0;
+	const options = {
+		manifest: { version: 999, entries: [] },
+		loadArtifact: () => { loads++; return json(); },
+	};
+	expect(() => resolveThlBody(body, { ...options, document: file.path, ordinal: 0 }))
+		.toThrow(diagnostic);
+	for (const mode of ["validate", "mdx"] as const) {
+		const tree = { type: "root", children: [code(json()), code(body, null, 7)] };
+		const original = structuredClone(tree);
+		try {
+			remarkThroughline({ ...options, mode, documentForFile: () => { mappings++; return file.path; } })(tree, file);
+			throw new Error("expected source validation failure");
+		} catch (error) {
+			expect(error).toMatchObject({ code: diagnostic, line: 7, column: 1 });
+		}
+		expect(tree).toEqual(original);
+	}
+	expect(loads).toBe(0);
+	expect(mappings).toBe(0);
 });

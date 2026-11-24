@@ -7,6 +7,8 @@ All notable changes to Throughline are recorded here. Package versions follow
 
 ## [Unreleased]
 
+- Harden CLI and Remark authoring: case-insensitive MDX selection, regular-file-only bounded reads, observable filesystem identity rechecks with an explicit stable-root trust model, shared document work/output budgets, and indexed per-document manifest snapshots.
+
 - Harden schema-2 validation: reject explicit null optional arrays, bound canonical byte accounting before encoding, keep accepted artifacts round-trippable using one bounded strict JSON decoding traversal, reject accessor/sparse sidecar entries, and prevent nested writes from exceeding inspectable value depth. Add boundary regressions; no package release is implied.
 
 ### Changed

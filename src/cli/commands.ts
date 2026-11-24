@@ -7,7 +7,9 @@ import { compileArtifact } from "../v2/compiler.js";
 import { sha256Text } from "../v2/sha256.js";
 import { ArtifactValidationError, parseArtifactJson } from "../v2/validator.js";
 import { TrustedContentRoot, TrustedFileError } from "../node/files.js";
-import { scanMarkdownFences } from "../node/markdown.js";
+import { markdownFormat, scanMarkdownFences } from "../node/markdown.js";
+import { DocumentAuthoringBudget } from "../v2/authoring-limits.js";
+import { serializeArtifact } from "../v2/validator.js";
 import { readSidecarManifest } from "../node/index.js";
 
 type CliIO = Readonly<{ out: (line: string) => void; err: (line: string) => void }>;
@@ -105,8 +107,9 @@ function checkFile(
 	manifest: SidecarManifest | undefined, io: CliIO,
 ): number {
 	const markdown = root.read(relative);
-	const fences = scanMarkdownFences(markdown, { format: relative.endsWith(".mdx") ? "mdx" : "md" });
+	const fences = scanMarkdownFences(markdown, { format: markdownFormat(relative) });
 	let checked = 0;
+	const budget = new DocumentAuthoringBudget();
 	for (const fence of fences) {
 		if (fence.lang !== "thl") continue;
 		const location = relative + ":" + fence.line + ":" + fence.column +
@@ -117,12 +120,14 @@ function checkFile(
 					"only an unqualified thl language fence is supported (no metadata or domain tags)");
 			// Canonical source truth: the LF-normalized mdast code-node body
 			// and a repository-relative, explicitly scoped document locator.
-			resolveThlBody(fence.body, {
+			budget.body(fence.body);
+			const artifact = resolveThlBody(fence.body, {
 				document: relative,
 				ordinal: fence.ordinal!,
 				...(manifest ? { manifest } : {}),
 				...(manifest ? { loadArtifact: (artifact: string) => root.read(artifact) } : {}),
 			});
+			budget.artifact(serializeArtifact(artifact));
 		} catch (error) {
 			const issue = toDiagnostic(error);
 			throw new ThroughlineCliError(issue.code, location + ": " + issue.message);
@@ -156,7 +161,7 @@ function materialize(root: TrustedContentRoot, args: Arguments, io: CliIO): void
 		!Number.isSafeInteger(Number(ordinalRaw)))
 		usage("--ordinal must be a zero-based safe integer");
 	const ordinal = Number(ordinalRaw);
-	const fences = scanMarkdownFences(root.read(document), { format: document.endsWith(".mdx") ? "mdx" : "md" });
+	const fences = scanMarkdownFences(root.read(document), { format: markdownFormat(document) });
 	const fence = fences.find(f => f.lang === "thl" && f.ordinal === ordinal);
 	if (!fence)
 		throw new ThroughlineCliError("THL_UNRESOLVED",

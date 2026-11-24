@@ -9,6 +9,7 @@ import remarkMdx from "remark-mdx";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { normalizeThlBody, ThroughlineAuthoringError } from "../v2/authoring.js";
+import { AUTHORING_LIMITS } from "../v2/authoring-limits.js";
 
 export type MarkdownFence = Readonly<{
 	lang: string | null;
@@ -29,10 +30,10 @@ type MarkdownNode = Readonly<{
 	position?: { start?: { line: number; column: number } };
 }>;
 
-const MAX_MARKDOWN_BYTES = 4 * 1024 * 1024;
-const MAX_AST_NODES = 100_000;
-const MAX_FENCES = 10_000;
-const MAX_AST_DEPTH = 128;
+/** Internal shared extension policy for check and materialize. */
+export function markdownFormat(path: string): MarkdownFormat {
+	return /\.mdx$/i.test(path) ? "mdx" : "md";
+}
 const markdown = unified().use(remarkParse);
 const mdx = unified().use(remarkParse).use(remarkMdx);
 
@@ -51,7 +52,7 @@ export function scanMarkdownFences(
 	options: Readonly<{ format?: MarkdownFormat }> = {},
 ): readonly MarkdownFence[] {
 	if (typeof source !== "string" ||
-		Buffer.byteLength(source, "utf8") > MAX_MARKDOWN_BYTES)
+		Buffer.byteLength(source, "utf8") > AUTHORING_LIMITS.sourceBytes)
 		throw new ThroughlineAuthoringError("THL_SYNTAX", "Markdown/MDX source exceeds 4 MiB or is not UTF-8 text");
 	const format = options.format ?? "md";
 	if (format !== "md" && format !== "mdx")
@@ -79,10 +80,10 @@ export function scanMarkdownFences(
 	const pending: Array<{ node: MarkdownNode; depth: number }> = [{ node: tree, depth: 0 }];
 	while (pending.length) {
 		const { node, depth } = pending.pop()!;
-		if (++visited > MAX_AST_NODES || depth > MAX_AST_DEPTH)
+		if (++visited > AUTHORING_LIMITS.astNodes || depth > AUTHORING_LIMITS.astDepth)
 			throw new ThroughlineAuthoringError("THL_LIMIT", "Markdown/MDX AST exceeds work or depth budget");
 		if (node.type === "code") {
-			if (fences.length >= MAX_FENCES)
+			if (fences.length >= AUTHORING_LIMITS.codeNodes)
 				throw new ThroughlineAuthoringError("THL_LIMIT", "too many Markdown/MDX code nodes");
 			const position = node.position?.start;
 			if (!position || !Number.isSafeInteger(position.line) ||
@@ -100,6 +101,8 @@ export function scanMarkdownFences(
 			}));
 		}
 		if (node.children) {
+			if (visited + pending.length + node.children.length > AUTHORING_LIMITS.astNodes)
+				throw new ThroughlineAuthoringError("THL_LIMIT", "Markdown/MDX AST exceeds work budget");
 			for (let i = node.children.length - 1; i >= 0; i--)
 				pending.push({ node: node.children[i], depth: depth + 1 });
 		}

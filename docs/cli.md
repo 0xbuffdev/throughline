@@ -85,7 +85,7 @@ unconditionally; malformed JSON cannot silently become prose.
 
 The CLI walks `.md` and `.mdx` files in deterministic path order,
 parses a **non-evaluating CommonMark/MDX syntax tree** (Remark with
-MDX syntax enabled for `.mdx` documents), then validates each actual
+MDX syntax enabled for `.mdx` documents, case-insensitively), then validates each actual
 `thl` code node in depth-first order. This includes fences under nested
 list items, blockquotes and JSX containers. Strings resembling `~~~thl`
 inside HTML comments, JavaScript code, MDX expressions or JSX attributes
@@ -111,6 +111,32 @@ decoding, disallow symbolic-link traversal in both directories and
 files, reject unsafe relative locators and write manifests via
 exclusive temporary files and atomic rename. The host configuration
 defines the root; Markdown cannot choose it or a loader callback.
+
+The host must control the root and its ancestors and exclude concurrent
+untrusted writers (including rename, mount and symlink changes) during a
+build or materialization. Portable Node pathname APIs are not a race-proof
+filesystem sandbox. The implementation checks root and path identities,
+regular-file status before and after open, and rechecks observed path
+identities before reading/returning and before writing/renaming. Reads
+request at most the remaining byte budget plus one overflow byte; the
+public read limit may be lowered but cannot exceed 4 MiB. On detected
+replacement it rejects the operation. Outside the supported stable-root
+model, an ancestor swap between the last check and pathname-based exclusive
+open can create an empty temporary file in another directory before the
+next check detects the change. Cleanup deliberately avoids unlinking
+through an observably changed path, so that file may remain outside the
+original tree. These checks do not prevent every external filesystem
+mutation or race. Use an isolated trusted checkout or OS sandbox for
+adversarial local writers.
+
+Both CLI check and Remark enforce document-scoped limits: 100,000 AST
+nodes, depth 128 (root depth zero), 10,000 code nodes, 4 MiB cumulative
+`thl` body UTF-8 bytes and 32 MiB cumulative canonical resolved artifact
+bytes (including repeated materializations). The CLI additionally caps raw
+Markdown input at 4 MiB. These are host work/output limits, not a heap or
+CPU SLA. Remark snapshots and indexes a sidecar lazily on first prose
+resolution in each document, after successful source classification and validation; mutable host input is revalidated for the
+next document. No partial AST replacement occurs on failure.
 
 The separate Node entry point makes the same boundary available for
 real Remark/MDX hosts:
