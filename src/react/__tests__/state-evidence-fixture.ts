@@ -8,7 +8,7 @@ export function stateEvidenceFixture(): VisualArtifact {
 		origins: [{ id: "author", kind: "authored" }],
 		entities: [{ id: "client", label: "Client" }, { id: "server", label: "Server" }],
 		relations: [{ id: "request", from: "client", to: "server" }],
-		initialState: { server: { status: "known", value: 0 } },
+		initialState: { client: { status: "unknown" }, server: { status: "known", value: 0 } },
 		steps: [
 			{ id: "send", label: "Two messages", events: [
 				{ id: "firstSent", originId: "author", type: "message",
