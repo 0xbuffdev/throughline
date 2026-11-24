@@ -1,5 +1,5 @@
 import {
-	mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync,
+	mkdtempSync, mkdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -356,4 +356,49 @@ it.each(["groups", "claims", "views"])("enforces optional %s arrays via CLI vali
 			expect(checked.status).toBe(0);
 		}
 	}
+});
+
+
+it.each(["mdx", "MDX", "MdX"])("uses MDX syntax for check and materialize with .%s", extension => {
+	const directory = root();
+	const name = "lesson." + extension;
+	const body = ["<Wrapper>", "", "~~~thl", "Explain the counter.", "~~~", "", "</Wrapper>"].join("\n");
+	writeFileSync(join(directory, name), body);
+	writeFileSync(join(directory, "artifact.json"), counter());
+	const base = ["--root", directory];
+	expect(capture(["materialize", "--document", name, "--ordinal", "0",
+		"--artifact", "artifact.json", "--manifest", "manifest.json", ...base]).status).toBe(0);
+	approve(directory);
+	expect(capture(["check", name, "--manifest", "manifest.json", ...base]).status).toBe(0);
+	writeFileSync(join(directory, name), "<Wrapper>\n");
+	expect(capture(["check", name, ...base]).err).toMatch(/THL_SYNTAX.*invalid MDX syntax/);
+});
+
+it("rejects a replaced root and keeps outside content unchanged", () => {
+	const directory = root();
+	const outside = root();
+	writeFileSync(join(outside, "model.json"), "private");
+	const host = new TrustedContentRoot(directory);
+	const moved = directory + "-moved";
+	renameSync(directory, moved);
+	try {
+		symlinkSync(outside, directory, "dir");
+		expect(() => host.read("model.json")).toThrow(/THL_PATH/);
+		expect(() => host.writeManifest("model.json", "changed")).toThrow(/THL_PATH/);
+		expect(readFileSync(join(outside, "model.json"), "utf8")).toBe("private");
+	} finally {
+		rmSync(directory, { force: true });
+		renameSync(moved, directory);
+	}
+});
+
+it("enforces the byte boundary and rejects directories before reading", () => {
+	const directory = root();
+	const host = new TrustedContentRoot(directory);
+	writeFileSync(join(directory, "text"), "é🙂");
+	expect(host.read("text", 6)).toBe("é🙂");
+	expect(() => host.read("text", 5)).toThrow(/THL_LIMIT/);
+	expect(() => host.read("text", -1)).toThrow(/THL_LIMIT/);
+	mkdirSync(join(directory, "folder"));
+	expect(() => host.read("folder")).toThrow(/THL_IO.*regular file/);
 });

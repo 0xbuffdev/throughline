@@ -125,8 +125,15 @@ export function artifactRelativePath(path: string): string {
 	return path;
 }
 
+// Only our own detached/frozen manifests are trusted cache keys. Raw mutable
+// caller inputs are revalidated, never cached by their identity.
+const manifestIndexes = new WeakMap<SidecarManifest, ReadonlyMap<string, SidecarEntry>>();
+const locatorKey = (document: string, ordinal: number): string => document + "\\0" + ordinal;
+
 /** Validate and detach a sidecar supplied by an explicitly trusted host. */
 export function validateSidecarManifest(input: unknown): SidecarManifest {
+	if (input && typeof input === "object" && manifestIndexes.has(input as SidecarManifest))
+		return input as SidecarManifest;
 	const manifest = dataRecord(input, ["version", "entries"], "manifest");
 	if (manifest.version !== 1) reject("THL_MANIFEST", "unsupported manifest version");
 	if (!Array.isArray(manifest.entries) || manifest.entries.length > 10_000)
@@ -162,7 +169,9 @@ export function validateSidecarManifest(input: unknown): SidecarManifest {
 			artifactSha256: row.artifactSha256, review: row.review,
 		}));
 	}
-	return Object.freeze({ version: 1, entries: Object.freeze(entries) });
+	const validated: SidecarManifest = Object.freeze({ version: 1, entries: Object.freeze(entries) });
+	manifestIndexes.set(validated, new Map(entries.map(entry => [locatorKey(entry.document, entry.ordinal), entry])));
+	return validated;
 }
 
 /** Hash canonical validated artifact JSON, never the source file's whitespace. */
@@ -194,7 +203,7 @@ export function resolveThlBody(body: string, options: MaterializationOptions = {
 		if (!Number.isSafeInteger(options.ordinal) || (options.ordinal as number) < 0)
 			reject("THL_MANIFEST", "a zero-based thl ordinal is required for prose");
 		const manifest = validateSidecarManifest(options.manifest);
-		const entry = manifest.entries.find((item) => item.document === document && item.ordinal === options.ordinal);
+		const entry = manifestIndexes.get(manifest)!.get(locatorKey(document, options.ordinal as number));
 		if (!entry) reject("THL_UNRESOLVED", "no sidecar entry for document and thl ordinal");
 		if (entry.intentSha256 !== sha256Text(parsed.value.body))
 			reject("THL_DIGEST", "source body hash differs from reviewed sidecar");

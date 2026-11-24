@@ -25,7 +25,7 @@ export function readSidecarManifest(
 
 /**
  * Node-only Remark host boundary, suitable for Fumadocs/Next/Astro builds.
- * No symlink escapes, implicit AI/remote access or application-specific
+ * Trusted stable root, symlink rejection, no implicit AI/remote access or application-specific
  * source rewriting. The registered Remark plugin still does the actual
  * mdast validation and emits inert literal artifact JSON for MDX.
  */
