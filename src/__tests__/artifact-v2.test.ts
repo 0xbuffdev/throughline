@@ -615,3 +615,54 @@ describe("TL-U02 — inherited prototype behavior regression", () => {
 		expect(parsed.initialState.worker).toEqual(input.initialState.worker);
 	});
 });
+
+
+describe("Schema-2 validation boundary regressions", () => {
+	it.each(["groups", "claims", "views"] as const)("rejects explicit null for optional %s", key => {
+		const input = base();
+		Object.defineProperty(input, key, { value: null, enumerable: true });
+		expect(() => validateArtifact(input)).toThrow(`$.${key}: expected an array`);
+		expect(() => parseArtifactJson(JSON.stringify(input))).toThrow(`$.${key}: expected an array`);
+	});
+	it("accepts omitted and empty optional collections", () => {
+		const input = base();
+		delete input.groups; delete input.claims; delete input.views;
+		for (const entity of input.entities) delete entity.groupId;
+		expect(parseArtifactJson(serializeArtifact(input))).toEqual(input);
+		input.groups = []; input.claims = []; input.views = [];
+		expect(parseArtifactJson(serializeArtifact(input))).toEqual(input);
+	});
+	it("charges repeated and escaped strings before full serialization", () => {
+		const input = base();
+		const text = "\u0000".repeat(350_000); // six JSON bytes per code unit
+		input.initialState.worker = { status: "known", value: [text, text] };
+		expect(() => validateArtifact(input)).toThrow(/4 MiB/);
+		const emoji = "🙂".repeat(600_000);
+		input.initialState.worker = { status: "known", value: [emoji, emoji] };
+		expect(() => validateArtifact(input)).toThrow(/4 MiB/);
+	});
+	it("matches canonical byte size at the exact UTF-8 ceiling", () => {
+		const input = base();
+		input.title = "é🙂\u0000\n\\\"";
+		const before = new TextEncoder().encode(serializeArtifact(input)).length;
+		input.title += "a".repeat(ARTIFACT_LIMITS.artifactBytes - before);
+		const encoded = serializeArtifact(input);
+		expect(new TextEncoder().encode(encoded).length).toBe(ARTIFACT_LIMITS.artifactBytes);
+		expect(parseArtifactJson(encoded).title).toBe(input.title);
+		input.title += "a";
+		expect(() => validateArtifact(input)).toThrow(/4 MiB/);
+	}, 20_000);
+	it("round-trips an artifact above half the structural budget", () => {
+		const input = base();
+		input.initialState.worker = { status: "known", value: Array(260_000).fill(0) };
+		const encoded = serializeArtifact(input);
+		expect(serializeArtifact(parseArtifactJson(encoded))).toBe(encoded);
+	}, 20_000);
+	it("rejects write paths deeper than the query ceiling", () => {
+		const input = base();
+		const event = input.steps[0].events[0];
+		if (event.type !== "write") throw new Error("expected fixture write");
+		event.path = Array(33).fill("a");
+		expect(() => validateArtifact(input)).toThrow(/path: exceeds maximum 32/);
+	});
+});

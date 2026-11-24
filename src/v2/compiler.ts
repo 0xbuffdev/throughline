@@ -104,6 +104,17 @@ function assertWritable(
 	}
 }
 
+/** A nested replacement must keep every compiled value reachable by a legal
+ * inspector path. Validated authored JSON already has bounded nesting; the
+ * write path plus replacement depth must also fit that ceiling. */
+function assertReplacementDepth(value: JsonValue, depth: number, source: string): void {
+	if (depth > ARTIFACT_LIMITS.jsonDepth)
+		reject(source + ".value", "compiled value nesting exceeds query depth 32");
+	if (value !== null && typeof value === "object")
+		for (const child of Object.values(value))
+			assertReplacementDepth(child, depth + 1, source);
+}
+
 type TargetNode = {
 	write?: Cell;
 	descendants: Map<string, TargetNode>;
@@ -291,6 +302,8 @@ export function compileArtifact(input: VisualArtifact): CompiledTrace {
 					}
 					if (event.path.length > 0 && event.value.status !== "known")
 						reject(source + ".value", "nested write requires a known JSON value");
+					if (event.path.length && event.value.status === "known")
+						assertReplacementDepth(event.value.value, event.path.length, source);
 					reserveTarget(targets, event.path, event.value, source);
 					break;
 				}

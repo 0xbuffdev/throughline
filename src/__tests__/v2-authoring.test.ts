@@ -124,3 +124,23 @@ describe("TL-U08 — one universal authoring contract", () => {
 		expect(() => resolveThlBody(JSON.stringify(altered))).toThrow();
 	});
 });
+
+
+describe("Sidecar manifest array data boundary", () => {
+	it("rejects accessor slots without invoking the getter", () => {
+		const manifest = manifestFor();
+		let calls = 0;
+		const entries = [manifest.entries[0]];
+		Object.defineProperty(entries, "0", { enumerable: true, get() {
+			calls++;
+			return manifest.entries[0];
+		} });
+		expect(() => validateSidecarManifest({ version: 1, entries })).toThrow(/own data value/);
+		expect(calls).toBe(0);
+	});
+	it("rejects sparse slots disguised by an extra own property", () => {
+		const entries = new Array(1);
+		Object.defineProperty(entries, "extra", { enumerable: true, value: manifestFor().entries[0] });
+		expect(() => validateSidecarManifest({ version: 1, entries })).toThrow(/own data value/);
+	});
+});

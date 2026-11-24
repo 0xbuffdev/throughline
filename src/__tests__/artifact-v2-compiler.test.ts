@@ -479,3 +479,23 @@ describe("TL-U03 — compiler resource-boundary regression", () => {
 		throw new Error("The 8M budget must count array slots AND their string values");
 	}, 60_000);
 });
+
+
+describe("Compiled state depth boundary", () => {
+	it("allows depth 32 and rejects a nested replacement that makes state unreachable", () => {
+		const input = authored();
+		const nested = (count: number): import("../index.js").JsonValue => {
+			let value: import("../index.js").JsonValue = 0;
+			for (let i = 0; i < count; i++) value = { a: value };
+			return value;
+		};
+		input.initialState.worker = { status: "known", value: nested(25) };
+		input.steps = [];
+		addStep(input, [write("deep", "worker", Array(25).fill("a"),
+			{ status: "known", value: nested(7) })], "deepStep");
+		expect(compileArtifact(input).frames.length).toBe(2);
+		addStep(input, [write("tooDeep", "worker", Array(32).fill("a"),
+			{ status: "known", value: { a: 1 } })], "tooDeepStep");
+		assertCompilerRejects(input, "$.steps[1].events[0].value", /compiled value nesting exceeds query depth 32/);
+	});
+});

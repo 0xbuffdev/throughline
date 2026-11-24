@@ -54,6 +54,40 @@ function wellFormed(text: string, path: string): void {
 
 class Budget {
 	private units = 0;
+	private bytes = 0;
+
+	/** Exact canonical UTF-8 size, charged before allocating encoded JSON. */
+	chargeBytes(count: number, path: string): void {
+		this.bytes += count;
+		if (this.bytes > ARTIFACT_LIMITS.artifactBytes)
+			fail(path, "serialized artifact exceeds 4 MiB UTF-8");
+	}
+
+	stringBytes(text: string, path: string): void {
+		// Every UTF-16 unit needs at least one UTF-8/escaped JSON byte.
+		// Reject enormous strings before scanning them, even repeated aliases.
+		if (text.length + 2 > ARTIFACT_LIMITS.artifactBytes - this.bytes)
+			fail(path, "serialized artifact exceeds 4 MiB UTF-8");
+		let size = 2; // quotation marks
+		for (let i = 0; i < text.length; i++) {
+			const code = text.charCodeAt(i);
+			if (code >= 0xd800 && code <= 0xdbff) {
+				const low = text.charCodeAt(++i);
+				if (!(low >= 0xdc00 && low <= 0xdfff))
+					fail(path, "lone UTF-16 high surrogate is not valid JSON text");
+				size += 4;
+			} else if (code >= 0xdc00 && code <= 0xdfff) {
+				fail(path, "lone UTF-16 low surrogate is not valid JSON text");
+			} else if (code === 0x22 || code === 0x5c ||
+				code === 8 || code === 9 || code === 10 || code === 12 || code === 13) {
+				size += 2;
+			} else if (code < 0x20) size += 6;
+			else size += code < 0x80 ? 1 : code < 0x800 ? 2 : 3;
+			if (size > ARTIFACT_LIMITS.artifactBytes - this.bytes)
+				fail(path, "serialized artifact exceeds 4 MiB UTF-8");
+		}
+		this.chargeBytes(size, path);
+	}
 	visit(path: string): void {
 		if (++this.units > ARTIFACT_LIMITS.validationUnits)
 			fail(path, "validation work limit exceeded (1,000,000 units)");
@@ -75,13 +109,17 @@ function detachJson(
 	if (depth > ARTIFACT_LIMITS.jsonDepth)
 		fail(path, "JSON nesting exceeds 32");
 	budget.visit(path);
-	if (input === null || typeof input === "boolean") return input;
+	if (input === null || typeof input === "boolean") {
+		budget.chargeBytes(input === false ? 5 : 4, path);
+		return input;
+	}
 	if (typeof input === "string") {
-		wellFormed(input, path);
+		budget.stringBytes(input, path);
 		return input;
 	}
 	if (typeof input === "number") {
 		if (!Number.isFinite(input)) fail(path, "JSON numbers must be finite");
+		budget.chargeBytes(JSON.stringify(input).length, path);
 		return input;
 	}
 	if (typeof input !== "object") fail(path, "expected JSON data");
@@ -95,11 +133,13 @@ function detachJson(
 		fail(path, "expected an ordinary JSON array");
 
 	ancestors.add(input);
+	if (isArray && input.length > ARTIFACT_LIMITS.validationUnits)
+		fail(path, "array exceeds validation work limit");
 	const keys = Reflect.ownKeys(input);
+	budget.chargeBytes(2, path); // container delimiters
 	if (isArray) {
 		const length = input.length;
-		if (length > ARTIFACT_LIMITS.validationUnits)
-			fail(path, "array exceeds validation work limit");
+		budget.chargeBytes(Math.max(0, length - 1), path); // commas
 		if (keys.length !== length + 1)
 			fail(path, "array must be dense and contain no extra properties");
 		const copy: unknown[] = [];
@@ -125,10 +165,12 @@ function detachJson(
 	// Null-prototype data records never invoke inherited accessors on assignment
 	// and cannot inherit host-defined toJSON methods.
 	const copy: RecordValue = Object.create(null) as RecordValue;
+	budget.chargeBytes(Math.max(0, keys.length - 1), path); // commas
 	for (const key of keys) {
 		if (typeof key !== "string") fail(path, "symbol keys are not JSON data");
+		budget.stringBytes(key, path);
+		budget.chargeBytes(1, path); // colon
 		budget.visit(path + "." + key);
-		wellFormed(key, path);
 		if (UNSAFE_KEYS.has(key)) fail(path + "." + key, "unsafe record key");
 		const desc = Object.getOwnPropertyDescriptor(input, key);
 		if (!desc || !desc.enumerable || !("value" in desc))
@@ -212,7 +254,7 @@ function member(id: unknown, ids: ReadonlySet<string>, path: string): string {
 }
 
 function pathSegments(input: unknown, path: string): void {
-	for (const [i, segment] of array(input, path).entries()) {
+	for (const [i, segment] of array(input, path, ARTIFACT_LIMITS.jsonDepth).entries()) {
 		const at = path + "[" + i + "]";
 		if (typeof segment === "string") {
 			wellFormed(segment, at);
@@ -288,7 +330,7 @@ function validateStructured(data: unknown): VisualArtifact {
 	}
 
 	const groups = new Map<string, string | undefined>();
-	for (const [i, item] of array(v.groups ?? [], "$.groups", ARTIFACT_LIMITS.groups).entries()) {
+	for (const [i, item] of array(has(v, "groups") ? v.groups : [], "$.groups", ARTIFACT_LIMITS.groups).entries()) {
 		const p = "$.groups[" + i + "]";
 		const r = record(item, p, ["id", "label"], ["parentId"]);
 		const id = identifier(r.id, p + ".id");
@@ -409,7 +451,7 @@ function validateStructured(data: unknown): VisualArtifact {
 	}
 
 	const claims = new Set<string>();
-	for (const [i, item] of array(v.claims ?? [], "$.claims", ARTIFACT_LIMITS.claims).entries()) {
+	for (const [i, item] of array(has(v, "claims") ? v.claims : [], "$.claims", ARTIFACT_LIMITS.claims).entries()) {
 		const p = "$.claims[" + i + "]";
 		const r = record(item, p,
 			["id", "text", "kind", "originId", "evidenceEventIds", "review"]);
@@ -421,7 +463,7 @@ function validateStructured(data: unknown): VisualArtifact {
 			member(e, eventIds, p + ".evidenceEventIds[" + j + "]");
 		enumeration(r.review, p + ".review", new Set(["unreviewed", "reviewed"]));
 	}
-	for (const [i, item] of array(v.views ?? [], "$.views").entries()) {
+	for (const [i, item] of array(has(v, "views") ? v.views : [], "$.views").entries()) {
 		const p = "$.views[" + i + "]";
 		const r = record(item, p, ["kind", "priority"]);
 		enumeration(r.kind, p + ".kind", VIEW_KINDS);
@@ -446,9 +488,8 @@ function inspect(input: unknown, budget: Budget): VisualArtifact {
 		fail("$.schemaVersion", "unsupported artifact schema; expected 2");
 	const data = detachJson(input, "$", 0, budget, new WeakSet());
 	const validated = validateStructured(data);
-	const json = encodeJson(validated);
-	if (new TextEncoder().encode(json).byteLength > ARTIFACT_LIMITS.artifactBytes)
-		fail("$", "serialized artifact exceeds 4 MiB UTF-8");
+	// detachJson already charged the exact canonical size, including repeated
+	// values, escapes and punctuation. No oversized encoded string is built.
 	freezeJson(validated);
 	return validated;
 }
@@ -469,6 +510,7 @@ export function validateArtifact(input: unknown): VisualArtifact {
  */
 function rejectDuplicateJsonKeys(source: string, budget: Budget): void {
 	let cursor = 0;
+	const numberToken = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
 	const whitespace = (): void => {
 		while (cursor < source.length && /[\u0020\u0009\u000a\u000d]/.test(source[cursor]))
 			cursor++;
@@ -534,7 +576,8 @@ function rejectDuplicateJsonKeys(source: string, budget: Budget): void {
 		for (const token of ["true", "false", "null"]) {
 			if (source.startsWith(token, cursor)) { cursor += token.length; return; }
 		}
-		const match = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/.exec(source.slice(cursor));
+		numberToken.lastIndex = cursor;
+		const match = numberToken.exec(source);
 		if (!match) return syntax("expected JSON value");
 		if (!Number.isFinite(Number(match[0]))) syntax("nonfinite JSON number");
 		cursor += match[0].length;
@@ -551,7 +594,8 @@ function rejectDuplicateJsonKeys(source: string, budget: Budget): void {
  */
 export function parseStrictJsonData(source: string): unknown {
 	if (typeof source !== "string") fail("$", "expected strict JSON text");
-	if (new TextEncoder().encode(source).byteLength > ARTIFACT_LIMITS.artifactBytes)
+	if (source.length > ARTIFACT_LIMITS.artifactBytes ||
+		new TextEncoder().encode(source).byteLength > ARTIFACT_LIMITS.artifactBytes)
 		fail("$", "JSON input exceeds 4 MiB UTF-8");
 	rejectDuplicateJsonKeys(source, new Budget());
 	try {
@@ -564,17 +608,20 @@ export function parseStrictJsonData(source: string): unknown {
 /** Parse serialized artifacts, rejecting duplicate JSON keys before decoding. */
 export function parseArtifactJson(source: string): VisualArtifact {
 	if (typeof source !== "string") fail("$", "expected JSON text");
-	if (new TextEncoder().encode(source).byteLength > ARTIFACT_LIMITS.artifactBytes)
+	if (source.length > ARTIFACT_LIMITS.artifactBytes ||
+		new TextEncoder().encode(source).byteLength > ARTIFACT_LIMITS.artifactBytes)
 		fail("$", "serialized artifact exceeds 4 MiB UTF-8");
-	const budget = new Budget();
-	rejectDuplicateJsonKeys(source, budget);
+	// Both passes enforce the same structural ceiling independently. Charging
+	// the same source tree twice in one counter rejected valid round trips.
+	// The lexical pass is also bounded by the raw UTF-8 source limit.
+	rejectDuplicateJsonKeys(source, new Budget());
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(source) as unknown;
 	} catch {
 		fail("$", "invalid JSON text");
 	}
-	return inspect(parsed, budget);
+	return validateArtifact(parsed);
 }
 
 /**
