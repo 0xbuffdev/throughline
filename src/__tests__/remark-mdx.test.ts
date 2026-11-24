@@ -82,3 +82,26 @@ describe("TL-U08 inert MDX host projection", () => {
 			.toThrow(/options/);
 	});
 });
+
+
+it.each(["groups", "claims", "views"])("enforces optional %s arrays atomically in Remark/MDX", key => {
+	for (const mode of ["omitted", "empty", "null"] as const) {
+		const input: Record<string, unknown> = { ...artifact() };
+		if (mode !== "omitted") input[key] = mode === "empty" ? [] : null;
+		const tree = { type: "root", children: [code(json(), 1), code(JSON.stringify(input), 5)] };
+		const original = structuredClone(tree);
+		if (mode === "null") {
+			expect(() => remarkThroughline({ mode: "mdx" })(tree, file))
+				.toThrow("THL_ARTIFACT");
+			expect(() => remarkThroughline({ mode: "mdx" })(tree, file))
+				.toThrow("$." + key + ": expected an array");
+			expect(tree).toEqual(original);
+		} else {
+			remarkThroughline({ mode: "mdx" })(tree, file);
+			expect(tree.children.map(node => node.type)).toEqual(["mdxJsxFlowElement", "mdxJsxFlowElement"]);
+			const decoded = JSON.parse(tree.children[1].attributes![0].value);
+			if (mode === "omitted") expect(decoded).not.toHaveProperty(key);
+			else expect(decoded[key]).toEqual([]);
+		}
+	}
+});

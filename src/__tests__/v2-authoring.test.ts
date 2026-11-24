@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-	artifactRelativePath, artifactSha256, parseIntentBlock, parseThlBody,
+	artifactRelativePath, artifactSha256, parseIntentBlock, parseThlBody, ThroughlineAuthoringError,
 	resolveThlBody, sha256Text, validateSidecarManifest,
 	type SidecarManifest, type VisualArtifact,
 } from "../index.js";
@@ -127,6 +127,15 @@ describe("TL-U08 — one universal authoring contract", () => {
 
 
 describe("Sidecar manifest array data boundary", () => {
+	function rejects(entries: unknown, message: RegExp): void {
+		try { validateSidecarManifest({ version: 1, entries }); }
+		catch (error) {
+			expect(error).toBeInstanceOf(ThroughlineAuthoringError);
+			expect(error).toMatchObject({ code: "THL_MANIFEST", message: expect.stringMatching(message) });
+			return;
+		}
+		throw new Error("Expected manifest rejection");
+	}
 	it("rejects accessor slots without invoking the getter", () => {
 		const manifest = manifestFor();
 		let calls = 0;
@@ -135,12 +144,22 @@ describe("Sidecar manifest array data boundary", () => {
 			calls++;
 			return manifest.entries[0];
 		} });
-		expect(() => validateSidecarManifest({ version: 1, entries })).toThrow(/own data value/);
+		rejects(entries, /own data value/);
 		expect(calls).toBe(0);
 	});
 	it("rejects sparse slots disguised by an extra own property", () => {
 		const entries = new Array(1);
 		Object.defineProperty(entries, "extra", { enumerable: true, value: manifestFor().entries[0] });
-		expect(() => validateSidecarManifest({ version: 1, entries })).toThrow(/own data value/);
+		rejects(entries, /own data value/);
+	});
+	it("rejects inherited numeric slots without invoking their getter", () => {
+		const entry = manifestFor().entries[0];
+		const entries = new Array(1);
+		let calls = 0;
+		const proto = Object.create(Array.prototype);
+		Object.defineProperty(proto, "0", { get() { calls++; return entry; } });
+		Object.setPrototypeOf(entries, proto);
+		rejects(entries, /dense ordinary JSON data/);
+		expect(calls).toBe(0);
 	});
 });

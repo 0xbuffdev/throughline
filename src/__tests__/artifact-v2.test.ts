@@ -652,12 +652,24 @@ describe("Schema-2 validation boundary regressions", () => {
 		input.title += "a";
 		expect(() => validateArtifact(input)).toThrow(/4 MiB/);
 	}, 20_000);
-	it("round-trips an artifact above half the structural budget", () => {
+	it("admits the last reachable structural unit count and rejects the next in both input paths", () => {
 		const input = base();
-		input.initialState.worker = { status: "known", value: Array(260_000).fill(0) };
+		input.initialState.worker = { status: "known", value: [] };
+		// Independent count: one unit per value, one per property/array slot.
+		const units = (value: unknown): number => value !== null && typeof value === "object"
+			? 1 + Object.values(value).reduce<number>((sum, child) => sum + 1 + units(child), 0) : 1;
+		const overhead = units(input);
+		const length = Math.floor((ARTIFACT_LIMITS.validationUnits - overhead) / 2);
+		input.initialState.worker = { status: "known", value: Array(length).fill(0) };
+		expect(units(input)).toBe(ARTIFACT_LIMITS.validationUnits - 1);
 		const encoded = serializeArtifact(input);
+		expect(new TextEncoder().encode(encoded).length).toBeLessThan(ARTIFACT_LIMITS.artifactBytes);
 		expect(serializeArtifact(parseArtifactJson(encoded))).toBe(encoded);
-	}, 20_000);
+		input.initialState.worker = { status: "known", value: Array(length + 1).fill(0) };
+		expect(units(input)).toBe(ARTIFACT_LIMITS.validationUnits + 1);
+		expect(() => validateArtifact(input)).toThrow(/work limit/);
+		expect(() => parseArtifactJson(JSON.stringify(input))).toThrow(/work limit/);
+	}, 30_000);
 	it("rejects write paths deeper than the query ceiling", () => {
 		const input = base();
 		const event = input.steps[0].events[0];

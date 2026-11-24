@@ -330,3 +330,30 @@ describe("TL-U10 CLI / source and sidecar boundary", () => {
 		expect(capture(["nonsense", ...base]).err).toContain("THL_USAGE");
 	});
 });
+
+
+it.each(["groups", "claims", "views"])("enforces optional %s arrays via CLI validate and check", key => {
+	const directory = root();
+	const base = ["--root", directory];
+	for (const mode of ["omitted", "empty", "null"] as const) {
+		const input = JSON.parse(counter());
+		if (mode !== "omitted") input[key] = mode === "empty" ? [] : null;
+		const body = JSON.stringify(input);
+		writeFileSync(join(directory, "counter.json"), body);
+		writeFileSync(join(directory, "counter.mdx"), ["~~~thl", body, "~~~"].join("\n"));
+		const validated = capture(["validate", "counter.json", ...base]);
+		const checked = capture(["check", "counter.mdx", ...base]);
+		if (mode === "null") {
+			expect(validated.status).toBe(1);
+			expect(validated.err).toContain("THL_ARTIFACT_SHAPE");
+			expect(validated.err).toContain("$." + key + ": expected an array");
+			expect(checked.status).toBe(1);
+			expect(checked.err).toContain("THL_ARTIFACT_SHAPE");
+			expect(checked.err).toContain("counter.mdx:1:1 thl #0");
+			expect(checked.err).toContain("$." + key + ": expected an array");
+		} else {
+			expect(validated.status).toBe(0);
+			expect(checked.status).toBe(0);
+		}
+	}
+});
