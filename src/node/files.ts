@@ -145,20 +145,20 @@ export class TrustedContentRoot {
 				fault("THL_PATH", "content file changed during open: " + name);
 			this.recheck(name, chain);
 			if (stat.size > BigInt(maxBytes)) fault("THL_LIMIT", "content exceeds file limit: " + name);
-			const chunks: Buffer[] = [];
+			// One fixed buffer also bounds allocation under arbitrarily short reads.
+			const bytes = Buffer.allocUnsafe(maxBytes + 1);
 			let total = 0;
 			while (true) {
 				// Read at most the remaining budget plus one overflow sentinel,
-				// regardless of file growth after fstat. Never readFileSync(fd).
-				const chunk = Buffer.allocUnsafe(Math.min(READ_CHUNK, maxBytes - total + 1));
-				const count = readSync(fd, chunk, 0, chunk.length, null);
+				// regardless of file growth after fstat.
+				const count = readSync(fd, bytes, total,
+					Math.min(READ_CHUNK, maxBytes - total + 1), null);
 				if (count === 0) break;
 				total += count;
 				if (total > maxBytes) fault("THL_LIMIT", "content exceeds file limit: " + name);
-				chunks.push(chunk.subarray(0, count));
 			}
 			this.recheck(name, chain);
-			return utf8.decode(Buffer.concat(chunks, total));
+			return utf8.decode(bytes.subarray(0, total));
 		} catch (error) {
 			if (error instanceof TrustedFileError) throw error;
 			return fault("THL_IO", "cannot read valid UTF-8 content: " + name);

@@ -159,7 +159,7 @@ export function remarkThroughline(options: ThroughlineRemarkOptions = {}) {
 					throw error;
 				}
 			}
-			};
+		};
 		const limit = (reason: string): never => file.fail("THL_LIMIT: " + reason,
 			{ source: "@0xbuff/throughline", ruleId: "THL_LIMIT" });
 		// Iterative depth-first traversal, with bounded pending storage. Count
