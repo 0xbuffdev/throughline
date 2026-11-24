@@ -6,8 +6,10 @@ import { distributedGraph } from "../../__tests__/v2-graph-fixture.js";
 import { EXAMPLES } from "../../examples.js";
 import { compileArtifact } from "../../v2/compiler.js";
 import { GraphPlayer } from "../graph-player.js";
-import { MermaidPlayerDiagram } from "../mermaid/player-diagram.js";
+import { createMermaidPlayerDiagram, MermaidPlayerDiagram } from "../mermaid/player-diagram.js";
+import { renderProof } from "../mermaid/render.js";
 import { graphWorkload } from "./mermaid-proof/workloads.js";
+import { stateEvidenceFixture } from "./state-evidence-fixture.js";
 import "../../styles/throughline.css";
 
 it("keeps three Sequence lanes fixed through a send, receipt and explicit reply", async () => {
@@ -199,7 +201,7 @@ it("uses the native state and evidence fallback for an oversized graph", async (
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	const events = screen.getByRole("table", { name: "Current frame event evidence" });
 	await expect.element(events).toBeVisible();
-	await events.getByRole("button", { name: "Inspect event fallbackObservation" }).click();
+	await events.getByRole("button", { name: "Inspect event observation · fallbackObservation", exact: true }).click();
 	await expect.element(screen.getByRole("complementary", { name: "Workflow inspector" })).toBeVisible();
 	expect(document.querySelector(".inspect-summary h3")?.textContent).toContain("Observation");
 }, 60_000);
@@ -334,4 +336,61 @@ it("follows the latest recorded Sequence event vertically and resets on rewind",
 	await expect.poll(() => sequence.element().scrollTop).toBe(0);
 	expect(sequence.element().scrollLeft).toBe(0);
 	expect(sequence.element().querySelector("[data-thl-motion-item], [data-thl-phase-item]")).toBeNull();
+}, 60_000);
+
+
+it.each(["state-table", "sequence"] as const)("exposes exact current correlations and write evidence in %s including renderer rejection", async mode => {
+	const trace = compileArtifact(stateEvidenceFixture());
+	let rejected = 0;
+	const RejectingRenderer = createMermaidPlayerDiagram((proof, signal) => {
+		if (proof.kind === "sequence" && proof.visibleEvents > 0) {
+			rejected++;
+			return Promise.reject(new Error("controlled renderer rejection"));
+		}
+		return renderProof(proof, signal);
+	});
+	const screen = await render(<GraphPlayer trace={trace} initialView={mode} DiagramRenderer={RejectingRenderer}/>);
+	const pane = screen.getByRole("tabpanel");
+	if (mode === "sequence") {
+		await expect.element(screen.getByRole("region", { name: "Source-linked sequence at current frame" })).toBeVisible();
+		expect(pane.element().querySelector("svg")).not.toBeNull();
+	}
+	const next = screen.getByRole("button", { name: "Step forward" });
+	await next.click();
+	if (mode === "sequence") {
+		await expect.element(screen.getByText("The diagram couldn’t be rendered.", { exact: true })).toBeVisible();
+		expect(rejected).toBeGreaterThan(0);
+		expect(pane.element().querySelector("svg")).toBeNull();
+		expect(pane.element().querySelector("[data-thl-item-id]")).toBeNull();
+	}
+	const table = pane.getByRole("table", { name: "Current frame event evidence" });
+	await expect.element(table).toBeVisible();
+	const rows = () => [...table.element().querySelectorAll("tbody tr")];
+	expect(rows().map(row => row.getAttribute("data-source-event-ids"))).toEqual(["firstSent", "secondSent"]);
+	expect(rows()[0].textContent).toContain("message messageOne");
+	expect(rows()[0].textContent).not.toContain("messageTwo");
+	expect(rows()[1].textContent).toContain("message messageTwo");
+	expect(rows()[1].textContent).not.toContain("messageOne");
+	expect(rows().every(row => row.getAttribute("data-source-relation-ids") === "request")).toBe(true);
+	await table.getByRole("button", { name: "Inspect event sent · secondSent", exact: true }).click();
+	const panel = screen.getByRole("complementary", { name: "Workflow inspector" });
+	await expect.element(panel).toBeVisible();
+	expect(panel.element().querySelector(".inspect-summary")?.getAttribute("data-source-event-ids")).toBe("secondSent");
+	await screen.getByRole("button", { name: "Close inspector" }).click();
+	await next.click();
+	if (mode === "sequence") await expect.element(screen.getByText("The diagram couldn’t be rendered.", { exact: true })).toBeVisible();
+	await expect.element(table).toBeVisible();
+	expect(rows().map(row => row.getAttribute("data-source-event-ids"))).toEqual(["firstReceived"]);
+	expect(rows()[0].textContent).toContain("message messageOne");
+	expect(rows()[0].textContent).not.toContain("messageTwo");
+	expect(rows()[0].textContent).toContain("received · firstReceived");
+	await next.click();
+	if (mode === "sequence") await expect.element(screen.getByText("The diagram couldn’t be rendered.", { exact: true })).toBeVisible();
+	await expect.element(table).toBeVisible();
+	expect(rows().map(row => row.getAttribute("data-source-event-ids"))).toEqual(["commitValue"]);
+	expect(rows()[0].textContent).toContain("write · commitValue");
+	expect(pane.element().querySelector('.state-view tr[data-source-entity-ids="server"]')?.textContent).toContain("Known: 1");
+	await table.getByRole("button", { name: "Inspect event write · commitValue", exact: true }).click();
+	expect(panel.element().querySelector(".inspect-summary")?.getAttribute("data-source-event-ids")).toBe("commitValue");
+	if (mode === "sequence") expect(pane.element().querySelector("svg")).toBeNull();
 }, 60_000);

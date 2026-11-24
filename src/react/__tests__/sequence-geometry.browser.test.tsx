@@ -89,5 +89,5 @@ it("provides actual state-table associations and an optional title", async () =>
 	await expect.element(evidence).toBeVisible();
 	for (const name of ["Event", "Declared origin", "Source evidence"])
 		await expect.element(evidence.getByRole("columnheader", { name, exact: true })).toBeVisible();
-	await expect.element(evidence.getByRole("rowheader", { name: "Inspect event send1", exact: true })).toBeVisible();
+	await expect.element(evidence.getByRole("rowheader", { name: "Inspect event sent · send1", exact: true })).toBeVisible();
 });

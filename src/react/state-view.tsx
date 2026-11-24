@@ -72,7 +72,7 @@ function StepEventTable({ items, onInspectEvent }: {
 					return <tr key={item.id} data-source-event-ids={eventId}
 						data-source-entity-ids={item.source.entityIds?.join(" ")}
 						data-source-relation-ids={item.source.relationIds?.join(" ")}>
-						<th scope="row"><button type="button" aria-label={"Inspect event " + eventId}
+						<th scope="row"><button type="button" aria-label={"Inspect event " + item.label}
 							onClick={() => onInspectEvent(eventId)}>{item.label}</button></th>
 						<td>{String(field(item, "originId"))} ({String(field(item, "originKind"))})</td>
 						<td>{item.description}</td>

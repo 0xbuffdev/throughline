@@ -159,6 +159,8 @@ function GraphDiagram({
 				if (!rect) return null;
 				const group = item.source.groupIds?.[0] ?? "";
 				const active = Boolean(item.source.entityIds?.includes(selectedId ?? ""));
+				const count = Number(data(item, "count"));
+				const countLabel = count + (count === 1 ? " present entity" : " present entities");
 				return (
 					<g key={"summary-" + item.id} role="button" tabIndex={0}
 						data-group-summary={group}
@@ -166,7 +168,7 @@ function GraphDiagram({
 						data-source-entity-ids={item.source.entityIds?.join(" ") ?? ""}
 						data-source-relation-ids={item.source.relationIds?.join(" ") ?? ""}
 						data-source-event-ids={item.source.eventIds?.join(" ") ?? ""}
-						aria-label={"Expand group " + item.label}
+						aria-label={"Expand group " + item.label + " — " + countLabel}
 						aria-expanded="false"
 						transform={"translate(" + rect.x + "," + rect.y + ")"}
 						onClick={() => onExpand(group)}
@@ -184,7 +186,7 @@ function GraphDiagram({
 							width={rect.w + 8} height={rect.h + 8} rx={4}/>
 						<text x={8} y={18} className="thl-node-label">{preview(item.label, 22)}</text>
 						<text x={8} y={38} className="thl-summary-count">
-							{Number(data(item, "count"))} present entities
+							{countLabel}
 						</text>
 					</g>
 				);

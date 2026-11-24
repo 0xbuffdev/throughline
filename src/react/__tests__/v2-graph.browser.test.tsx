@@ -135,7 +135,8 @@ it("retains source IDs of removed members in a collapsed graphical group summary
 	expect(summary?.getAttribute("data-source-entity-ids")).toBe("ledger worker");
 	expect(summary?.getAttribute("data-source-relation-ids")).toBe("task");
 	expect(summary?.getAttribute("data-source-event-ids")).toBe("taskOff workerOff");
-	expect(summary?.querySelector(".thl-summary-count")?.textContent).toContain("1 present entities");
+	expect(summary?.querySelector(".thl-summary-count")?.textContent).toContain("1 present entity");
+	await expect.element(screen.getByRole("button", { name: "Expand group Backend — 1 present entity", exact: true })).toBeVisible();
 	expect(summary?.querySelector(".thl-summary-count")?.textContent).not.toContain("2 present entities");
 	expect(document.querySelector('[data-node="worker"]')).toBeNull();
 	expect(link("task")).toBeUndefined();
@@ -239,7 +240,7 @@ it("pages current-frame events without inferring phases or mounting unbounded ro
 	await region.getByRole("button", { name: "Next event page" }).click();
 	await region.getByRole("button", { name: "Next event page" }).click();
 	expect(events.element().querySelectorAll("tbody tr")).toHaveLength(2);
-	await events.getByRole("button", { name: "Inspect event observe80" }).click();
+	await events.getByRole("button", { name: "Inspect event observation · observe80", exact: true }).click();
 	expect(document.querySelector(".inspect-summary h3")?.textContent).toContain("Observation");
 	await screen.getByRole("button", { name: "Close inspector" }).click();
 	await screen.getByRole("button", { name: "Step forward" }).click();
