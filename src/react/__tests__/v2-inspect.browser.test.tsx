@@ -388,6 +388,7 @@ it("shows retained cells for absent entities, including writes while absent and 
 	await screen.getByRole("button", { name: "Close inspector" }).click();
 	await screen.getByRole("button", { name: "Inspect event stillAbsent" }).click();
 	expect(panel.element().querySelector("h3")?.textContent).toContain("presence asserted absent (unchanged)");
+	expect(panel.element().querySelector("h3")?.textContent).not.toContain("became absent");
 	await screen.getByRole("button", { name: "Close inspector" }).click();
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(worker().textContent).not.toContain("Not present");

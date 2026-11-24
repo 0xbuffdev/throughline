@@ -61,7 +61,7 @@ function StepEventTable({ items, onInspectEvent }: {
 	const visible = items.slice(start, start + EVENT_PAGE);
 	return <section className="state-events" aria-label="Explicit events in this frame">
 		<h3>Explicit events in this frame</h3>
-		<p>Only authored event evidence is shown. No other message phase or persistent write is inferred.</p>
+		<p>Only explicitly modeled event evidence is shown. No other message phase or persistent write is inferred.</p>
 		{items.length === 0 ? <p>No events are authored in this frame.</p> : <>
 			<p>Showing {start + 1}–{start + visible.length} of {items.length} events.</p>
 			<table><caption>Current frame event evidence</caption>

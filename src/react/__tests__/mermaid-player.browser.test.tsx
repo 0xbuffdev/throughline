@@ -186,12 +186,22 @@ it("keeps the selected Graph tab free of State content during loading", async ()
 }, 60_000);
 
 it("uses the native state and evidence fallback for an oversized graph", async () => {
-	const trace = compileArtifact(graphWorkload(65, 66));
+	const artifact = graphWorkload(65, 66);
+	const first = artifact.entities[0];
+	artifact.steps = [{ id: "observationStep", label: "Observe", events: [{
+		id: "fallbackObservation", originId: artifact.origins[0].id, type: "observation",
+		entityId: first.id, value: { status: "known", value: 123 },
+	}] }];
+	const trace = compileArtifact(artifact);
 	const screen = await render(<GraphPlayer trace={trace} initialView="graph" DiagramRenderer={MermaidPlayerDiagram}/>);
 	await expect.element(screen.getByText("This diagram exceeds the preview display limit.")).toBeVisible();
 	await expect.element(screen.getByRole("region", { name: "State and event table" })).toBeVisible();
-	await screen.getByRole("button", { name: "Changes and evidence", exact: true }).click();
+	await screen.getByRole("button", { name: "Step forward" }).click();
+	const events = screen.getByRole("table", { name: "Current frame event evidence" });
+	await expect.element(events).toBeVisible();
+	await events.getByRole("button", { name: "Inspect event fallbackObservation" }).click();
 	await expect.element(screen.getByRole("complementary", { name: "Workflow inspector" })).toBeVisible();
+	expect(document.querySelector(".inspect-summary h3")?.textContent).toContain("Observation");
 }, 60_000);
 
 it("keeps the follow preference through topology without jumping to unrelated focus", async () => {
