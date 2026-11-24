@@ -2,12 +2,13 @@
 
 Throughline's initial schema-2 release is a correctness and security decision before it is a publication decision. This document defines how to reproduce and inspect its automated evidence and what must still be checked by a person. It does not authorize npm publication, assert a performance SLA, or claim improved learning outcomes.
 
-**Status:** automated release-gate implementation in source; **TL-U18 acceptance is pending real screen-reader verification** on a source/package-SHA-bound candidate. Green DOM/ARIA tests cannot close that requirement. The automated evidence is authoritative only for the exact successful CI source SHA recorded in each JSON file. TL-U19 separately controls the signed package and npm registry, and TL-U20 controls the live documentation application.
+**Status:** automated release-gate implementation in source; **TL-U18 final acceptance is pending stable Mermaid production cutover (TL-U29) and real screen-reader verification** on the exact integrated source/package-SHA-bound candidate. Green DOM/ARIA tests cannot close that requirement. The automated evidence is authoritative only for the exact successful CI source SHA recorded in each JSON file. TL-U19 separately controls the signed package and npm registry, and TL-U20 controls the live documentation application.
 
 ## Automated acceptance matrix
 
 | Gate | Command / CI stage | Required evidence | Pass condition |
 | --- | --- | --- | --- |
+| Stable Mermaid production Graph and Sequence (TL-U26–TL-U29) | Reviewed feasibility, focused adapter/cutover tests and independently packed React host | All four canonical references, source-ID mapping, native State/evidence fallback, synchronized playback, hostile/boundary inputs, three-browser SSR/hydration and keyboard parity, measured limits and license/notice review | Required parity passes before final TL-U18 acceptance and TL-U19 publication; development preview alone is insufficient |
 | Pure v2 artifact truth | `pnpm test:run` | Schema, compiler, query, source-ID and reference truth cases | All tests pass; unknown, absent, null, missing message phases and false persistence remain distinct |
 | Hostile input, manifest and filesystem | `pnpm test:run`, `pnpm audit:source` | `v2-security.json` and existing CLI/authoring tests | Seeded malicious inputs rejected, no prototype poisoning, unsafe root paths/symlinks and unreviewed/stale sidecars rejected |
 | Performance and deterministic work | `pnpm test:run`, `node scripts/verify-release-evidence.mjs` | `v2-performance.json`, canonical fixture hashes, Node/CPU/runner version, sizes and iteration distribution | All three valid sizes compile deterministically, source IDs and geometry stay truthful, fixed semantic work ceilings are honored; numerical timings are recorded, **not** used as arbitrary CI cutoffs |
@@ -71,7 +72,7 @@ Local test execution writes JSON to `.release-evidence/` (gitignored). Local rec
 
 Automation inspects semantic roles, text alternatives, controls, labels, keyboard transitions, reduced-motion behavior, hydration and narrow embeds. It **cannot** listen to a real assistive technology user, verify operating-system voices, evaluate reading order by itself, or replace a human's perception of clipping or contrast.
 
-**Before closing TL-U18**, perform and record the real screen-reader checks below on an exact-source candidate package or staging host, following the [screen-reader record template](qa/tl-u18-screen-reader-record.md). This record is not supplied by CI, and none is present for this PR. All other manual release checks can be retested during TL-U19, but the TL-U18 screen-reader criterion cannot be postponed without a separately accepted spec change.
+**After stable production cutover and before closing TL-U18**, perform and record the real screen-reader checks below on an exact-source candidate package or staging host, following the [screen-reader record template](qa/tl-u18-screen-reader-record.md). This record is not supplied by CI, and none is present for this PR. All other manual release checks can be retested during TL-U19, but the TL-U18 screen-reader criterion cannot be postponed without a separately accepted spec change.
 
 Before authorizing TL-U19 publication, independently review or repeat the release-specific device and rights checks, including:
 
@@ -86,6 +87,6 @@ Record **date, operator, browser+OS+AT versions, source commit SHA, tested packa
 
 ## Gate boundaries
 
-TL-U18 is not fully accepted while the real assistive-technology record is absent. Green automated source checks establish the tested implementation, **not screen-reader approval**. Once a human verifies and attaches a dated source/package-SHA-bound record with observed announcements and deviations, the maintainer can determine whether the TL-U18 criterion passes. TL-U19 can require a final signed-release recheck, but cannot retroactively satisfy a missing TL-U18 prerequisite. No tagged package is published, the documentation app is upgraded, or a participant study completed by this test suite. Do not create a guessed numerical performance target or conceal neutral/negative findings.
+TL-U18 is not fully accepted until the stable Mermaid production cutover is reviewed and the final integrated candidate passes the automated and real assistive-technology gates. Prior native-only results cannot attest that changed candidate. Green automated source checks establish the tested implementation, **not screen-reader approval**. Once a human verifies and attaches a dated source/package-SHA-bound record with observed announcements and deviations, the maintainer can determine whether the TL-U18 criterion passes. TL-U19 can require a final signed-release recheck, but cannot retroactively satisfy a missing TL-U18 prerequisite. No tagged package is published, the documentation app is upgraded, or a participant study completed by this test suite. Do not create a guessed numerical performance target or conceal neutral/negative findings.
 
 The owner separately approves source merges, tags, npm staging, protected environment access, final npm 2FA publication and documentation deployment. See [release procedure](releasing.md), [semantics](schema-v2.md) and [reference truth suite](reference-traces.md).

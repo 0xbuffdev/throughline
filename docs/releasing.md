@@ -5,6 +5,12 @@ Each version is published from an immutable, GitHub-verified signed
 `vX.Y.Z` tag using manual GitHub Actions OIDC staged publishing.
 **The GitHub workflow only stages a release; npm 2FA approval publishes it.**
 
+## Schema-2 release prerequisite
+
+Version 0.2.0 must ship the stable Mermaid Graph and Sequence renderer, with native State table and unchanged semantic engine. Complete TL-U26 feasibility and reviewed go/no-go, TL-U27 Graph, TL-U28 Sequence and TL-U29 production cutover before final TL-U18 acceptance. See the [feasibility report](mermaid-feasibility.md) for remaining parity, dependency, safety and performance gates. The current development-only preview is not production acceptance. If a mandatory renderer requirement fails, retain the working native implementation during development and block publication until corrected or a reviewed maintainer decision changes the requirement.
+
+Reuse prior verification tooling, not prior attestation: run the complete release-quality suite and actual screen-reader checks on the exact integrated source and independently packed candidate. TL-U19 signing, staging and human 2FA remain separate approvals; TL-U20 real documentation-app adoption follows verified registry publication.
+
 ## Verification
 
 Use Node.js 24+, pnpm 11.2.2 and the committed lockfile. Run the full
@@ -46,7 +52,7 @@ requirements. These checks are not replaced by mocked or fixture-only tests.
 
 ## Release checklist
 
-1. Verify rights to distribute the source, applicable third-party notices,
+1. Confirm stable production Mermaid cutover (TL-U29), then verify rights to distribute the source, applicable third-party notices,
    security reporting, release acceptance, compatibility and the final
    changelog. Review the public history for any sensitive references.
    Historical exposure cannot be undone by deleting current-tree files.
@@ -55,7 +61,7 @@ requirements. These checks are not replaced by mocked or fixture-only tests.
    schema-2 `VisualArtifact.schemaVersion` is independent of npm SemVer.
 3. Run the source, TypeScript, preview, Chromium/Firefox/WebKit browser,
    build, license and packed consumer checks listed above.
-   Record the exact candidate SHA, CI runs, quality evidence artifacts and applicable manual accessibility/rights review.
+   Record the exact integrated candidate SHA, CI runs, Mermaid parity evidence, quality evidence artifacts and actual screen-reader/rights review.
    Review the exact archive contents. Merge the release PR after review and
    ensure main CI is green.
 4. From a clean checkout with a signing key registered with GitHub, create
