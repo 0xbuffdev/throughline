@@ -47,6 +47,8 @@ Follow the project's existing naming and code style. Review third-party dependen
 
 ## Verification
 
+Before v0.2.0 publication, complete stable Mermaid Graph/Sequence production cutover (TL-U26–TL-U29) with native State table and unchanged semantic contracts. Final TL-U18 evidence must be collected on the exact integrated candidate; previous native-renderer runs do not attest changed source. TL-U19 publication and TL-U20 documentation deployment remain separate gates. See [Mermaid feasibility](docs/mermaid-feasibility.md) and [release guidance](docs/releasing.md).
+
 Before proposing review, run the relevant checks and ensure the exact PR head has passing CI. For a full package change, verify TypeScript, local preview build/typecheck, pure/CLI/security tests, exact-SHA TL-U18 performance evidence, Chromium/Firefox/WebKit browser tests, distribution, source/license audits, an independently packed Node-only/CLI consumer, optional Remark/React/MDX integrations, mobile SSR/hydration and framework consumers. Real screen-reader evidence, including an actual tester, date, heard announcements and source/package hash, is **required before TL-U18 closure**; manual native-browser zoom remains an additional release checklist item. Keep both distinct from automated role checks, which cannot substitute for spoken output. Include negative regressions for malformed or unauthorized input, changed source hashes, unknown states and false code-node discovery.
 
 Do not claim tests passed if not run. Do not substitute local source imports for packed-consumer proof, or infer npm publication from a successful archive build. Keep [documentation](docs/README.md) and the [changelog](CHANGELOG.md) aligned with user-facing contracts.

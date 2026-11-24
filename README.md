@@ -198,7 +198,7 @@ evidence of measured educational improvement.
 
 ## Release quality and acceptance
 
-Before a schema-2 package can be published, the source release gate records SHA-bound compile/query/layout measurements, hostile-input rejections, accessible keyboard/browser verification and independent packed-host proof. See the [release-quality acceptance matrix](docs/release-quality.md) for the deterministic inputs, measured runner conditions, automated results and separate manual screen-reader/zoom sign-off. A green automated quality gate is **not sufficient to close TL-U18** until an exact-candidate real screen-reader test is recorded, and does not publish, deploy or establish educational superiority.
+Before v0.2.0 can be published, stable production Mermaid Graph and Sequence rendering must pass TL-U26–TL-U29 parity and cutover gates (see [Mermaid feasibility](docs/mermaid-feasibility.md)). The current development preview is not production acceptance. The final integrated candidate must then pass TL-U18. The source release gate records SHA-bound compile/query/layout measurements, hostile-input rejections, accessible keyboard/browser verification and independent packed-host proof. See the [release-quality acceptance matrix](docs/release-quality.md) for the deterministic inputs, measured runner conditions, automated results and separate manual screen-reader/zoom sign-off. A green automated quality gate is **not sufficient to close TL-U18** until an exact-candidate real screen-reader test is recorded, and does not publish, deploy or establish educational superiority.
 
 ## Offline CLI and reviewed Markdown authoring
 

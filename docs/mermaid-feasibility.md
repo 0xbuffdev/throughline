@@ -1,6 +1,6 @@
 # Mermaid renderer feasibility
 
-TL-U26 tests Mermaid 12.3.0 against Throughline's existing schema-2 projections. Mermaid integration is scheduled before 0.2.0 publication. Release, publication and real assistive-technology acceptance remain separate actions.
+TL-U26 tests Mermaid 12.3.0 against Throughline's existing schema-2 projections. Stable production Mermaid integration is required before 0.2.0 publication: TL-U26 feasibility and reviewed go/no-go → TL-U27 Graph → TL-U28 Sequence → TL-U29 production cutover → final exact-candidate TL-U18 automated and real assistive-technology acceptance → TL-U19 verified publication. TL-U20 documentation-app adoption follows publication. The preview does not satisfy these gates. If mandatory parity fails, retain the native renderer during development and block publication until corrected or a reviewed maintainer decision changes the requirement.
 
 Run `pnpm dev` to try the Mermaid renderer with the checkout reference in the compact player. Its adapter and viewport live in `src/react/mermaid/`. The playground injects that renderer into the same shell used by the package React entry. The standalone feasibility host remains under `src/react/__tests__/mermaid-proof/`.
 
