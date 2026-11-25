@@ -90,8 +90,13 @@ export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiag
 			throw new Error("Sequence proof lacks unique source references");
 		const bound = new Set<string>();
 		const resolve = (labels: readonly Element[], sent: boolean) => {
-			const tokens = labels.flatMap(node => node.textContent?.match(/TL\d{6}/g) ?? []);
-			const entry = tokens.length === 1 ? byToken.get(tokens[0]) : undefined;
+			// The adapter reserves all reference-shaped authored caption strings
+			// before assigning references. Only allocated references are metadata;
+			// the exact allocated token must occur once and terminate the caption.
+			const tokens = labels.flatMap(node => node.textContent?.match(/TL\d{6}/g) ?? [])
+				.filter(token => byToken.has(token));
+			const terminal = labels.at(-1)?.textContent?.trimEnd();
+			const entry = tokens.length === 1 && terminal?.endsWith(tokens[0]) ? byToken.get(tokens[0]) : undefined;
 			if (!entry || entry.sent !== sent || bound.has(entry.itemId))
 				throw new Error("Ambiguous rendered sequence source reference");
 			bound.add(entry.itemId);

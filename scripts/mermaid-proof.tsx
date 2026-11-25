@@ -79,9 +79,10 @@ function App(): React.JSX.Element {
 			onSelect={item => setSelected({ id: item.id, itemId: item.id, role: item.role,
 				label: item.label, description: item.description, source: item.source, current: true })} /></details>
 		{selected && <section aria-label="Selected exact source"><h2>{selected.label}</h2>
-			<p>{selected.description}</p><pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(selected.source, null, 2)}</pre>
-			{selected.source.entityIds?.map(id => <pre key={id} style={{ whiteSpace: "pre-wrap" }}>
-				{id + ": " + JSON.stringify(inspector.valueAt(frameIndex, id))}</pre>)}
+			<button type="button" onClick={() => setSelected(undefined)}>Clear selection</button>
+			<p>{selected.description}</p><pre data-proof-source style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(selected.source, null, 2)}</pre>
+			{selected.source.entityIds?.map(id => <div key={id}><strong>{id}</strong><pre data-proof-cell={id} style={{ whiteSpace: "pre-wrap" }}>
+				{JSON.stringify(inspector.valueAt(frameIndex, id))}</pre></div>)}
 		</section>}
 		<details><summary>Generated syntax</summary><pre style={{ whiteSpace: "pre-wrap" }}>{proof?.source}</pre></details>
 		<details><summary>Current native player baseline (independent controls)</summary>

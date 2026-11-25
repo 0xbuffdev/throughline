@@ -191,3 +191,41 @@ it("coalesces concurrent loader attempts and retries a transient rejection", asy
  expect(load()).toBe(retry);
  expect(calls).toBe(2);
 });
+
+
+it("keeps authored reference-shaped labels and message IDs distinct from trusted row references", async () => {
+ const source = retryCheckout();
+ source.relations[0].label = "TL000000";
+ source.steps = [{ id: "collisions", label: "Reference-shaped evidence", events: [
+  { id: "sendA", originId: "author", type: "message", relationId: "request", messageId: "TL000002", phase: "sent" },
+  { id: "sendB", originId: "author", type: "message", relationId: "request", messageId: "TL000002", phase: "sent" },
+  { id: "receiveA", originId: "observer", type: "message", relationId: "request", messageId: "TL000002", phase: "received" },
+  { id: "receiveB", originId: "observer", type: "message", relationId: "request", messageId: "TL000002", phase: "received" },
+  { id: "orphan", originId: "observer", type: "message", relationId: "request", messageId: "TL123456", phase: "acknowledged" },
+ ] }];
+ for (const authoredLabel of ["TL000000", "TL123456", "TL000001x", "TL 000000"]) {
+  source.relations[0].label = authoredLabel;
+  const trace = compileArtifact(source), view = projectView(inspectTrace(trace), { kind: "sequence", frameIndex: 1 });
+  const proof = sequenceProof(trace, view);
+  const events = proof.elements.filter(item => item.role === "event");
+  const tokens = events.map(item => item.rowToken!);
+  expect(new Set(tokens).size).toBe(events.length);
+  expect(tokens).not.toContain("TL000002");
+  expect(tokens).not.toContain("TL123456");
+  const host = await mount(proof);
+  for (const entry of events) {
+   const mark = host.querySelector(entry.sent ? '[data-thl-motion-item="' + entry.itemId + '"]' :
+    '[data-thl-phase-item="' + entry.itemId + '"]');
+   expect(mark).not.toBeNull();
+   const labels = entry.sent ? [...host.querySelectorAll('[data-thl-motion-label="' + entry.itemId + '"]')] : [mark!];
+   const visible = labels.map(node => node.textContent).join(" ");
+   expect(visible).toContain(entry.rowToken);
+   if (entry.sent) expect(visible.replace(/\s/g, "")).toContain(authoredLabel.replace(/\s/g, ""));
+   expect(entry.source).toEqual(view.items.find(item => item.id === entry.itemId)?.source);
+  }
+  // Even when an authored lookalike remains, removing or duplicating the
+  // allocated metadata cannot be mistaken for a valid row.
+  await expect(renderProof(proof, undefined, svg => svg.replaceAll(tokens[0], "missing"))).rejects.toThrow();
+  await expect(renderProof(proof, undefined, svg => svg.replaceAll(tokens[0], tokens[0] + " " + tokens[0]))).rejects.toThrow();
+ }
+}, 60_000);

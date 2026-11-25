@@ -194,7 +194,7 @@ export function sequenceProof(trace: CompiledTrace, view: ViewDescriptor,
 	const followupIds = new Set(window.filter(item => property(item, "current") === true &&
 		property(item, "phase") !== "sent" && property(item, "missingSentThroughStep") === false)
 		.map(item => property(item, "messageId")));
-	for (const item of window) {
+	const rows = window.map(item => {
 		const entry = element(item);
 		const from = actorIds.get(String(property(item, "fromEntityId")));
 		const to = actorIds.get(String(property(item, "toEntityId")));
@@ -208,11 +208,31 @@ export function sequenceProof(trace: CompiledTrace, view: ViewDescriptor,
 		// in source inspection. The arrow already encodes the sent phase.
 		const caption = phase === "sent" ? wrappedLabel(flowLabel, 12, 4, true)
 			: label(String(phase)) + "<br/>" + wrappedLabel(messageId, 16, 1, true);
-		// Explicit fixed-width display references survive Mermaid's documented
-		// text syntax even when two events have identical endpoints and captions.
-		// They identify projected rows, never authored event IDs or physical time.
-		const rowToken = "TL" + item.id.slice("event_".length).padStart(6, "0");
+		return { item, entry, from, to, phase, flowLabel, messageId, caption };
+	});
+	// Reserve every reference-shaped string in the rendered compact captions.
+	// The no-whitespace form conservatively covers SVG textContent joining
+	// adjacent lines. Numeric escapes cannot emit ASCII letters/digits (those
+	// are emitted literally); decode them once to cover punctuation too.
+	const reserved = new Set<string>();
+	for (const { caption } of rows) {
+		const text = caption.replaceAll("<br/>", "").replace(/#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)));
+		for (const token of text.replace(/\s/g, "").match(/TL\d{6}/g) ?? []) reserved.add(token);
+	}
+	const nominal = new Set(rows.map(({ item }) => "TL" + item.id.slice("event_".length).padStart(6, "0")));
+	let alternate = 10_000;
+	for (const { item, entry, from, to, phase, flowLabel, messageId, caption } of rows) {
+		// Fixed-width, deterministic references are scoped to this window.
+		// Keep ordinary projected indices unless an authored caption collides;
+		// select an unused reference without changing authored text or identity.
+		let rowToken = "TL" + item.id.slice("event_".length).padStart(6, "0");
 		if (!/^TL\d{6}$/.test(rowToken)) throw new Error("Unsupported sequence row identity");
+		if (reserved.has(rowToken)) {
+			do { rowToken = "TL" + String(alternate++).padStart(6, "0"); }
+			while (reserved.has(rowToken) || nominal.has(rowToken));
+			if (!/^TL\d{6}$/.test(rowToken)) throw new Error("Sequence row reference space exhausted");
+		}
+		reserved.add(rowToken);
 		const tagged = caption + "<br/>" + rowToken;
 		lines.push("%% " + entry.id);
 		if (phase === "sent") lines.push(from + "-)" + to + ": " + tagged);
