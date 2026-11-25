@@ -23,6 +23,29 @@ const productionChecks = [
 	"pinnedDependencyAndLicenseInventory","baselineComparison",
 ];
 const workloads = ["factorial","matrix","binary","checkout","nearLimitGraph","largeSequence"];
+// Required case identities are separate from the producer's observations.
+const requiredCases = {
+	fourReferences:["factorial","matrix","binary","checkout"],
+	pureRootIsolation:["node-only","exports","cli-remark"],
+	graphTopologyTruth:["nested-groups","parallel-edges","self-relations","disconnected"],
+	stableSeekGeometry:["unchanged-topology-forward","unchanged-topology-backward","topology-change"],
+	responsiveGeometry:["width-260","width-320","width-375","width-720"],
+	collapse:["nested-collapse","removed-member","expand-round-trip"],
+	sequencePhaseTruth:["orphan-ack","duplicate-receipt","timeout-write","retry-separate-id","omitted-phases","no-future-evidence"],
+	atomicStepOrdering:["receive-before-send"],
+	boundedSequencePaging:["near-limit-history","earlier-later","mounted-bound"],
+	completeEvidenceAndTotals:["phase-counts","all-source-ids"],
+	nativeStateEquivalence:["known","unknown","absent","null","nested","write","presence"],
+	fallback:["unsupported-view","render-failure","oversized"],
+	transport:["forward","backward","same-frame-seek","pause","speed","view-switch"],
+	reducedMotionCancellation:["reduced-motion","no-autonomous-loop"],
+	motionLifecycle:["seek","trace-replacement","unmount"],
+	ssrHydration:["server-import","hydrate","packed-public-entry"],
+	hostileInputs:["quotes","delimiters","directives","html","links"],
+	boundedPerformance:["graph-near-limit","sequence-near-limit","measured-degradation"],
+	pinnedDependencyAndLicenseInventory:["source-lock","consumer-tree","license-notices"],
+	baselineComparison:workloads,
+};
 const qualityNames = ["v2-performance.json","v2-security.json",...engines.map(b=>"v2-browser-"+b+".json")];
 export function verifyReleaseVersion(version, tag) {
 	assert.equal(version,"0.2.0","Only the approved initial schema-2 version is authorized; later releases require reviewed policy");
@@ -44,7 +67,7 @@ const link = v => {
 	assert.equal(url.protocol,"https:"); assert(!url.username && !url.password);
 	assert(!["example.com","example.org","example.net","localhost"].includes(url.hostname),"Evidence URL must not be an example");
 };
-export { autoChecks, productionChecks, workloads, qualityNames };
+export { autoChecks, productionChecks, workloads, qualityNames, requiredCases };
 const number = (v,min=0) => assert(typeof v==="number" && Number.isFinite(v) && v>=min);
 const count = (v,min=0) => assert(Number.isSafeInteger(v) && v>=min);
 function timing(t) {
@@ -102,8 +125,14 @@ export function verifyProduction(report, ctx, browser, readEvidence) {
 			assert(!ids.has(item.id),"Duplicate case"); ids.add(item.id);
 			assert.equal(item.status,"pass");
 		}
+		for(const required of requiredCases[key]??[]) assert(ids.has(required),"Missing required case: "+key+"/"+required);
 	}
 	verifyMeasurements(report.measurements);
+	if(ctx.archiveBytes!==undefined) assert.equal(report.measurements.assets.archiveBytes,ctx.archiveBytes);
+	const tree=readEvidence("production-mermaid-"+browser+"-dependencies.json");
+	assert.equal(digest(tree),report.measurements.dependencyTreeSha256,"Missing or changed dependency inventory");
+	const inventory=JSON.parse(tree);
+	assert(inventory && typeof inventory==="object" && Object.keys(inventory).length>0,"Empty dependency inventory");
 }
 export function verifyBrowserEvidence(report, ctx, browser) {
 	exact(report,["ticket","status","scope","browser","sourceCommit","workflowRun","workflowAttempt",
@@ -119,7 +148,7 @@ export function verifyBrowserEvidence(report, ctx, browser) {
 		for(const value of report[key]) nonblank(value);
 	}
 	exact(report.runner,["node","os","osRelease","arch","cpu"]);
-	assert.match(report.runner.node,/^v24\\./);
+	assert.match(report.runner.node,/^v24\./);
 	for(const key of ["os","osRelease","arch","cpu"]) nonblank(report.runner[key]);
 }
 function qualityEvidence(folder, ctx) {
@@ -156,7 +185,8 @@ export function verifyCandidate(candidate, ctx, review) {
 function readJson(path) { return JSON.parse(readFileSync(path,"utf8")); }
 function main(mode) {
 	const dir="release-artifacts", sourceSha=process.env.GITHUB_SHA;
-	const archiveSha256=digest(readFileSync(dir+"/throughline.tgz"));
+	const archive=readFileSync(dir+"/throughline.tgz");
+	const archiveSha256=digest(archive);
 	assert.equal(readFileSync(dir+"/RELEASE_COMMIT","utf8").trim(),sourceSha);
 	assert.equal(readFileSync(dir+"/SHA256SUMS","utf8").trim(),archiveSha256+"  throughline.tgz");
 	const version=readJson("package.json").version;
@@ -168,7 +198,7 @@ function main(mode) {
 		const productionEvidence={};
 		for(const browser of engines) {
 			const path=".release-evidence/production-mermaid-"+browser+".json";
-			verifyProduction(readJson(path),ctx,browser,name=>readFileSync(".release-evidence/"+name));
+			verifyProduction(readJson(path),{...ctx,archiveBytes:archive.length},browser,name=>readFileSync(".release-evidence/"+name));
 			productionEvidence[browser]=digest(readFileSync(path));
 		}
 		const candidate={schema:2,...ctx,checks:Object.fromEntries(autoChecks.map(k=>[k,"pass"])),productionEvidence,
@@ -185,7 +215,7 @@ function main(mode) {
 		assert(Number.isFinite(completed) && Date.parse(review.date)>=completed,"Review predates candidate completion");
 		for (const browser of engines) {
 			const path="candidate-proof/production-mermaid-"+browser+".json";
-			verifyProduction(readJson(path),ctx,browser,name=>readFileSync("candidate-proof/"+name));
+			verifyProduction(readJson(path),{...ctx,archiveBytes:archive.length},browser,name=>readFileSync("candidate-proof/"+name));
 			assert.equal(digest(readFileSync(path)),candidate.productionEvidence[browser],"Changed production evidence");
 		}
 		appendFileSync(process.env.GITHUB_OUTPUT,"archive_sha="+archiveSha256+"\n");

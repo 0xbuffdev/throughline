@@ -37,6 +37,9 @@ it("TL-U18 keeps tagged-release verification and stage archive separate from qua
 	expect(publish).toContain("scripts/audit-mermaid-production.mjs");
 	expect(publish).toContain("THL_RELEASE_TARBALL");
 	expect(publish).toContain("APPROVED_SHA256");
+	expect(publish).toContain("verifyReleaseVersion(pkg.version, process.env.RELEASE_TAG)");
+	expect(publish).toContain("Download raw quality records from the same prepare attempt");
+	expect(publish).toContain("Download raw browser records from the same prepare attempt");
 	const stage = publish.split("\n  stage:")[1]!;
 	expect(stage).toContain("run-id: " + "$" + "{{ inputs.candidate_run }}");
 	expect(stage).not.toContain("pnpm pack");

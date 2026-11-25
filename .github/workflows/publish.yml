@@ -55,7 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$GITHUB_REF" == "refs/heads/main" ]] || exit 1
-          [[ "$RELEASE_TAG" == "v0.2.0" ]] || { echo "Use a prospective vX.Y.Z tag"; exit 1; }
+          [[ "$RELEASE_TAG" == "v0.2.0" ]] || { echo "Initial schema-2 release requires v0.2.0"; exit 1; }
           [[ "$CONFIRMATION" == "PREPARE-$RELEASE_TAG" ]] || { echo "Type PREPARE-$RELEASE_TAG to proceed"; exit 1; }
 
       - name: Checkout exact candidate without persistent credentials
@@ -226,7 +226,7 @@ jobs:
           CANDIDATE_ATTEMPT: ${{ inputs.candidate_attempt }}
         run: |
           set -euo pipefail
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$RELEASE_TAG" == "v0.2.0" ]]
           [[ "$CONFIRMATION" == "STAGE-$RELEASE_TAG" ]]
           [[ "$CANDIDATE_RUN" =~ ^[1-9][0-9]*$ ]]
           [[ "$CANDIDATE_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
@@ -361,6 +361,7 @@ jobs:
           assert.equal(pkg.name, "@0xbuff/throughline");
           const source = JSON.parse(readFileSync("package.json", "utf8"));
           assert.equal(pkg.version, source.version, "Archive version must match signed tag source");
+          assert.equal(pkg.version, "0.2.0", "Initial schema-2 release version required");
           assert.equal(pkg.private, false);
           assert.equal(pkg.publishConfig?.access, "public");
           assert.equal(pkg.license, "Apache-2.0");
