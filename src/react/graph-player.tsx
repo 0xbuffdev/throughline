@@ -783,7 +783,7 @@ export function GraphPlayer({
    </summary>
    <div className="caption-body">
     <p className="caption-note">{captionNote}</p>
-    <button type="button" className="mermaid-evidence" onClick={() => openInspection({ kind: "step" })}>
+    <button type="button" className="diagram-evidence-action" onClick={() => openInspection({ kind: "step" })}>
      Inspect this step
     </button>
    </div>

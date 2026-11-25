@@ -10,7 +10,7 @@ Graph uses `flowchart LR` or `flowchart TB`, ELK, native subgraphs, explicit edg
 
 Sequence reserves lanes for every modeled message participant from the initial step. Its compact rows scroll inside the player, with pinned participant headers. The viewport follows the current event vertically and follows an animated arrow horizontally when its endpoints cannot fit together. Each explicit send produces a `-)` arrow in its declared direction, including a separately modeled reply. Received, acknowledged and processed phases use notes. The original route can appear as context while inspecting a later phase for that message. Earlier sends keep their trail color. Readers can page through windows of 40 message phases or use the Sequence log for the full event list and correlation counts. An initial load shows the selected diagram's loading state. While appending rows, the preview retains the prior lanes and dims the previous rows until the updated diagram is ready.
 
-Graph and Sequence use a single forward cue along the rendered path for an explicit send. The route and source appear first, and destination emphasis follows the cue. A recorded receive, processing or acknowledgment gives static context. The preview drives cues with the existing `usePlayer` actions and respects seeking, pause, speed, view changes and reduced motion. Graph follows routes and keeps the camera in place while an active route fits or the step has only local changes. State and Inspect present write-only steps. A graphical push, pop or return between distinct calls requires the artifact to model those calls and relations explicitly.
+Graph and Sequence use a single forward cue along the rendered path for an explicit send. The route and source appear first, and destination emphasis follows the cue. A recorded receive, processing or acknowledgment gives static context. The preview drives cues with the existing `usePlayer` actions and respects seeking, pause, speed, view changes and reduced motion. Graph follows routes and keeps the camera in place while an active route fits or the step has only local changes. The candidate also exposes bounded projected value/presence, focus and write indicators in a source-linked Graph state strip; node borders mark focus/writes without rerendering geometry. This is an alternative presentation experiment, not accepted equivalence to native inline values. State and Inspect retain exact evidence. A graphical push, pop or return between distinct calls requires the artifact to model those calls and relations explicitly.
 
 ## Findings that changed the adapter
 
@@ -22,7 +22,7 @@ Graph and Sequence use a single forward cue along the rendered path for an expli
 
 **Explicit edge IDs do not solve DOM mapping by themselves.** Mermaid adds its own SVG prefix and does not retain supplied edge class names. The graph experiment assigns a distinct trusted paint token through documented `classDef` styling, checks that exactly one rendered route carries each token, and binds a host-owned item attribute and CSS variable. Missing or ambiguous mappings fail closed. Essential source selection resolves that attribute through the current descriptor, never through a generated SVG ID, an endpoint guess, label matching or coordinates. Entity mapping uses host-authored classes. Source controls remain available independently of SVG output.
 
-**Sequence motion needs endpoint verification.** The version-pinned bridge checks the rendered arrow count and each route's from/to IDs against the generated send list before attaching motion markers. A mismatch falls back to the State table and exact source evidence. Participant selection uses explicit actor IDs and the exact event records are available through the source inspector.
+**Sequence identity needs more than endpoint verification.** The next feasibility candidate adds explicit fixed-width `TL000000`-style display references to each generated message/phase caption. These are projected row references, not authored event IDs or timestamps. It reserves reference-shaped authored caption text before allocating unique window-scoped references, checks the allocated terminal token, route endpoints, expected order, caption adjacency and normal line vertical order before binding. Authored evidence and original source IDs are unchanged; display references may change between windows if a collision requires an alternate. Missing, duplicated or permuted references fail closed to State and complete evidence. The bridge still observes version-specific SVG structure for associating a route with its caption; no MR-04/MR-10 independence claim or production approval follows merely from this change. Review whether that bridge can be accepted or must be replaced. The exact event records are available through the source inspector and a bounded, host-owned Sequence source-reference disclosure independent of the generated SVG.
 
 **Message captions can move lanes.** Chromium measured a 26 CSS-pixel shift in checkout when the first send rendered with a longer caption. Compact captions and fixed participant widths held the five lane positions across all 21 frames of the updated checkout at 375 and 1,280 CSS pixels. A 260-pixel regression exercises horizontal following for wide sends and replies. As a cue arrives, the viewport reveals the destination label.
 
@@ -71,6 +71,9 @@ THROUGHLINE_QA_BROWSER=webkit pnpm test:browser:run src/react/__tests__/mermaid-
 pnpm build
 node scripts/audit-mermaid-proof.mjs
 pnpm audit:pack
+node scripts/audit-mermaid-packed.mjs
+THROUGHLINE_QA_BROWSER=firefox node scripts/audit-mermaid-packed.mjs
+THROUGHLINE_QA_BROWSER=webkit node scripts/audit-mermaid-packed.mjs
 ```
 
 For the development-only visual/measurement host, run `pnpm exec vite --host 127.0.0.1 --port 5174`, then open `/scripts/mermaid-proof.html`. `node scripts/measure-mermaid-proof.mjs chromium` captures graph, initial Sequence, send and mobile screenshots, source/dirty status, engine version, topology/width/actor observations, synthetic workload timings and non-local resource attempts. Firefox and WebKit are alternate arguments. Run from a clean, committed head for exact-source evidence; a dirty result is explicitly marked. Output defaults to a temporary directory, and `THROUGHLINE_PROOF_URL` selects another local host.
@@ -78,3 +81,58 @@ For the development-only visual/measurement host, run `pnpm exec vite --host 127
 If the machine's temporary filesystem lacks space, set `TMPDIR` to a task-owned directory on a disk with capacity; do not remove unrelated work. The original full-suite boundary test exceeded its five-second timeout under concurrent browser/package workloads. Its targeted rerun and the complete 399-test run with one worker passed. Preserve failed attempts when reporting verification; do not change the validator or its limits to hide a test-runner timeout.
 
 The [dependency inventory](mermaid-dependencies.md) describes licensing and the limits of individual chunk-size measurements. Mermaid's [flowchart](https://mermaid.js.org/syntax/flowchart.html), [Sequence](https://mermaid.js.org/syntax/sequenceDiagram.html) and [configuration](https://mermaid.js.org/config/usage.html) documentation are the upstream syntax/API references.
+
+## TL-U26 candidate acceptance register (measured snapshot; not acceptance)
+
+The proof below is deliberately development-only. The previously measured numbers above belong to earlier source revisions. A green source test cannot attest actual speech, manual zoom or production dependency distribution. The packed proof installs the native package and separately copies the experimental adapter; it is not proof that the public React package ships Mermaid.
+
+### Measured head: ef82615193c90b348b4cae24d5191f5bbc3e1ee3
+
+On 2026-11-25, all six checks passed for this exact clean source head: [compiler/Chromium/distribution](https://github.com/0xbuffdev/throughline/actions/runs/45571876230), [Firefox/WebKit regression suite](https://github.com/0xbuffdev/throughline/actions/runs/45571876175), and [three-engine feasibility evidence](https://github.com/0xbuffdev/throughline/actions/runs/45571876195). The measurements below are transcribed from the successful feasibility job logs, rounded to 0.1 ms. They describe the earlier measured revision only, not the subsequent review corrections.
+
+| Engine | 8 entities / 12 relations render (ms; 3 samples) | 64 / 160 render (ms; 3 samples) | 200 / 1,000 render (ms; 1 sample) | 10,000 phases: projection / render of 40 (ms) |
+| --- | --- | --- | --- | --- |
+| [Chromium](https://github.com/0xbuffdev/throughline/actions/runs/45571876195/job/139060243206) | 66.0 / 52.5 / 50.3 | 426.6 / 398.3 / 372.5 | 5,734.6 | 48.9 / 52.4 |
+| [Firefox](https://github.com/0xbuffdev/throughline/actions/runs/45571876195/job/139060243290) | 66 / 53 / 46 | 412 / 355 / 353 | 6,329 | 100 / 52 |
+| [WebKit](https://github.com/0xbuffdev/throughline/actions/runs/45571876195/job/139060243357) | 87 / 66 / 68 | 522 / 470 / 428 | 5,780 | 86 / 93 |
+
+Native geometry-only times were respectively 0.6/2.7/18.7 ms, 1/4/35 ms and 0/4/32 ms for those three Graph sizes; a 0 is timer resolution, not zero work. These timings are not equivalent operations or performance SLAs. All engines mapped 8/12, 64/160 and 200/1,000 nodes/edges, with finite reported view boxes of 956×70, 7,716×91 and 24,176×154. The largest serialized SVG was 2,548,432 / 2,576,500 / 2,556,490 bytes respectively. The 40-phase SVG was 64,509 / 64,515 / 64,509 bytes. The 200/1,000 case bypasses the preview display budget; its cost supports retaining bounded degradation rather than claiming acceptable interactive layout. Source measurements reported zero external requests and page errors. The packed native package plus copied adapter passed the then-current checks at 260/320/375/720px; the packed four-reference test at that revision checked source-list visibility, not the exact SVG/list round trip subsequently requested in review.
+
+Artifact ZIP SHA-256 digests reported by GitHub Actions (each archive contains measurements, screenshots, source dependency inventory, and packed-host asset/geometry report):
+
+| Engine | Retained artifact | SHA-256 |
+| --- | --- | --- |
+| Chromium | [15002447124](https://github.com/0xbuffdev/throughline/actions/runs/45571876195/artifacts/15002447124) | `7ec9474416a870635c7493a6708afa79f10cf48c8fb6efd0efefec4403e5482a` |
+| Firefox | [15002551667](https://github.com/0xbuffdev/throughline/actions/runs/45571876195/artifacts/15002551667) | `89d61819b5e66f33915ba08a9b25c949225735dc27cc773f4283ea9baf7e557e` |
+| WebKit | [15002127783](https://github.com/0xbuffdev/throughline/actions/runs/45571876195/artifacts/15002127783) | `716dbba811683c9be54cd6b9126ff8c6fb95dda8ef7878befa6c23f3a2cecfc7` |
+
+These are GitHub-recorded archive digests, not independently recomputed member hashes. Engine versions, raw geometry, actual compressed asset measurements and file hashes are in the retained reports; only log-visible values are transcribed here. All three source dependency inventories reported no missing license texts; this is neither notice approval nor proof of the consumer's actual transitive resolution. The earlier independently installed npm consumer did not retain a lock, so its dependency tree is not reproducible from the pnpm lock. Subsequent review fixes retain the actual independently resolved consumer lock and per-package installed versions/license-file hashes, and assert exact packed source round trips. This remains a floating-consumer compatibility measurement with pinned top-level Mermaid, not a cross-engine identical dependency-tree benchmark; compare retained lock hashes before comparing packed costs. Fresh results for those changes are required.
+
+| Requirement | Evidence at measured head | Disposition for cutover |
+| --- | --- | --- |
+| MR-01 | Passed pure package/import and copied-adapter packed proof | GO for isolated proof only; no public export change |
+| MR-02 | Passed four-reference source/render tests and parallel/self-edge cases | GO for prototype syntax; no production adoption |
+| MR-03 | Passed current-presence/collapse and removed-member evidence tests; union-layout negative case retained | GO for projected collapse experiment; production group interaction/camera parity still unaccepted |
+| MR-04 | Passed existing row-reference/perturbation and geometry tests; review found authored-reference collision and packed round-trip gap | **NO-GO**: private SVG route association still essential; review fixes require fresh evidence |
+| MR-05 | Passed modeled phases, duplicate receipt, orphan ack, ordering and window cases | GO for evidence grammar; NO-GO for production selection under MR-04 |
+| MR-06 | Passed 40-phase window of 10,000 events, evidence navigation tests | GO for bounded proof; not an unbounded diagram claim |
+| MR-07 | Passed native State/Inspect regressions | GO for retaining native State, not Graph inline parity |
+| MR-08 | Passed automated motion/seek/pause/reduced-motion tests | GO for preview cues only; integrated packed player untested |
+| MR-09 | Passed tested hostile labels, corrupted-output fallback, offline requests | GO for tested trust boundary; not general SVG tamper detection |
+| MR-10 | Passed automated three-engine regressions/SSR and packed-host checks | **NO-GO**: pinned DOM association and actual AT/zoom outstanding |
+| MR-11 | Actual workload results above; source license inventory; packed asset reports | **NO-GO**: no peak/process memory, accepted notices or integrated package; old consumer lock absent |
+| MR-12 | Four references and negative/near-limit cases exercised; review found gaps | **NO-GO** overall; maintain native renderer and block release |
+
+Per-area recommendation (maintainer decision still required):
+
+- **Graph: NO-GO for cutover.** Syntax, finite geometry and source conservation support further investigation; the state strip is not accepted equivalence to native inline values/focus/writes.
+- **Sequence: NO-GO.** Evidence grammar and windowing work on tested cases; exact route association is still dependent on private version-specific SVG structure and caption collisions were found in review.
+- **Collapsed hierarchy: GO for the current-presence projection experiment only.** Union reuse failed absent/aggregate semantics; production collapse/expand interaction and camera parity must be demonstrated before adoption.
+- **Exact ID/selection: NO-GO.** Graph tokens and independent source controls are promising, but the previous packed test did not assert exact IDs/values and the Sequence bridge is unaccepted.
+- **Performance: NO-GO for production approval.** Repeated layout is unsuitable; retain preview limits and measured degradation. Integrated assets, peak/process memory and legibility are unresolved.
+- **Browser safety: GO for the tested isolated automated proof only; NO-GO for production.** Three-engine and offline cases passed, but human AT/native zoom, production SSR/packed integration and dependency notices are not yet accepted.
+
+
+The read-only Mermaid feasibility workflow captures browser-specific packed proof, workload measurements/screenshots and the dependency inventory as retained artifacts. Its browser suite is separate from final release acceptance. Browser heap snapshots are explicitly method-labeled (or unavailable); they do not establish peak process memory.
+
+Record subsequent exact commit, engine versions, actual timings, asset hashes/bytes and failure outcomes; never replace missing measurements with estimates. No human AT or native zoom was performed for this candidate. The display-reference and Graph state-strip design choices require explicit review. Graph/Sequence/collapse/source selection/performance/browser safety each remain unaccepted until reviewed against the evidence. Do not start production cutover or publication on this report alone.

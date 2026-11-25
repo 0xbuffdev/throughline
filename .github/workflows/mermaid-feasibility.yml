@@ -1,0 +1,76 @@
+name: Mermaid feasibility evidence
+
+# Development-only evidence. No publishing, tagging or deployment.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/react/mermaid/**'
+      - 'src/react/__tests__/mermaid-proof/**'
+      - 'src/react/__tests__/mermaid-player.browser.test.tsx'
+      - 'scripts/*mermaid*'
+      - 'docs/mermaid-feasibility.md'
+      - '.github/workflows/mermaid-feasibility.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    name: Feasibility (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    env:
+      THROUGHLINE_QA_BROWSER: ${{ matrix.browser }}
+      THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install pinned source
+        run: |
+          test "$(git rev-parse HEAD)" = "$THL_SOURCE_SHA"
+          pnpm install --frozen-lockfile
+          git diff --exit-code -- pnpm-lock.yaml
+      - name: Install browser
+        run: pnpm exec playwright install --with-deps "$THROUGHLINE_QA_BROWSER"
+      - name: Build and inventory proof dependency boundary
+        run: |
+          mkdir -p "$RUNNER_TEMP/mermaid-proof"
+          pnpm build
+          node scripts/audit-mermaid-proof.mjs "$RUNNER_TEMP/mermaid-proof/dependencies.json"
+      - name: Measure independent packed feasibility host
+        run: node scripts/audit-mermaid-packed.mjs "$RUNNER_TEMP/mermaid-proof/packed.json"
+      - name: Measure source workload and capture actual rendered screenshots
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/mermaid-proof"
+          pnpm exec vite --host 127.0.0.1 --port 5174 > "$RUNNER_TEMP/mermaid-proof/vite.log" 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:5174/scripts/mermaid-proof.html > /dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:5174/scripts/mermaid-proof.html > /dev/null
+          node scripts/measure-mermaid-proof.mjs "$THROUGHLINE_QA_BROWSER" "$RUNNER_TEMP/mermaid-proof"
+      - name: Retain actual evidence, including failures where available
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: mermaid-feasibility-${{ matrix.browser }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/mermaid-proof/
+          if-no-files-found: warn
+          retention-days: 30

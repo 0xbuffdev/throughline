@@ -3,15 +3,26 @@ import type { DiagramProof } from "./adapter.js";
 
 export type RenderedDiagram = RenderResult & { width: number; height: number };
 
-let library: Promise<Mermaid> | undefined;
 let serial = Promise.resolve();
 let identity = 0;
 
-async function load(): Promise<Mermaid> {
+/** Share concurrent initialization, but never permanently cache a rejection. */
+export function retryableLoader<T>(initialize: () => Promise<T>): () => Promise<T> {
+	let pending: Promise<T> | undefined;
+	return () => {
+		if (pending) return pending;
+		const attempt = Promise.resolve().then(initialize);
+		pending = attempt;
+		void attempt.catch(() => { if (pending === attempt) pending = undefined; });
+		return attempt;
+	};
+}
+
+const load = retryableLoader(async (): Promise<Mermaid> => {
 	// Use Mermaid's separate ESM distribution so a host's ordinary package
 	// import can keep its own site configuration and diagram queue.
-	return library ??= import("mermaid/dist/mermaid.esm.min.mjs").then(({ default: mermaid }) => {
-		mermaid.initialize({
+	const { default: mermaid } = await import("mermaid/dist/mermaid.esm.min.mjs");
+	mermaid.initialize({
 			startOnLoad: false, securityLevel: "strict", suppressErrorRendering: true, htmlLabels: true,
 			theme: "base", look: "classic", layout: "elk",
 			deterministicIds: true, maxTextSize: 300_000, maxEdges: 1_000,
@@ -28,10 +39,9 @@ async function load(): Promise<Mermaid> {
 				diagramMarginX: 10, diagramMarginY: 8, noteMargin: 6,
 				messageMargin: 18, mirrorActors: false, wrap: false, wrapPadding: 4,
 				rightAngles: true },
-		});
-		return mermaid;
 	});
-}
+	return mermaid;
+});
 
 const svgNS = "http://www.w3.org/2000/svg";
 
@@ -55,11 +65,12 @@ function bindDirection(root: SVGSVGElement, route: SVGElement): void {
 	}
 }
 
-/** Bind host-authored paint tokens, not Mermaid's private IDs/classes/ordering.
- * Essential interactions resolve the resulting own item ID through the current
- * descriptor. Missing/duplicated routes fail closed rather than guessing.
+/** Bind host-authored paint/row tokens to the current descriptor. Graph
+ * tokens do not rely on generated SVG IDs; Sequence still has a pinned local
+ * caption/mark bridge. Source controls provide an independent text path.
+ * Missing/duplicated/ambiguous routes fail closed rather than guessing.
  */
-function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiagram, "svg" | "width" | "height"> {
+export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiagram, "svg" | "width" | "height"> {
 	const template = document.createElement("template"); template.innerHTML = svg;
 	const root = template.content.querySelector("svg");
 	if (!root || template.content.querySelector("script, img, image, a, [onerror], [onclick]"))
@@ -70,39 +81,71 @@ function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiagram, "s
 	root.removeAttribute("aria-labelledby");
 	root.removeAttribute("aria-describedby");
 	if (proof.kind === "sequence") {
-		// Verify the version-pinned SVG bridge against the typed endpoints
-		// before applying any playback emphasis.
-		const sends = proof.elements.filter(entry => entry.role === "event" && entry.sent);
-		const arrows = [...root.querySelectorAll(".messageLine0, .messageLine1")];
-		if (arrows.length !== sends.length || !arrows.every((arrow, index) =>
-			arrow.getAttribute("data-from") === "thl_" + sends[index].fromItemId &&
-			arrow.getAttribute("data-to") === "thl_" + sends[index].toItemId))
-			throw new Error("Rendered message mapping unavailable");
-		arrows.forEach((node, index) => {
-			const arrow = node as SVGElement;
-			const { itemId: id, flowLabel } = sends[index];
+		// Bind explicit adapter-authored text references, not just endpoint
+		// equality and array position. The SVG bridge remains version-pinned;
+		// count, order, local caption association and endpoint checks fail closed.
+		const events = proof.elements.filter(entry => entry.role === "event");
+		const byToken = new Map(events.map(entry => [entry.rowToken, entry]));
+		if (byToken.size !== events.length || byToken.has(undefined))
+			throw new Error("Sequence proof lacks unique source references");
+		const bound = new Set<string>();
+		const resolve = (labels: readonly Element[], sent: boolean) => {
+			// The adapter reserves all reference-shaped authored caption strings
+			// before assigning references. Only allocated references are metadata;
+			// the exact allocated token must occur once and terminate the caption.
+			const tokens = labels.flatMap(node => node.textContent?.match(/TL\d{6}/g) ?? [])
+				.filter(token => byToken.has(token));
+			const terminal = labels.at(-1)?.textContent?.trimEnd();
+			const entry = tokens.length === 1 && terminal?.endsWith(tokens[0]) ? byToken.get(tokens[0]) : undefined;
+			if (!entry || entry.sent !== sent || bound.has(entry.itemId))
+				throw new Error("Ambiguous rendered sequence source reference");
+			bound.add(entry.itemId);
+			return entry;
+		};
+		const sends = events.filter(entry => entry.sent);
+		const arrows = [...root.querySelectorAll<SVGElement>(".messageLine0, .messageLine1")];
+		if (arrows.length !== sends.length) throw new Error("Rendered message mapping unavailable");
+		let lastLineY = -Infinity;
+		arrows.forEach((arrow, index) => {
+			const labels: Element[] = [];
+			for (let label = arrow.previousElementSibling; label?.matches(".messageText");
+				label = label.previousElementSibling) labels.unshift(label);
+			const entry = resolve(labels, true);
+			if (entry !== sends[index] ||
+				arrow.getAttribute("data-from") !== "thl_" + entry.fromItemId ||
+				arrow.getAttribute("data-to") !== "thl_" + entry.toItemId)
+				throw new Error("Rendered message mapping unavailable");
+			// Normal line rows must retain their vertical order as well as the
+			// explicit caption token. Never trust swapped same-endpoint lines.
+			if (arrow.localName === "line") {
+				const y = Number(arrow.getAttribute("y1"));
+				if (!arrow.hasAttribute("y1") || !Number.isFinite(y) || y <= lastLineY)
+					throw new Error("Rendered message geometry order unavailable");
+				lastLineY = y;
+			}
+			const id = entry.itemId;
 			arrow.setAttribute("data-thl-motion-item", id);
 			arrow.setAttribute("data-thl-item-id", id);
 			bindDirection(root, arrow);
-			const name = "Inspect transfer " + (flowLabel ?? sends[index].label);
-			const caption = arrow.previousElementSibling;
-			if (caption?.matches(".messageText")) bindItem(caption, id, name);
-			else bindItem(arrow, id, name);
-			for (let label = arrow.previousElementSibling; label?.matches(".messageText");
-				label = label.previousElementSibling) {
+			bindItem(labels[0], id, "Inspect transfer " + (entry.flowLabel ?? entry.label));
+			for (const label of labels) {
 				label.setAttribute("data-thl-motion-label", id);
 				label.setAttribute("data-thl-item-id", id);
 			}
 		});
-		const phases = proof.elements.filter(entry => entry.role === "event" && !entry.sent);
+		const phases = events.filter(entry => !entry.sent);
 		const notes = [...root.querySelectorAll(".note")];
-		if (notes.length !== phases.length || notes.some(note => !note.parentElement?.querySelector(".noteText")))
-			throw new Error("Rendered message phase mapping unavailable");
+		if (notes.length !== phases.length) throw new Error("Rendered message phase mapping unavailable");
 		notes.forEach((note, index) => {
-			const entry = phases[index];
-			note.parentElement!.setAttribute("data-thl-phase-item", entry.itemId);
-			bindItem(note.parentElement!, entry.itemId, "Inspect " + entry.label);
+			const group = note.parentElement;
+			if (!group || group.querySelectorAll(".note").length !== 1)
+				throw new Error("Ambiguous rendered phase group");
+			const entry = resolve([...group.querySelectorAll(".noteText")], false);
+			if (entry !== phases[index]) throw new Error("Rendered phase order unavailable");
+			group.setAttribute("data-thl-phase-item", entry.itemId);
+			bindItem(group, entry.itemId, "Inspect " + entry.label);
 		});
+		if (bound.size !== events.length) throw new Error("Incomplete sequence source mapping");
 
 		const lifelines = root.querySelectorAll<SVGLineElement>(".actor-line");
 		const actors = proof.elements.filter(entry => entry.role === "entity");
@@ -122,9 +165,10 @@ function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiagram, "s
 		head.append(backdrop);
 		let headerBottom = 0;
 		for (const entry of actors) {
-			const node = root.querySelector('[data-et="participant"][data-id="' + entry.id + '"]');
+			const matches = root.querySelectorAll('[data-et="participant"][data-id="' + entry.id + '"]');
+			const node = matches[0];
 			const rect = node?.querySelector(".actor-top");
-			if (!node || !rect) throw new Error("Rendered participant mapping unavailable");
+			if (matches.length !== 1 || !node || !rect) throw new Error("Rendered participant mapping unavailable");
 			headerBottom = Math.max(headerBottom, Number(rect.getAttribute("y")) + Number(rect.getAttribute("height")));
 			bindItem(node, entry.itemId, "Inspect participant " + entry.label);
 			head.append(node);
@@ -181,7 +225,9 @@ function bindItem(node: Element, id: string, label: string): void {
 }
 
 /** Serialize the library's global render lifecycle; never install Mermaid callbacks. */
-export async function renderProof(proof: DiagramProof, signal?: AbortSignal): Promise<RenderedDiagram> {
+export async function renderProof(proof: DiagramProof, signal?: AbortSignal,
+	/** Internal feasibility seam for corrupting real renderer output before binding. */
+	transformRawForTest?: (svg: string) => string): Promise<RenderedDiagram> {
 	const check = () => {
 		if (signal?.aborted) throw new DOMException("Diagram request canceled", "AbortError");
 	};
@@ -196,7 +242,7 @@ export async function renderProof(proof: DiagramProof, signal?: AbortSignal): Pr
 		check();
 		const output = await mermaid.render("thl_proof_" + ++identity, source);
 		check();
-		return { ...output, ...bindSources(output.svg, proof) };
+		return { ...output, ...bindSources(transformRawForTest ? transformRawForTest(output.svg) : output.svg, proof) };
 	});
 	serial = render.then(() => undefined, () => undefined);
 	return render;

@@ -394,3 +394,58 @@ it.each(["state-table", "sequence"] as const)("exposes exact current correlation
 	expect(panel.element().querySelector(".inspect-summary")?.getAttribute("data-source-event-ids")).toBe("commitValue");
 	if (mode === "sequence") expect(pane.element().querySelector("svg")).toBeNull();
 }, 60_000);
+
+
+it("retries a transient render failure without losing the selected frame", async () => {
+ const trace = compileArtifact(retryCheckout());
+ let attempts = 0;
+ const Renderer = createMermaidPlayerDiagram((proof, signal) => ++attempts === 1
+  ? Promise.reject(new Error("transient")) : renderProof(proof, signal));
+ const screen = await render(<GraphPlayer trace={trace} initialView="sequence" DiagramRenderer={Renderer}/>);
+ await expect.element(screen.getByRole("region", { name: "State and event table" })).toBeVisible();
+ await screen.getByRole("button", { name: "Retry diagram" }).click();
+ await expect.element(screen.getByRole("region", { name: "Source-linked sequence at current frame" })).toBeVisible();
+ expect(attempts).toBe(2);
+ expect(screen.container.querySelector(".canvas-meta .step-number")?.textContent).toBe("Step 1 of 10");
+}, 60_000);
+
+it.each(EXAMPLES.map(example => example.id))("exposes frame-linked graph state for %s without per-frame syntax changes", async id => {
+ const source = EXAMPLES.find(example => example.id === id)!.artifact;
+ source.steps[0].focusEntityIds = [source.entities[0].id];
+ const trace = compileArtifact(source);
+ const screen = await render(<GraphPlayer trace={trace} initialView="graph" DiagramRenderer={MermaidPlayerDiagram}/>);
+ const strip = screen.getByRole("region", { name: "Graph modeled state" });
+ await expect.element(strip).toBeVisible();
+ expect(strip.element().querySelectorAll("[data-graph-state-item]").length).toBeGreaterThan(0);
+ await screen.getByRole("button", { name: "Step forward" }).click();
+ const diagram = screen.getByRole("group", { name: "Source-linked graph at current frame" });
+ await expect.element(diagram).toBeVisible();
+ const inspector = (await import("../../v2/inspector.js")).inspectTrace(trace);
+ const view = (await import("../../v2/views.js")).projectView(inspector, { kind: "graph", frameIndex: 1 });
+ const { property } = await import("../mermaid/adapter.js");
+ const { summarizeCell } = await import("../value-display.js");
+ for (const item of view.items.filter(item => item.role === "entity")) {
+  const card = strip.element().querySelector('[data-graph-state-item="' + item.id + '"]');
+  expect(card?.textContent).toContain(summarizeCell(property(item, "cell") as import("../../v2/model.js").Cell));
+  expect(card?.textContent).toContain("Present");
+  const node = diagram.element().querySelector('[data-thl-item-id="' + item.id + '"]');
+  expect(node?.hasAttribute("data-thl-written")).toBe(property(item, "changed") === true);
+  expect(node?.hasAttribute("data-thl-focused")).toBe(property(item, "focused") === true);
+ }
+}, 60_000);
+
+
+it("offers independent exact sequence source controls for identical sends", async () => {
+ const trace = compileArtifact(stateEvidenceFixture());
+ const screen = await render(<GraphPlayer trace={trace} initialView="sequence" DiagramRenderer={MermaidPlayerDiagram}/>);
+ await screen.getByRole("button", { name: "Step forward" }).click();
+ await expect.element(screen.getByRole("region", { name: "Source-linked sequence at current frame" })).toBeVisible();
+ await screen.getByText("Sequence source references", { exact: true }).click();
+ const list = screen.getByRole("list", { name: "Visible sequence source references" });
+ const second = list.element().querySelector<HTMLButtonElement>('[data-source-event-ids="secondSent"]');
+ expect(second).not.toBeNull();
+ await userEvent.click(second!);
+ const inspector = screen.getByRole("complementary", { name: "Workflow inspector" });
+ await expect.element(inspector).toBeVisible();
+ expect(inspector.element().querySelector(".inspect-summary")?.getAttribute("data-source-event-ids")).toBe("secondSent");
+}, 60_000);
