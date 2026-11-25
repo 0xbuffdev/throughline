@@ -34,7 +34,7 @@ const participants = new WeakMap<CompiledTrace, readonly SequenceActor[]>();
 
 export function property(item: ViewItem, key: string): unknown {
 	return item.data && typeof item.data === "object" && !Array.isArray(item.data)
-		? item.data[key] : undefined;
+		? (item.data as Readonly<Record<string, unknown>>)[key] : undefined;
 }
 
 // Separate grammar contexts share numeric entity escaping, not JSON quoting.

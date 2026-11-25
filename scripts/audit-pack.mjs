@@ -346,7 +346,7 @@ try {
 	writeFileSync(
 		join(consumer, "index.ts"),
 		[
-			'import { compileArtifact, inspectTrace, projectView, projectInspection, type VisualArtifact, type CompiledTrace, type TraceInspector, type QueryCell, type StateChange, type HistoryEntry, type PresenceChange, type SemanticEvent, type ViewRequest, type ViewDescriptor, type ViewItem, type ViewKind, type InspectionRequest, type InspectionView, type InspectionRecorded } from "@0xbuff/throughline";',
+			'import { compileArtifact, inspectTrace, projectView, projectInspection, type VisualArtifact, type CompiledTrace, type TraceInspector, type QueryCell, type StateChange, type HistoryEntry, type PresenceChange, type ReadonlySemanticEvent, type ViewRequest, type ViewDescriptor, type ViewItem, type ViewKind, type InspectionRequest, type InspectionView, type InspectionRecorded } from "@0xbuff/throughline";',
 			'import { EXAMPLES } from "@0xbuff/throughline/examples";',
 			'const trace: CompiledTrace = compileArtifact(EXAMPLES[0]!.artifact);',
 			'const frames: number = trace.frames.length;',
@@ -358,7 +358,7 @@ try {
 			'const cell: QueryCell = inspector.valueAt(1, "counter");',
 			'if (cell.status !== "known" || cell.value !== 1) throw new Error("Incorrect query state");',
 			'const changes: readonly StateChange[] = inspector.diff(0, 1);',
-			'const dependencies: readonly SemanticEvent[] = inspector.dependenciesOf("write");',
+			'const dependencies: readonly ReadonlySemanticEvent[] = inspector.dependenciesOf("write");',
 			'const inspectRequest: InspectionRequest = { frameIndex: 1, entityId: "counter", path: [] };',
 			'const inspectView: InspectionView = projectInspection(inspector, inspectRequest);',
 			'const typedRecorded: InspectionRecorded | undefined = inspectView.focused?.evidence.recorded;',

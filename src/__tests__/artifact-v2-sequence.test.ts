@@ -19,7 +19,7 @@ const event = (view: ViewDescriptor, id: string) =>
 const correlation = (view: ViewDescriptor, messageId: string) =>
 	items(view, "value").find(item => item.data &&
 		typeof item.data === "object" && !Array.isArray(item.data) &&
-		item.data.messageId === messageId)!;
+		(item.data as Readonly<Record<string, unknown>>).messageId === messageId)!;
 
 describe("TL-U06 — pure indexed evidence-aware message sequence", () => {
 	it("starts empty without leaking future evidence and remains sequence across seeking", () => {
@@ -115,7 +115,7 @@ describe("TL-U06 — pure indexed evidence-aware message sequence", () => {
 		expect(items(fourth, "event")).toHaveLength(5);
 		expect(items(fourth, "event").filter(row =>
 			row.data && typeof row.data === "object" &&
-			!Array.isArray(row.data) && row.data.type === "message")).toHaveLength(3);
+			!Array.isArray(row.data) && (row.data as Readonly<Record<string, unknown>>).type === "message")).toHaveLength(3);
 	});
 
 	it("treats same-step reversed phases as a set, not physical chronology", () => {

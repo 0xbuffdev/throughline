@@ -8,7 +8,7 @@ import {
 import type { DiagramRendererProps } from "../graph-player.js";
 import { PlayerIcon } from "../player-icons.js";
 import { graphProof, property, sequenceProof, type DiagramProof } from "./adapter.js";
-import type { Cell } from "../../v2/model.js";
+import type { ReadonlyCell } from "../../v2/model.js";
 import { summarizeCell } from "../value-display.js";
 import { animateTransfers, paintRoutes } from "./motion.js";
 import { renderProof, type RenderedDiagram } from "./render.js";
@@ -418,7 +418,7 @@ function MermaidPlayerDiagramImpl({
 					const group = item.role === "group";
 					const focused = property(item, "focused") === true, changed = property(item, "changed") === true;
 					const summary = group ? String(property(item, "count")) + " present entities" :
-						"Present · " + summarizeCell(property(item, "cell") as Cell);
+						"Present · " + summarizeCell(property(item, "cell") as ReadonlyCell);
 					return <button type="button" key={item.id} data-graph-state-item={item.id}
 						data-source-entity-ids={item.source.entityIds?.join(" ")}
 						data-source-event-ids={item.source.eventIds?.join(" ")}

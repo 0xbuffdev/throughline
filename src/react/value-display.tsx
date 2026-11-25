@@ -1,6 +1,6 @@
 import type * as React from "react";
 import { useMemo, useState } from "react";
-import type { Cell, JsonValue, QueryCell } from "../v2/model.js";
+import type { ReadonlyCell, ReadonlyJsonValue, QueryCell } from "../v2/model.js";
 import { encodeJson } from "../v2/validator.js";
 
 const PREVIEW = 150;
@@ -9,7 +9,7 @@ const EXACT_PART = 1024;
 export { summarizeCell } from "../v2/value-summary.js";
 import { summarizeValue, summarizeCell } from "../v2/value-summary.js";
 
-export function nodeValueLines(cell: Cell | null): readonly string[] {
+export function nodeValueLines(cell: ReadonlyCell | null): readonly string[] {
  return [summarizeCell(cell)];
 }
 
@@ -35,7 +35,7 @@ function jsonFragments(source: string): readonly string[] {
 
 /** Exact, inert, chunked canonical JSON for long cells or source payloads. */
 export function ExactJson({ value, label, prefix, compact = false }: {
-	value: JsonValue; label: string; prefix: string; compact?: boolean;
+	value: ReadonlyJsonValue; label: string; prefix: string; compact?: boolean;
 }): React.JSX.Element {
 	const json = useMemo(() => encodeJson(value), [value]);
 	const [expanded, setExpanded] = useState(false);
@@ -92,7 +92,7 @@ const TREE_PAGE = 8;
 
 /** Mount children on request, in bounded pages; never duplicate a large JSON blob. */
 export function ValueTree({ value, name = "Value", inline = false }: {
- value: JsonValue; name?: string; inline?: boolean;
+ value: ReadonlyJsonValue; name?: string; inline?: boolean;
 }): React.JSX.Element {
  const [open, setOpen] = useState(false);
  const [page, setPage] = useState(0);
@@ -104,7 +104,7 @@ export function ValueTree({ value, name = "Value", inline = false }: {
  const shown = keys.slice(current * TREE_PAGE, (current + 1) * TREE_PAGE);
  const fields = <dl>{shown.map(key => <div key={key}>
   <dt>{Array.isArray(value) ? `[${key}]` : key}</dt>
-  <dd><ValueTree value={(value as Record<string, JsonValue>)[key]!} name={key}/></dd>
+  <dd><ValueTree value={(value as Readonly<Record<string, ReadonlyJsonValue>>)[key]!} name={key}/></dd>
  </div>)}</dl>;
  if (inline) return <div className="value-tree inline-fields">{fields}</div>;
  return <details className="value-tree" onToggle={event => setOpen(event.currentTarget.open)}>
