@@ -59,7 +59,9 @@ jobs:
       - name: Verify exact-source TL-U18 security and performance evidence
         env:
           THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: node scripts/verify-release-evidence.mjs
+        run: |
+          node scripts/verify-release-evidence.mjs
+          node scripts/test-release-evidence.mjs
       - name: Upload checked TL-U18 measured evidence
         uses: actions/upload-artifact@v7
         with:
@@ -135,6 +137,7 @@ jobs:
           pnpm preview:build
           pnpm test:run
           node scripts/verify-release-evidence.mjs
+          node scripts/test-release-evidence.mjs
           pnpm test:browser:run
           pnpm build
           pnpm audit:licenses
