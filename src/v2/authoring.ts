@@ -1,12 +1,12 @@
 import { compileArtifact } from "./compiler.js";
-import type { VisualArtifact } from "./model.js";
+import type { ValidatedArtifact } from "./model.js";
 import { ArtifactValidationError, parseArtifactJson, serializeArtifact, validateArtifact } from "./validator.js";
 import { sha256Text } from "./sha256.js";
 
 export type IntentBlock = Readonly<{ body: string }>;
 export type ThlBody =
 	| Readonly<{ kind: "intent"; value: IntentBlock }>
-	| Readonly<{ kind: "artifact"; value: VisualArtifact }>;
+	| Readonly<{ kind: "artifact"; value: ValidatedArtifact }>;
 
 export type AuthoringErrorCode =
 	| "THL_EMPTY" | "THL_INTENT_LIMIT" | "THL_LIMIT" | "THL_UNICODE" | "THL_SYNTAX"
@@ -175,7 +175,7 @@ export function validateSidecarManifest(input: unknown): SidecarManifest {
 }
 
 /** Hash canonical validated artifact JSON, never the source file's whitespace. */
-export function artifactSha256(artifact: VisualArtifact): string {
+export function artifactSha256(artifact: ValidatedArtifact): string {
 	return sha256Text(serializeArtifact(artifact));
 }
 
@@ -191,15 +191,15 @@ export type MaterializationOptions = Readonly<{
  * Resolve a single v2 body without any network or provider invocation.
  * JSON needs no manifest. Prose requires an exact reviewed materialization.
  */
-export function resolveThlBody(body: string, options: MaterializationOptions = {}): VisualArtifact {
+export function resolveThlBody(body: string, options: MaterializationOptions = {}): ValidatedArtifact {
 	return resolveParsedThlBody(parseThlBody(body), options);
 }
 
 /** Internal host path: resolve the result of parseThlBody without classifying
  * or parsing it twice. Callers must supply parser-owned data. This helper
  * is deliberately not exported by the package entrypoint. */
-export function resolveParsedThlBody(parsed: ThlBody, options: MaterializationOptions = {}): VisualArtifact {
-	let artifact: VisualArtifact;
+export function resolveParsedThlBody(parsed: ThlBody, options: MaterializationOptions = {}): ValidatedArtifact {
+	let artifact: ValidatedArtifact;
 	if (parsed.kind === "artifact") {
 		artifact = parsed.value;
 	} else {

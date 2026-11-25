@@ -4,6 +4,7 @@ import {
 	type Cell,
 	type Path,
 	type VisualArtifact,
+	type ValidatedArtifact,
 } from "./model.js";
 
 /** A data-only error: paths refer to input fields, never evaluated code. */
@@ -482,7 +483,7 @@ function freezeJson(value: unknown): void {
 	Object.freeze(value);
 }
 
-function inspect(input: unknown, budget: Budget): VisualArtifact {
+function inspect(input: unknown, budget: Budget): ValidatedArtifact {
 	// Version rejection is intentionally before nested-input traversal.
 	if (!input || typeof input !== "object" || Array.isArray(input))
 		fail("$", "expected a schema-2 artifact object");
@@ -494,7 +495,7 @@ function inspect(input: unknown, budget: Budget): VisualArtifact {
 }
 
 /** Only detached or parser-owned data may reach this boundary. */
-function finishArtifact(data: unknown): VisualArtifact {
+function finishArtifact(data: unknown): ValidatedArtifact {
 	if (!data || typeof data !== "object" || Array.isArray(data) ||
 		(data as RecordValue).schemaVersion !== ARTIFACT_SCHEMA_VERSION)
 		fail("$.schemaVersion", "unsupported artifact schema; expected 2");
@@ -504,7 +505,7 @@ function finishArtifact(data: unknown): VisualArtifact {
 }
 
 /** Validate an arbitrary read-side value; output is detached and deeply frozen. */
-export function validateArtifact(input: unknown): VisualArtifact {
+export function validateArtifact(input: unknown): ValidatedArtifact {
 	try {
 		return inspect(input, new Budget());
 	} catch (error) {
@@ -632,7 +633,7 @@ export function parseStrictJsonData(source: string): unknown {
 }
 
 /** Parse directly into owned schema-2 data under one traversal budget. */
-export function parseArtifactJson(source: string): VisualArtifact {
+export function parseArtifactJson(source: string): ValidatedArtifact {
 	if (typeof source !== "string") fail("$", "expected JSON text");
 	if (source.length > ARTIFACT_LIMITS.artifactBytes ||
 		new TextEncoder().encode(source).byteLength > ARTIFACT_LIMITS.artifactBytes)
@@ -665,6 +666,6 @@ export function encodeJson(value: unknown): string {
 }
 
 /** Stable key-ordered UTF-8-safe JSON. Frames are compiler output, never input. */
-export function serializeArtifact(input: VisualArtifact): string {
+export function serializeArtifact(input: ValidatedArtifact): string {
 	return encodeJson(validateArtifact(input));
 }

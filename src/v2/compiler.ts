@@ -1,15 +1,15 @@
 import {
 	ARTIFACT_LIMITS,
-	type Cell,
+	type ReadonlyCell,
 	type CompiledFrame,
 	type CompiledTrace,
 	type Id,
-	type JsonValue,
+	type ReadonlyJsonValue,
 	type Path,
-	type Relation,
-	type SemanticEvent,
+	type ReadonlyRelation,
+	type ReadonlySemanticEvent,
 	type StateSnapshot,
-	type VisualArtifact,
+	type ValidatedArtifact,
 } from "./model.js";
 import { ArtifactValidationError, validateArtifact } from "./validator.js";
 
@@ -41,7 +41,7 @@ function dataRecord<T>(): Record<string, T> {
  * Work is proportional to the sizes of touched containers plus the number of
  * path nodes, not array length multiplied by the number of indexed writes.
  */
-function applyNestedBatch(current: JsonValue, target: TargetNode): JsonValue {
+function applyNestedBatch(current: ReadonlyJsonValue, target: TargetNode): ReadonlyJsonValue {
 	if (target.write !== undefined) {
 		// Root/whole-entity writes are handled by the caller. Nested leaves
 		// were checked to be known before being placed into the trie.
@@ -50,7 +50,7 @@ function applyNestedBatch(current: JsonValue, target: TargetNode): JsonValue {
 		return target.write.value;
 	}
 	if (Array.isArray(current)) {
-		const copy: JsonValue[] = new Array(current.length);
+		const copy: ReadonlyJsonValue[] = new Array(current.length);
 		for (let i = 0; i < current.length; i++) {
 			const child = target.descendants.get("n:" + i);
 			Object.defineProperty(copy, String(i), {
@@ -64,10 +64,10 @@ function applyNestedBatch(current: JsonValue, target: TargetNode): JsonValue {
 		return copy;
 	}
 	if (current !== null && typeof current === "object") {
-		const copy = dataRecord<JsonValue>();
+		const copy = dataRecord<ReadonlyJsonValue>();
 		for (const key of Object.keys(current)) {
 			const child = target.descendants.get("s:" + key);
-			const value = (current as Record<string, JsonValue>)[key];
+			const value = (current as Readonly<Record<string, ReadonlyJsonValue>>)[key];
 			copy[key] = child ? applyNestedBatch(value, child) : value;
 		}
 		return Object.freeze(copy);
@@ -77,14 +77,14 @@ function applyNestedBatch(current: JsonValue, target: TargetNode): JsonValue {
 }
 
 function assertWritable(
-	cell: Cell,
+	cell: ReadonlyCell,
 	path: Path,
 	source: string,
 ): void {
 	if (path.length === 0) return;
 	if (cell.status === "unknown")
 		reject(source + ".path", "cannot patch a nested path of an unknown entity");
-	let value: JsonValue = cell.value;
+	let value: ReadonlyJsonValue = cell.value;
 	for (let i = 0; i < path.length; i++) {
 		const segment = path[i];
 		const at = source + ".path[" + i + "]";
@@ -99,7 +99,7 @@ function assertWritable(
 				reject(at, "record key requires an existing known record parent");
 			if (!has(value, segment))
 				reject(at, "record key is absent; implicit creation is not supported");
-			value = (value as Record<string, JsonValue>)[segment];
+			value = (value as Readonly<Record<string, ReadonlyJsonValue>>)[segment];
 		}
 	}
 }
@@ -107,7 +107,7 @@ function assertWritable(
 /** A nested replacement must keep every compiled value reachable by a legal
  * inspector path. Validated authored JSON already has bounded nesting; the
  * write path plus replacement depth must also fit that ceiling. */
-function assertReplacementDepth(value: JsonValue, depth: number, source: string): void {
+function assertReplacementDepth(value: ReadonlyJsonValue, depth: number, source: string): void {
 	if (depth > ARTIFACT_LIMITS.jsonDepth)
 		reject(source + ".value", "compiled value nesting exceeds query depth 32");
 	if (value !== null && typeof value === "object")
@@ -116,7 +116,7 @@ function assertReplacementDepth(value: JsonValue, depth: number, source: string)
 }
 
 type TargetNode = {
-	write?: Cell;
+	write?: ReadonlyCell;
 	descendants: Map<string, TargetNode>;
 };
 
@@ -126,9 +126,9 @@ function targetNode(): TargetNode {
 
 /**
  * The trie is the SSOT for a step's pending values and overlapping-path
- * detection. Each leaf owns exactly one authored Cell.
+ * detection. Each leaf owns exactly one authored ReadonlyCell.
  */
-function reserveTarget(root: TargetNode, path: Path, value: Cell, source: string): void {
+function reserveTarget(root: TargetNode, path: Path, value: ReadonlyCell, source: string): void {
 	let node = root;
 	for (const segment of path) {
 		if (node.write !== undefined)
@@ -191,10 +191,10 @@ class TraceBudget {
 }
 
 function snapshot(
-	values: Readonly<Record<Id, Cell>>,
+	values: Readonly<Record<Id, ReadonlyCell>>,
 	presentEntities: ReadonlySet<Id>,
 	presentRelations: ReadonlySet<Id>,
-	artifact: VisualArtifact,
+	artifact: ValidatedArtifact,
 ): Readonly<StateSnapshot> {
 	return Object.freeze({
 		values,
@@ -209,7 +209,7 @@ function frame(
 	index: number,
 	id: string,
 	label: string,
-	events: readonly SemanticEvent[],
+	events: readonly ReadonlySemanticEvent[],
 	state: Readonly<StateSnapshot>,
 ): CompiledFrame {
 	return Object.freeze({
@@ -222,7 +222,7 @@ function frame(
 }
 
 function checkSent(
-	relation: Relation,
+	relation: ReadonlyRelation,
 	presentRelations: ReadonlySet<Id>,
 	presentEntities: ReadonlySet<Id>,
 	source: string,
@@ -257,12 +257,12 @@ export function assertOwnedTrace(input: CompiledTrace): void {
  * step, operations are checked against the same preceding state, and authored
  * event order has no causal or physical-time semantics.
  */
-export function compileArtifact(input: VisualArtifact): CompiledTrace {
+export function compileArtifact(input: ValidatedArtifact): CompiledTrace {
 	const artifact = validateArtifact(input);
 	const relations = new Map(artifact.relations.map((relation) => [relation.id, relation]));
 	const budget = new TraceBudget();
 
-	const initialValues = dataRecord<Cell>();
+	const initialValues = dataRecord<ReadonlyCell>();
 	const initialPresentEntities = new Set<Id>();
 	const initialPresentRelations = new Set<Id>();
 	for (const entity of artifact.entities) {
@@ -272,7 +272,7 @@ export function compileArtifact(input: VisualArtifact): CompiledTrace {
 	for (const relation of artifact.relations)
 		if (relation.initiallyPresent !== false) initialPresentRelations.add(relation.id);
 
-	let values: Readonly<Record<Id, Cell>> = Object.freeze(initialValues);
+	let values: Readonly<Record<Id, ReadonlyCell>> = Object.freeze(initialValues);
 	let presentEntities: ReadonlySet<Id> = initialPresentEntities;
 	let presentRelations: ReadonlySet<Id> = initialPresentRelations;
 
@@ -342,7 +342,7 @@ export function compileArtifact(input: VisualArtifact): CompiledTrace {
 
 		let committedValues = values;
 		if (writesByEntity.size > 0) {
-			const nextValues = dataRecord<Cell>();
+			const nextValues = dataRecord<ReadonlyCell>();
 			for (const entity of artifact.entities) nextValues[entity.id] = values[entity.id];
 			for (const [entityId, target] of writesByEntity) {
 				if (target.write !== undefined) {

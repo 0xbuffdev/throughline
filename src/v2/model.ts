@@ -107,6 +107,20 @@ export type VisualArtifact = {
 	views?: ViewHint[];
 };
 
+/** Deep readonly projection for JSON-shaped authored data (not a runtime validator). */
+export type DeepReadonly<T> = T extends object
+	? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+	: T;
+
+/** Authored inputs above remain mutable. Validated data is detached and deeply frozen. */
+export type ReadonlyJsonValue = DeepReadonly<JsonValue>;
+export type ReadonlyCell = DeepReadonly<Cell>;
+export type ReadonlySemanticEvent = DeepReadonly<SemanticEvent>;
+export type ReadonlyOrigin = DeepReadonly<Origin>;
+export type ReadonlyRelation = DeepReadonly<Relation>;
+export type ReadonlyClaim = DeepReadonly<Claim>;
+export type ValidatedArtifact = DeepReadonly<VisualArtifact>;
+
 /** Independent of npm SemVer and intentionally incompatible with v1 artifacts. */
 export const ARTIFACT_SCHEMA_VERSION = 2 as const;
 
@@ -129,25 +143,25 @@ export const ARTIFACT_LIMITS = Object.freeze({
  * A snapshot is the committed state after the entire corresponding step.
  */
 export type StateSnapshot = {
-	values: Readonly<Record<Id, Cell>>;
-	presentEntityIds: readonly Id[];
-	presentRelationIds: readonly Id[];
+	readonly values: Readonly<Record<Id, ReadonlyCell>>;
+	readonly presentEntityIds: readonly Id[];
+	readonly presentRelationIds: readonly Id[];
 };
 export type CompiledFrame = {
-	id: string;
-	index: number;
-	label: string;
-	eventIds: readonly Id[];
-	snapshot: Readonly<StateSnapshot>;
+	readonly id: string;
+	readonly index: number;
+	readonly label: string;
+	readonly eventIds: readonly Id[];
+	readonly snapshot: StateSnapshot;
 };
 export type CompiledTrace = {
-	schemaVersion: 2;
-	artifact: Readonly<VisualArtifact>;
-	frames: readonly CompiledFrame[];
+	readonly schemaVersion: 2;
+	readonly artifact: ValidatedArtifact;
+	readonly frames: readonly CompiledFrame[];
 };
 
 /** Query-only state distinct from a known JSON null or unknown entity cell. */
-export type QueryCell = Cell | { readonly status: "absent" };
+export type QueryCell = ReadonlyCell | { readonly status: "absent" };
 
 /**
  * An authored write at a committed step. For a path-filtered history, `path`
@@ -187,7 +201,7 @@ export type StateChange = WriteChange | PresenceChange;
 
 export type CausalEvidence = {
 	readonly status: "explicit" | "unmodeled";
-	readonly dependencies: readonly SemanticEvent[];
+	readonly dependencies: readonly ReadonlySemanticEvent[];
 	readonly explanation: string;
 };
 
@@ -197,17 +211,17 @@ export type CausalEvidence = {
  */
 export type TraceInspector = {
 	readonly frameCount: number;
-	stateAt(frameIndex: number): Readonly<StateSnapshot>;
-	valueAt(frameIndex: number, entityId: Id, path?: Path): QueryCell;
-	diff(from: number, to: number): readonly StateChange[];
-	history(entityId: Id, path?: Path): readonly HistoryEntry[];
-	eventsFor(entityId: Id): readonly SemanticEvent[];
-	transfersFor(relationId: Id): readonly SemanticEvent[];
-	dependenciesOf(eventId: Id): readonly SemanticEvent[];
-	causalEvidenceOf(eventId: Id): CausalEvidence;
-	eventById(eventId: Id): SemanticEvent;
-	claimsForEvent(eventId: Id): readonly Claim[];
-	relationsFor(entityId: Id): readonly Relation[];
+	readonly stateAt: (frameIndex: number) => Readonly<StateSnapshot>;
+	readonly valueAt: (frameIndex: number, entityId: Id, path?: Path) => QueryCell;
+	readonly diff: (from: number, to: number) => readonly StateChange[];
+	readonly history: (entityId: Id, path?: Path) => readonly HistoryEntry[];
+	readonly eventsFor: (entityId: Id) => readonly ReadonlySemanticEvent[];
+	readonly transfersFor: (relationId: Id) => readonly ReadonlySemanticEvent[];
+	readonly dependenciesOf: (eventId: Id) => readonly ReadonlySemanticEvent[];
+	readonly causalEvidenceOf: (eventId: Id) => CausalEvidence;
+	readonly eventById: (eventId: Id) => ReadonlySemanticEvent;
+	readonly claimsForEvent: (eventId: Id) => readonly ReadonlyClaim[];
+	readonly relationsFor: (entityId: Id) => readonly ReadonlyRelation[];
 };
 
 /** Stable source provenance for renderer-independent v2 views. */
@@ -226,7 +240,7 @@ export type ViewItem = {
 	readonly source: Readonly<SourceIds>;
 	readonly fromItemId?: Id;
 	readonly toItemId?: Id;
-	readonly data?: JsonValue;
+	readonly data?: ReadonlyJsonValue;
 };
 export type ViewRequest = {
 	readonly kind?: ViewKind;
