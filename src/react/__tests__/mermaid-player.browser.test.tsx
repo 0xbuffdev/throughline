@@ -406,7 +406,7 @@ it("retries a transient render failure without losing the selected frame", async
  await screen.getByRole("button", { name: "Retry diagram" }).click();
  await expect.element(screen.getByRole("region", { name: "Source-linked sequence at current frame" })).toBeVisible();
  expect(attempts).toBe(2);
- await expect.element(screen.getByText("Step 1 of 10", { exact: true }).first()).toBeVisible();
+ expect(screen.container.querySelector(".canvas-meta .step-number")?.textContent).toBe("Step 1 of 10");
 }, 60_000);
 
 it.each(EXAMPLES.map(example => example.id))("exposes frame-linked graph state for %s without per-frame syntax changes", async id => {
@@ -432,4 +432,20 @@ it.each(EXAMPLES.map(example => example.id))("exposes frame-linked graph state f
   expect(node?.hasAttribute("data-thl-written")).toBe(property(item, "changed") === true);
   expect(node?.hasAttribute("data-thl-focused")).toBe(property(item, "focused") === true);
  }
+}, 60_000);
+
+
+it("offers independent exact sequence source controls for identical sends", async () => {
+ const trace = compileArtifact(stateEvidenceFixture());
+ const screen = await render(<GraphPlayer trace={trace} initialView="sequence" DiagramRenderer={MermaidPlayerDiagram}/>);
+ await screen.getByRole("button", { name: "Step forward" }).click();
+ await expect.element(screen.getByRole("region", { name: "Source-linked sequence at current frame" })).toBeVisible();
+ await screen.getByText("Sequence source references", { exact: true }).click();
+ const list = screen.getByRole("list", { name: "Visible sequence source references" });
+ const second = list.element().querySelector<HTMLButtonElement>('[data-source-event-ids="secondSent"]');
+ expect(second).not.toBeNull();
+ await userEvent.click(second!);
+ const inspector = screen.getByRole("complementary", { name: "Workflow inspector" });
+ await expect.element(inspector).toBeVisible();
+ expect(inspector.element().querySelector(".inspect-summary")?.getAttribute("data-source-event-ids")).toBe("secondSent");
 }, 60_000);

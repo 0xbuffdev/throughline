@@ -114,14 +114,17 @@ try {
 		assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Host overflows at " + width);
 	}
 	assert.deepEqual(errors, []); assert.deepEqual(nonLocal, []);
+	const sequenceAssets = [...requested].filter(file => !initialAssets.includes(file));
 	// The proof host includes all four canonical references. Exercise their
 	// graph sources and the honest non-message fallback separately from checkout.
 	const referenceResults = [];
 	const examples = page.locator("select").nth(0);
-	const options = await examples.locator("option").evaluateAll(nodes => nodes.map(node => node.value));
+	const options = await examples.locator("option").evaluateAll(nodes =>
+		nodes.map(node => ({ value: node.value, title: node.textContent })));
 	assert.equal(options.length, 4);
-	for (const value of options) {
+	for (const { value, title } of options) {
 		await examples.selectOption(value);
+		await page.waitForFunction(() => document.querySelector("output")?.textContent?.startsWith("0:"));
 		await page.locator("select").nth(1).selectOption("graph");
 		await page.locator('[data-proof-kind="graph"] svg').waitFor({ state: "attached", timeout: 60_000 });
 		const initialNodes = await diagram.locator("[data-thl-item-id]").count();
@@ -129,7 +132,17 @@ try {
 		await page.getByRole("button", { name: "Next frame", exact: true }).click();
 		await page.waitForFunction(() => document.querySelector("output")?.textContent?.startsWith("1:"));
 		await page.locator('[data-proof-kind="graph"] svg').waitFor({ state: "attached", timeout: 60_000 });
-		referenceResults.push({ exampleIndex: Number(value), initialNodes });
+		const exact = page.locator('[aria-label="Exact diagram sources"] button[data-source-entity-ids]').first();
+		await exact.click();
+		assert(await page.getByRole("region", { name: "Selected exact source" }).isVisible());
+		let noMessageFallback = null;
+		if (Number(value) !== 3) {
+			await page.locator("select").nth(1).selectOption("sequence");
+			assert.equal(await page.locator('[data-proof-kind="sequence"]').count(), 0,
+				"Non-message reference produced a fabricated sequence");
+			noMessageFallback = true;
+		}
+		referenceResults.push({ exampleIndex: Number(value), title, initialNodes, noMessageFallback });
 	}
 	assert.deepEqual(errors, []); assert.deepEqual(nonLocal, []);
 	const after = captureSource(root);
@@ -137,8 +150,8 @@ try {
 		inputFingerprint: before.fingerprint, mermaid: "12.3.0", engine, browser: browser.version(),
 		referenceResults,
 		archiveSha256: createHash("sha256").update(readFileSync(tarball)).digest("hex"),
-		initialAssets, sequenceAssets: [...requested].filter(file => !initialAssets.includes(file)),
-		assets, errors, nonLocal, packedCore: true, productionBuild: true, candidateBrowser: true };
+		initialAssets, sequenceAssets,
+		assets, errors, nonLocal, packedCore: true, proofHostBuild: true, candidateBrowser: true, productionMermaid: false };
 	writeFileSync(output, JSON.stringify(report, null, 2) + "\n");
 	assert(report.sourceStable, "Source changed during packed-candidate verification");
 	console.log("Packed native package + copied Mermaid feasibility adapter passed; NOT a production Mermaid cutover: " + output);

@@ -4,9 +4,11 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
+import { captureSource, sameSource } from "./mermaid-source-identity.mjs";
 
 // Audit the test-only dependency independently of the runtime/peer allowlist.
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const before = captureSource(root);
 const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 assert.equal(manifest.devDependencies.mermaid, "12.3.0", "Proof version must be pinned");
 assert(!manifest.dependencies?.mermaid && !manifest.peerDependencies?.mermaid,
@@ -44,11 +46,15 @@ const chunks = files.map(path => {
 	const bytes = readFileSync(path);
 	return { file: path.slice(mermaidPath.length + 1), bytes: bytes.length, gzipBytes: gzipSync(bytes).length };
 });
+const after = captureSource(root);
 const report = { experimental: true, runtimeAdoption: false,
+	sourceSha: before.sourceSha, inputFingerprint: before.fingerprint,
+	dirty: Boolean(before.status), sourceStable: sameSource(before, after),
 	lockSha256: createHash("sha256").update(readFileSync(join(root, "pnpm-lock.yaml"))).digest("hex"),
 	packages, chunks, notes: "Selected distributed chunks are not a full application bundle estimate. License inventory is not legal approval." };
 const output = resolve(process.argv[2] ?? "/tmp/throughline-mermaid-dependencies.json");
 writeFileSync(output, JSON.stringify(report, null, 2) + "\n");
+assert(report.sourceStable, "Source changed during dependency audit");
 console.log(JSON.stringify({ packages: packages.length,
 	licenses: [...new Set(packages.map(entry => entry.license))],
 	missingTexts: packages.filter(entry => !entry.licenseFiles.length).map(entry => entry.name), chunks, output }, null, 2));

@@ -26,10 +26,10 @@ try {
 	await page.getByRole("group", { name: "Candidate diagram" }).waitFor({ timeout: 60_000 });
 	await page.screenshot({ path: join(output, "graph.png"), fullPage: true });
 	await page.locator("select").nth(1).selectOption("sequence");
-	await page.getByRole("group", { name: "Candidate diagram" }).waitFor();
+	await page.locator('[data-proof-kind="sequence"] svg').waitFor({ state: "attached" });
 	await page.screenshot({ path: join(output, "sequence-initial.png"), fullPage: true });
 	await page.getByRole("button", { name: "Next frame", exact: true }).click();
-	await page.getByRole("group", { name: "Candidate diagram" }).waitFor();
+	await page.locator('[data-proof-kind="sequence"] [data-thl-motion-item]').waitFor({ state: "attached" });
 	await page.screenshot({ path: join(output, "sequence-send.png"), fullPage: true });
 	await page.setViewportSize({ width: 375, height: 812 });
 	await page.screenshot({ path: join(output, "sequence-mobile.png"), fullPage: true });
@@ -103,7 +103,9 @@ try {
 		return { graphs, topology, widths, lanes,
 			sequence: { totalEvents: proof.totalEvents, visibleEvents: proof.visibleEvents, projectionMs,
 				renderMs: performance.now() - start, svgBytes: new TextEncoder().encode(svg).length },
-			heap: performance.memory ? { used: performance.memory.usedJSHeapSize, total: performance.memory.totalJSHeapSize } : null };
+			heap: performance.memory ? { method: "performance.memory snapshot (not peak or total process memory)",
+				used: performance.memory.usedJSHeapSize, total: performance.memory.totalJSHeapSize }
+				: { method: "NOT PERFORMED — browser does not expose performance.memory" } };
 	});
 	const after = captureSource();
 	const sourceStable = sameSource(before, after);

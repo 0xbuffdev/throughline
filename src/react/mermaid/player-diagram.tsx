@@ -398,6 +398,16 @@ function MermaidPlayerDiagramImpl({
 			</nav>}
 			<button type="button" className="mermaid-evidence" onClick={onOpenEvidence}>Changes and evidence</button>
 		</div>
+		{diagram && <details className="mermaid-source-references" style={{ flex: "0 0 auto", maxHeight: "25%", overflow: "auto" }}>
+			<summary>Sequence source references</summary>
+			<ul aria-label="Visible sequence source references">
+				{proof.elements.filter(entry => entry.role === "event").map(entry => <li key={entry.itemId}>
+					<button type="button" className="mermaid-evidence"
+						data-source-event-ids={entry.source.eventIds?.join(" ")}
+						onClick={() => onSelectItem(entry.itemId)}>{entry.rowToken} · {entry.label}</button>
+				</li>)}
+			</ul>
+		</details>}
 	</div>;
 	return <div ref={host} className="mermaid-markup" data-mermaid-kind="graph">
 		<GraphViewport key={proof.source} diagram={visible} proof={proof}

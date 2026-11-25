@@ -22,8 +22,7 @@ const load = retryableLoader(async (): Promise<Mermaid> => {
 	// Use Mermaid's separate ESM distribution so a host's ordinary package
 	// import can keep its own site configuration and diagram queue.
 	const { default: mermaid } = await import("mermaid/dist/mermaid.esm.min.mjs");
-	{
-		mermaid.initialize({
+	mermaid.initialize({
 			startOnLoad: false, securityLevel: "strict", suppressErrorRendering: true, htmlLabels: true,
 			theme: "base", look: "classic", layout: "elk",
 			deterministicIds: true, maxTextSize: 300_000, maxEdges: 1_000,
@@ -40,9 +39,8 @@ const load = retryableLoader(async (): Promise<Mermaid> => {
 				diagramMarginX: 10, diagramMarginY: 8, noteMargin: 6,
 				messageMargin: 18, mirrorActors: false, wrap: false, wrapPadding: 4,
 				rightAngles: true },
-		});
-		return mermaid;
-	}
+	});
+	return mermaid;
 });
 
 const svgNS = "http://www.w3.org/2000/svg";
@@ -67,9 +65,10 @@ function bindDirection(root: SVGSVGElement, route: SVGElement): void {
 	}
 }
 
-/** Bind host-authored paint tokens, not Mermaid's private IDs/classes/ordering.
- * Essential interactions resolve the resulting own item ID through the current
- * descriptor. Missing/duplicated routes fail closed rather than guessing.
+/** Bind host-authored paint/row tokens to the current descriptor. Graph
+ * tokens do not rely on generated SVG IDs; Sequence still has a pinned local
+ * caption/mark bridge. Source controls provide an independent text path.
+ * Missing/duplicated/ambiguous routes fail closed rather than guessing.
  */
 export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiagram, "svg" | "width" | "height"> {
 	const template = document.createElement("template"); template.innerHTML = svg;
