@@ -313,3 +313,42 @@ it("bounds the native lane window and returns to the newest evidence on seek", a
  expect(rows()).toHaveLength(120);
  expect(rows().at(-1)?.getAttribute("data-source-event-ids")).toBe("event248");
 });
+
+
+it("does not replay completed native transfer motion when paging away and back", async () => {
+ const source = retryCheckout();
+ source.steps = Array.from({ length: 126 }, (_, n) => ({
+  id: "step" + n, label: "Step " + n, events: [{
+   id: "event" + n, originId: "author", type: "message" as const,
+   relationId: "request", messageId: "batch", phase: "sent" as const,
+  }],
+ }));
+ // The Playwright browser suite defaults to no-preference; fail if the
+ // reduced-motion environment would make this animation regression vacuous.
+ expect(window.matchMedia("(prefers-reduced-motion: no-preference)").matches).toBe(true);
+ const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)} initialView="sequence"/>);
+ const player = screen.getByRole("group", { name: "Visualization player" });
+ player.element().focus();
+ await userEvent.keyboard("{End}");
+ const back = screen.getByRole("button", { name: "Step back" });
+ await back.click();
+ await back.click();
+ const next = screen.getByRole("button", { name: "Step forward" });
+ await next.click();
+ const lane = screen.getByRole("region", { name: "Message sequence evidence", exact: true });
+ const row = () => lane.element().querySelector('[data-source-event-ids="event124"]');
+ const line = row()?.querySelector(".seq-animate");
+ expect(line).not.toBeNull();
+ expect(getComputedStyle(line!, "::before").animationName).toBe("thl-sequence-transfer");
+ // The CSS transfer is capped at 600ms at this speed.
+ await new Promise(resolve => setTimeout(resolve, 750));
+ await lane.getByRole("button", { name: "Show earlier evidence" }).click();
+ expect(row()).toBeNull();
+ await lane.getByRole("button", { name: "Show later evidence" }).click();
+ expect(row()).not.toBeNull();
+ expect(row()?.querySelector(".seq-animate")).toBeNull();
+ expect(getComputedStyle(row()!.querySelector(".seq-line")!, "::before").animationName).toBe("none");
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 126 of 127");
+ await next.click();
+ expect(lane.element().querySelector('[data-source-event-ids="event125"] .seq-animate')).not.toBeNull();
+});

@@ -78,3 +78,26 @@ it("cancels active native transfer motion when autoplay is paused", async () => 
  expect(player.element().querySelector(".thl-link.thl-animate")).toBeNull();
  await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 10");
 });
+
+
+it("discards a dirty seek draft when a same-length trace is replaced", async () => {
+ const first = compileArtifact(retryCheckout());
+ const source = retryCheckout();
+ source.steps[0].label = "Replacement request";
+ const replacement = compileArtifact(source);
+ expect(replacement.frames.length).toBe(first.frames.length);
+ const screen = await render(<ThroughlineGraphPlayer trace={first}/>);
+ await screen.getByRole("button", { name: "Step forward" }).click();
+ const options = screen.getByRole("button", { name: "Player options" });
+ await options.click();
+ const input = screen.getByRole("spinbutton", { name: "Go to step" });
+ await input.fill("8");
+ await expect.element(input).toHaveValue(8);
+ await screen.rerender(<ThroughlineGraphPlayer trace={replacement}/>);
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 10");
+ await expect.element(input).toHaveValue(1);
+ await screen.getByRole("button", { name: "Go", exact: true }).click();
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 10");
+ await screen.getByRole("button", { name: "Step forward" }).click();
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Replacement request");
+});

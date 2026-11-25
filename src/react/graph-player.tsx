@@ -648,7 +648,7 @@ export function GraphPlayer({
     <button ref={inspectorTriggerRef} type="button" aria-controls={inspectorId}
      aria-expanded={!!inspection} className={inspection ? "active" : ""}
      aria-label="Inspect" aria-pressed={!!inspection} onClick={toggleInspection}><PlayerIcon name="inspect"/><span>Inspect</span></button>
-    <PlayerOptions state={state} dispatch={dispatch}
+    <PlayerOptions trace={trace} state={state} dispatch={dispatch}
      diagramControls={diagramControls}
      inspection={{ enabled: !!inspection, toggle: toggleInspection }}
      sound={{ enabled: soundOn, available: soundAvailable, toggle: toggleSound }}

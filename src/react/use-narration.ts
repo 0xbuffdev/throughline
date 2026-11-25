@@ -61,7 +61,10 @@ export function useNarration({
 	latest.current = {
 		trace, step, text, seekRevision, speed, playing, enabled, dispatch, setEnabled,
 	};
-	const previous = useRef({ trace, step, text, seekRevision, speed, playing, enabled });
+	const previous = useRef({ trace, step, seekRevision, playing, enabled });
+	// Pausing autoplay differs from intentionally reading a manually selected
+	// frame while the transport is idle. Retain that distinction across rates.
+	const transportPaused = useRef(false);
 
 	const stop = useCallback(() => {
 		const voice = current.current;
@@ -155,27 +158,37 @@ export function useNarration({
 		setAvailable(offered && Boolean(speechEngine()));
 	}, [offered]);
 
-	// A changed frame, corrected authored guidance, or an explicit seek
-	// (including a seek to the current frame) starts a fresh utterance.
+	// Coordinate the speech lifecycle in one effect: explicit seeks enable
+	// manual reading, while a rate/text change alone cannot undo Pause.
 	useEffect(() => {
-		if (!enabled || !offered) { stop(); return; }
+		const old = previous.current;
+		previous.current = { trace, step, seekRevision, playing, enabled };
+		if (!enabled || !offered) {
+			transportPaused.current = false;
+			stop();
+			return;
+		}
+		const newFrame = old.trace !== trace || old.step !== step ||
+			old.seekRevision !== seekRevision;
+		if (newFrame || !old.enabled || playing) {
+			transportPaused.current = false;
+		} else if (old.playing && !playing) {
+			transportPaused.current = true;
+		}
+
 		const voice = current.current;
 		if (!voice || voice.trace !== trace || voice.step !== step ||
 			voice.text !== text || voice.seekRevision !== seekRevision || voice.speed !== speed) {
-			start();
+			if (transportPaused.current) {
+				// Invalidate old callbacks and relinquish the old voice; do
+				// not speak or resume the global queue until Play or a seek.
+				stop();
+			} else {
+				start();
+			}
+			return;
 		}
-	}, [enabled, offered, trace, step, text, seekRevision, speed, start, stop]);
-
-	// The speech clock and the player's Play/Pause control share one state.
-	// Pause/resume only if this instance still owns the global speech queue.
-	useEffect(() => {
-		const old = previous.current;
-		previous.current = { trace, step, text, seekRevision, speed, playing, enabled };
-		if (!enabled || old.trace !== trace || old.step !== step ||
-			old.text !== text || old.seekRevision !== seekRevision || old.speed !== speed ||
-			old.enabled !== enabled || old.playing === playing) return;
-		const voice = current.current;
-		if (!voice) return;
+		if (newFrame || old.enabled !== enabled || old.playing === playing) return;
 		if (voice.failed) {
 			if (playing) dispatch({ type: "pause" });
 			return;
@@ -194,7 +207,7 @@ export function useNarration({
 				}
 			}
 		}
-	}, [trace, step, text, seekRevision, speed, playing, enabled, dispatch]);
+	}, [trace, step, text, seekRevision, speed, playing, enabled, offered, dispatch, start, stop]);
 
 	useEffect(() => () => stop(), [stop]);
 

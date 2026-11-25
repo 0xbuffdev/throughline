@@ -120,7 +120,8 @@ view; Tab leaves the tab list. The same keyboard policy applies to the Mermaid p
 Use the playback controls to step backward or forward. The number and title
 above the diagram identify the current step. Choose **Go to step** in Options
 to open a specific step. While editing that field, autoplay does not overwrite
-your draft. Submit to seek and pause, or dismiss Options to discard it. The graph opens at readable scale and
+your draft. Submit to seek and pause, or dismiss Options to discard it.
+Replacing the trace discards any draft and shows the new initial step. The graph opens at readable scale and
 centers sparse content. Nodes have compact measurements that remain stable
 through the trace. Directed acyclic relationships use structural levels;
 cycles retain a deterministic centered grid. Nodes show scalar values or collection
@@ -141,7 +142,8 @@ remain separate phase markers. Motion occurs only on forward sends and is
 disabled for reduced-motion preferences, direct seeking and rewind. Pausing,
 changing speed or changing views also cancels outstanding transfer motion.
 The native Sequence lane mounts at most 120 event rows; use earlier/later pages
-to inspect the remaining source events. Changing frames returns to the newest page.
+to inspect the remaining source events. Paging cancels the current transfer
+motion and returning to a page never replays it. Changing frames returns to the newest page.
 Escape closes the inspector or Options and
 returns focus to its control. Options provides timeline restart, direct step
 navigation and supported display controls. **Inspect** summarizes the current
@@ -155,7 +157,8 @@ narration and sonification are optional and must not alter the model. Replaced
 sonification tones are stopped and disconnected. Spoken excerpts are limited to
 3,000 UTF-16 code units; the complete authored text remains in the caption and
 inspector. Changing playback speed restarts the current spoken excerpt at the
-new rate; a superseded utterance cannot advance the timeline.
+new rate, except after an explicit playback pause: the replacement waits for
+Play or a deliberate seek. A superseded utterance cannot advance the timeline.
 
 Run `pnpm dev` from the source repository to open the checkout player preview
 at desktop, tablet or mobile widths. The preview includes checkout's explanation
