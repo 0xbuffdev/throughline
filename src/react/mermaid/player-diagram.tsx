@@ -201,7 +201,7 @@ function GraphViewport({
 		</svg>
 		{stateEvidence}
 		<div className="canvas-hint">
-			<button className="mermaid-evidence" type="button" onClick={onOpenEvidence}>Changes and evidence</button>
+			<button className="diagram-evidence-action" type="button" onClick={onOpenEvidence}>Changes and evidence</button>
 			<div className="zoom-tools" role="toolbar" aria-label="Diagram navigation">
 				<button type="button" aria-label="Follow transfers" aria-pressed={follow} title="Keep active routes in view"
 					onClick={() => { setCamera(viewport); setFollowScale(viewport.zoom); onFollowChange(!follow); }}>
@@ -372,8 +372,8 @@ function MermaidPlayerDiagramImpl({
 	if (!proof || diagram === null) return <div className="mermaid-fallback">
 		<div className="mermaid-status">
 			<p role="status">{proof ? "The diagram couldn’t be rendered." : "This diagram exceeds the preview display limit."}</p>
-			{proof && <button type="button" className="mermaid-evidence" onClick={retry}>Retry diagram</button>}
-			<button type="button" className="mermaid-evidence" onClick={onOpenEvidence}>Changes and evidence</button>
+			{proof && <button type="button" className="diagram-evidence-action" onClick={retry}>Retry diagram</button>}
+			<button type="button" className="diagram-evidence-action" onClick={onOpenEvidence}>Changes and evidence</button>
 		</div>
 		{fallback()}
 	</div>;
@@ -390,20 +390,20 @@ function MermaidPlayerDiagramImpl({
 		</div>
 		<div className="mermaid-status">
 			{proof.diagnostics.length > 0 && <nav className="mermaid-pages" aria-label="Sequence event windows">
-				<button className="mermaid-evidence" type="button" disabled={!proof.start}
+				<button className="diagram-evidence-action" type="button" disabled={!proof.start}
 					onClick={() => setEventWindow({ trace, frame: frameIndex, start: proof.start - proof.visibleEvents })}>Earlier phases</button>
 				<span>{proof.start + 1}–{proof.start + proof.visibleEvents} of {proof.totalEvents}</span>
-				<button className="mermaid-evidence" type="button"
+				<button className="diagram-evidence-action" type="button"
 					disabled={proof.start + proof.visibleEvents >= proof.totalEvents}
 					onClick={() => setEventWindow({ trace, frame: frameIndex, start: proof.start + proof.visibleEvents })}>Later phases</button>
 			</nav>}
-			<button type="button" className="mermaid-evidence" onClick={onOpenEvidence}>Changes and evidence</button>
+			<button type="button" className="diagram-evidence-action" onClick={onOpenEvidence}>Changes and evidence</button>
 		</div>
 		{diagram && <details className="mermaid-source-references" style={{ flex: "0 0 auto", maxHeight: "25%", overflow: "auto" }}>
 			<summary>Sequence source references</summary>
 			<ul aria-label="Visible sequence source references">
 				{proof.elements.filter(entry => entry.role === "event").map(entry => <li key={entry.itemId}>
-					<button type="button" className="mermaid-evidence"
+					<button type="button" className="diagram-evidence-action"
 						data-source-event-ids={entry.source.eventIds?.join(" ")}
 						onClick={() => onSelectItem(entry.itemId)}>{entry.rowToken} · {entry.label}</button>
 				</li>)}

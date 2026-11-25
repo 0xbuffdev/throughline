@@ -1606,11 +1606,11 @@
 .thl.player-shell .caption-body > button { justify-self: start; }
 .thl.player-shell .thl-link[role="button"] { cursor: pointer; }
 .thl.player-shell .thl-link[role="button"]:focus-visible .thl-edge { stroke: var(--thl-active); stroke-width: 3; }
-.thl.player-shell .mermaid-evidence {
+.thl.player-shell .diagram-evidence-action {
  border: 0; border-radius: var(--thl-radius); background: transparent; color: var(--thl-active);
  padding: 6px; font-size: var(--thl-ui-small);
 }
-.thl.player-shell .mermaid-evidence:hover { background: var(--thl-control-hover); }
+.thl.player-shell .diagram-evidence-action:hover { background: var(--thl-control-hover); }
 .thl.player-shell .mermaid-loading {
  position: absolute; inset: 38px 0 0; display: grid; place-items: center;
  padding: 16px; color: var(--thl-muted); text-align: center;
