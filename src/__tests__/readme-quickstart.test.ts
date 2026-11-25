@@ -44,7 +44,7 @@ describe("compact player documentation contract (F09)", () => {
 		expect(panel).toContain('<summary>Compare steps</summary>');
 		for (const path of ["README.md", "docs/schema-v2.md", "docs/user-guide.md"]) {
 			const doc = read(path);
-			expect(doc).toContain("Source details");
+			expect(doc).toMatch(/Source\s+details/);
 			expect(doc).not.toMatch(/visible \*\*Explain \/ Inspect\*\* switch|manual \*\*Sequence\*\* option under Player options/);
 		}
 	});
