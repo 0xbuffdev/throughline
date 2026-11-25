@@ -114,10 +114,14 @@ phases; absent receipts and acknowledgements are not invented.
 Tabs appear only for projections the artifact supports across its entire timeline;
 for example, factorial has Graph and State tabs, while Checkout also has Sequence.
 An incompatible programmatic view request falls back to a truthful state table.
+With focus on a view tab, Left/Right and Home/End move focus and activate the
+view; Tab leaves the tab list. The same keyboard policy applies to the Mermaid preview.
 
 Use the playback controls to step backward or forward. The number and title
 above the diagram identify the current step. Choose **Go to step** in Options
-to open a specific step. The graph opens at readable scale and
+to open a specific step. While editing that field, autoplay does not overwrite
+your draft. Submit to seek and pause, or dismiss Options to discard it.
+Replacing the trace discards any draft and shows the new initial step. The graph opens at readable scale and
 centers sparse content. Nodes have compact measurements that remain stable
 through the trace. Directed acyclic relationships use structural levels;
 cycles retain a deterministic centered grid. Nodes show scalar values or collection
@@ -135,7 +139,11 @@ The State view retains native table headers and explicit presence/value labels.
 Sequence reserves declared message participants from the start. Arrows connect
 their lifelines only for explicit sends; receipt, processing and acknowledgement
 remain separate phase markers. Motion occurs only on forward sends and is
-disabled for reduced-motion preferences, direct seeking and rewind.
+disabled for reduced-motion preferences, direct seeking and rewind. Pausing,
+changing speed or changing views also cancels outstanding transfer motion.
+The native Sequence lane mounts at most 120 event rows; use earlier/later pages
+to inspect the remaining source events. Paging cancels the current transfer
+motion and returning to a page never replays it. Changing frames returns to the newest page.
 Escape closes the inspector or Options and
 returns focus to its control. Options provides timeline restart, direct step
 navigation and supported display controls. **Inspect** summarizes the current
@@ -145,7 +153,12 @@ details** and open a tool to compare steps, query a value or read source
 events. Comparisons use the same step numbers as playback.
 Collapsing a group and changing presentation cannot change committed state.
 Keyboard-accessible controls and reduced-motion presentation apply;
-narration is optional and must not alter the model.
+narration and sonification are optional and must not alter the model. Replaced
+sonification tones are stopped and disconnected. Spoken excerpts are limited to
+3,000 UTF-16 code units; the complete authored text remains in the caption and
+inspector. Changing playback speed restarts the current spoken excerpt at the
+new rate, except after an explicit playback pause: the replacement waits for
+Play or a deliberate seek. A superseded utterance cannot advance the timeline.
 
 Run `pnpm dev` from the source repository to open the checkout player preview
 at desktop, tablet or mobile widths. The preview includes checkout's explanation

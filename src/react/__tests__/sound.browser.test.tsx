@@ -1,4 +1,7 @@
 import { StrictMode } from "react";
+import { compileArtifact } from "../../v2/compiler.js";
+import { retryCheckout } from "../../__tests__/v2-sequence-fixture.js";
+import { ThroughlineGraphPlayer } from "../graph-player.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
@@ -255,4 +258,45 @@ it("exposes muted sound controls in scenario comparison, resetting on a switch",
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	expect(audio.voices).toHaveLength(1);
 	await screen.unmount();
+});
+
+
+it("cleans up schema-2 voices on step, disable, trace replacement and unmount", async () => {
+ const audio = audioBoundary();
+ const source = compileArtifact(retryCheckout());
+ const screen = await render(<StrictMode><ThroughlineGraphPlayer trace={source}/></StrictMode>);
+ const options = screen.getByRole("button", { name: "Player options" });
+ await options.click();
+ const sound = screen.getByRole("button", { name: "Sonify trace" });
+ await sound.click();
+ expect(audio.voices).toHaveLength(1);
+ await options.click();
+ await screen.getByRole("button", { name: "Step forward" }).click();
+ expect(audio.voices[0].stop).toHaveBeenLastCalledWith();
+ expect(audio.voices[0].disconnect).toHaveBeenCalledOnce();
+ expect(audio.gains[0].disconnect).toHaveBeenCalledOnce();
+ await options.click();
+ await sound.click();
+ expect(audio.voices[1].disconnect).toHaveBeenCalledOnce();
+ await sound.click();
+ await options.click();
+ await screen.rerender(<StrictMode><ThroughlineGraphPlayer trace={compileArtifact(retryCheckout())}/></StrictMode>);
+ expect(audio.voices[2].disconnect).toHaveBeenCalledOnce();
+ await options.click();
+ await sound.click();
+ await screen.unmount();
+ expect(audio.voices[3].disconnect).toHaveBeenCalledOnce();
+ expect(audio.contexts[0].close).toHaveBeenCalledOnce();
+});
+
+it("keeps the schema-2 timeline operable when AudioContext construction throws", async () => {
+ vi.stubGlobal("AudioContext", class { constructor() { throw new Error("unavailable"); } });
+ const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(retryCheckout())}/>);
+ await screen.getByRole("button", { name: "Player options" }).click();
+ const sound = screen.getByRole("button", { name: "Sonify trace" });
+ await sound.click();
+ await expect.element(sound).toHaveAttribute("aria-pressed", "false");
+ await screen.getByRole("button", { name: "Player options" }).click();
+ await screen.getByRole("button", { name: "Step forward" }).click();
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 10");
 });

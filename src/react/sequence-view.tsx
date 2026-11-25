@@ -21,11 +21,22 @@ export function SequenceView({ view, actors, present, selectedId, onSelect, onIn
 	animate?: boolean;
 }): React.JSX.Element {
 	const [identity, setIdentity] = useState(actors);
- const [maxVisible, setMaxVisible] = useState(PAGE);
- if (identity !== actors) { setIdentity(actors); setMaxVisible(PAGE); }
+ const [page, setPage] = useState(0);
+ const [frameId, setFrameId] = useState(view.frameId);
+ const [motionConsumed, setMotionConsumed] = useState(false);
+ if (identity !== actors || frameId !== view.frameId) {
+  setIdentity(actors); setFrameId(view.frameId); setPage(0); setMotionConsumed(false);
+ }
 	const events = view.items.filter(item => item.role === "event");
-	const start = Math.max(0, events.length - maxVisible);
-	const visible = events.slice(start);
+	const pages = Math.max(1, Math.ceil(events.length / PAGE));
+	const pageIndex = Math.min(page, pages - 1);
+	const end = events.length - pageIndex * PAGE;
+	const start = Math.max(0, end - PAGE);
+	const visible = events.slice(start, end);
+	// Page navigation is inspection, not a forward transport transition.
+	// Returning to the current row must not remount a transfer animation.
+	const animatePage = animate && !motionConsumed && pageIndex === 0;
+	const goToPage = (next: number) => { setMotionConsumed(true); setPage(next); };
 	const last = events.at(-1);
 	const lanes = Math.max(1, actors.length);
 	const columns = "repeat(" + lanes + ",minmax(0,1fr))";
@@ -72,8 +83,8 @@ export function SequenceView({ view, actors, present, selectedId, onSelect, onIn
 							<span className="seq-label"><b>{String(start + offset + 1).padStart(2, "0")}</b>
 								<button type="button" aria-label={"Inspect " + item.label}
 									onClick={() => onInspect(item.id)}><code>{item.label}</code></button></span>
-							{sent ? <span className={"seq-line" + (animate && current ? " seq-animate" : "")}
-								key={animate && current ? item.id + "-" + view.frameId : item.id}
+							{sent ? <span className={"seq-line" + (animatePage && current ? " seq-animate" : "")}
+								key={animatePage && current ? item.id + "-" + view.frameId : item.id}
 								style={{ left: left + "%", width: (self ? 36 / lanes : span) + "%" }}
 								aria-hidden="true"><i className="seq-arrow"/></span>
 								: connected ? <span className="seq-phase" aria-hidden="true"
@@ -87,9 +98,13 @@ export function SequenceView({ view, actors, present, selectedId, onSelect, onIn
 		</div>
 		<div className="seq-detail"><span>{last ? "Latest evidence" : "No events yet"}</span>
 			{last && <p><code>{last.label}</code></p>}
-			{events.length > visible.length && <button type="button" className="seq-earlier"
-				onClick={() => setMaxVisible(n => Math.min(events.length, n + PAGE))}>
-				Show earlier evidence ({visible.length} of {events.length})</button>}
+			{pages > 1 && <div role="group" aria-label="Sequence lane pages">
+                <p aria-live="polite">Showing events {start + 1}–{end} of {events.length}.</p>
+                <button type="button" className="seq-earlier" disabled={pageIndex === pages - 1}
+                    onClick={() => goToPage(pageIndex + 1)}>Show earlier evidence</button>
+                <button type="button" className="seq-earlier" disabled={pageIndex === 0}
+                    onClick={() => goToPage(pageIndex - 1)}>Show later evidence</button>
+            </div>}
 		</div>
 	</section>;
 }

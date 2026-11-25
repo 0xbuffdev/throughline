@@ -177,8 +177,8 @@ it("keeps the selected Graph tab free of State content during loading", async ()
 		screen.getByRole("tab", { name: "State" }).element().focus();
 		await userEvent.keyboard("{ArrowRight}");
 		await expect.element(graphTab).toHaveFocus();
-		await expect.element(graphTab).toHaveAttribute("aria-selected", "false");
-		await graphTab.click();
+		await expect.element(graphTab).toHaveAttribute("aria-selected", "true");
+		await expect.element(graphTab).toHaveAttribute("tabindex", "0");
 		await expect.element(screen.getByRole("group", { name: "Source-linked graph at current frame" })).toBeVisible();
 		expect(unexpected()).toBe(false);
 		expect(flashes).toEqual([]);

@@ -8,6 +8,7 @@ interface PlaybackProps {
  dispatch: React.Dispatch<SeekAction>;
 }
 interface PlayerOptionsProps extends PlaybackProps {
+ trace: object;
  diagramControls?: React.ReactNode;
  sound?: { enabled: boolean; available?: boolean; toggle: () => void };
  narration?: { enabled: boolean; available: boolean; toggle: () => void };
@@ -52,13 +53,18 @@ export function PlayerControls({ state, dispatch }: PlaybackProps): React.JSX.El
  * Throughline state; it does not import the demo's scenarios or chapters.
  */
 export function PlayerOptions({
- state, dispatch, diagramControls, sound, narration, inspection, fullscreen,
+ trace, state, dispatch, diagramControls, sound, narration, inspection, fullscreen,
 }: PlayerOptionsProps): React.JSX.Element {
  const id = useId();
  const [open, setOpen] = useState(false);
  const menuRef = useRef<HTMLDivElement>(null);
  const triggerRef = useRef<HTMLButtonElement>(null);
- const stepRef = useRef<HTMLInputElement>(null);
+ const [draftTrace, setDraftTrace] = useState(trace);
+ const [stepDraft, setStepDraft] = useState<string | null>(null);
+ // Preserve an edit only while this Options session owns the same trace.
+ // Reset during render so the old value cannot be submitted to a new trace.
+ if (draftTrace !== trace) { setDraftTrace(trace); setStepDraft(null); }
+ if (!open && stepDraft !== null) setStepDraft(null);
  const popupRef = useRef<HTMLDivElement>(null);
  useEffect(() => {
   if (!open) return;
@@ -76,9 +82,6 @@ export function PlayerOptions({
    document.removeEventListener("keydown", onKey);
   };
  }, [open]);
- useEffect(() => {
-  if (open && stepRef.current) stepRef.current.value = String(state.step + 1);
- }, [open, state.step]);
  const seek = (to: number) => { dispatch({ type: "step", to }); setOpen(false); triggerRef.current?.focus(); };
  return <div className="menu-anchor" ref={menuRef} onBlur={event => {
   if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
@@ -107,8 +110,9 @@ export function PlayerOptions({
     }}>
      <div className="opt-field">
       <label htmlFor={id + "-step"}>Go to step</label>
-      <input id={id + "-step"} ref={stepRef} type="number" name="step" min={1}
-       max={state.max + 1} defaultValue={state.step + 1} required/>
+      <input id={id + "-step"} type="number" name="step" min={1}
+       max={state.max + 1} value={stepDraft ?? String(state.step + 1)} required
+       onChange={event => setStepDraft(event.currentTarget.value)}/>
      </div>
      <button type="submit" className="opt-go">Go</button>
     </form>}

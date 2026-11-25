@@ -1,4 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
+import { compileArtifact } from "../../v2/compiler.js";
+import { retryCheckout } from "../../__tests__/v2-sequence-fixture.js";
+import { ThroughlineGraphPlayer } from "../graph-player.js";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
@@ -251,4 +254,89 @@ it("keeps controls visible with neither, one, or both optional audio features at
 			}
 		}
 	}
+});
+
+
+it("bounds schema-2 speech and restarts at the new speed without accepting stale callbacks", async () => {
+ const speech = speechBoundary();
+ const source = retryCheckout();
+ source.steps[0].note = "Long source explanation. " + "x".repeat(4000);
+ const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)} narration/>);
+ await screen.getByRole("button", { name: "Step forward" }).click();
+ const options = screen.getByRole("button", { name: "Player options" });
+ await options.click();
+ await screen.getByRole("button", { name: "Narrate captions" }).click();
+ const first = speech.voices.at(-1)!;
+ expect(first.text.length).toBeLessThanOrEqual(3000);
+ expect(first.text).toContain("Narration shortened");
+ const stale = first.onend;
+ await screen.getByRole("radio", { name: "2×" }).click();
+ const replacement = speech.voices.at(-1)!;
+ expect(replacement).not.toBe(first);
+ expect(replacement.rate).toBe(2);
+ expect(first.onend).toBeNull();
+ await options.click();
+ await screen.getByRole("button", { name: "Play", exact: true }).click();
+ stale?.();
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 10");
+ replacement.onend?.();
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 10");
+});
+
+
+it("defers speed-change narration until Play after an explicit transport pause", async () => {
+ const speech = speechBoundary();
+ const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(retryCheckout())} narration/>);
+ const options = screen.getByRole("button", { name: "Player options" });
+ const play = screen.getByRole("button", { name: "Play", exact: true });
+ await options.click();
+ await screen.getByRole("button", { name: "Narrate captions" }).click();
+ await options.click();
+ expect(speech.voices).toHaveLength(1);
+ await play.click();
+ await screen.getByRole("button", { name: "Pause", exact: true }).click();
+ expect(speech.synth.paused).toBe(true);
+ const first = speech.voices[0];
+ const staleEnd = first.onend;
+ const staleError = first.onerror;
+ const resumes = speech.synth.resume.mock.calls.length;
+ await options.click();
+ await screen.getByRole("radio", { name: "2×" }).click();
+ expect(speech.voices).toHaveLength(1);
+ expect(speech.synth.resume).toHaveBeenCalledTimes(resumes);
+ expect(first.onend).toBeNull();
+ expect(first.onerror).toBeNull();
+ staleEnd?.();
+ staleError?.({ error: "interrupted" });
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 10");
+ await expect.element(play).toBeEnabled();
+ expect(screen.getByRole("alert").query()).toBeNull();
+ // Multiple paused rate edits must remain silent.
+ await screen.getByRole("radio", { name: "0.5×" }).click();
+ expect(speech.voices).toHaveLength(1);
+ expect(speech.synth.resume).toHaveBeenCalledTimes(resumes);
+ await options.click();
+ await play.click();
+ expect(speech.voices).toHaveLength(2);
+ expect(speech.voices[1].rate).toBe(0.5);
+ expect(speech.synth.paused).toBe(false);
+ staleEnd?.();
+ staleError?.({ error: "interrupted" });
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 1 of 10");
+ expect(screen.getByRole("alert").query()).toBeNull();
+ speech.voices[1].onend?.();
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 10");
+ // Explicit seeking still reads the selected caption while transport is idle.
+ await screen.getByRole("button", { name: "Pause", exact: true }).click();
+ await options.click();
+ await screen.getByRole("radio", { name: "2×" }).click();
+ expect(speech.voices).toHaveLength(3);
+ await screen.getByRole("spinbutton", { name: "Go to step" }).fill("3");
+ await screen.getByRole("button", { name: "Go", exact: true }).click();
+ expect(speech.voices).toHaveLength(4);
+ expect(speech.voices[3].rate).toBe(2);
+ expect(speech.synth.paused).toBe(false);
+ await expect.element(play).toBeEnabled();
+ speech.voices[3].onend?.();
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 10");
 });

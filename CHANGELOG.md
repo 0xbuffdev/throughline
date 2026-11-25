@@ -7,6 +7,10 @@ All notable changes to Throughline are recorded here. Package versions follow
 
 ## [Unreleased]
 
+- Preserve an explicit narration pause through speed changes, consume native sequence transfer motion on evidence paging, and reset go-to-step drafts when the compiled trace changes.
+
+- Unify automatic keyboard activation of view tabs, cancel stale renderer motion on transport changes, keep schema-2 audio voices bounded and disconnect them on replacement, bound speech excerpts to 3,000 UTF-16 code units and restart speech at the selected speed, page native sequence evidence in fixed 120-row windows, deduplicate camera focus work without changing authored IDs, and preserve edited go-to-step values during playback.
+
 - Present current-frame event evidence in bounded State table pages and keep modeled cells visible independently of entity presence. Use projected present-member counts rather than provenance list lengths for collapsed groups. Deduplicate derived dependency/claim references without altering authored source and label redundant topology assertions truthfully.
 
 - Harden CLI and Remark authoring: case-insensitive MDX selection, regular-file-only bounded reads, observable filesystem identity rechecks with an explicit stable-root trust model, shared document work/output budgets, and indexed per-document manifest snapshots.
