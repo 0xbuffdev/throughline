@@ -107,19 +107,58 @@ export type VisualArtifact = {
 	views?: ViewHint[];
 };
 
-/** Deep readonly projection for JSON-shaped authored data (not a runtime validator). */
-export type DeepReadonly<T> = T extends object
-	? { readonly [K in keyof T]: DeepReadonly<T[K]> }
-	: T;
+/**
+ * Read-side JSON and semantic facts. Keep recursive JSON explicit: a
+ * conditional mapped type on JsonValue can exceed TS instantiation depth.
+ * Mutable authored values are structurally assignable to these types.
+ */
+export type ReadonlyJsonValue =
+	| null | boolean | number | string
+	| readonly ReadonlyJsonValue[]
+	| { readonly [key: string]: ReadonlyJsonValue };
+export type ReadonlyCell =
+	| Readonly<{ status: "known"; value: ReadonlyJsonValue }>
+	| Readonly<{ status: "unknown"; reason?: string }>;
+export type ReadonlyOrigin = Readonly<Origin>;
+export type ReadonlyRelation = Readonly<Relation>;
+export type ReadonlyClaim = Readonly<Omit<Claim, "evidenceEventIds"> & {
+	evidenceEventIds: readonly Id[];
+}>;
+export type ReadonlySemanticEvent = Readonly<Omit<EventBase, "dependsOn"> & {
+	dependsOn?: readonly Id[];
+}> & (
+	| Readonly<{ type: "write"; entityId: Id; path: Path; value: ReadonlyCell }>
+	| Readonly<Omit<Extract<SemanticEvent, { type: "topology" }>, keyof EventBase>>
+	| Readonly<Omit<Extract<SemanticEvent, { type: "message" }>, keyof EventBase | "payload"> & {
+		payload?: ReadonlyJsonValue;
+	}>
+	| Readonly<{ type: "observation"; entityId: Id; value: ReadonlyCell }>
+);
+export type ValidatedArtifact = Readonly<{
+	schemaVersion: 2;
+	id: Id;
+	title?: string;
+	origins: readonly ReadonlyOrigin[];
+	groups?: readonly Readonly<Group>[];
+	entities: readonly Readonly<Entity>[];
+	relations: readonly ReadonlyRelation[];
+	initialState: Readonly<Record<Id, ReadonlyCell>>;
+	steps: readonly Readonly<{
+		id: Id;
+		label: string;
+		events: readonly ReadonlySemanticEvent[];
+		note?: string;
+		focusEntityIds?: readonly Id[];
+		time?: Readonly<NonNullable<Step["time"]>>;
+	}>[];
+	claims?: readonly ReadonlyClaim[];
+	views?: readonly Readonly<ViewHint>[];
+}>;
 
-/** Authored inputs above remain mutable. Validated data is detached and deeply frozen. */
-export type ReadonlyJsonValue = DeepReadonly<JsonValue>;
-export type ReadonlyCell = DeepReadonly<Cell>;
-export type ReadonlySemanticEvent = DeepReadonly<SemanticEvent>;
-export type ReadonlyOrigin = DeepReadonly<Origin>;
-export type ReadonlyRelation = DeepReadonly<Relation>;
-export type ReadonlyClaim = DeepReadonly<Claim>;
-export type ValidatedArtifact = DeepReadonly<VisualArtifact>;
+/** Internal readonly-preserving guard; Array.isArray otherwise narrows to any[]. */
+export function isReadonlyJsonArray(value: ReadonlyJsonValue): value is readonly ReadonlyJsonValue[] {
+	return Array.isArray(value);
+}
 
 /** Independent of npm SemVer and intentionally incompatible with v1 artifacts. */
 export const ARTIFACT_SCHEMA_VERSION = 2 as const;

@@ -1,4 +1,5 @@
 import {
+	isReadonlyJsonArray,
 	ARTIFACT_LIMITS,
 	type ReadonlyCell,
 	type CompiledFrame,
@@ -49,7 +50,7 @@ function applyNestedBatch(current: ReadonlyJsonValue, target: TargetNode): Reado
 			reject("$", "nested write unexpectedly contains an unknown value");
 		return target.write.value;
 	}
-	if (Array.isArray(current)) {
+	if (isReadonlyJsonArray(current)) {
 		const copy: ReadonlyJsonValue[] = new Array(current.length);
 		for (let i = 0; i < current.length; i++) {
 			const child = target.descendants.get("n:" + i);
@@ -67,7 +68,7 @@ function applyNestedBatch(current: ReadonlyJsonValue, target: TargetNode): Reado
 		const copy = dataRecord<ReadonlyJsonValue>();
 		for (const key of Object.keys(current)) {
 			const child = target.descendants.get("s:" + key);
-			const value = (current as Readonly<Record<string, ReadonlyJsonValue>>)[key];
+			const value = current[key];
 			copy[key] = child ? applyNestedBatch(value, child) : value;
 		}
 		return Object.freeze(copy);
@@ -89,17 +90,17 @@ function assertWritable(
 		const segment = path[i];
 		const at = source + ".path[" + i + "]";
 		if (typeof segment === "number") {
-			if (!Array.isArray(value))
+			if (!isReadonlyJsonArray(value))
 				reject(at, "array index requires an existing known array parent");
 			if (segment >= value.length || !has(value, segment))
 				reject(at, "array index is out of bounds; array growth is not supported");
 			value = value[segment];
 		} else {
-			if (value === null || typeof value !== "object" || Array.isArray(value))
+			if (value === null || typeof value !== "object" || isReadonlyJsonArray(value))
 				reject(at, "record key requires an existing known record parent");
 			if (!has(value, segment))
 				reject(at, "record key is absent; implicit creation is not supported");
-			value = (value as Readonly<Record<string, ReadonlyJsonValue>>)[segment];
+			value = value[segment];
 		}
 	}
 }

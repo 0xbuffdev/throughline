@@ -1,4 +1,5 @@
 import {
+	isReadonlyJsonArray,
 	type CausalEvidence,
 	type ReadonlyCell,
 	type ReadonlyClaim,
@@ -50,12 +51,12 @@ function readCell(cell: ReadonlyCell, path: Path): QueryCell {
 	let value: ReadonlyJsonValue = cell.value;
 	for (const segment of path) {
 		if (typeof segment === "number") {
-			if (!Array.isArray(value) || !has(value, segment)) return ABSENT;
+			if (!isReadonlyJsonArray(value) || !has(value, segment)) return ABSENT;
 			value = value[segment];
 		} else {
 			if (value === null || typeof value !== "object" ||
-				Array.isArray(value) || !has(value, segment)) return ABSENT;
-			value = (value as Readonly<Record<string, ReadonlyJsonValue>>)[segment];
+				isReadonlyJsonArray(value) || !has(value, segment)) return ABSENT;
+			value = value[segment];
 		}
 	}
 	return Object.freeze({ status: "known" as const, value });

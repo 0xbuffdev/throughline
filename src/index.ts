@@ -9,7 +9,6 @@ export {
 export type {
 	CausalEvidence,
 	Cell,
-	DeepReadonly,
 	ReadonlyJsonValue,
 	ReadonlyCell,
 	ReadonlySemanticEvent,
