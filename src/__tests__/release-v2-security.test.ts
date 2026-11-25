@@ -183,6 +183,7 @@ it("TL-U18 rejects 144 distinct, seeded, class-covered hostile inputs without mu
 		validBaselineReplayed: true,
 		source: process.env.THL_SOURCE_SHA ?? process.env.GITHUB_SHA ?? "local-unverified",
 		workflowRun: process.env.GITHUB_RUN_ID ?? "local",
+		workflowAttempt: process.env.GITHUB_RUN_ATTEMPT ?? "local",
 		note: "Distinct seeded mutations of validated inputs; not a formal fuzzing or security audit.",
 	};
 	mkdirSync(join(process.cwd(), ".release-evidence"), { recursive: true });

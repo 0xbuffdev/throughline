@@ -41,8 +41,9 @@ function fixtureIdentity([name, entities, relations, groups, steps, eventsPerSte
 	return {entities,relations,groups,steps,events:steps*eventsPerStep,schemaVersion:2,sha256:createHash("sha256").update(canonical(artifact)).digest("hex")};
 }
 assert.match(process.env.GITHUB_RUN_ID ?? "", /^[1-9][0-9]*$/);
+assert.match(process.env.GITHUB_RUN_ATTEMPT ?? "", /^[1-9][0-9]*$/);
 exact(perf, "ticket status timingPolicy correctnessPolicy procedure source budgets workloads");
-exact(perf.source, "commit workflowRun npmPackageVersion packageManager node v8 os osRelease architecture cpu logicalCores totalMemoryBytes");
+exact(perf.source, "commit workflowRun workflowAttempt npmPackageVersion packageManager node v8 os osRelease architecture cpu logicalCores totalMemoryBytes");
 exact(perf.procedure, "warmupCallsPerCase clock p95 fixtureGenerator");
 assert.equal(perf.procedure.p95, "nearest rank");
 assert.equal(perf.procedure.fixtureGenerator, "src/__tests__/release-v2-performance.test.ts");
@@ -54,8 +55,9 @@ for (const key of ["v8","os","osRelease","architecture","cpu"]) assert(typeof pe
 assert(Number.isSafeInteger(perf.source.logicalCores) && perf.source.logicalCores >= 1);
 assert(Number.isSafeInteger(perf.source.totalMemoryBytes) && perf.source.totalMemoryBytes > 0);
 assert.deepEqual(perf.budgets, {artifactBytes:4194304,validationUnits:1000000,traceUnits:8000000,jsonDepth:32,entities:200,relations:1000,groups:200,steps:2000,events:10000,claims:1000});
-exact(security, "ticket gate status seed iterations rejected uniqueHostileInputs uniqueValidBaselines coveredClasses minCasesPerClass variation cases pathRejections uniqueRejectedPaths validBaselineReplayed source workflowRun note");
+exact(security, "ticket gate status seed iterations rejected uniqueHostileInputs uniqueValidBaselines coveredClasses minCasesPerClass variation cases pathRejections uniqueRejectedPaths validBaselineReplayed source workflowRun workflowAttempt note");
 assert.equal(security.workflowRun, process.env.GITHUB_RUN_ID);
+assert.equal(security.workflowAttempt, process.env.GITHUB_RUN_ATTEMPT, "Security evidence from another attempt");
 assert.equal(security.gate, "seeded-malicious-input-sweep");
 assert(typeof security.note === "string" && security.note.trim());
 exact(security.variation, "distinctDepths minMutatedBytes maxMutatedBytes");
@@ -75,6 +77,7 @@ assert.equal(perf.procedure.clock, "performance.now (monotonic)");
 assert.match(perf.source.node, /^v24\./);
 assert(perf.source.cpu && perf.source.logicalCores >= 1);
 assert.equal(perf.source.workflowRun, process.env.GITHUB_RUN_ID);
+assert.equal(perf.source.workflowAttempt, process.env.GITHUB_RUN_ATTEMPT, "Performance evidence from another attempt");
 assert.deepEqual(perf.workloads.map(row => row.scale),
 	["small", "moderate", "near-limit"]);
 for (const [i, row] of perf.workloads.entries()) {

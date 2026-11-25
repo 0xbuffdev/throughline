@@ -4,14 +4,30 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, appendFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 
 const engines = ["chromium", "firefox", "webkit"];
 const autoChecks = ["source","typecheck","preview","compiler","performance","security","licenses",
 	"pack","browserHost","frameworks","markdownHosts","chromium","firefox","webkit",
 	"productionMermaidChromium","productionMermaidFirefox","productionMermaidWebkit"];
-const productionChecks = ["publicGraph","publicSequence","fourReferences","exactSourceSelection",
-	"collapse","fallback","transport","keyboard","ssrHydration","hostileInputs","boundedPerformance"];
+// MR-01–MR-12: individual assertions and separately retained, digest-bound observations.
+const productionChecks = [
+	"publicGraph","publicSequence","fourReferences","pureRootIsolation","descriptorOwnership",
+	"graphTopologyTruth","exactSourceSelection","selectionWithoutPrivateDom","stableSeekGeometry",
+	"responsiveGeometry","collapse","presenceTransitions","sequencePhaseTruth","atomicStepOrdering",
+	"boundedSequencePaging","completeEvidenceAndTotals","nativeStateEquivalence","fallback",
+	"transport","reducedMotionCancellation","motionLifecycle","keyboard","focusAndTextAlternatives",
+	"ssrHydration","staleAsyncRender","hostileInputs","offlineNoNetwork","boundedPerformance",
+	"pinnedDependencyAndLicenseInventory","baselineComparison",
+];
+const workloads = ["factorial","matrix","binary","checkout","nearLimitGraph","largeSequence"];
+const qualityNames = ["v2-performance.json","v2-security.json",...engines.map(b=>"v2-browser-"+b+".json")];
+export function verifyReleaseVersion(version, tag) {
+	assert.equal(version,"0.2.0","Only the approved initial schema-2 version is authorized; later releases require reviewed policy");
+	assert.equal(tag,"v0.2.0","Only the approved initial schema-2 tag is authorized");
+}
 const exact = (obj, keys) => {
 	assert(obj && typeof obj === "object" && !Array.isArray(obj));
 	assert.deepEqual(Object.keys(obj).sort(), [...keys].sort());
@@ -28,24 +44,103 @@ const link = v => {
 	assert.equal(url.protocol,"https:"); assert(!url.username && !url.password);
 	assert(!["example.com","example.org","example.net","localhost"].includes(url.hostname),"Evidence URL must not be an example");
 };
-export { autoChecks, productionChecks };
-export function verifyProduction(report, ctx, browser) {
-	exact(report,["schema","sourceSha","archiveSha256","run","attempt","browser","renderer","status","checks"]);
-	assert.equal(report.schema,1);
+export { autoChecks, productionChecks, workloads, qualityNames };
+const number = (v,min=0) => assert(typeof v==="number" && Number.isFinite(v) && v>=min);
+const count = (v,min=0) => assert(Number.isSafeInteger(v) && v>=min);
+function timing(t) {
+	exact(t,["samples","minMs","medianMs","p95Ms","maxMs"]);
+	count(t.samples,3);
+	const values=[t.minMs,t.medianMs,t.p95Ms,t.maxMs];
+	for(const [i,v] of values.entries()) { number(v); if(i) assert(v>=values[i-1]); }
+}
+export function verifyMeasurements(m) {
+	exact(m,["assets","workloads","memoryMethod","environment","limits","dependencyTreeSha256"]);
+	exact(m.assets,["archiveBytes","initialBytes","initialGzipBytes","lazyBytes","lazyGzipBytes"]);
+	for(const k of Object.keys(m.assets)) count(m.assets[k],k==="archiveBytes"||k==="initialBytes"||k==="initialGzipBytes"?1:0);
+	assert(m.assets.initialGzipBytes<=m.assets.initialBytes && m.assets.lazyGzipBytes<=m.assets.lazyBytes);
+	hex(m.dependencyTreeSha256,64);
+	nonblank(m.memoryMethod); nonblank(m.environment);
+	exact(m.limits,["maxGraphNodes","maxGraphEdges","maxSequenceRows","degradationPolicy"]);
+	for(const k of ["maxGraphNodes","maxGraphEdges","maxSequenceRows"]) count(m.limits[k],1);
+	nonblank(m.limits.degradationPolicy);
+	exact(m.workloads,workloads);
+	for(const key of workloads) {
+		const w=m.workloads[key];
+		exact(w,["fixtureSha256","baselineRender","candidateRender","peakProcessMemoryBytes","memorySamples","outcome"]);
+		hex(w.fixtureSha256,64); timing(w.baselineRender); timing(w.candidateRender);
+		count(w.peakProcessMemoryBytes,1); count(w.memorySamples,3);
+		assert(["rendered","bounded-fallback"].includes(w.outcome));
+		if(!["nearLimitGraph","largeSequence"].includes(key)) assert.equal(w.outcome,"rendered");
+	}
+}
+export function verifyProduction(report, ctx, browser, readEvidence) {
+	exact(report,["schema","sourceSha","archiveSha256","run","attempt","browser","renderer","status","checks","measurements"]);
+	assert.equal(report.schema,2);
 	for (const key of ["sourceSha","archiveSha256","run","attempt"]) assert.equal(report[key],ctx[key]);
 	assert.equal(report.browser,browser);
 	assert.equal(report.renderer,"production-public-package");
 	assert.equal(report.status,"pass");
-	passes(report.checks,productionChecks);
+	exact(report.checks,productionChecks);
+	assert(typeof readEvidence==="function","Retained evidence reader required");
+	for(const key of productionChecks) {
+		const check=report.checks[key];
+		exact(check,["status","sha256"]);
+		assert.equal(check.status,"pass",key);
+		hex(check.sha256,64);
+		const bytes=readEvidence("production-mermaid-"+browser+"-"+key+".json");
+		assert.equal(digest(bytes),check.sha256,"Missing or changed evidence: "+key);
+		const record=JSON.parse(bytes);
+		exact(record,["schema","sourceSha","archiveSha256","run","attempt","browser","check","cases"]);
+		assert.equal(record.schema,1);
+		for(const field of ["sourceSha","archiveSha256","run","attempt"]) assert.equal(record[field],ctx[field]);
+		assert.equal(record.browser,browser); assert.equal(record.check,key);
+		assert(Array.isArray(record.cases)&&record.cases.length>0);
+		const ids=new Set();
+		for(const item of record.cases) {
+			exact(item,["id","fixture","expected","observed","status"]);
+			for(const field of ["id","fixture","expected","observed"]) nonblank(item[field]);
+			assert(!ids.has(item.id),"Duplicate case"); ids.add(item.id);
+			assert.equal(item.status,"pass");
+		}
+	}
+	verifyMeasurements(report.measurements);
+}
+export function verifyBrowserEvidence(report, ctx, browser) {
+	exact(report,["ticket","status","scope","browser","sourceCommit","workflowRun","workflowAttempt",
+		"workflowJob","testCommand","includes","notEstablished","runner"]);
+	assert.equal(report.ticket,"TL-U18"); assert.equal(report.status,"pass");
+	assert.equal(report.scope,"automated browser regressions only");
+	assert.equal(report.browser,browser); assert.equal(report.sourceCommit,ctx.sourceSha);
+	assert.equal(report.workflowRun,ctx.run); assert.equal(report.workflowAttempt,ctx.attempt);
+	assert.equal(report.testCommand,"pnpm test:browser:run");
+	nonblank(report.workflowJob);
+	for(const key of ["includes","notEstablished"]) {
+		assert(Array.isArray(report[key])&&report[key].length>0);
+		for(const value of report[key]) nonblank(value);
+	}
+	exact(report.runner,["node","os","osRelease","arch","cpu"]);
+	assert.match(report.runner.node,/^v24\\./);
+	for(const key of ["os","osRelease","arch","cpu"]) nonblank(report.runner[key]);
+}
+function qualityEvidence(folder, ctx) {
+	// Re-run the strict verifier using the prior attempt's identity, not this dispatch's identity.
+	execFileSync(process.execPath,[fileURLToPath(new URL("./verify-release-evidence.mjs",import.meta.url))],{
+		stdio:"inherit",env:{...process.env,THL_SOURCE_SHA:ctx.sourceSha,GITHUB_RUN_ID:ctx.run,GITHUB_RUN_ATTEMPT:ctx.attempt},
+	});
+	for(const browser of engines) verifyBrowserEvidence(readJson(folder+"/v2-browser-"+browser+".json"),ctx,browser);
+	return Object.fromEntries(qualityNames.map(name=>[name,digest(readFileSync(folder+"/"+name))]));
 }
 export function verifyCandidate(candidate, ctx, review) {
-	exact(candidate,["schema","sourceSha","archiveSha256","run","attempt","version","checks","productionEvidence"]);
-	assert.equal(candidate.schema,1);
+	exact(candidate,["schema","sourceSha","archiveSha256","run","attempt","version","checks","productionEvidence","qualityEvidence"]);
+	assert.equal(candidate.schema,2);
+	verifyReleaseVersion(ctx.version,"v"+ctx.version);
 	hex(ctx.sourceSha,40); hex(ctx.archiveSha256,64); id(ctx.run); id(ctx.attempt);
 	for (const key of ["sourceSha","archiveSha256","run","attempt","version"]) assert.equal(candidate[key],ctx[key],key);
 	passes(candidate.checks,autoChecks);
 	exact(candidate.productionEvidence,engines);
 	for (const browser of engines) hex(candidate.productionEvidence[browser],64);
+	exact(candidate.qualityEvidence,qualityNames);
+	for(const name of qualityNames) hex(candidate.qualityEvidence[name],64);
 	exact(review,["sourceSha","archiveSha256","reviewer","date","u29","manualAT","nativeZoom","licenseNotice","releaseApproval"]);
 	assert.equal(review.sourceSha,ctx.sourceSha);
 	assert.equal(review.archiveSha256,ctx.archiveSha256);
@@ -65,20 +160,19 @@ function main(mode) {
 	assert.equal(readFileSync(dir+"/RELEASE_COMMIT","utf8").trim(),sourceSha);
 	assert.equal(readFileSync(dir+"/SHA256SUMS","utf8").trim(),archiveSha256+"  throughline.tgz");
 	const version=readJson("package.json").version;
+	verifyReleaseVersion(version,process.env.RELEASE_TAG);
 	const ctx={sourceSha,archiveSha256,version,run:mode==="prepare"?process.env.GITHUB_RUN_ID:process.env.CANDIDATE_RUN,
 		attempt:mode==="prepare"?process.env.GITHUB_RUN_ATTEMPT:process.env.CANDIDATE_ATTEMPT};
 	hex(sourceSha,40); hex(archiveSha256,64); id(ctx.run); id(ctx.attempt);
 	if(mode==="prepare") {
 		const productionEvidence={};
 		for(const browser of engines) {
-			const automated=readJson(".release-evidence/v2-browser-"+browser+".json");
-			assert.equal(automated.sourceCommit,sourceSha); assert.equal(automated.workflowRun,ctx.run);
-			assert.equal(automated.browser,browser); assert.equal(automated.status,"pass");
 			const path=".release-evidence/production-mermaid-"+browser+".json";
-			verifyProduction(readJson(path),ctx,browser);
+			verifyProduction(readJson(path),ctx,browser,name=>readFileSync(".release-evidence/"+name));
 			productionEvidence[browser]=digest(readFileSync(path));
 		}
-		const candidate={schema:1,...ctx,checks:Object.fromEntries(autoChecks.map(k=>[k,"pass"])),productionEvidence};
+		const candidate={schema:2,...ctx,checks:Object.fromEntries(autoChecks.map(k=>[k,"pass"])),productionEvidence,
+			qualityEvidence:qualityEvidence(".release-evidence",ctx)};
 		writeFileSync(dir+"/CANDIDATE.json",JSON.stringify(candidate,null,2)+"\n");
 		appendFileSync(process.env.GITHUB_STEP_SUMMARY,"### Prepared candidate (not staged)\nSource: "+sourceSha+"\n\nArchive SHA-256: "+archiveSha256+"\n");
 	} else if(mode==="authorize") {
@@ -86,11 +180,12 @@ function main(mode) {
 		const review=JSON.parse(process.env.REVIEW_JSON);
 		const candidate=readJson(dir+"/CANDIDATE.json");
 		verifyCandidate(candidate,ctx,review);
+		assert.deepEqual(qualityEvidence(".release-evidence",ctx),candidate.qualityEvidence,"Changed quality evidence");
 		const completed=Date.parse(process.env.PREPARE_COMPLETED_AT);
 		assert(Number.isFinite(completed) && Date.parse(review.date)>=completed,"Review predates candidate completion");
 		for (const browser of engines) {
 			const path="candidate-proof/production-mermaid-"+browser+".json";
-			verifyProduction(readJson(path),ctx,browser);
+			verifyProduction(readJson(path),ctx,browser,name=>readFileSync("candidate-proof/"+name));
 			assert.equal(digest(readFileSync(path)),candidate.productionEvidence[browser],"Changed production evidence");
 		}
 		appendFileSync(process.env.GITHUB_OUTPUT,"archive_sha="+archiveSha256+"\n");

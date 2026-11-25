@@ -10,7 +10,8 @@ const browser = process.argv[2] ?? "chromium";
 assert(["chromium", "firefox", "webkit"].includes(browser), "unsupported browser name");
 const sha = process.env.THL_SOURCE_SHA;
 assert(sha && /^[0-9a-f]{40}$/.test(sha), "exact source SHA is required");
-assert(process.env.GITHUB_RUN_ID, "browser evidence must come from a CI job");
+assert.match(process.env.GITHUB_RUN_ID ?? "", /^[1-9][0-9]*$/, "browser evidence requires a CI run");
+assert.match(process.env.GITHUB_RUN_ATTEMPT ?? "", /^[1-9][0-9]*$/, "browser evidence requires a CI attempt");
 const result = {
 	ticket: "TL-U18",
 	status: "pass",
@@ -18,6 +19,7 @@ const result = {
 	browser,
 	sourceCommit: sha,
 	workflowRun: process.env.GITHUB_RUN_ID,
+	workflowAttempt: process.env.GITHUB_RUN_ATTEMPT,
 	workflowJob: process.env.GITHUB_JOB ?? "unknown",
 	testCommand: "pnpm test:browser:run",
 	includes: [

@@ -66,7 +66,7 @@ jobs:
       - name: Upload checked TL-U18 measured evidence
         uses: actions/upload-artifact@v7
         with:
-          name: throughline-v2-quality-${{ github.run_id }}
+          name: throughline-v2-quality-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             .release-evidence/v2-performance.json
             .release-evidence/v2-security.json
@@ -83,7 +83,7 @@ jobs:
       - name: Upload checked Chromium browser evidence
         uses: actions/upload-artifact@v7
         with:
-          name: throughline-v2-chromium-${{ github.run_id }}
+          name: throughline-v2-chromium-${{ github.run_id }}-${{ github.run_attempt }}
           path: .release-evidence/v2-browser-chromium.json
           if-no-files-found: error
           retention-days: 30

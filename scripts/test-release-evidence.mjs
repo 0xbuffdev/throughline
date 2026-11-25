@@ -33,6 +33,10 @@ try {
 		stalePerformance:p=>{p.source.commit="b".repeat(40)},
 		staleSecurity:(p,s)=>{s.source="b".repeat(40)},
 		wrongRun:(p,s)=>{s.workflowRun="0"},
+		wrongPerformanceAttempt:p=>{p.source.workflowAttempt=String(BigInt(p.source.workflowAttempt)+1n)},
+		wrongSecurityAttempt:(p,s)=>{s.workflowAttempt=String(BigInt(s.workflowAttempt)+1n)},
+		missingPerformanceAttempt:p=>{delete p.source.workflowAttempt},
+		missingSecurityAttempt:(p,s)=>{delete s.workflowAttempt},
 		duplicateDepths:(p,s)=>{s.variation.distinctDepths=[2,2,2]},
 		missingClass:(p,s)=>{delete s.cases["bad-phase"]},
 	})) assert.notEqual(run(mutate).status,0,"accepted malformed evidence: "+name);

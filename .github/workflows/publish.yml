@@ -55,7 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$GITHUB_REF" == "refs/heads/main" ]] || exit 1
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Use a prospective vX.Y.Z tag"; exit 1; }
+          [[ "$RELEASE_TAG" == "v0.2.0" ]] || { echo "Use a prospective vX.Y.Z tag"; exit 1; }
           [[ "$CONFIRMATION" == "PREPARE-$RELEASE_TAG" ]] || { echo "Type PREPARE-$RELEASE_TAG to proceed"; exit 1; }
 
       - name: Checkout exact candidate without persistent credentials
@@ -90,7 +90,8 @@ jobs:
           const pkg = JSON.parse(readFileSync("package.json", "utf8"));
           assert.equal(pkg.name, "@0xbuff/throughline");
           assert.match(pkg.version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
-          assert.equal(process.env.RELEASE_TAG, `v${pkg.version}`, "Prospective tag must match package version");
+          const { verifyReleaseVersion } = await import("./scripts/release-candidate-gate.mjs");
+          verifyReleaseVersion(pkg.version, process.env.RELEASE_TAG);
           assert.equal(pkg.private, false);
           assert.equal(pkg.publishConfig?.access, "public");
           assert.equal(pkg.license, "Apache-2.0");
@@ -182,6 +183,8 @@ jobs:
             THROUGHLINE_QA_BROWSER="$browser" node scripts/audit-mermaid-production.mjs
           done
       - name: Verify evidence and seal candidate manifest
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
         run: node scripts/release-candidate-gate.mjs prepare
       - name: Retain production acceptance evidence for review
         uses: actions/upload-artifact@v7
@@ -289,6 +292,20 @@ jobs:
           run-id: ${{ inputs.candidate_run }}
           github-token: ${{ github.token }}
           path: candidate-proof
+      - name: Download raw quality records from the same prepare attempt
+        uses: actions/download-artifact@v8
+        with:
+          name: throughline-quality-${{ inputs.candidate_run }}-${{ inputs.candidate_attempt }}
+          run-id: ${{ inputs.candidate_run }}
+          github-token: ${{ github.token }}
+          path: .release-evidence
+      - name: Download raw browser records from the same prepare attempt
+        uses: actions/download-artifact@v8
+        with:
+          name: throughline-release-browsers-${{ inputs.candidate_run }}-${{ inputs.candidate_attempt }}
+          run-id: ${{ inputs.candidate_run }}
+          github-token: ${{ github.token }}
+          path: .release-evidence
       - name: Validate source, archive and explicit human evidence before protected approval
         id: gate
         env:
