@@ -275,6 +275,7 @@ it("TL-U18 emits a reproducible small/moderate/near-limit v2 performance matrix 
 		source: {
 			commit: process.env.THL_SOURCE_SHA ?? process.env.GITHUB_SHA ?? "local-unverified",
 			workflowRun: process.env.GITHUB_RUN_ID ?? "local",
+			workflowAttempt: process.env.GITHUB_RUN_ATTEMPT ?? "local",
 			npmPackageVersion: packageJson.version, packageManager: packageJson.packageManager,
 			node: process.version, v8: process.versions.v8,
 			os: platform(), osRelease: release(), architecture: arch(),

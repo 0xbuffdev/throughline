@@ -20,8 +20,8 @@ function run(cwd, command, args) {
 }
 
 try {
-  const tarball = join(scratch, "throughline.tgz");
-  run(root, "pnpm", ["pack", "--out", tarball]);
+  const tarball = process.env.THL_RELEASE_TARBALL || join(scratch, "throughline.tgz");
+  if (!process.env.THL_RELEASE_TARBALL) run(root, "pnpm", ["pack", "--out", tarball]);
 
   const consumer = join(scratch, "consumer");
   mkdirSync(consumer);

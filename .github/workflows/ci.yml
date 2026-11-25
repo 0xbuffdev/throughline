@@ -59,11 +59,14 @@ jobs:
       - name: Verify exact-source TL-U18 security and performance evidence
         env:
           THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: node scripts/verify-release-evidence.mjs
+        run: |
+          node scripts/verify-release-evidence.mjs
+          node scripts/test-release-evidence.mjs
+          node --test scripts/release-candidate-gate.test.mjs
       - name: Upload checked TL-U18 measured evidence
         uses: actions/upload-artifact@v7
         with:
-          name: throughline-v2-quality-${{ github.run_id }}
+          name: throughline-v2-quality-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             .release-evidence/v2-performance.json
             .release-evidence/v2-security.json
@@ -80,7 +83,7 @@ jobs:
       - name: Upload checked Chromium browser evidence
         uses: actions/upload-artifact@v7
         with:
-          name: throughline-v2-chromium-${{ github.run_id }}
+          name: throughline-v2-chromium-${{ github.run_id }}-${{ github.run_attempt }}
           path: .release-evidence/v2-browser-chromium.json
           if-no-files-found: error
           retention-days: 30
@@ -135,6 +138,8 @@ jobs:
           pnpm preview:build
           pnpm test:run
           node scripts/verify-release-evidence.mjs
+          node scripts/test-release-evidence.mjs
+          node --test scripts/release-candidate-gate.test.mjs
           pnpm test:browser:run
           pnpm build
           pnpm audit:licenses

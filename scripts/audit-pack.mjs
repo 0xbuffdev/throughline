@@ -29,8 +29,8 @@ function run(command, args, cwd) {
 }
 
 try {
-	const tarball = join(scratch, "throughline.tgz");
-	run("pnpm", ["pack", "--out", tarball], root);
+	const tarball = process.env.THL_RELEASE_TARBALL || join(scratch, "throughline.tgz");
+	if (!process.env.THL_RELEASE_TARBALL) run("pnpm", ["pack", "--out", tarball], root);
 	const entries = run("tar", ["-tzf", tarball], root)
 		.split("\n")
 		.map((line) => line.trim())

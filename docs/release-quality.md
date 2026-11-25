@@ -43,11 +43,11 @@ The companion seed `0x18a2b47d` drives **144 different** reproducible hostile-in
 
 GitHub Actions archives the exact-source records as **run artifacts**, not as misleading checked-in hardcoded timing values:
 
-- `throughline-v2-quality-<run-id>` — `v2-performance.json` and `v2-security.json`, both validated by the independent verifier before upload.
-- `throughline-v2-chromium-<run-id>` — main CI automated browser run record.
-- `throughline-v2-firefox-<run-id>` and `throughline-v2-webkit-<run-id>` — independent browser QA results.
+- `throughline-v2-quality-<run-id>-<attempt>` — `v2-performance.json` and `v2-security.json`, both validated by the independent verifier before upload.
+- `throughline-v2-chromium-<run-id>-<attempt>` — main CI automated browser run record.
+- `throughline-v2-firefox-<run-id>-<attempt>` and `throughline-v2-webkit-<run-id>-<attempt>` — independent browser QA results.
 
-The records include source SHA, run ID, Node and V8 versions (performance), CPU model, architecture, OS and workload/fixture hashes. Preserve the relevant GitHub Actions links and their immutable head SHA in the review PR. A previous commit's green result cannot be used to attest a changed commit.
+The records include source SHA, run ID, run attempt, Node and V8 versions (performance), CPU model, architecture, OS and workload/fixture hashes. Preserve the relevant GitHub Actions links and their immutable head SHA in the review PR. A previous commit's green result cannot be used to attest a changed commit.
 
 To reproduce locally:
 
@@ -83,10 +83,43 @@ Before authorizing TL-U19 publication, independently review or repeat the releas
 5. **Optional audio:** With no narration or sonification enabled, confirm silence and no provider calls. If explicitly opted in, check consent, pause/seek/unmount cleanup, multiple-player contention and accessible transcript parity. Browser speech can use OS/browser-managed services, but core never initiates provider calls.
 6. **Host recovery:** Inspect unreviewed/malformed Markdown build errors and ensure they reveal neither secrets nor a readable but unauthorized model. Confirm unrelated math, Mermaid and normal Markdown still render.
 
-Record **date, operator, browser+OS+AT versions, source commit SHA, tested package SHA-256, heard announcements, pass/fail, deviations, and links to evidence** in the TL-U18 review. The tested package must be reconstructed from that source using the documented frozen install/build and independently packed consumer. Any new source changes require retesting the new exact candidate. Leave an unexecuted check as **not performed**, not as passed. A failed accessibility case warrants correction and new exact-head automated/manual evidence before release approval.
+Record **date, operator, browser+OS+AT versions, source commit SHA, tested package SHA-256, heard announcements, pass/fail, deviations, and links to evidence** in the TL-U18 review. The tested package must be the exact downloaded prepare-workflow archive installed in an independent consumer; a locally rebuilt archive is not interchangeable unless its bytes and SHA-256 match. Any new source changes require retesting the new exact candidate. Leave an unexecuted check as **not performed**, not as passed. A failed accessibility case warrants correction and new exact-head automated/manual evidence before release approval.
 
 ## Gate boundaries
 
 TL-U18 is not fully accepted until the stable Mermaid production cutover is reviewed and the final integrated candidate passes the automated and real assistive-technology gates. Prior native-only results cannot attest that changed candidate. Green automated source checks establish the tested implementation, **not screen-reader approval**. Once a human verifies and attaches a dated source/package-SHA-bound record with observed announcements and deviations, the maintainer can determine whether the TL-U18 criterion passes. TL-U19 can require a final signed-release recheck, but cannot retroactively satisfy a missing TL-U18 prerequisite. No tagged package is published, the documentation app is upgraded, or a participant study completed by this test suite. Do not create a guessed numerical performance target or conceal neutral/negative findings.
 
 The owner separately approves source merges, tags, npm staging, protected environment access, final npm 2FA publication and documentation deployment. See [release procedure](releasing.md), [semantics](schema-v2.md) and [reference truth suite](reference-traces.md).
+
+
+## Two-dispatch release candidate gate (F26/F27)
+
+The manual publish workflow now separates preparation from staging. Both dispatches enforce the approved initial schema-2 version 0.2.0 and tag v0.2.0; later versions require an explicitly reviewed release policy. **Neither preparation nor a green workflow approves publication.**
+
+1. On main, after U29 production integration, dispatch the release workflow in `prepare` mode with the prospective tag `v0.2.0` and `PREPARE-v0.2.0`. The tag need not exist yet. It runs complete exact-source tests in all three browsers, packs once, and uses that same archive for independent Node/React/framework/Markdown consumers and the production Mermaid audit. It retains the tarball, checksum, source, candidate manifest and separate evidence artifacts. No OIDC or staging occurs during preparation.
+2. Download the exact prepared tarball. Independently install and test those bytes; record the source SHA and archive SHA-256. Review U29 production parity, license/notice results, actual AT-01–AT-10 and native zoom at 200%/400%, and record a separate maintainer release approval. Link completed records rather than this blank template. No test should be recorded as pass when not performed.
+3. After explicit U19 authorization, create the signed annotated tag on that source. Dispatch `stage` from main with the tag, `STAGE-v0.2.0`, the successful prepare run ID and attempt, and review JSON containing these exact fields:
+   
+   ```json
+   {
+     "sourceSha": "actual 40-character source SHA",
+     "archiveSha256": "actual 64-character archive SHA-256",
+     "reviewer": "actual reviewer",
+     "date": "2026-11-25T12:00:00Z",
+     "u29": {"status": "pass", "evidence": "https://example.com/replace-with-reviewed-record"},
+     "manualAT": {"status": "pass", "evidence": "https://example.com/replace-with-completed-AT-record"},
+     "nativeZoom": {"status": "pass", "evidence": "https://example.com/replace-with-zoom-record"},
+     "licenseNotice": {"status": "pass", "evidence": "https://example.com/replace-with-license-review"},
+     "releaseApproval": {"status": "pass", "evidence": "https://example.com/replace-with-release-approval"}
+   }
+   ```
+
+   The values above are illustrative, **not evidence**, and example URLs are rejected. The review timestamp must be at or after successful preparation. The authorization job checks the signed tag, successful prepare workflow attempt on the same current main SHA, exact archive digest, complete automated check set and the structure/identity of the explicit human attestation. The protected `npm-publish` environment reviewer must independently inspect the linked evidence and confirm the actual tester/date/results; the script does not fetch or certify human records. Keep environment protection and separate npm 2FA approval enabled. Staging rechecks the approved checksum and does not rebuild. If main advances before staging, prepare/review a new current candidate or explicitly review a future policy change; this conservative rule prevents an older tagged workflow from bypassing the current gate. Expired artifacts require a new preparation and manual testing of the actual new bytes.
+
+### U29 production audit prerequisite
+
+Until U29 implements and reviews `scripts/audit-mermaid-production.mjs`, preparation intentionally fails closed. Do not substitute the existing copied-adapter feasibility script. The future audit must install `THL_RELEASE_TARBALL` in an independent host, exercise the actual public React exports using `THROUGHLINE_QA_BROWSER`, and emit `.release-evidence/production-mermaid-<browser>.json` only after passing all checks. The report schema (version 2) is enforced by `scripts/release-candidate-gate.mjs`: sourceSha, archiveSha256, run, attempt (strings), browser, renderer (`production-public-package`), status (`pass`), checks and measurements. The exported `productionChecks` and `requiredCases` are the exact named contract: MR-01–MR-12 parity, including stable geometry across seeks, fixed sequence paging and full phase totals, State equivalence, reduced-motion cancellation and lifecycle, source round trips independent of private DOM, fallback, safety, all four references and near-limit workloads. Each check has `{status, sha256}` and its own retained `production-mermaid-<browser>-<check>.json` (schema 1, same candidate identity, check name, cases with unique id, fixture, expected, observed and status). The required case IDs must appear; observations must be real outcomes, not placeholders. The verifier reads and hashes every retained record both before sealing and during authorization.
+
+The `measurements` object requires actual archive bytes, initial/lazy asset bytes and gzip bytes, an independently resolved dependency inventory digest (retain `production-mermaid-<browser>-dependencies.json`), environment and memory sampling method, tested graph/sequence limits and degradation policy. Each of factorial, matrix, binary, checkout, nearLimitGraph and largeSequence requires the fixture hash, baseline and candidate render timing distributions (at least three samples each), sampled peak browser-process memory in bytes (at least three samples), and rendered/bounded-fallback outcome. Canonical references must render; near-limit cases may use faithful bounded fallback. Record the actual sampling scope and limits, not a heap snapshot misrepresented as process memory. The values are observational; no arbitrary latency or memory SLA is invented. Retain all JSON files in the production evidence artifact. Review actual producer logic, measured data, dependency licenses and limitations; schema validation is not U29 acceptance or a guarantee of factual human evidence. Native-only, preview-only, missing or stale records fail the gate.
+
+The strict performance/security verifier now requires all exact fields and check names, reconstructs the deterministic fixture hashes, checks every timing distribution (including geometry), and binds performance, security and browser records to the same source/run/attempt. The candidate manifest seals all five raw quality record digests; authorization downloads and revalidates those records against the original attempt before staging. CI exercises malformed-report rejection using copies of actual generated evidence. No new wall-clock SLA or human acceptance is inferred from these checks.

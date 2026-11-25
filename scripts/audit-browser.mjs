@@ -31,8 +31,8 @@ const traceSource = [
 ].join("\n");
 
 try {
-	const tarball = join(scratch, "throughline.tgz");
-	run("pnpm", ["pack", "--out", tarball], root);
+	const tarball = process.env.THL_RELEASE_TARBALL || join(scratch, "throughline.tgz");
+	if (!process.env.THL_RELEASE_TARBALL) run("pnpm", ["pack", "--out", tarball], root);
 	const consumer = join(scratch, "consumer");
 	mkdirSync(consumer);
 	writeFileSync(join(consumer, "package.json"),

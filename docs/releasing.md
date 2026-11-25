@@ -7,7 +7,7 @@ Each version is published from an immutable, GitHub-verified signed
 
 ## Schema-2 release prerequisite
 
-Version 0.2.0 must ship the stable Mermaid Graph and Sequence renderer, with native State table and unchanged semantic engine. Complete TL-U26 feasibility and reviewed go/no-go, TL-U27 Graph, TL-U28 Sequence and TL-U29 production cutover before final TL-U18 acceptance. See the [feasibility report](mermaid-feasibility.md) for remaining parity, dependency, safety and performance gates. The current development-only preview is not production acceptance. If a mandatory renderer requirement fails, retain the working native implementation during development and block publication until corrected or a reviewed maintainer decision changes the requirement.
+The current release gate authorizes only version 0.2.0 and tag v0.2.0; later versions require a separately reviewed release policy. Version 0.2.0 must ship the stable Mermaid Graph and Sequence renderer, with native State table and unchanged semantic engine. Complete TL-U26 feasibility and reviewed go/no-go, TL-U27 Graph, TL-U28 Sequence and TL-U29 production cutover before final TL-U18 acceptance. See the [feasibility report](mermaid-feasibility.md) for remaining parity, dependency, safety and performance gates. The current development-only preview is not production acceptance. If a mandatory renderer requirement fails, retain the working native implementation during development and block publication until corrected or a reviewed maintainer decision changes the requirement.
 
 Reuse prior verification tooling, not prior attestation: run the complete release-quality suite and actual screen-reader checks on the exact integrated source and independently packed candidate. TL-U19 signing, staging and human 2FA remain separate approvals; TL-U20 real documentation-app adoption follows verified registry publication.
 
@@ -62,8 +62,7 @@ requirements. These checks are not replaced by mocked or fixture-only tests.
 3. Run the source, TypeScript, preview, Chromium/Firefox/WebKit browser,
    build, license and packed consumer checks listed above.
    Record the exact integrated candidate SHA, CI runs, Mermaid parity evidence, quality evidence artifacts and actual screen-reader/rights review.
-   Review the exact archive contents. Merge the release PR after review and
-   ensure main CI is green.
+   Merge the release PR after review and ensure main CI is green. Dispatch the release workflow from main in `prepare` mode with the prospective tag and `PREPARE-v0.2.0`. Review the immutable candidate archive and its successful workflow run/attempt, install those exact bytes for the human AT and native zoom checks, and complete the maintainer attestation as described in [release-quality.md](release-quality.md#two-dispatch-release-candidate-gate-f26f27).
 4. From a clean checkout with a signing key registered with GitHub, create
    and push an immutable signed tag **only after** the release commit is
    merged. For the proposed schema-2 version `0.2.0` (only if approved):
@@ -80,10 +79,9 @@ requirements. These checks are not replaced by mocked or fixture-only tests.
    deletions. Do not move or reuse existing release tags.
 5. In [GitHub Actions](https://github.com/0xbuffdev/throughline/actions),
    run **Throughline npm release (staged with provenance)** from `main`.
-   Enter the exact signed tag (e.g. `v0.2.0`) and confirmation
-   `STAGE-v0.2.0`. The read-only verification job checks the signed tag,
-   manifest, build, tests, packed consumers and archive SHA-256.
-6. Inspect the GitHub release artifact and approve the protected
+   Choose `stage`, enter the signed tag (e.g. `v0.2.0`), confirmation
+   `STAGE-v0.2.0`, successful prepare run ID and attempt, and the exact-candidate review JSON. The read-only authorization job checks the signed tag, current dispatch source, successful prepare attempt, production audit records, archive SHA-256 and explicit human evidence attestation. It does not rebuild the archive.
+6. Independently inspect the actual linked QA and rights records, review the exact GitHub candidate archive and approve the protected
    `npm-publish` environment job. Its **stage-only** Trusted Publisher
    uses GitHub-hosted OIDC and npm provenance, without an npm token or a
    direct `npm publish`. The npm connection must match GitHub
