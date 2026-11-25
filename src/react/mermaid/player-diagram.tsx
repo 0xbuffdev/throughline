@@ -342,7 +342,8 @@ function MermaidPlayerDiagramImpl({
 		if (!instruction.current || instruction.current.revision !== revision)
 			instruction.current = { revision, source: proof?.source, handled: false };
 		const current = instruction.current;
-		if (!forward || current.source !== proof?.source) current.handled = true;
+		// A failed render consumes the old cue; manual retry is not a new step.
+		if (!forward || current.source !== proof?.source || diagram === null) current.handled = true;
 		if (!proof || !diagram || !host.current || current.handled) return;
 		current.handled = true;
 		const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
