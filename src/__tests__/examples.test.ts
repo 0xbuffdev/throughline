@@ -468,6 +468,6 @@ describe("TL-U09 — first-party schema-2 reference contract", () => {
 	});
 });
 
-function parsedAgain(json: string): VisualArtifact {
+function parsedAgain(json: string): ReturnType<typeof parseArtifactJson> {
 	return parseArtifactJson(json);
 }

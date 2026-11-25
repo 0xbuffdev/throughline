@@ -1,11 +1,12 @@
 import type * as React from "react";
 import { useState } from "react";
-import type { Cell, Id, TraceInspector, ViewDescriptor, ViewItem } from "../v2/model.js";
+import { isReadonlyJsonArray } from "../v2/model.js";
+import type { ReadonlyCell, Id, TraceInspector, ViewDescriptor, ViewItem } from "../v2/model.js";
 import { CellValue } from "./value-display.js";
 
 
 function field(item: ViewItem, key: string): unknown {
-	return item.data && typeof item.data === "object" && !Array.isArray(item.data) ? item.data[key] : undefined;
+	return item.data && typeof item.data === "object" && !isReadonlyJsonArray(item.data) ? item.data[key] : undefined;
 }
 
 const EVENT_PAGE = 40;
@@ -28,7 +29,7 @@ export function StateView({ view, selectedId, onSelect, onInspectEvent, inspecto
 			<tbody>{view.items.filter(item => item.role === "value").map(item => {
 				const id = item.source.entityIds?.[0] ?? "";
 				const present = field(item, "present") === true;
-				const cell = field(item, "cell") as Cell;
+				const cell = field(item, "cell") as ReadonlyCell;
 				const latest = inspector.history(id).filter(entry => entry.frameIndex <= frameIndex).at(-1);
 				return <tr key={item.id} data-source-entity-ids={id}
 					data-written={String(changed.has(id))} data-selected={String(selectedId === id)}>

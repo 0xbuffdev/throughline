@@ -1,7 +1,7 @@
 import { inspectedTrace, TraceQueryError } from "./inspector.js";
 import type {
-	Cell, Claim, HistoryEntry, Id, JsonValue, Origin, Path, QueryCell, Relation,
-	SemanticEvent, SourceIds, StateChange, TraceInspector,
+	ReadonlyCell, ReadonlyClaim, HistoryEntry, Id, ReadonlyJsonValue, ReadonlyOrigin, Path, QueryCell, ReadonlyRelation,
+	ReadonlySemanticEvent, SourceIds, StateChange, TraceInspector,
 } from "./model.js";
 
 /** An authored frame is not necessarily measured physical time. */
@@ -16,13 +16,13 @@ export type InspectionChapter = Readonly<{
 
 /** Recorded source data is evidence, NOT a committed state transition. */
 export type InspectionRecorded =
-	| Readonly<{ kind: "observation"; value: Cell }>
-	| Readonly<{ kind: "message-payload"; value: JsonValue }>;
+	| Readonly<{ kind: "observation"; value: ReadonlyCell }>
+	| Readonly<{ kind: "message-payload"; value: ReadonlyJsonValue }>;
 
 export type InspectionEvidence = Readonly<{
 	eventId: Id;
-	event: SemanticEvent;
-	origin: Origin;
+	event: ReadonlySemanticEvent;
+	origin: ReadonlyOrigin;
 	frameIndex: number;
 	frameId: Id;
 	stepLabel: string;
@@ -42,8 +42,8 @@ export type InspectionStateRow = Readonly<{
 }>;
 
 export type InspectionClaim = Readonly<{
-	claim: Claim;
-	origin: Origin;
+	claim: ReadonlyClaim;
+	origin: ReadonlyOrigin;
 	modeledEvidence: readonly InspectionEvidence[];
 	unmodeledUntilLater: number;
 	explanation: string;
@@ -71,7 +71,7 @@ export type InspectionSelection = Readonly<{
 }>;
 
 export type InspectionRelation = Readonly<{
-	relation: Relation;
+	relation: ReadonlyRelation;
 	/** Only actual message events associated with this declared relation. */
 	transfers: readonly InspectionEvidence[];
 	explanation: string;
@@ -108,8 +108,8 @@ type InspectIndex = Readonly<{
 	events: ReadonlyMap<Id, IndexedEvent>;
 	/** Private memoized immutable event descriptors; repeated claim IDs share data. */
 	evidence: Map<Id, InspectionEvidence>;
-	origins: ReadonlyMap<Id, Origin>;
-	relations: ReadonlyMap<Id, Relation>;
+	origins: ReadonlyMap<Id, ReadonlyOrigin>;
+	relations: ReadonlyMap<Id, ReadonlyRelation>;
 }>;
 const indexes = new WeakMap<TraceInspector, InspectIndex>();
 
@@ -136,7 +136,7 @@ const freeze = <T>(value: T): Readonly<T> => Object.freeze(value);
 const ids = (values: readonly Id[]): readonly Id[] =>
 	freeze([...new Set(values)]);
 
-function evidenceFor(event: SemanticEvent, index: InspectIndex): InspectionEvidence {
+function evidenceFor(event: ReadonlySemanticEvent, index: InspectIndex): InspectionEvidence {
 	const cached = index.evidence.get(event.id);
 	if (cached) return cached;
 	const frame = index.events.get(event.id)!;

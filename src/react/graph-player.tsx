@@ -9,7 +9,7 @@ import { BASE_STEP_MS, stepDelayMs } from "../seek.js";
 import { layoutGraph, layoutGraphView } from "../v2/graph-layout.js";
 import { inspectTrace } from "../v2/inspector.js";
 import type {
-	Cell, CompiledTrace, Id, ViewDescriptor, ViewItem, ViewKind,
+	ReadonlyCell, CompiledTrace, Id, ViewDescriptor, ViewItem, ViewKind,
 } from "../v2/model.js";
 import { projectView } from "../v2/views.js";
 import { PlayerControls, PlayerOptions } from "./player-chrome.js";
@@ -61,11 +61,11 @@ function data(item: ViewItem, key: string): unknown {
 		return undefined;
 	return (item.data as Record<string, unknown>)[key];
 }
-function itemCell(item: ViewItem): Cell | null {
+function itemCell(item: ViewItem): ReadonlyCell | null {
 	const cell = data(item, "cell");
 	if (!cell || typeof cell !== "object" ||
 		!("status" in cell)) return null;
-	return cell as Cell;
+	return cell as ReadonlyCell;
 }
 
 /** One semantic view descriptor, with no special-case v1 domain knowledge. */

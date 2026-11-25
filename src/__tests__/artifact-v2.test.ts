@@ -576,9 +576,9 @@ describe("TL-U02 — inherited prototype behavior regression", () => {
 		const oldToJson = Object.getOwnPropertyDescriptor(Object.prototype, "toJSON");
 		let inheritedSetterCalls = 0;
 		let inheritedToJsonCalls = 0;
-		let validated: VisualArtifact | undefined;
+		let validated: ReturnType<typeof validateArtifact> | undefined;
 		let serialized: string | undefined;
-		let decoded: VisualArtifact | undefined;
+		let decoded: ReturnType<typeof parseArtifactJson> | undefined;
 		try {
 			Object.defineProperty(Object.prototype, "harmless", {
 				configurable: true,

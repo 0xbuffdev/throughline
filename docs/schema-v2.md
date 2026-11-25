@@ -608,3 +608,22 @@ TL-U05 added graph/player, TL-U06 added sequence/auto-choice, and TL-U07
 adds pure Explain/Inspect and guided evidence navigation. Unified authoring
 and packed-host migration remain TL-U08–TL-U10 work. Test and release evidence must be recorded from real CI,
 not assumed from documentation alone.
+
+
+## Authored input and readonly output (F28)
+
+`VisualArtifact`, `Cell`, `JsonValue` and `SemanticEvent` remain mutable authoring shapes (the existing `Path` contract stays readonly). Construct or edit these before passing them to the validating boundary. `validateArtifact`, `parseArtifactJson` and `resolveThlBody` return `ValidatedArtifact`: detached, deeply frozen, readonly data. Inline artifact results from `parseThlBody` have that same type. The compiler, serializer and canonical hash accept either mutable authored inputs or readonly-shaped artifacts; compiler validation remains mandatory and ownership checks are unchanged.
+
+`CompiledTrace`, `CompiledFrame`, `StateSnapshot`, `QueryCell`, inspector events, dependencies, claims and relations, view descriptors and Explain/Inspect evidence expose readonly nested values. Use `ReadonlyCell`, `ReadonlyJsonValue`, `ReadonlySemanticEvent`, `ReadonlyOrigin`, `ReadonlyRelation`, `ReadonlyClaim` or `ValidatedArtifact` for explicit read-side annotations. An example's `artifact` getter still returns an independent mutable authored copy.
+
+This is a declaration compatibility change: code annotating frozen outputs as mutable authored objects must use the readonly types instead. To edit a validated artifact, create an explicitly mutable authored copy (for example, `JSON.parse(serializeArtifact(artifact)) as VisualArtifact`) and validate/compile it anew. Avoid casting a frozen reference to a mutable type. TypeScript readonly is a static constraint, not a security boundary; runtime freezing and compiler ownership remain authoritative. TypeScript's standard `Array.isArray` predicate narrows to mutable `any[]`; when walking readonly JSON use a readonly-preserving type guard:
+
+~~~ts
+import type { ReadonlyJsonValue } from "@0xbuff/throughline";
+
+function isJsonArray(value: ReadonlyJsonValue): value is readonly ReadonlyJsonValue[] {
+  return Array.isArray(value);
+}
+~~~
+
+No schema, canonical bytes, replay semantics or package entrypoints change.

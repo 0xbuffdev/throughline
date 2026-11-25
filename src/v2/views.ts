@@ -1,7 +1,7 @@
 import { inspectedTrace } from "./inspector.js";
 import type {
-	Cell, Id, Origin, Relation, SemanticEvent, SourceIds, TraceInspector, ViewDescriptor,
-	ViewItem, ViewKind, ViewRequest, VisualArtifact,
+	ReadonlyCell, Id, ReadonlyOrigin, ReadonlyRelation, ReadonlySemanticEvent, SourceIds, TraceInspector, ViewDescriptor,
+	ViewItem, ViewKind, ViewRequest, ValidatedArtifact,
 } from "./model.js";
 import { TraceQueryError } from "./inspector.js";
 
@@ -24,14 +24,14 @@ type TimelineEvent = {
 	readonly frameIndex: number;
 	readonly frameId: Id;
 	readonly stepLabel: string;
-	readonly event: SemanticEvent;
+	readonly event: ReadonlySemanticEvent;
 };
 
 type ViewIndex = {
-	readonly artifact: VisualArtifact;
+	readonly artifact: ValidatedArtifact;
 	readonly indexByEventId: ReadonlyMap<Id, number>;
 	readonly timeline: readonly TimelineEvent[];
-	readonly relationsById: ReadonlyMap<Id, Relation>;
+	readonly relationsById: ReadonlyMap<Id, ReadonlyRelation>;
 	readonly graphPossible: boolean;
 	readonly graphLinks: boolean;
 	readonly hasMessages: boolean;
@@ -107,8 +107,8 @@ function descriptor(kind: ViewKind, frameId: string, summary: string, items: Vie
 	});
 }
 
-function eventSource(event: SemanticEvent,
-	relationsById: ReadonlyMap<Id, Relation>): Readonly<SourceIds> {
+function eventSource(event: ReadonlySemanticEvent,
+	relationsById: ReadonlyMap<Id, ReadonlyRelation>): Readonly<SourceIds> {
 	const relationId = event.type === "message"
 		? event.relationId
 		: event.type === "topology" && event.target === "relation"
@@ -127,7 +127,7 @@ function eventSource(event: SemanticEvent,
 }
 
 /** Event type is modeled semantics; origin kind is distinct provenance. */
-function eventDescription(event: SemanticEvent, origin: Origin): string {
+function eventDescription(event: ReadonlySemanticEvent, origin: ReadonlyOrigin): string {
 	let meaning: string;
 	switch (event.type) {
 		case "message":
@@ -155,9 +155,9 @@ function eventDescription(event: SemanticEvent, origin: Origin): string {
 		"); provenance is not independent verification.";
 }
 
-function eventItems(events: readonly SemanticEvent[], artifact: VisualArtifact,
+function eventItems(events: readonly ReadonlySemanticEvent[], artifact: ValidatedArtifact,
 	indexByEventId: ReadonlyMap<Id, number>,
-	relationsById: ReadonlyMap<Id, Relation>): ViewItem[] {
+	relationsById: ReadonlyMap<Id, ReadonlyRelation>): ViewItem[] {
 	const origins = new Map(artifact.origins.map(origin => [origin.id, origin] as const));
 	return events.map((event) => {
 		// A validated artifact requires every event's origin to exist.
@@ -180,17 +180,17 @@ function eventItems(events: readonly SemanticEvent[], artifact: VisualArtifact,
 	});
 }
 
-function cellDescription(cell: Cell): string {
+function cellDescription(cell: ReadonlyCell): string {
 	return cell.status === "known"
 		? "Known modeled value; inspect the complete cell to see its contents."
 		: "Unknown modeled value" + (cell.reason ? ": " + cell.reason : "") + ".";
 }
 
 /** Fallback never represents unsupported messages as drawn graph sends. */
-function stateTable(inspector: TraceInspector, artifact: VisualArtifact,
+function stateTable(inspector: TraceInspector, artifact: ValidatedArtifact,
 	request: ViewRequest, diagnostics: readonly string[],
 	indexByEventId: ReadonlyMap<Id, number>,
-	relationsById: ReadonlyMap<Id, Relation>): ViewDescriptor {
+	relationsById: ReadonlyMap<Id, ReadonlyRelation>): ViewDescriptor {
 	const frame = inspector.stateAt(request.frameIndex);
 	const present = new Set(frame.presentEntityIds);
 	const events = request.frameIndex > 0 ? artifact.steps[request.frameIndex - 1].events : [];
@@ -219,7 +219,7 @@ const MESSAGE_PHASES = ["sent", "received", "acknowledged", "processed"] as cons
 type MessagePhase = typeof MESSAGE_PHASES[number];
 type Correlation = {
 	readonly messageId: Id;
-	readonly relation: Relation;
+	readonly relation: ReadonlyRelation;
 	readonly eventIds: Id[];
 	readonly phases: Record<MessagePhase, number>;
 	readonly firstEventId: Id;
@@ -392,10 +392,10 @@ function sequence(inspector: TraceInspector, request: ViewRequest, selected: Rea
  * Collapse never changes model presence, and collapsed summaries preserve ALL
  * source entity/group/relation/event IDs they represent.
  */
-function graph(inspector: TraceInspector, artifact: VisualArtifact, request: ViewRequest,
+function graph(inspector: TraceInspector, artifact: ValidatedArtifact, request: ViewRequest,
 	selected: ReadonlySet<Id>, collapsed: ReadonlySet<Id>,
 	indexByEventId: ReadonlyMap<Id, number>,
-	relationsById: ReadonlyMap<Id, Relation>): ViewDescriptor {
+	relationsById: ReadonlyMap<Id, ReadonlyRelation>): ViewDescriptor {
 	const frame = inspector.stateAt(request.frameIndex);
 	const presentEntities = new Set(frame.presentEntityIds);
 	const presentRelations = new Set(frame.presentRelationIds);
@@ -530,7 +530,7 @@ function graph(inspector: TraceInspector, artifact: VisualArtifact, request: Vie
 	const focus = new Set(request.frameIndex > 0
 		? artifact.steps[request.frameIndex - 1].focusEntityIds ?? [] : []);
 	const changedIds = new Set(events.filter((event) =>
-		event.type === "write").map((event) => (event as Extract<SemanticEvent, {type:"write"}>).entityId));
+		event.type === "write").map((event) => (event as Extract<ReadonlySemanticEvent, {type:"write"}>).entityId));
 	for (const [index, entity] of artifact.entities.entries()) {
 		if (!presentEntities.has(entity.id)) continue;
 		if (representative.get(entity.id) !== nodeId(index)) continue;

@@ -168,7 +168,7 @@ export function layoutGraphView(layout: Layout, view: ViewDescriptor): Layout {
 	for (const item of items) {
 		if (item.role === "group" && item.data &&
 			typeof item.data === "object" && !Array.isArray(item.data) &&
-			item.data.collapsed !== true) continue;
+			(item.data as Readonly<Record<string, unknown>>).collapsed !== true) continue;
 		if (layout.nodes[item.id]) nodes[item.id] = { ...layout.nodes[item.id] };
 	}
 	const shown = new Set(view.items.filter(i => i.role === "group").map(i => i.id));

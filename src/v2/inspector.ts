@@ -1,15 +1,16 @@
 import {
+	isReadonlyJsonArray,
 	type CausalEvidence,
-	type Cell,
-	type Claim,
+	type ReadonlyCell,
+	type ReadonlyClaim,
 	type CompiledTrace,
 	type HistoryEntry,
 	type Id,
-	type JsonValue,
+	type ReadonlyJsonValue,
 	type Path,
 	type QueryCell,
-	type Relation,
-	type SemanticEvent,
+	type ReadonlyRelation,
+	type ReadonlySemanticEvent,
 	type StateChange,
 	type StateSnapshot,
 	type PresenceChange,
@@ -45,17 +46,17 @@ function has(value: object, key: string | number): boolean {
  * missing property of a known value is absent, and known null stays known.
  * Validated JSON values are already immutable, including nested containers.
  */
-function readCell(cell: Cell, path: Path): QueryCell {
+function readCell(cell: ReadonlyCell, path: Path): QueryCell {
 	if (!path.length || cell.status === "unknown") return cell;
-	let value: JsonValue = cell.value;
+	let value: ReadonlyJsonValue = cell.value;
 	for (const segment of path) {
 		if (typeof segment === "number") {
-			if (!Array.isArray(value) || !has(value, segment)) return ABSENT;
+			if (!isReadonlyJsonArray(value) || !has(value, segment)) return ABSENT;
 			value = value[segment];
 		} else {
 			if (value === null || typeof value !== "object" ||
-				Array.isArray(value) || !has(value, segment)) return ABSENT;
-			value = (value as Record<string, JsonValue>)[segment];
+				isReadonlyJsonArray(value) || !has(value, segment)) return ABSENT;
+			value = value[segment];
 		}
 	}
 	return Object.freeze({ status: "known" as const, value });
@@ -99,14 +100,14 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 	const entities = new Set(artifact.entities.map((entity) => entity.id));
 	const relations = new Map(artifact.relations.map((relation) =>
 		[relation.id, relation] as const));
-	const eventsById = new Map<Id, SemanticEvent>();
-	const eventsByEntity = new Map<Id, SemanticEvent[]>();
-	const transfersByRelation = new Map<Id, SemanticEvent[]>();
-	const relationsByEntity = new Map<Id, Relation[]>();
+	const eventsById = new Map<Id, ReadonlySemanticEvent>();
+	const eventsByEntity = new Map<Id, ReadonlySemanticEvent[]>();
+	const transfersByRelation = new Map<Id, ReadonlySemanticEvent[]>();
+	const relationsByEntity = new Map<Id, ReadonlyRelation[]>();
 	const writesByEntity = new Map<Id, WriteChange[]>();
-	const dependenciesByEvent = new Map<Id, readonly SemanticEvent[]>();
+	const dependenciesByEvent = new Map<Id, readonly ReadonlySemanticEvent[]>();
 	const evidenceByEvent = new Map<Id, CausalEvidence>();
-	const claimsByEvent = new Map<Id, Claim[]>();
+	const claimsByEvent = new Map<Id, ReadonlyClaim[]>();
 	const changesByFrame: (readonly StateChange[])[] = [Object.freeze([])];
 
 	for (const entity of artifact.entities) {
@@ -210,11 +211,11 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 			claimsByEvent.get(eventId)!.push(claim);
 
 	// Expose frozen views, never the mutable Maps or index-building arrays.
-	const frozenEvents = new Map<Id, readonly SemanticEvent[]>();
-	const frozenTransfers = new Map<Id, readonly SemanticEvent[]>();
-	const frozenRelations = new Map<Id, readonly Relation[]>();
+	const frozenEvents = new Map<Id, readonly ReadonlySemanticEvent[]>();
+	const frozenTransfers = new Map<Id, readonly ReadonlySemanticEvent[]>();
+	const frozenRelations = new Map<Id, readonly ReadonlyRelation[]>();
 	const frozenWrites = new Map<Id, readonly HistoryEntry[]>();
-	const frozenClaims = new Map<Id, readonly Claim[]>();
+	const frozenClaims = new Map<Id, readonly ReadonlyClaim[]>();
 	for (const [id, items] of eventsByEntity) frozenEvents.set(id, Object.freeze(items));
 	for (const [id, items] of transfersByRelation) frozenTransfers.set(id, Object.freeze(items));
 	for (const [id, items] of relationsByEntity) frozenRelations.set(id, Object.freeze(items));
@@ -234,7 +235,7 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 		if (!relations.has(relationId))
 			reject("$.relationId", "undeclared relation: " + relationId);
 	};
-	const eventAt = (eventId: Id): SemanticEvent => {
+	const eventAt = (eventId: Id): ReadonlySemanticEvent => {
 		const event = eventsById.get(eventId);
 		if (!event) reject("$.eventId", "undeclared event: " + eventId);
 		return event;
@@ -275,15 +276,15 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 					after: readCell(frames[entry.frameIndex].snapshot.values[entityId], path),
 				})));
 		},
-		eventsFor(entityId: Id): readonly SemanticEvent[] {
+		eventsFor(entityId: Id): readonly ReadonlySemanticEvent[] {
 			entityAt(entityId);
 			return frozenEvents.get(entityId)!;
 		},
-		transfersFor(relationId: Id): readonly SemanticEvent[] {
+		transfersFor(relationId: Id): readonly ReadonlySemanticEvent[] {
 			relationAt(relationId);
 			return frozenTransfers.get(relationId)!;
 		},
-		dependenciesOf(eventId: Id): readonly SemanticEvent[] {
+		dependenciesOf(eventId: Id): readonly ReadonlySemanticEvent[] {
 			eventAt(eventId);
 			return dependenciesByEvent.get(eventId)!;
 		},
@@ -292,11 +293,11 @@ export function inspectTrace(trace: CompiledTrace): TraceInspector {
 			return evidenceByEvent.get(eventId)!;
 		},
 		eventById: eventAt,
-		claimsForEvent(eventId: Id): readonly Claim[] {
+		claimsForEvent(eventId: Id): readonly ReadonlyClaim[] {
 			eventAt(eventId);
 			return frozenClaims.get(eventId)!;
 		},
-		relationsFor(entityId: Id): readonly Relation[] {
+		relationsFor(entityId: Id): readonly ReadonlyRelation[] {
 			entityAt(entityId);
 			return frozenRelations.get(entityId)!;
 		},

@@ -2,7 +2,7 @@ import type * as React from "react";
 import { useId, useMemo, useRef, useState } from "react";
 import { projectInspection, type InspectionClaim, type InspectionEvidence, type InspectionView } from "../v2/inspection.js";
 import type {
-	CompiledTrace, Id, Path, SemanticEvent, StateChange, TraceInspector,
+	CompiledTrace, Id, Path, ReadonlySemanticEvent, StateChange, TraceInspector,
 } from "../v2/model.js";
 import { summarizeCell } from "../v2/value-summary.js";
 import { encodeJson } from "../v2/validator.js";
@@ -15,9 +15,9 @@ export type InspectionTarget =
 	| { kind: "event"; eventId: Id };
 
 const PHASES = ["sent", "received", "processed", "acknowledged"] as const;
-type Message = Extract<SemanticEvent, { type: "message" }>;
+type Message = Extract<ReadonlySemanticEvent, { type: "message" }>;
 
-function isMessage(event: SemanticEvent): event is Message {
+function isMessage(event: ReadonlySemanticEvent): event is Message {
 	return event.type === "message";
 }
 
@@ -67,7 +67,7 @@ export function InspectPanel({ trace, inspector, frameIndex, target, showSource,
 	const afterUpdate = latest && summarizeCell(latest.after);
 	const [queryEntity, setQueryEntity] = useState<Id | null>(entity?.id ?? null);
 
-	function eventText(event: SemanticEvent): string {
+	function eventText(event: ReadonlySemanticEvent): string {
 		if (event.type === "message") {
 			const route = artifact.relations.find(item => item.id === event.relationId)!;
 			const phase = event.phase[0].toUpperCase() + event.phase.slice(1);

@@ -9,6 +9,13 @@ export {
 export type {
 	CausalEvidence,
 	Cell,
+	ReadonlyJsonValue,
+	ReadonlyCell,
+	ReadonlySemanticEvent,
+	ReadonlyOrigin,
+	ReadonlyRelation,
+	ReadonlyClaim,
+	ValidatedArtifact,
 	Claim,
 	CompiledFrame,
 	CompiledTrace,
