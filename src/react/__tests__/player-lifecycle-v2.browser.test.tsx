@@ -68,3 +68,13 @@ it("keeps camera geometry finite with repeated authored focus IDs", async () => 
  expect(values.every(Number.isFinite)).toBe(true);
  expect(source.steps[0].focusEntityIds).toHaveLength(10000);
 });
+
+it("cancels active native transfer motion when autoplay is paused", async () => {
+ const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(retryCheckout())} initialView="graph"/>);
+ const player = screen.getByRole("group", { name: "Visualization player" });
+ await screen.getByRole("button", { name: "Play", exact: true }).click();
+ await expect.poll(() => player.element().querySelector(".thl-link.thl-animate"), { timeout: 5000 }).not.toBeNull();
+ await screen.getByRole("button", { name: "Pause", exact: true }).click();
+ expect(player.element().querySelector(".thl-link.thl-animate")).toBeNull();
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 10");
+});
