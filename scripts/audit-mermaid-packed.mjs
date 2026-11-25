@@ -109,9 +109,35 @@ try {
 	await page.getByText("Complete evidence at selected frame", { exact: true }).click();
 	await page.getByRole("button", { name: "requestSent", exact: true }).click();
 	assert((await page.getByRole("region", { name: "Selected exact source" }).textContent()).includes("requestSent"));
+	const responsive = [];
 	for (const width of [260, 320, 375, 720]) {
 		await page.setViewportSize({ width, height: 812 });
-		assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Host overflows at " + width);
+		const geometry = await page.evaluate(async () => {
+			// Wait for the resized document and native controls to lay out.
+			await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+			const viewport = innerWidth, rootWidth = document.documentElement.scrollWidth;
+			const bounds = node => {
+				const rect = node.getBoundingClientRect();
+				return { tag: node.tagName, className: node.getAttribute("class") ?? "", left: rect.left, right: rect.right, width: rect.width, scrollWidth: node.scrollWidth };
+			};
+			const controls = [...document.querySelectorAll(".proof-controls select, .proof-frame-control input")].map(bounds);
+			const outside = [...document.querySelectorAll("main *")].filter(node =>
+				node instanceof HTMLElement && node.getBoundingClientRect().width > 0 &&
+				(node.getBoundingClientRect().left < -1 || node.getBoundingClientRect().right > viewport + 1))
+				.slice(0, 40).map(bounds);
+			return { viewport, rootWidth, controls, outside };
+		});
+		responsive.push({ width, ...geometry });
+		const controlsFit = geometry.controls.length === 4 && geometry.controls.every(control =>
+			[control.left, control.right, control.width].every(Number.isFinite) &&
+			control.width > 0 && control.left >= 0 && control.right <= geometry.viewport);
+		if (geometry.rootWidth > geometry.viewport || !controlsFit) {
+			// Preserve a failure for review instead of just emitting a boolean.
+			writeFileSync(join(dirname(output), "packed-layout-failure.json"), JSON.stringify({ sourceSha: before.sourceSha, engine, responsive }, null, 2) + "\n");
+			await page.screenshot({ path: join(dirname(output), "packed-layout-failure.png"), fullPage: true });
+		}
+		assert(geometry.rootWidth <= geometry.viewport, "Host overflows at " + width + ": " + JSON.stringify(geometry));
+		assert(controlsFit, "Host controls exceed viewport at " + width + ": " + JSON.stringify(geometry.controls));
 	}
 	assert.deepEqual(errors, []); assert.deepEqual(nonLocal, []);
 	const sequenceAssets = [...requested].filter(file => !initialAssets.includes(file));
@@ -148,7 +174,7 @@ try {
 	const after = captureSource(root);
 	const report = { sourceSha: before.sourceSha, dirty: Boolean(before.status), sourceStable: sameSource(before, after),
 		inputFingerprint: before.fingerprint, mermaid: "12.3.0", engine, browser: browser.version(),
-		referenceResults,
+		referenceResults, responsive,
 		archiveSha256: createHash("sha256").update(readFileSync(tarball)).digest("hex"),
 		initialAssets, sequenceAssets,
 		assets, errors, nonLocal, packedCore: true, proofHostBuild: true, candidateBrowser: true, productionMermaid: false };

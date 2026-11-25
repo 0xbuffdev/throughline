@@ -24,10 +24,21 @@ function App(): React.JSX.Element {
 		[inspector, kind, frameIndex, collapsed]);
 	const proof = useMemo(() => view.kind === "sequence" ? sequenceProof(trace, view, sequenceStart)
 		: view.kind === "graph" ? graphProof(trace, view, direction) : undefined, [trace, view, direction, sequenceStart]);
-	return <main style={{ maxWidth: 1000, margin: "auto", padding: 12, font: "13px Arial, sans-serif", overflowWrap: "anywhere" }}>
+	return <main className="proof-host" style={{ boxSizing: "border-box", width: "100%", minWidth: 0, maxWidth: 1000, margin: "auto", padding: 12, font: "13px Arial, sans-serif", overflowWrap: "anywhere" }}>
+		<style>{`
+			/* Native select intrinsic widths differ across browser engines. Keep
+			 * controls inside the host even when the longest option is wide. */
+			.proof-host .proof-controls > label { display: grid; gap: 4px; flex: 1 1 160px; min-width: 0; max-width: 100%; }
+			.proof-host .proof-controls select { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; }
+			.proof-host .proof-frame-control { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; }
+			.proof-host .proof-frame-control input { min-width: 0; max-width: 100%; }
+			.proof-host :is(button, pre) { box-sizing: border-box; max-width: 100%; overflow-wrap: anywhere; }
+			.proof-host pre { min-width: 0; white-space: pre-wrap; }
+			.proof-host details { min-width: 0; max-width: 100%; }
+		`}</style>
 		<h1>Mermaid feasibility — test host</h1>
 		<p>Candidate rendering only. Production player and public package exports are unchanged.</p>
-		<div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+		<div className="proof-controls" style={{ display: "flex", flexWrap: "wrap", gap: 12, minWidth: 0 }}>
 			<label>Example <select value={example} onChange={event => {
 				setExample(Number(event.target.value)); setFrame(0); setCollapsed([]); setSelected(undefined);
 				setMotion({ ...motion, forward: false });
@@ -46,7 +57,7 @@ function App(): React.JSX.Element {
 			<button disabled={frameIndex === trace.frames.length - 1} onClick={() => {
 				setMotion({ ...motion, revision: motion.revision + 1, forward: true }); setFrame(frameIndex + 1);
 			}}>Next frame</button>{" "}
-			<label>Frame <input type="range" min={0} max={trace.frames.length - 1} value={frameIndex}
+			<label className="proof-frame-control">Frame <input type="range" min={0} max={trace.frames.length - 1} value={frameIndex}
 				onChange={event => { setFrame(Number(event.target.value)); setMotion({ ...motion, forward: false }); }} /></label>{" "}
 			<output>{frameIndex}: {trace.frames[frameIndex].label}</output>
 		</p>
