@@ -45,7 +45,7 @@ The compiler does not run arbitrary JavaScript or infer changes from
 a note, a graph edge or a message.
 
 For a **standalone programmatic** example, obtain the JSON body from a
-published, independently checked reference. This sample inspects factorial(4)
+first-party, independently checked source reference. This sample inspects factorial(4)
 rather than relying on a variable implicitly created by the Markdown fence:
 
 ~~~ts
@@ -110,7 +110,7 @@ export function ReferenceDemo() {
 The player's **Graph** view exposes source-linked semantic objects and
 declared relationships. **Sequence** displays only modeled message
 phases; absent receipts and acknowledgements are not invented.
-**State table** exposes known/unknown cells and explicit writes.
+**State** (the state-table projection) exposes known/unknown cells and explicit writes. Retained modeled values are visible even when an entity is absent; current-frame events appear in pages of at most 40 rows.
 Tabs appear only for projections the artifact supports across its entire timeline;
 for example, factorial has Graph and State tabs, while Checkout also has Sequence.
 An incompatible programmatic view request falls back to a truthful state table.
@@ -119,7 +119,7 @@ view; Tab leaves the tab list. The same keyboard policy applies to the Mermaid p
 
 Use the playback controls to step backward or forward. The number and title
 above the diagram identify the current step. Choose **Go to step** in Options
-to open a specific step. While editing that field, autoplay does not overwrite
+(accessible name **Player options**) to open a specific one-based step. While editing that field, autoplay does not overwrite
 your draft. Submit to seek and pause, or dismiss Options to discard it.
 Replacing the trace discards any draft and shows the new initial step. The graph opens at readable scale and
 centers sparse content. Nodes have compact measurements that remain stable
@@ -131,7 +131,7 @@ Use **Fit to view** for a whole-scene overview, or **Follow active** to center
 authored focus without automatically magnifying it. Following starts off;
 manual panning, zooming or fitting pauses it until you enable it again.
 Selecting a group in Options centers its existing geometry without moving nodes.
-The inspector docks beside the diagram in wide embeds, opens over its right
+The **Inspect** toggle opens the Workflow inspector for the current step; it is not a separate Explain view. The inspector docks beside the diagram in wide embeds, opens over its right
 edge at intermediate widths and becomes a bottom sheet in narrow embeds.
 Playback stays available, and the inspector header shows the same step number
 and title. Evidence tables scroll horizontally inside their own labeled regions.
@@ -161,7 +161,7 @@ new rate, except after an explicit playback pause: the replacement waits for
 Play or a deliberate seek. A superseded utterance cannot advance the timeline.
 
 Run `pnpm dev` from the source repository to open the checkout player preview
-at desktop, tablet or mobile widths. The preview includes checkout's explanation
+at desktop, tablet or mobile widths. Mermaid Graph and Sequence here are development-only; the public player remains native pending U29. The preview includes checkout's explanation
 and source evidence.
 
 ## Markdown and MDX hosts
@@ -181,9 +181,7 @@ paths, and loader failures produce stable diagnostics; no compiler
 call triggers AI or network access.
 
 See [universal fence grammar](grammar.md) and
-[framework integrations](framework-integrations.md). The
-filesystem-confined command-line materialization/check workflow
-is a separate release-gated implementation.
+[framework integrations](framework-integrations.md). The filesystem-confined command-line materialization/check workflow is implemented in unreleased source; see [CLI guide](cli.md).
 
 ## Understanding evidence and limits
 

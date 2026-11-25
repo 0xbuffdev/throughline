@@ -403,8 +403,7 @@ Frame seeking, step captions, evidence listing, source-based selection,
 read-only group collapse, pan/zoom/fit, focusable keyboard controls and
 source-linked SVG descriptions are available. A separate v2 state table
 fallback is readable and never promotes observations to durable writes.
-The old `ThroughlinePlayer` remains a temporary schema-1 entrypoint, **not
-a new compatibility API**; migrate internal examples/MDX in TL-U08–TL-U10.
+The old `ThroughlinePlayer` is not a schema-2 public export. Any remaining schema-1 implementation is internal historical scaffolding; the TL-U08–TL-U10 public authoring route is schema-2 only.
 
 Regression coverage includes distributed checkout (isolated receives,
 processed-without-sent evidence, explicit settlement write, preactivation
@@ -551,7 +550,7 @@ The projected fields have distinct responsibilities:
   references in scope is still not independently verified.
 - **Recorded evidence values:** `InspectionEvidence.recorded` identifies
   an explicit `{kind:"observation", value: Cell}` or
-  `{kind:"message-payload", value: JsonValue}`. These are immutable source
+  `{kind:"message-payload", value: ReadonlyJsonValue}`. These are immutable source
   data from the exact event (including known `null` and explicit null
   message payloads). Observation cells **do not** commit modeled entity
   state. Message payloads never imply another delivery phase, persistence,
@@ -566,9 +565,7 @@ The projected fields have distinct responsibilities:
   dependency controls are also paged. No 1,000-claim artifact can
   mount all of its cited-event buttons at once.
 
-The browser player exposes **Explain** and **Inspect** as focusable buttons,
-with the same playback step and selected entity across both modes.
-Inspect includes previous/current tables, a forward comparison-frame
+The browser player exposes supported Graph, Sequence and State tabs (Visualization view) and a separate **Inspect** toggle, sharing the playback step and selected source entity. Left/Right and Home/End activate tabs while tab focus is inside the list. The compact Workflow inspector opens on the current step, entity or transfer; expand **Source details** and **Compare steps** or another evidence tool. Inspect includes previous/current tables, a forward comparison-frame
 control, a safe **JSON path array** input (parsed as data; never evaluated),
 ordered change/history tables, explicit relation-phase links and an
 event/claim drill-down that can seek to a referenced source step.

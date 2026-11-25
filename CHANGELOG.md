@@ -7,6 +7,10 @@ All notable changes to Throughline are recorded here. Package versions follow
 
 ## [Unreleased]
 
+- Reconcile compact-player documentation and manual AT instructions with supported view tabs, Inspect toggle, responsive Workflow inspector and source-detail tools; preserve the NOT PERFORMED human acceptance record.
+- Separate authored mutable shapes from readonly validated/derived public declarations, with source and packed declaration regressions.
+- Enforce strict release evidence identity and schemas, immutable exact-archive preparation and separately authorized staging. Production audit and final human acceptance remain mandatory and outstanding.
+
 - Extend the development-only Mermaid feasibility candidate with explicit sequence row references and fail-closed mapping checks, a retryable renderer loader, projected Graph state/focus/write evidence, and additional browser and packed-host proof coverage. Public rendering is unchanged.
 
 - Preserve an explicit narration pause through speed changes, consume native sequence transfer motion on evidence paging, and reset go-to-step drafts when the compiled trace changes.

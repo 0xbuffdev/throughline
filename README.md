@@ -108,7 +108,7 @@ invent a receive, acknowledgement, processing event or destination write.
 
 The native v2 player defaults to the highest-priority compatible validated
 artifact view hint, or automatically selects Sequence when modeled message
-events exist. It also supports a manual **Sequence** option under Player options.
+events exist. Select the **Sequence** tab in the Visualization view tab list when supported. Graph and State tabs use the same playback cursor; Left/Right and Home/End activate tabs while focus is in the tab list.
 A caller can explicitly override the initial view:
 
 ~~~tsx
@@ -127,16 +127,14 @@ Within one atomic step, event-array order is for display only: a received
 phase placed before a modeled sent in the **same step** is not a missing-send
 gap. The correlation display uses fixed 120-card pages even for thousands
 of distinct IDs; the full source-linked summaries remain accessible through
-earlier/newer page controls.
+earlier/newer page controls. The chronological native Sequence lane also mounts at most 120 event rows per page; changing frames returns to the newest page. State displays retained modeled cells independently of presence and current-frame evidence in pages of at most 40 rows.
 Switching to Graph or State table retains the current frame and selected
 semantic entity. The pure `projectView` auto-choice is stable across frames
 and prioritizes implemented compatible author hints.
 
 ### Native v2 Explain / Inspect
 
-The schema-2 React player now has a visible **Explain / Inspect** switch.
-Explain presents Graph, Sequence or State table; Inspect reads the same
-selected frame and semantic entity through a pure query:
+The schema-2 React player exposes supported **Graph**, **Sequence** and **State** view tabs and a separate **Inspect** toggle. Inspect opens the current step in the Workflow inspector; selecting an entity or transfer opens its context. Expand **Source details**, then a tool such as **Compare steps**, for deeper evidence. The panel docks, overlays or becomes a bottom sheet according to available width; playback remains available. It reads the same selected frame and semantic entity through a pure query:
 
 ~~~ts
 import { compileArtifact, inspectTrace, projectInspection } from "@0xbuff/throughline";
@@ -221,10 +219,10 @@ See the [CLI and editorial-review procedure](docs/cli.md).
 
 ## Installation and version boundary
 
-Install the published package with:
+For this unreleased schema-2 guide, build from reviewed source or use an independently installed source archive. Do not install an unversioned registry package expecting these exports. For the historical v0.1.0 API, use the matching versioned release documentation and pin the corresponding package:
 
 ~~~sh
-npm install @0xbuff/throughline
+npm install @0xbuff/throughline@0.1.0
 ~~~
 
 The package targets Node.js 24+ with ESM. The React 19 player is an
@@ -235,8 +233,7 @@ npm install react@^19 react-dom@^19
 ~~~
 
 **The schema-2 examples and interfaces described here are source-level,
-unreleased changes.** The currently published 0.1.0 package does not
-automatically include them. They will be released only after the separate
+unreleased changes.** The historical 0.1.0 package must not be assumed to include them. They will be released only after the separate
 publication gates; do not assume this README is an assertion of npm delivery.
 
 ## Quick start — use a typed reference
@@ -286,7 +283,7 @@ instead of inventing messages.
 ## Local development preview
 
 [The Vite playground](playground) uses the checkout reference and the current
-player source, with Mermaid Graph and Sequence and the State table.
+player source, with development-only Mermaid Graph and Sequence and the native State table. Public package rendering remains native pending U29.
 Use Node.js 24+ and the repository's pinned pnpm version.
 
 ~~~sh
