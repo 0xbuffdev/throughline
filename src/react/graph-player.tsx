@@ -318,15 +318,23 @@ export function GraphPlayer({
 	}, [narration]);
 	const [motion, setMotion] = useState({
 		trace, step: state.step, animate: false, revision: 0, seekRevision, viewKind,
+		speed: state.speed, playing: state.playing,
 	});
-	if (motion.trace !== trace || motion.step !== state.step || motion.viewKind !== viewKind) {
+	if (motion.trace !== trace || motion.step !== state.step || motion.viewKind !== viewKind ||
+		motion.seekRevision !== seekRevision || motion.speed !== state.speed || motion.playing !== state.playing) {
 		setMotion({
 			trace, step: state.step, revision: motion.revision + 1, seekRevision, viewKind,
-			animate: motion.trace === trace && motion.viewKind === viewKind && state.step === motion.step + 1 &&
+			speed: state.speed, playing: state.playing,
+			animate: motion.trace === trace && motion.viewKind === viewKind && motion.speed === state.speed &&
+				state.step === motion.step + 1 &&
 				(lastAction?.type === "tick" ||
 					(lastAction?.type === "step" && lastAction.animate === true)),
 		});
 	}
+	// One motion permission for every renderer. A pause, speed change, view switch
+	// or explicit same-frame seek invalidates the previous animation revision.
+	const animate = motion.animate && motion.seekRevision === seekRevision &&
+		(lastAction?.type === "tick" || (lastAction?.type === "step" && lastAction.animate === true));
 	// On an identity change, usePlayer schedules its reset during render.
 	// Never send the former trace's higher frame index into a new, shorter
 	// immutable inspector while React completes that state transition.
@@ -349,17 +357,28 @@ export function GraphPlayer({
 		[DiagramRenderer, layout, view]);
  const actors = useMemo(() => DiagramRenderer ? [] : sequenceActors(trace), [DiagramRenderer, trace]);
 	// Only authored focusEntityIds can drive automatic camera following.
- const focusIds = frameIndex ? trace.artifact.steps[frameIndex - 1].focusEntityIds ?? [] : [];
- const focusRects = focusIds.map(id => {
-  const item = view.items.find(candidate =>
-   (candidate.role === "entity" || (candidate.role === "group" && data(candidate, "collapsed") === true)) &&
-   candidate.source.entityIds?.includes(id));
-  return item ? geometry.nodes[item.id] : undefined;
- }).filter((rect): rect is { x: number; y: number; w: number; h: number } => rect !== undefined);
- const focusLeft = focusRects.length ? Math.min(...focusRects.map(rect => rect.x)) : 0;
- const focusRight = focusRects.length ? Math.max(...focusRects.map(rect => rect.x + rect.w)) : 0;
- const focusTop = focusRects.length ? Math.min(...focusRects.map(rect => rect.y)) : 0;
- const focusBottom = focusRects.length ? Math.max(...focusRects.map(rect => rect.y + rect.h)) : 0;
+ const focusBounds = useMemo(() => {
+  if (DiagramRenderer || !frameIndex) return null;
+  // Authored repetitions remain in the artifact, but camera work is bounded by
+  // distinct declared entities and visible geometry. Never spread authored arrays.
+  const remaining = new Set(trace.artifact.steps[frameIndex - 1].focusEntityIds ?? []);
+  if (!remaining.size) return null;
+  let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
+  for (const item of view.items) {
+   if (item.role !== "entity" && !(item.role === "group" && data(item, "collapsed") === true)) continue;
+   const rect = geometry.nodes[item.id];
+   if (!rect) continue;
+   let matched = false;
+   for (const id of item.source.entityIds ?? []) if (remaining.delete(id)) matched = true;
+   if (!matched) continue;
+   left = Math.min(left, rect.x);
+   right = Math.max(right, rect.x + rect.w);
+   top = Math.min(top, rect.y);
+   bottom = Math.max(bottom, rect.y + rect.h);
+   if (!remaining.size) break;
+  }
+  return Number.isFinite(left) ? { x: left, y: top, w: right - left, h: bottom - top } : null;
+ }, [DiagramRenderer, trace, frameIndex, view, geometry]);
  const [sceneHeight, setSceneHeight] = useState<number | null>(null);
  useEffect(() => {
   const svg = svgRef.current;
@@ -374,9 +393,7 @@ export function GraphPlayer({
  const overview = camera ?? initialCamera(layout, viewport);
   // Following centers the authored focus at the user's existing scale,
  // zooming out only when a multi-entity focus needs room. It never magnifies.
- const followedCamera = focusRects.length ? focusCamera(layout, viewport, overview, {
-  x: focusLeft, y: focusTop, w: focusRight - focusLeft, h: focusBottom - focusTop,
- }) : null;
+ const followedCamera = focusBounds ? focusCamera(layout, viewport, overview, focusBounds) : null;
  const effectiveCamera = constrainCamera(layout, viewport,
   follow && followedCamera ? followedCamera : overview);
 	const presentEntities = new Set(inspector.stateAt(frameIndex).presentEntityIds);
@@ -470,16 +487,33 @@ export function GraphPlayer({
   if (soundOn) { setSoundOn(false); return; }
   const Ctx = window.AudioContext;
   if (!Ctx) return;
-  audioRef.current ??= new Ctx();
-  void audioRef.current.resume().catch(() => {});
-  setSoundOn(true);
+  try {
+   audioRef.current ??= new Ctx();
+   void audioRef.current.resume().catch(() => {});
+   setSoundOn(true);
+  } catch { /* Hardware or permissions must not interrupt the timeline. */ }
  };
  useEffect(() => {
   if (!soundOn || !audioRef.current) return;
   const audio = audioRef.current;
+  let oscillator: OscillatorNode | undefined;
+  let gain: GainNode | undefined;
+  let released = false;
+  const release = () => {
+   if (released) return;
+   released = true;
+   if (oscillator) oscillator.onended = null;
+   try { oscillator?.disconnect(); } catch { /* optional audio */ }
+   try { gain?.disconnect(); } catch { /* optional audio */ }
+  };
+  const stop = () => {
+   if (released) return;
+   try { oscillator?.stop(); } catch { /* already ended or not started */ }
+   release();
+  };
   try {
-   const oscillator = audio.createOscillator();
-   const gain = audio.createGain();
+   oscillator = audio.createOscillator();
+   gain = audio.createGain();
    const now = audio.currentTime;
    oscillator.frequency.value = 220 * Math.pow(2, frameIndex / Math.max(1, state.max) * 1.5);
    gain.gain.setValueAtTime(0.0001, now);
@@ -487,10 +521,12 @@ export function GraphPlayer({
    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
    oscillator.connect(gain);
    gain.connect(audio.destination);
+   oscillator.onended = release;
    oscillator.start();
    oscillator.stop(now + 0.32);
-  } catch { /* audio is optional */ }
- }, [frameIndex, soundOn, state.max]);
+   return stop;
+  } catch { stop(); /* audio is optional, including partial node creation */ }
+ }, [trace, frameIndex, seekRevision, soundOn, state.max]);
 
  const entityFieldId = useId();
  const groupFieldId = useId();
@@ -632,10 +668,9 @@ export function GraphPlayer({
         : event.key === "ArrowLeft" ? (index + availableViews.length - 1) % availableViews.length : -1;
        if (next < 0) return;
        event.preventDefault();
-       if (!DiagramRenderer) {
-        setViewKind(availableViews[next][1]);
-        setMotion(current => ({ ...current, animate: false }));
-       }
+       event.stopPropagation();
+       setViewKind(availableViews[next][1]);
+       setMotion(current => ({ ...current, animate: false }));
        event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
       }}
       onClick={() => { setViewKind(kind); setMotion(current => ({ ...current, animate: false })); }}>{label}</button>)}
@@ -654,8 +689,7 @@ export function GraphPlayer({
       selectedId={selectedId} groupId={drilled} captionId={captionId}
       motion={{
        revision: motion.revision, durationMs: Math.min(700, stepDelayMs(700, state.speed)),
-       forward: motion.animate && motion.seekRevision === seekRevision &&
-        (lastAction?.type === "tick" || (lastAction?.type === "step" && lastAction.animate === true)),
+       forward: animate,
       }}
       onSelectItem={onSelectItem} onSelectEntity={onSelectEntity} onOpenEvidence={onOpenEvidence}
       fallback={() => <StateView view={projectView(inspector, { kind: "state-table", frameIndex })}
@@ -690,7 +724,7 @@ export function GraphPlayer({
        <GraphDiagram view={view} geometry={geometry} frameIndex={frameIndex}
         selectedId={selectedId} onSelect={onSelectEntity} onInspect={onSelectItem}
         onExpand={id => setCollapsed(current => current.filter(item => item !== id))}
-        visitedAt={firstSent} participants={participants} animate={motion.animate}/>
+        visitedAt={firstSent} participants={participants} animate={animate}/>
       </svg>
       <div className="canvas-hint">
        <span>Drag to pan · scroll to zoom · select a node or arrow to inspect</span>
@@ -712,7 +746,7 @@ export function GraphPlayer({
      </div> : view.kind === "sequence"
      ? <SequenceView view={view} actors={actors} present={presentEntities} selectedId={selectedId}
        onSelect={onSelectEntity} onInspect={onSelectItem}
-       animate={motion.animate && ((state.playing && lastAction?.type === "tick") || (lastAction?.type === "step" && lastAction.animate === true))}/>
+       animate={animate}/>
      : <StateView view={view} selectedId={selectedId}
        inspector={inspector} frameIndex={frameIndex} onSelect={onSelectEntity} onInspectEvent={onInspectStateEvent}/>}
    </div>

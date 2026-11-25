@@ -283,3 +283,33 @@ it("pages through the full evidence without accumulating mounted rows", async ()
 	expect(rows()).toHaveLength(120);
 	expect(evidence("event159")).not.toBeNull();
 });
+
+
+it("bounds the native lane window and returns to the newest evidence on seek", async () => {
+ const source = retryCheckout();
+ source.steps = Array.from({ length: 250 }, (_, n) => ({
+  id: "step" + n, label: "Step " + n, events: [{
+   id: "event" + n, originId: "author", type: "message" as const,
+   relationId: "request", messageId: "batch", phase: "sent" as const,
+  }],
+ }));
+ const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)} initialView="sequence"/>);
+ const player = screen.getByRole("group", { name: "Visualization player" });
+ player.element().focus();
+ await userEvent.keyboard("{End}");
+ const lane = screen.getByRole("region", { name: "Message sequence evidence", exact: true });
+ const rows = () => [...lane.element().querySelectorAll(".seq-row")];
+ expect(rows()).toHaveLength(120);
+ expect(rows()[0].getAttribute("data-source-event-ids")).toBe("event130");
+ const earlier = lane.getByRole("button", { name: "Show earlier evidence" });
+ await earlier.click();
+ expect(rows()).toHaveLength(120);
+ await earlier.click();
+ expect(rows()).toHaveLength(10);
+ expect(rows()[0].getAttribute("data-source-event-ids")).toBe("event0");
+ await lane.getByRole("button", { name: "Show later evidence" }).click();
+ expect(rows()).toHaveLength(120);
+ await screen.getByRole("button", { name: "Step back" }).click();
+ expect(rows()).toHaveLength(120);
+ expect(rows().at(-1)?.getAttribute("data-source-event-ids")).toBe("event248");
+});

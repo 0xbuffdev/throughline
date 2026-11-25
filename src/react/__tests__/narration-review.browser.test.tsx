@@ -1,4 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
+import { compileArtifact } from "../../v2/compiler.js";
+import { retryCheckout } from "../../__tests__/v2-sequence-fixture.js";
+import { ThroughlineGraphPlayer } from "../graph-player.js";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { compile } from "../../domains/registry.js";
@@ -251,4 +254,31 @@ it("keeps controls visible with neither, one, or both optional audio features at
 			}
 		}
 	}
+});
+
+
+it("bounds schema-2 speech and restarts at the new speed without accepting stale callbacks", async () => {
+ const speech = speechBoundary();
+ const source = retryCheckout();
+ source.steps[0].note = "Long source explanation. " + "x".repeat(4000);
+ const screen = await render(<ThroughlineGraphPlayer trace={compileArtifact(source)} narration/>);
+ await screen.getByRole("button", { name: "Step forward" }).click();
+ const options = screen.getByRole("button", { name: "Player options" });
+ await options.click();
+ await screen.getByRole("button", { name: "Narrate captions" }).click();
+ const first = speech.voices.at(-1)!;
+ expect(first.text.length).toBeLessThanOrEqual(3000);
+ expect(first.text).toContain("Narration shortened");
+ const stale = first.onend;
+ await screen.getByRole("radio", { name: "2×" }).click();
+ const replacement = speech.voices.at(-1)!;
+ expect(replacement).not.toBe(first);
+ expect(replacement.rate).toBe(2);
+ expect(first.onend).toBeNull();
+ await options.click();
+ await screen.getByRole("button", { name: "Play", exact: true }).click();
+ stale?.();
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 2 of 10");
+ replacement.onend?.();
+ await expect.element(screen.getByRole("status")).toHaveTextContent("Step 3 of 10");
 });

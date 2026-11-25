@@ -21,11 +21,17 @@ export function SequenceView({ view, actors, present, selectedId, onSelect, onIn
 	animate?: boolean;
 }): React.JSX.Element {
 	const [identity, setIdentity] = useState(actors);
- const [maxVisible, setMaxVisible] = useState(PAGE);
- if (identity !== actors) { setIdentity(actors); setMaxVisible(PAGE); }
+ const [page, setPage] = useState(0);
+ const [frameId, setFrameId] = useState(view.frameId);
+ if (identity !== actors || frameId !== view.frameId) {
+  setIdentity(actors); setFrameId(view.frameId); setPage(0);
+ }
 	const events = view.items.filter(item => item.role === "event");
-	const start = Math.max(0, events.length - maxVisible);
-	const visible = events.slice(start);
+	const pages = Math.max(1, Math.ceil(events.length / PAGE));
+	const pageIndex = Math.min(page, pages - 1);
+	const end = events.length - pageIndex * PAGE;
+	const start = Math.max(0, end - PAGE);
+	const visible = events.slice(start, end);
 	const last = events.at(-1);
 	const lanes = Math.max(1, actors.length);
 	const columns = "repeat(" + lanes + ",minmax(0,1fr))";
@@ -87,9 +93,13 @@ export function SequenceView({ view, actors, present, selectedId, onSelect, onIn
 		</div>
 		<div className="seq-detail"><span>{last ? "Latest evidence" : "No events yet"}</span>
 			{last && <p><code>{last.label}</code></p>}
-			{events.length > visible.length && <button type="button" className="seq-earlier"
-				onClick={() => setMaxVisible(n => Math.min(events.length, n + PAGE))}>
-				Show earlier evidence ({visible.length} of {events.length})</button>}
+			{pages > 1 && <div role="group" aria-label="Sequence lane pages">
+                <p aria-live="polite">Showing events {start + 1}–{end} of {events.length}.</p>
+                <button type="button" className="seq-earlier" disabled={pageIndex === pages - 1}
+                    onClick={() => setPage(pageIndex + 1)}>Show earlier evidence</button>
+                <button type="button" className="seq-earlier" disabled={pageIndex === 0}
+                    onClick={() => setPage(pageIndex - 1)}>Show later evidence</button>
+            </div>}
 		</div>
 	</section>;
 }

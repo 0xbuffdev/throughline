@@ -13,6 +13,7 @@ type Session = {
 	step: number;
 	text: string;
 	seekRevision: number;
+	speed: Speed;
 	utterance: SpeechSynthesisUtterance;
 	engine: SpeechSynthesis;
 	owner: SpeechOwner;
@@ -60,7 +61,7 @@ export function useNarration({
 	latest.current = {
 		trace, step, text, seekRevision, speed, playing, enabled, dispatch, setEnabled,
 	};
-	const previous = useRef({ trace, step, text, seekRevision, playing, enabled });
+	const previous = useRef({ trace, step, text, seekRevision, speed, playing, enabled });
 
 	const stop = useCallback(() => {
 		const voice = current.current;
@@ -84,11 +85,14 @@ export function useNarration({
 		const state = latest.current;
 		if (!state.text) return;
 		try {
-			const utterance = new SpeechSynthesisUtterance(state.text);
+			const suffix = " Narration shortened. Read the caption and inspector for complete evidence.";
+			const spoken = state.text.length <= 3000 ? state.text :
+				state.text.slice(0, 3000 - suffix.length).replace(/[\uD800-\uDBFF]$/, "").trimEnd() + suffix;
+			const utterance = new SpeechSynthesisUtterance(spoken);
 			utterance.rate = state.speed;
 			const session: Session = {
 				trace: state.trace, step: state.step, text: state.text,
-				seekRevision: state.seekRevision, utterance, engine,
+				seekRevision: state.seekRevision, speed: state.speed, utterance, engine,
 				owner: {
 					onDisplaced: () => {
 						if (current.current !== session) return;
@@ -117,12 +121,15 @@ export function useNarration({
 				// callback even before React has run its effect cleanup.
 				if (next.enabled && next.trace === session.trace &&
 					next.step === session.step && next.text === session.text &&
-					next.seekRevision === session.seekRevision && next.playing) {
+					next.seekRevision === session.seekRevision && next.speed === session.speed && next.playing) {
 					next.dispatch({ type: "tick" });
 				}
 			};
 			utterance.onerror = (event) => {
-				if (current.current !== session || session.failed) return;
+				if (current.current !== session || session.failed || !ownsSpeech(session.engine, session.owner)) return;
+				const next = latest.current;
+				if (!next.enabled || next.trace !== session.trace || next.step !== session.step ||
+					next.text !== session.text || next.seekRevision !== session.seekRevision || next.speed !== session.speed) return;
 				// An event that reaches this handler is never our own cancel:
 				// the owned cancellation removed the handlers first.
 				session.ended = true;
@@ -154,18 +161,18 @@ export function useNarration({
 		if (!enabled || !offered) { stop(); return; }
 		const voice = current.current;
 		if (!voice || voice.trace !== trace || voice.step !== step ||
-			voice.text !== text || voice.seekRevision !== seekRevision) {
+			voice.text !== text || voice.seekRevision !== seekRevision || voice.speed !== speed) {
 			start();
 		}
-	}, [enabled, offered, trace, step, text, seekRevision, start, stop]);
+	}, [enabled, offered, trace, step, text, seekRevision, speed, start, stop]);
 
 	// The speech clock and the player's Play/Pause control share one state.
 	// Pause/resume only if this instance still owns the global speech queue.
 	useEffect(() => {
 		const old = previous.current;
-		previous.current = { trace, step, text, seekRevision, playing, enabled };
+		previous.current = { trace, step, text, seekRevision, speed, playing, enabled };
 		if (!enabled || old.trace !== trace || old.step !== step ||
-			old.text !== text || old.seekRevision !== seekRevision ||
+			old.text !== text || old.seekRevision !== seekRevision || old.speed !== speed ||
 			old.enabled !== enabled || old.playing === playing) return;
 		const voice = current.current;
 		if (!voice) return;
@@ -187,7 +194,7 @@ export function useNarration({
 				}
 			}
 		}
-	}, [trace, step, text, seekRevision, playing, enabled, dispatch]);
+	}, [trace, step, text, seekRevision, speed, playing, enabled, dispatch]);
 
 	useEffect(() => () => stop(), [stop]);
 

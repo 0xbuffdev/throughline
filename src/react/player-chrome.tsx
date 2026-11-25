@@ -59,6 +59,7 @@ export function PlayerOptions({
  const menuRef = useRef<HTMLDivElement>(null);
  const triggerRef = useRef<HTMLButtonElement>(null);
  const stepRef = useRef<HTMLInputElement>(null);
+ const dirtyStep = useRef(false);
  const popupRef = useRef<HTMLDivElement>(null);
  useEffect(() => {
   if (!open) return;
@@ -77,7 +78,8 @@ export function PlayerOptions({
   };
  }, [open]);
  useEffect(() => {
-  if (open && stepRef.current) stepRef.current.value = String(state.step + 1);
+  if (!open) { dirtyStep.current = false; return; }
+  if (stepRef.current && !dirtyStep.current) stepRef.current.value = String(state.step + 1);
  }, [open, state.step]);
  const seek = (to: number) => { dispatch({ type: "step", to }); setOpen(false); triggerRef.current?.focus(); };
  return <div className="menu-anchor" ref={menuRef} onBlur={event => {
@@ -108,7 +110,8 @@ export function PlayerOptions({
      <div className="opt-field">
       <label htmlFor={id + "-step"}>Go to step</label>
       <input id={id + "-step"} ref={stepRef} type="number" name="step" min={1}
-       max={state.max + 1} defaultValue={state.step + 1} required/>
+       max={state.max + 1} defaultValue={state.step + 1} required
+       onChange={() => { dirtyStep.current = true; }}/>
      </div>
      <button type="submit" className="opt-go">Go</button>
     </form>}
