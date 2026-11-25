@@ -7,7 +7,9 @@ import {
 } from "../../v2/graph-viewport.js";
 import type { DiagramRendererProps } from "../graph-player.js";
 import { PlayerIcon } from "../player-icons.js";
-import { graphProof, sequenceProof, type DiagramProof } from "./adapter.js";
+import { graphProof, property, sequenceProof, type DiagramProof } from "./adapter.js";
+import type { Cell } from "../../v2/model.js";
+import { summarizeCell } from "../value-display.js";
 import { animateTransfers, paintRoutes } from "./motion.js";
 import { renderProof, type RenderedDiagram } from "./render.js";
 
@@ -18,13 +20,14 @@ const CACHE_LIMIT = 3;
 function useDiagram(proof: DiagramProof | undefined, trace: DiagramRendererProps["trace"], frameIndex: number,
 	renderDiagram: typeof renderProof) {
 	const source = proof?.source;
+	const [attempt, setAttempt] = useState(0);
 	const cache = useRef(new Map<string, RenderedDiagram>());
 	const [result, setResult] = useState<{
-		trace: typeof trace; source: string; kind: DiagramProof["kind"]; diagram: RenderedDiagram | null; frame: number;
+		trace: typeof trace; source: string; kind: DiagramProof["kind"]; diagram: RenderedDiagram | null; frame: number; attempt: number;
 	}>();
 	useEffect(() => {
 		if (!proof || !source) return;
-		const rendered = { trace, source, kind: proof.kind, frame: frameIndex };
+		const rendered = { trace, source, kind: proof.kind, frame: frameIndex, attempt };
 		const cached = cache.current.get(source);
 		if (cached) {
 			setResult({ ...rendered, diagram: cached });
@@ -42,11 +45,12 @@ function useDiagram(proof: DiagramProof | undefined, trace: DiagramRendererProps
 		});
 		return () => request.abort();
 	// Source includes every geometry input and excludes current-frame paint.
-	}, [source, trace, renderDiagram]);
+	}, [source, trace, renderDiagram, attempt]);
 	const sameView = result?.trace === trace && result.kind === proof?.kind;
 	return {
-		current: sameView && source === result.source ? result.diagram : undefined,
-		previous: sameView && frameIndex >= result.frame ? result.diagram : undefined,
+		current: sameView && source === result.source && result.attempt === attempt ? result.diagram : undefined,
+		previous: sameView && result.attempt === attempt && frameIndex >= result.frame ? result.diagram : undefined,
+		retry: () => setAttempt(value => value + 1),
 	};
 }
 
@@ -81,13 +85,14 @@ function keepInView(diagram: RenderedDiagram, size: { width: number; height: num
 }
 
 function GraphViewport({
-	diagram, proof, groupId, captionId, children, onOpenEvidence, follow, onFollowChange,
+	diagram, proof, groupId, captionId, children, stateEvidence, onOpenEvidence, follow, onFollowChange,
 }: {
 	diagram: RenderedDiagram;
 	proof: DiagramProof;
 	groupId: DiagramRendererProps["groupId"];
 	captionId: string;
 	children: React.ReactNode;
+	stateEvidence: React.ReactNode;
 	onOpenEvidence: () => void;
 	follow: boolean;
 	onFollowChange: (enabled: boolean) => void;
@@ -194,6 +199,7 @@ function GraphViewport({
 			onLostPointerCapture={() => { drag.current = null; }}>
 			{children}
 		</svg>
+		{stateEvidence}
 		<div className="canvas-hint">
 			<button className="mermaid-evidence" type="button" onClick={onOpenEvidence}>Changes and evidence</button>
 			<div className="zoom-tools" role="toolbar" aria-label="Diagram navigation">
@@ -289,7 +295,7 @@ function MermaidPlayerDiagramImpl({
 		if (candidate.elements.filter(entry => entry.role === "entity").length <= PARTICIPANT_LIMIT)
 			return candidate;
 	}, [trace, view, direction, currentWindow, firstSent, frameIndex]);
-	const { current: diagram, previous } = useDiagram(proof, trace, frameIndex, renderDiagram);
+	const { current: diagram, previous, retry } = useDiagram(proof, trace, frameIndex, renderDiagram);
 	const host = useRef<HTMLDivElement>(null);
 	const sequenceScroll = useRef<HTMLDivElement>(null);
 	const { revision, forward, durationMs } = motion;
@@ -310,8 +316,18 @@ function MermaidPlayerDiagramImpl({
 
 	useLayoutEffect(() => {
 		if (!diagram || !proof || !host.current) return;
-		return paintRoutes(host.current, proof, selectedId);
-	}, [diagram, proof, selectedId]);
+		const cleanup = paintRoutes(host.current, proof, selectedId);
+		if (proof.kind === "graph") {
+			const items = new Map(view.items.map(item => [item.id, item]));
+			for (const node of host.current.querySelectorAll("[data-thl-item-id]")) {
+				const item = items.get(node.getAttribute("data-thl-item-id") ?? "");
+				if (item?.role !== "entity") continue;
+				node.toggleAttribute("data-thl-focused", property(item, "focused") === true);
+				node.toggleAttribute("data-thl-written", property(item, "changed") === true);
+			}
+		}
+		return cleanup;
+	}, [diagram, proof, selectedId, view]);
 
 	useLayoutEffect(() => {
 		if (!diagram || !proof || !host.current || !sequenceScroll.current) return;
@@ -355,6 +371,7 @@ function MermaidPlayerDiagramImpl({
 	if (!proof || diagram === null) return <div className="mermaid-fallback">
 		<div className="mermaid-status">
 			<p role="status">{proof ? "The diagram couldn’t be rendered." : "This diagram exceeds the preview display limit."}</p>
+			{proof && <button type="button" className="mermaid-evidence" onClick={retry}>Retry diagram</button>}
 			<button type="button" className="mermaid-evidence" onClick={onOpenEvidence}>Changes and evidence</button>
 		</div>
 		{fallback()}
@@ -385,6 +402,21 @@ function MermaidPlayerDiagramImpl({
 	return <div ref={host} className="mermaid-markup" data-mermaid-kind="graph">
 		<GraphViewport key={proof.source} diagram={visible} proof={proof}
 			groupId={groupId} captionId={captionId} onOpenEvidence={onOpenEvidence}
+			stateEvidence={<section className="mermaid-graph-state" role="region" aria-label="Graph modeled state" tabIndex={0}>
+				{view.items.filter(item => item.role === "entity" || (item.role === "group" && property(item, "collapsed") === true)).map(item => {
+					const group = item.role === "group";
+					const focused = property(item, "focused") === true, changed = property(item, "changed") === true;
+					const summary = group ? String(property(item, "count")) + " present entities" :
+						"Present · " + summarizeCell(property(item, "cell") as Cell);
+					return <button type="button" key={item.id} data-graph-state-item={item.id}
+						data-source-entity-ids={item.source.entityIds?.join(" ")}
+						data-source-event-ids={item.source.eventIds?.join(" ")}
+						onClick={() => onSelectItem(item.id)}>
+						<strong>{item.label}</strong> <span>{summary}</span>
+						{focused && <span> · Focus</span>}{changed && <span> · Write</span>}
+					</button>;
+				})}
+			</section>}
 			follow={unfollowedTrace !== trace} onFollowChange={enabled => setUnfollowedTrace(enabled ? null : trace)}>
 			<g {...interactive} dangerouslySetInnerHTML={markup}/>
 		</GraphViewport>

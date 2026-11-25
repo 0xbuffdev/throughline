@@ -6,12 +6,15 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
-import { chromium } from "@playwright/test";
+import { chromium, firefox, webkit } from "@playwright/test";
 import { build, preview } from "vite";
 import { captureSource, sameSource } from "./mermaid-source-identity.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const before = captureSource(root);
+const engine = process.env.THROUGHLINE_QA_BROWSER ?? "chromium";
+const browserType = { chromium, firefox, webkit }[engine];
+assert(browserType, "Unsupported packed proof browser");
 const scratch = mkdtempSync(join(tmpdir(), "throughline-mermaid-packed-"));
 const output = resolve(process.argv[2] ?? join(tmpdir(), "throughline-mermaid-packed-report.json"));
 let browser, server;
@@ -72,7 +75,8 @@ try {
 	server = await preview({ configFile: false, envFile: false, root: consumer, logLevel: "error",
 		build: { outDir: "dist" }, preview: { host: "127.0.0.1", port: 0, strictPort: false } });
 	const base = "http://127.0.0.1:" + server.httpServer.address().port;
-	browser = await chromium.launch();
+	const executablePath = engine === "webkit" ? process.env.THROUGHLINE_QA_WEBKIT_EXECUTABLE : undefined;
+	browser = await browserType.launch(executablePath ? { executablePath } : {});
 	const page = await browser.newPage({ viewport: { width: 375, height: 812 }, reducedMotion: "reduce" });
 	const errors = [], nonLocal = [], requested = new Set();
 	page.on("pageerror", error => errors.push(error.message));
@@ -110,15 +114,34 @@ try {
 		assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Host overflows at " + width);
 	}
 	assert.deepEqual(errors, []); assert.deepEqual(nonLocal, []);
+	// The proof host includes all four canonical references. Exercise their
+	// graph sources and the honest non-message fallback separately from checkout.
+	const referenceResults = [];
+	const examples = page.locator("select").nth(0);
+	const options = await examples.locator("option").evaluateAll(nodes => nodes.map(node => node.value));
+	assert.equal(options.length, 4);
+	for (const value of options) {
+		await examples.selectOption(value);
+		await page.locator("select").nth(1).selectOption("graph");
+		await page.locator('[data-proof-kind="graph"] svg').waitFor({ state: "attached", timeout: 60_000 });
+		const initialNodes = await diagram.locator("[data-thl-item-id]").count();
+		assert(initialNodes > 0, "Missing mapped graph sources");
+		await page.getByRole("button", { name: "Next frame", exact: true }).click();
+		await page.waitForFunction(() => document.querySelector("output")?.textContent?.startsWith("1:"));
+		await page.locator('[data-proof-kind="graph"] svg').waitFor({ state: "attached", timeout: 60_000 });
+		referenceResults.push({ exampleIndex: Number(value), initialNodes });
+	}
+	assert.deepEqual(errors, []); assert.deepEqual(nonLocal, []);
 	const after = captureSource(root);
 	const report = { sourceSha: before.sourceSha, dirty: Boolean(before.status), sourceStable: sameSource(before, after),
-		inputFingerprint: before.fingerprint, mermaid: "12.3.0", browser: browser.version(),
+		inputFingerprint: before.fingerprint, mermaid: "12.3.0", engine, browser: browser.version(),
+		referenceResults,
 		archiveSha256: createHash("sha256").update(readFileSync(tarball)).digest("hex"),
 		initialAssets, sequenceAssets: [...requested].filter(file => !initialAssets.includes(file)),
 		assets, errors, nonLocal, packedCore: true, productionBuild: true, candidateBrowser: true };
 	writeFileSync(output, JSON.stringify(report, null, 2) + "\n");
 	assert(report.sourceStable, "Source changed during packed-candidate verification");
-	console.log("Packed production Mermaid candidate passed; asset/source evidence: " + output);
+	console.log("Packed native package + copied Mermaid feasibility adapter passed; NOT a production Mermaid cutover: " + output);
 } finally {
 	await browser?.close();
 	if (server) await new Promise(resolve => server.httpServer.close(resolve));

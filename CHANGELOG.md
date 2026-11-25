@@ -7,6 +7,8 @@ All notable changes to Throughline are recorded here. Package versions follow
 
 ## [Unreleased]
 
+- Extend the development-only Mermaid feasibility candidate with explicit sequence row references and fail-closed mapping checks, a retryable renderer loader, projected Graph state/focus/write evidence, and additional browser and packed-host proof coverage. Public rendering is unchanged.
+
 - Preserve an explicit narration pause through speed changes, consume native sequence transfer motion on evidence paging, and reset go-to-step drafts when the compiled trace changes.
 
 - Unify automatic keyboard activation of view tabs, cancel stale renderer motion on transport changes, keep schema-2 audio voices bounded and disconnect them on replacement, bound speech excerpts to 3,000 UTF-16 code units and restart speech at the selected speed, page native sequence evidence in fixed 120-row windows, deduplicate camera focus work without changing authored IDs, and preserve edited go-to-step values during playback.

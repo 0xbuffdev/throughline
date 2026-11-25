@@ -6,7 +6,7 @@ import { EXAMPLES } from "../../../examples.js";
 import { distributedGraph } from "../../../__tests__/v2-graph-fixture.js";
 import { retryCheckout } from "../../../__tests__/v2-sequence-fixture.js";
 import { graphProof, sequenceProof, type DiagramProof } from "../../mermaid/adapter.js";
-import { renderProof } from "../../mermaid/render.js";
+import { renderProof, retryableLoader } from "../../mermaid/render.js";
 
 const hosts: HTMLDivElement[] = [];
 afterEach(() => { for (const host of hosts.splice(0)) host.remove(); });
@@ -123,4 +123,71 @@ describe("TL-U26 actual Mermaid parser and browser SVG", () => {
 			expect(host.querySelector("value, input")).toBeNull();
 		}
 	});
+});
+
+
+it("identifies repeated same-endpoint sends, duplicate phases and orphan phases by explicit row reference", async () => {
+ const source = retryCheckout();
+ source.steps = [{ id: "atomic", label: "Same-step evidence", events: [
+  { id: "sendA", originId: "author", type: "message", relationId: "request", messageId: "repeat", phase: "sent" },
+  { id: "sendB", originId: "author", type: "message", relationId: "request", messageId: "repeat", phase: "sent" },
+  { id: "receiveA", originId: "observer", type: "message", relationId: "request", messageId: "repeat", phase: "received" },
+  { id: "receiveB", originId: "observer", type: "message", relationId: "request", messageId: "repeat", phase: "received" },
+  { id: "orphanAck", originId: "observer", type: "message", relationId: "request", messageId: "orphan", phase: "acknowledged" },
+ ] }];
+ for (const reverse of [false, true]) {
+  if (reverse) source.steps[0].events.reverse();
+  const trace = compileArtifact(source), view = projectView(inspectTrace(trace), { kind: "sequence", frameIndex: 1 });
+  for (const [start, size] of [[0, 40], [1, 3], [2, 3]]) {
+   const proof = sequenceProof(trace, view, start, size), host = await mount(proof);
+   for (const entry of proof.elements.filter(item => item.role === "event")) {
+    const mark = host.querySelector(entry.sent ? '[data-thl-motion-item="' + entry.itemId + '"]' :
+     '[data-thl-phase-item="' + entry.itemId + '"]');
+    expect(mark, entry.source.eventIds?.join()).not.toBeNull();
+    const captions = entry.sent ? [...host.querySelectorAll('[data-thl-motion-label="' + entry.itemId + '"]')] : [mark!];
+    expect(captions.map(node => node.textContent).join(" ")).toContain(entry.rowToken);
+    expect(entry.source.eventIds).toEqual(view.items.find(item => item.id === entry.itemId)?.source.eventIds);
+   }
+  }
+ }
+}, 60_000);
+
+it("rejects missing or permuted references and swapped same-endpoint routes in actual SVG", async () => {
+ const source = retryCheckout();
+ source.steps = [{ id: "same", label: "Repeated evidence", events: [
+  { id: "sendA", originId: "author", type: "message", relationId: "request", messageId: "repeat", phase: "sent" },
+  { id: "sendB", originId: "author", type: "message", relationId: "request", messageId: "repeat", phase: "sent" },
+  { id: "receiveA", originId: "observer", type: "message", relationId: "request", messageId: "repeat", phase: "received" },
+  { id: "receiveB", originId: "observer", type: "message", relationId: "request", messageId: "repeat", phase: "received" },
+ ] }];
+ const trace = compileArtifact(source);
+ const proof = sequenceProof(trace, projectView(inspectTrace(trace), { kind: "sequence", frameIndex: 1 }));
+ const events = proof.elements.filter(entry => entry.role === "event");
+ const [first, second, third, fourth] = events.map(entry => entry.rowToken!);
+ const swap = (svg: string, a: string, b: string) => svg.replaceAll(a, "TEMP_REFERENCE").replaceAll(b, a).replaceAll("TEMP_REFERENCE", b);
+ await expect(renderProof(proof, undefined, svg => svg.replaceAll(first, "missing"))).rejects.toThrow();
+ await expect(renderProof(proof, undefined, svg => swap(svg, first, second))).rejects.toThrow();
+ await expect(renderProof(proof, undefined, svg => swap(svg, third, fourth))).rejects.toThrow();
+ await expect(renderProof(proof, undefined, svg => {
+  const template = document.createElement("template"); template.innerHTML = svg;
+  const arrows = [...template.content.querySelectorAll(".messageLine0, .messageLine1")];
+  expect(arrows).toHaveLength(2);
+  const y = arrows[0].getAttribute("y1")!;
+  arrows[0].setAttribute("y1", arrows[1].getAttribute("y1")!);
+  arrows[1].setAttribute("y1", y);
+  return template.innerHTML;
+ })).rejects.toThrow("geometry order");
+}, 60_000);
+
+it("coalesces concurrent loader attempts and retries a transient rejection", async () => {
+ let calls = 0;
+ const load = retryableLoader(async () => { if (++calls === 1) throw new Error("transient"); return "ready"; });
+ const a = load(), b = load();
+ expect(a).toBe(b);
+ await expect(a).rejects.toThrow("transient");
+ const retry = load();
+ expect(load()).toBe(retry);
+ await expect(retry).resolves.toBe("ready");
+ expect(load()).toBe(retry);
+ expect(calls).toBe(2);
 });

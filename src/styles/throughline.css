@@ -1520,6 +1520,26 @@
  fill: var(--thl-focus-bg) !important;
  stroke: var(--thl-active) !important;
 }
+.thl.player-shell .mermaid-markup [data-thl-focused] > :is(rect, polygon, path) {
+ stroke: var(--thl-active) !important; stroke-width: 2px !important;
+}
+.thl.player-shell .mermaid-markup [data-thl-written] > :is(rect, polygon, path) {
+ stroke-dasharray: 4 2 !important; stroke-width: 2px !important;
+}
+.thl.player-shell .mermaid-graph-state {
+ display: flex; flex: 0 0 auto; gap: 6px; overflow-x: auto;
+ padding: 4px 12px; border-top: 1px solid var(--thl-line);
+ font-size: var(--thl-ui-small); scrollbar-gutter: stable;
+}
+.thl.player-shell .mermaid-graph-state button {
+ flex: 0 0 auto; max-width: min(220px, 85%); min-width: 0;
+ white-space: normal; overflow-wrap: anywhere; text-align: start;
+ color: var(--thl-text); background: var(--thl-panel);
+ border: 1px solid var(--thl-line); border-radius: var(--thl-radius); padding: 4px 8px;
+}
+.thl.player-shell .mermaid-graph-state button strong {
+ display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .thl.player-shell .mermaid-markup svg .note {
  fill: var(--thl-bg) !important;
  stroke: var(--thl-line) !important;

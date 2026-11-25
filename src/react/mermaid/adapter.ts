@@ -13,6 +13,8 @@ export type ProofElement = Readonly<{
 	context?: boolean;
 	visited?: boolean;
 	strokeToken?: string;
+	/** Host-authored sequence row reference, not a semantic event ID. */
+	rowToken?: string;
 	sent?: boolean;
 	flowLabel?: string;
 	fromItemId?: string;
@@ -206,12 +208,16 @@ export function sequenceProof(trace: CompiledTrace, view: ViewDescriptor,
 		// in source inspection. The arrow already encodes the sent phase.
 		const caption = phase === "sent" ? wrappedLabel(flowLabel, 12, 4, true)
 			: label(String(phase)) + "<br/>" + wrappedLabel(messageId, 16, 1, true);
-		// Identical rows can occur on different pages. Include the generated
-		// event ID so cached SVG bindings always identify the correct event.
+		// Explicit fixed-width display references survive Mermaid's documented
+		// text syntax even when two events have identical endpoints and captions.
+		// They identify projected rows, never authored event IDs or physical time.
+		const rowToken = "TL" + item.id.slice("event_".length).padStart(6, "0");
+		if (!/^TL\d{6}$/.test(rowToken)) throw new Error("Unsupported sequence row identity");
+		const tagged = caption + "<br/>" + rowToken;
 		lines.push("%% " + entry.id);
-		if (phase === "sent") lines.push(from + "-)" + to + ": " + caption);
-		else lines.push("Note over " + (from === to ? to : from + "," + to) + ": " + caption);
-		elements.push(Object.freeze({ ...entry, flowLabel, visited: !entry.current,
+		if (phase === "sent") lines.push(from + "-)" + to + ": " + tagged);
+		else lines.push("Note over " + (from === to ? to : from + "," + to) + ": " + tagged);
+		elements.push(Object.freeze({ ...entry, rowToken, flowLabel, visited: !entry.current,
 			context: entry.sent && !entry.current && followupIds.has(property(item, "messageId")) }));
 	}
 	return result("sequence", lines, elements, window.length, events.length, start,
