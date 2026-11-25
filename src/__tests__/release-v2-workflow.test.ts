@@ -25,7 +25,7 @@ it("TL-U18 keeps tagged-release verification and stage archive separate from qua
 	expect(publish).not.toContain("npm publish --");
 	expect(publish).toContain("id-token: write");
 	const releaseUpload = publish.split("- name: Upload immutable release review artifact")[1]!
-		.split("\n  stage:")[0];
+		.split("\n  authorize:")[0];
 	expect(releaseUpload).toContain("release-artifacts/throughline.tgz");
 	expect(releaseUpload).toContain("release-artifacts/SHA256SUMS");
 	expect(releaseUpload).toContain("release-artifacts/RELEASE_COMMIT");
@@ -37,6 +37,12 @@ it("TL-U18 keeps tagged-release verification and stage archive separate from qua
 	expect(publish).toContain("scripts/audit-mermaid-production.mjs");
 	expect(publish).toContain("THL_RELEASE_TARBALL");
 	expect(publish).toContain("APPROVED_SHA256");
+	const stage = publish.split("\n  stage:")[1]!;
+	expect(stage).toContain("run-id: " + "$" + "{{ inputs.candidate_run }}");
+	expect(stage).not.toContain("pnpm pack");
+	expect(stage).toContain("environment: npm-publish");
+	expect(stage).toContain("needs: authorize");
+	expect(publish.split("\n  authorize:")[0]).not.toContain("id-token: write");
 	expect(ci).toContain("node scripts/verify-release-evidence.mjs");
 	expect(ci).toContain("throughline-v2-quality-");
 	expect(ci).toContain("throughline-v2-chromium-");

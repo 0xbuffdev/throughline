@@ -26,6 +26,7 @@ const nonblank = v => assert(typeof v === "string" && v.trim() && !/not performe
 const link = v => {
 	nonblank(v); const url = new URL(v);
 	assert.equal(url.protocol,"https:"); assert(!url.username && !url.password);
+	assert(!["example.com","example.org","example.net","localhost"].includes(url.hostname),"Evidence URL must not be an example");
 };
 export { autoChecks, productionChecks };
 export function verifyProduction(report, ctx, browser) {
@@ -51,6 +52,7 @@ export function verifyCandidate(candidate, ctx, review) {
 	nonblank(review.reviewer);
 	assert(typeof review.date==="string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(review.date));
 	assert(Number.isFinite(Date.parse(review.date)) && Date.parse(review.date)<=Date.now());
+	assert.equal(new Date(review.date).toISOString(),review.date.replace("Z",".000Z"),"Review date must be a real UTC timestamp");
 	for (const key of ["u29","manualAT","nativeZoom","licenseNotice","releaseApproval"]) {
 		exact(review[key],["status","evidence"]);
 		assert.equal(review[key].status,"pass",key); link(review[key].evidence);
@@ -82,7 +84,15 @@ function main(mode) {
 	} else if(mode==="authorize") {
 		assert.equal(process.env.RELEASE_TAG,"v"+version);
 		const review=JSON.parse(process.env.REVIEW_JSON);
-		verifyCandidate(readJson(dir+"/CANDIDATE.json"),ctx,review);
+		const candidate=readJson(dir+"/CANDIDATE.json");
+		verifyCandidate(candidate,ctx,review);
+		const completed=Date.parse(process.env.PREPARE_COMPLETED_AT);
+		assert(Number.isFinite(completed) && Date.parse(review.date)>=completed,"Review predates candidate completion");
+		for (const browser of engines) {
+			const path="candidate-proof/production-mermaid-"+browser+".json";
+			verifyProduction(readJson(path),ctx,browser);
+			assert.equal(digest(readFileSync(path)),candidate.productionEvidence[browser],"Changed production evidence");
+		}
 		appendFileSync(process.env.GITHUB_OUTPUT,"archive_sha="+archiveSha256+"\n");
 		// JSON text in a code block; avoid rendering untrusted Markdown/HTML or fence injection.
 		appendFileSync(process.env.GITHUB_STEP_SUMMARY,"### Candidate awaiting protected environment approval\n\nSource: "+sourceSha+

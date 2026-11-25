@@ -19,16 +19,11 @@
 
 ### Reproduce the candidate
 
-Use the exact PR branch SHA under review (not an older CI preview), Node 24+, pnpm 11.2.2, and the committed lockfile:
+After U29 and the final release PR merge, use the exact `throughline.tgz` produced by the release workflow's successful `prepare` run. Download its checksum, commit and candidate manifest; do not repack a new archive for final acceptance.
 
 ~~~sh
-git fetch origin
-git switch --detach <exact-tested-commit-sha>
-pnpm install --frozen-lockfile
-pnpm test:run
-pnpm build
-pnpm pack --out throughline-u18-candidate.tgz
-sha256sum throughline-u18-candidate.tgz
+sha256sum --check SHA256SUMS
+cat RELEASE_COMMIT
 ~~~
 
 Install the tarball into a fresh consumer with React 19 and use a representative full app/page. Record the *actual* archive SHA-256. For Windows testing, use PowerShell `Get-FileHash -Algorithm SHA256 .\throughline-u18-candidate.tgz`, or record the CI-produced archive checksum if the tested bytes exactly match. The unit/browser suites may validate code, but the manual record must be made against the actual unpacked UI with real AT enabled.

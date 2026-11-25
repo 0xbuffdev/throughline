@@ -55,7 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$GITHUB_REF" == "refs/heads/main" ]] || exit 1
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Use a signed vX.Y.Z tag"; exit 1; }
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Use a prospective vX.Y.Z tag"; exit 1; }
           [[ "$CONFIRMATION" == "PREPARE-$RELEASE_TAG" ]] || { echo "Type PREPARE-$RELEASE_TAG to proceed"; exit 1; }
 
       - name: Checkout exact candidate without persistent credentials
@@ -101,8 +101,12 @@ jobs:
           assert.equal(pkg.bin?.thl, "./dist/cli/main.js");
           NODE
 
+      - name: Require integrated production audit before candidate preparation
+        run: test -f scripts/audit-mermaid-production.mjs || { echo "U29 production packed audit is not implemented"; exit 1; }
       - name: Install frozen dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          pnpm install --frozen-lockfile
+          git diff --exit-code -- pnpm-lock.yaml
       - name: Source and license boundary audit
         run: pnpm audit:source
       - name: Typecheck
@@ -266,6 +270,7 @@ jobs:
           ' <<< "$data"
           gh api "$endpoint/jobs" --paginate --jq '.jobs[] | select(.name == "Prepare and test immutable release candidate" and .conclusion == "success") | .id' > /tmp/prepare-job
           test "$(wc -l < /tmp/prepare-job)" -eq 1
+          echo "PREPARE_COMPLETED_AT=$(jq -er '.updated_at' <<< "$data")" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -277,6 +282,13 @@ jobs:
           run-id: ${{ inputs.candidate_run }}
           github-token: ${{ github.token }}
           path: release-artifacts
+      - name: Download production audit records from same prepare attempt
+        uses: actions/download-artifact@v8
+        with:
+          name: throughline-production-evidence-${{ inputs.candidate_run }}-${{ inputs.candidate_attempt }}
+          run-id: ${{ inputs.candidate_run }}
+          github-token: ${{ github.token }}
+          path: candidate-proof
       - name: Validate source, archive and explicit human evidence before protected approval
         id: gate
         env:
@@ -304,10 +316,12 @@ jobs:
           ref: refs/tags/${{ inputs.tag }}
           persist-credentials: false
 
-      - name: Download build artifact
+      - name: Download previously authorized candidate archive
         uses: actions/download-artifact@v8
         with:
-          name: throughline-release-${{ github.run_id }}
+          name: throughline-release-${{ inputs.candidate_run }}-${{ inputs.candidate_attempt }}
+          run-id: ${{ inputs.candidate_run }}
+          github-token: ${{ github.token }}
           path: release-artifacts
 
       - name: Recheck checksum, release commit and archive manifest
@@ -317,7 +331,7 @@ jobs:
         run: |
           set -euo pipefail
           (cd release-artifacts && sha256sum --check SHA256SUMS)
-          [[ "$(sha256sum release-artifacts/throughline.tgz | cut -d\' \' -f1)" == "$APPROVED_SHA256" ]]
+          [[ "$(sha256sum release-artifacts/throughline.tgz | cut -d ' ' -f1)" == "$APPROVED_SHA256" ]]
           [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]
           [[ "$(cat release-artifacts/RELEASE_COMMIT)" == "$(git rev-parse HEAD)" ]] || { echo "Tag changed since build"; exit 1; }
           node --input-type=module <<'NODE'
