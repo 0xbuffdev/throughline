@@ -132,8 +132,8 @@ async function assertHydratedPage(dir, pagePath, label, plainPath = "/plain.html
 }
 
 try {
-  const tarball = join(scratch, "throughline.tgz");
-  run(root, "pnpm", ["pack", "--out", tarball]);
+  const tarball = process.env.THL_RELEASE_TARBALL || join(scratch, "throughline.tgz");
+  if (!process.env.THL_RELEASE_TARBALL) run(root, "pnpm", ["pack", "--out", tarball]);
 
   // A real Fumadocs Unified project must generate entries from a source.config.ts
   // retaining existing remark/rehype hooks. It must also validate malformed fences.

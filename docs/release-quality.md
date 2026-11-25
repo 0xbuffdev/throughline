@@ -90,3 +90,34 @@ Record **date, operator, browser+OS+AT versions, source commit SHA, tested packa
 TL-U18 is not fully accepted until the stable Mermaid production cutover is reviewed and the final integrated candidate passes the automated and real assistive-technology gates. Prior native-only results cannot attest that changed candidate. Green automated source checks establish the tested implementation, **not screen-reader approval**. Once a human verifies and attaches a dated source/package-SHA-bound record with observed announcements and deviations, the maintainer can determine whether the TL-U18 criterion passes. TL-U19 can require a final signed-release recheck, but cannot retroactively satisfy a missing TL-U18 prerequisite. No tagged package is published, the documentation app is upgraded, or a participant study completed by this test suite. Do not create a guessed numerical performance target or conceal neutral/negative findings.
 
 The owner separately approves source merges, tags, npm staging, protected environment access, final npm 2FA publication and documentation deployment. See [release procedure](releasing.md), [semantics](schema-v2.md) and [reference truth suite](reference-traces.md).
+
+
+## Two-dispatch release candidate gate (F26/F27)
+
+The manual publish workflow now separates preparation from staging. **Neither preparation nor a green workflow approves publication.**
+
+1. On main, after U29 production integration, dispatch the release workflow in `prepare` mode with the prospective version tag and `PREPARE-vX.Y.Z`. The tag need not exist yet. It runs complete exact-source tests in all three browsers, packs once, and uses that same archive for independent Node/React/framework/Markdown consumers and the production Mermaid audit. It retains the tarball, checksum, source, candidate manifest and separate evidence artifacts. No OIDC or staging occurs during preparation.
+2. Download the exact prepared tarball. Independently install and test those bytes; record the source SHA and archive SHA-256. Review U29 production parity, license/notice results, actual AT-01–AT-10 and native zoom at 200%/400%, and record a separate maintainer release approval. Link completed records rather than this blank template. No test should be recorded as pass when not performed.
+3. After explicit U19 authorization, create the signed annotated tag on that source. Dispatch `stage` from main with the tag, `STAGE-vX.Y.Z`, the successful prepare run ID and attempt, and review JSON containing these exact fields:
+   
+   ```json
+   {
+     "sourceSha": "actual 40-character source SHA",
+     "archiveSha256": "actual 64-character archive SHA-256",
+     "reviewer": "actual reviewer",
+     "date": "2026-11-25T12:00:00Z",
+     "u29": {"status": "pass", "evidence": "https://example.com/replace-with-reviewed-record"},
+     "manualAT": {"status": "pass", "evidence": "https://example.com/replace-with-completed-AT-record"},
+     "nativeZoom": {"status": "pass", "evidence": "https://example.com/replace-with-zoom-record"},
+     "licenseNotice": {"status": "pass", "evidence": "https://example.com/replace-with-license-review"},
+     "releaseApproval": {"status": "pass", "evidence": "https://example.com/replace-with-release-approval"}
+   }
+   ```
+
+   The values above are illustrative, **not evidence**. The authorization job checks the signed tag, successful prepare workflow attempt on the same current main SHA, exact archive digest, complete automated check set and the structure/identity of the explicit human attestation. The protected `npm-publish` environment reviewer must independently inspect the linked evidence and confirm the actual tester/date/results; the script does not fetch or certify human records. Keep environment protection and separate npm 2FA approval enabled. Staging rechecks the approved checksum and does not rebuild. If main advances before staging, prepare/review a new current candidate or explicitly review a future policy change; this conservative rule prevents an older tagged workflow from bypassing the current gate. Expired artifacts require a new preparation and manual testing of the actual new bytes.
+
+### U29 production audit prerequisite
+
+Until U29 implements and reviews `scripts/audit-mermaid-production.mjs`, preparation intentionally fails closed. Do not substitute the existing copied-adapter feasibility script. The future audit must install `THL_RELEASE_TARBALL` in an independent host, exercise the actual public React exports using `THROUGHLINE_QA_BROWSER`, and emit `.release-evidence/production-mermaid-<browser>.json` only after passing all checks. Its schema is enforced by `scripts/release-candidate-gate.mjs`: schema 1, sourceSha, archiveSha256, run, attempt (strings), browser, renderer (`production-public-package`), status (`pass`), and named checks publicGraph, publicSequence, fourReferences, exactSourceSelection, collapse, fallback, transport, keyboard, ssrHydration, hostileInputs, boundedPerformance (all pass). Review actual test logic and measurements; this contract does not establish U29 parity by itself. Native-only, preview-only, missing or stale records fail the gate.
+
+The strict performance/security verifier now requires all exact fields and check names, reconstructs the deterministic fixture hashes, checks every timing distribution (including geometry), and binds both reports to the same source/run. CI exercises malformed-report rejection using copies of actual generated evidence. No new wall-clock SLA or human acceptance is inferred from these checks.

@@ -62,6 +62,7 @@ jobs:
         run: |
           node scripts/verify-release-evidence.mjs
           node scripts/test-release-evidence.mjs
+          node --test scripts/release-candidate-gate.test.mjs
       - name: Upload checked TL-U18 measured evidence
         uses: actions/upload-artifact@v7
         with:
@@ -138,6 +139,7 @@ jobs:
           pnpm test:run
           node scripts/verify-release-evidence.mjs
           node scripts/test-release-evidence.mjs
+          node --test scripts/release-candidate-gate.test.mjs
           pnpm test:browser:run
           pnpm build
           pnpm audit:licenses

@@ -1,17 +1,35 @@
 name: Throughline npm release (staged with provenance)
 
-# Manual only: staging is not publication; final npm 2FA approval is separate.
+# Two manual dispatches: prepare an immutable candidate, then separately authorize staging.
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: "Prepare candidate or authorize staging of previously tested bytes"
+        type: choice
+        options: [prepare, stage]
+        required: true
+        default: prepare
       tag:
-        description: "GitHub-verified signed release tag"
+        description: "Prospective release tag (must be signed and verified for stage)"
         type: string
         required: true
       confirmation:
-        description: "Enter STAGE-<tag>, for example STAGE-v0.0.2"
+        description: "Enter PREPARE-<tag> or STAGE-<tag> matching mode"
         type: string
         required: true
+      candidate_run:
+        description: "Successful prepare run ID (stage only)"
+        type: string
+        required: false
+      candidate_attempt:
+        description: "Successful prepare run attempt (stage only)"
+        type: string
+        required: false
+      review:
+        description: "Exact-candidate review JSON; see docs/release-quality.md (stage only)"
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -22,10 +40,10 @@ concurrency:
 
 jobs:
   verify:
-    name: Verify tag and build release archive
-    if: github.ref == 'refs/heads/main'
+    name: Prepare and test immutable release candidate
+    if: github.ref == 'refs/heads/main' && inputs.mode == 'prepare'
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 90
     permissions:
       contents: read
     steps:
@@ -38,37 +56,20 @@ jobs:
           set -euo pipefail
           [[ "$GITHUB_REF" == "refs/heads/main" ]] || exit 1
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Use a signed vX.Y.Z tag"; exit 1; }
-          [[ "$CONFIRMATION" == "STAGE-$RELEASE_TAG" ]] || { echo "Type STAGE-$RELEASE_TAG to proceed"; exit 1; }
+          [[ "$CONFIRMATION" == "PREPARE-$RELEASE_TAG" ]] || { echo "Type PREPARE-$RELEASE_TAG to proceed"; exit 1; }
 
-      - name: Checkout exact tag without persistent credentials
+      - name: Checkout exact candidate without persistent credentials
         uses: actions/checkout@v6
         with:
-          ref: refs/tags/${{ inputs.tag }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Verify signed annotated tag on main using GitHub API
+      - name: Bind release evidence to the exact checked-out candidate commit
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.tag }}
         run: |
-          set -euo pipefail
-          tag_ref="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG")"
-          [[ "$(jq -r '.object.type' <<< "$tag_ref")" == "tag" ]] || { echo "Signed annotated tag required"; exit 1; }
-          tag_sha="$(jq -er '.object.sha' <<< "$tag_ref")"
-          tag_data="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_sha")"
-          [[ "$(jq -r '.tag' <<< "$tag_data")" == "$RELEASE_TAG" ]] || exit 1
-          [[ "$(jq -r '.verification.verified' <<< "$tag_data")" == "true" ]] || { echo "Tag not GitHub Verified"; exit 1; }
-          [[ "$(jq -r '.object.type' <<< "$tag_data")" == "commit" ]] || exit 1
-          [[ "$(jq -r '.object.sha' <<< "$tag_data")" == "$(git rev-parse HEAD)" ]] || exit 1
-          git fetch origin main --no-tags
-          git merge-base --is-ancestor HEAD origin/main || { echo "Tagged commit is not on main"; exit 1; }
-          git cat-file -e HEAD:.github/workflows/publish.yml
-
-      - name: Bind release evidence to the exact checked-out signed tag commit
-        shell: bash
-        run: echo "THL_SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          echo "THL_SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - uses: pnpm/action-setup@v6
         name: Set up pinned pnpm
@@ -89,7 +90,7 @@ jobs:
           const pkg = JSON.parse(readFileSync("package.json", "utf8"));
           assert.equal(pkg.name, "@0xbuff/throughline");
           assert.match(pkg.version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
-          assert.equal(process.env.RELEASE_TAG, `v${pkg.version}`, "Signed tag must match package version");
+          assert.equal(process.env.RELEASE_TAG, `v${pkg.version}`, "Prospective tag must match package version");
           assert.equal(pkg.private, false);
           assert.equal(pkg.publishConfig?.access, "public");
           assert.equal(pkg.license, "Apache-2.0");
@@ -112,46 +113,44 @@ jobs:
           pnpm preview:build
       - name: Compiler, release performance and hostile-input tests
         run: pnpm test:run
-      - name: Verify exact-tag quality evidence
-        run: node scripts/verify-release-evidence.mjs
+      - name: Verify exact-candidate quality evidence
+        run: |
+          node scripts/verify-release-evidence.mjs
+          node scripts/test-release-evidence.mjs
+          node --test scripts/release-candidate-gate.test.mjs
       - name: Upload validated release-quality evidence separately from the staged package
         uses: actions/upload-artifact@v7
         with:
-          name: throughline-quality-${{ github.run_id }}
+          name: throughline-quality-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             .release-evidence/v2-performance.json
             .release-evidence/v2-security.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: Install Chromium
-        run: pnpm exec playwright install --with-deps chromium
-      - name: Browser tests
-        run: pnpm test:browser:run
-      - name: Record Chromium verification
-        run: node scripts/record-browser-evidence.mjs chromium
-      - name: Upload verified Chromium evidence separately from the staged package
+      - name: Install all mandatory browsers
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - name: Run and record all three exact-source browser suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          for browser in chromium firefox webkit; do
+            THROUGHLINE_QA_BROWSER="$browser" pnpm test:browser:run
+            node scripts/record-browser-evidence.mjs "$browser"
+          done
+      - name: Upload verified browser evidence
         uses: actions/upload-artifact@v7
         with:
-          name: throughline-release-chromium-${{ github.run_id }}
-          path: .release-evidence/v2-browser-chromium.json
+          name: throughline-release-browsers-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .release-evidence/v2-browser-*.json
           if-no-files-found: error
           retention-days: 30
       - name: Build typed ESM distributable
         run: pnpm build
       - name: Verify installed dependency licenses
         run: pnpm audit:licenses
-      - name: Verify packed Node, TypeScript and React SSR consumers
-        run: pnpm audit:pack
-      - name: Verify packed Vite/React browser hydration
-        run: pnpm audit:browser
 
-      - name: Verify framework integration consumers
-        run: pnpm audit:frameworks
-      - name: Verify Markdown host consumers
-        run: pnpm audit:markdown-hosts
-
-      - name: Pack reviewed tarball and checksum
+      - name: Pack reviewed tarball and checksum once
         shell: bash
         run: |
           set -euo pipefail
@@ -159,29 +158,145 @@ jobs:
           pnpm pack --out release-artifacts/throughline.tgz
           (cd release-artifacts && sha256sum throughline.tgz > SHA256SUMS)
           git rev-parse HEAD > release-artifacts/RELEASE_COMMIT
-          (cd release-artifacts && sha256sum --check SHA256SUMS)
+          echo "THL_RELEASE_TARBALL=$PWD/release-artifacts/throughline.tgz" >> "$GITHUB_ENV"
+
+      - name: Verify exact archive in independent consumers
+        run: |
+          pnpm audit:pack
+          pnpm audit:browser
+          pnpm audit:frameworks
+          pnpm audit:markdown-hosts
+
+      # Intentionally fail closed until U29 supplies a reviewed production-only
+      # packed audit; the dev preview and copied-adapter audit cannot satisfy this.
+      - name: Require production Mermaid packed acceptance on every engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f scripts/audit-mermaid-production.mjs || { echo "U29 production packed audit is not implemented"; exit 1; }
+          for browser in chromium firefox webkit; do
+            THROUGHLINE_QA_BROWSER="$browser" node scripts/audit-mermaid-production.mjs
+          done
+      - name: Verify evidence and seal candidate manifest
+        run: node scripts/release-candidate-gate.mjs prepare
+      - name: Retain production acceptance evidence for review
+        uses: actions/upload-artifact@v7
+        with:
+          name: throughline-production-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .release-evidence/production-mermaid-*.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload immutable release review artifact
         uses: actions/upload-artifact@v7
         with:
-          name: throughline-release-${{ github.run_id }}
+          name: throughline-release-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             release-artifacts/throughline.tgz
             release-artifacts/SHA256SUMS
             release-artifacts/RELEASE_COMMIT
+            release-artifacts/CANDIDATE.json
           if-no-files-found: error
           retention-days: 7
 
+  authorize:
+    name: Verify exact candidate and maintainer attestation
+    if: github.ref == 'refs/heads/main' && inputs.mode == 'stage'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      archive_sha: ${{ steps.gate.outputs.archive_sha }}
+    steps:
+      - name: Require explicit staging request
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          CANDIDATE_RUN: ${{ inputs.candidate_run }}
+          CANDIDATE_ATTEMPT: ${{ inputs.candidate_attempt }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$CONFIRMATION" == "STAGE-$RELEASE_TAG" ]]
+          [[ "$CANDIDATE_RUN" =~ ^[1-9][0-9]*$ ]]
+          [[ "$CANDIDATE_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+      - name: Checkout exact tag without persistent credentials
+        uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify signed annotated tag on main using GitHub API
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag_ref="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG")"
+          [[ "$(jq -r '.object.type' <<< "$tag_ref")" == "tag" ]] || { echo "Signed annotated tag required"; exit 1; }
+          tag_sha="$(jq -er '.object.sha' <<< "$tag_ref")"
+          tag_data="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_sha")"
+          [[ "$(jq -r '.tag' <<< "$tag_data")" == "$RELEASE_TAG" ]] || exit 1
+          [[ "$(jq -r '.verification.verified' <<< "$tag_data")" == "true" ]] || { echo "Tag not GitHub Verified"; exit 1; }
+          [[ "$(jq -r '.object.type' <<< "$tag_data")" == "commit" ]] || exit 1
+          [[ "$(jq -r '.object.sha' <<< "$tag_data")" == "$(git rev-parse HEAD)" ]] || exit 1
+          git fetch origin main --no-tags
+          git merge-base --is-ancestor HEAD origin/main || { echo "Tagged commit is not on main"; exit 1; }
+          git cat-file -e HEAD:.github/workflows/publish.yml
+
+      - name: Verify tag is current dispatch source and prior prepare run succeeded
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_RUN: ${{ inputs.candidate_run }}
+          CANDIDATE_ATTEMPT: ${{ inputs.candidate_attempt }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          endpoint="repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN/attempts/$CANDIDATE_ATTEMPT"
+          data="$(gh api "$endpoint")"
+          jq -e --arg sha "$GITHUB_SHA" --arg repo "$GITHUB_REPOSITORY" --arg attempt "$CANDIDATE_ATTEMPT" '
+            .head_sha == $sha and .head_branch == "main" and .event == "workflow_dispatch" and
+            .path == ".github/workflows/publish.yml" and .status == "completed" and .conclusion == "success" and
+            .repository.full_name == $repo and (.run_attempt|tostring) == $attempt
+          ' <<< "$data"
+          gh api "$endpoint/jobs" --paginate --jq '.jobs[] | select(.name == "Prepare and test immutable release candidate" and .conclusion == "success") | .id' > /tmp/prepare-job
+          test "$(wc -l < /tmp/prepare-job)" -eq 1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Download exact prior candidate archive
+        uses: actions/download-artifact@v8
+        with:
+          name: throughline-release-${{ inputs.candidate_run }}-${{ inputs.candidate_attempt }}
+          run-id: ${{ inputs.candidate_run }}
+          github-token: ${{ github.token }}
+          path: release-artifacts
+      - name: Validate source, archive and explicit human evidence before protected approval
+        id: gate
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          CANDIDATE_RUN: ${{ inputs.candidate_run }}
+          CANDIDATE_ATTEMPT: ${{ inputs.candidate_attempt }}
+          REVIEW_JSON: ${{ inputs.review }}
+        run: node scripts/release-candidate-gate.mjs authorize
+
   stage:
     name: Stage reviewed tarball using GitHub OIDC provenance
-    needs: verify
-    if: needs.verify.result == 'success'
+    needs: authorize
+    if: needs.authorize.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: npm-publish
     permissions:
       contents: read
       id-token: write
+      actions: read
     steps:
       - name: Checkout same release tag
         uses: actions/checkout@v6
@@ -196,10 +311,14 @@ jobs:
           path: release-artifacts
 
       - name: Recheck checksum, release commit and archive manifest
+        env:
+          APPROVED_SHA256: ${{ needs.authorize.outputs.archive_sha }}
         shell: bash
         run: |
           set -euo pipefail
           (cd release-artifacts && sha256sum --check SHA256SUMS)
+          [[ "$(sha256sum release-artifacts/throughline.tgz | cut -d\' \' -f1)" == "$APPROVED_SHA256" ]]
+          [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]
           [[ "$(cat release-artifacts/RELEASE_COMMIT)" == "$(git rev-parse HEAD)" ]] || { echo "Tag changed since build"; exit 1; }
           node --input-type=module <<'NODE'
           import assert from "node:assert/strict";

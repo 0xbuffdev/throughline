@@ -31,7 +31,12 @@ it("TL-U18 keeps tagged-release verification and stage archive separate from qua
 	expect(releaseUpload).toContain("release-artifacts/RELEASE_COMMIT");
 	expect(releaseUpload).not.toContain(".release-evidence/");
 	expect(publish).toContain("name: throughline-quality-");
-	expect(publish).toContain("name: throughline-release-chromium-");
+	expect(publish).toContain("name: throughline-release-browsers-");
+	expect(publish).toContain("needs: authorize");
+	expect(publish).toContain("node scripts/release-candidate-gate.mjs authorize");
+	expect(publish).toContain("scripts/audit-mermaid-production.mjs");
+	expect(publish).toContain("THL_RELEASE_TARBALL");
+	expect(publish).toContain("APPROVED_SHA256");
 	expect(ci).toContain("node scripts/verify-release-evidence.mjs");
 	expect(ci).toContain("throughline-v2-quality-");
 	expect(ci).toContain("throughline-v2-chromium-");
