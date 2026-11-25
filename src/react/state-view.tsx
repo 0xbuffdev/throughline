@@ -1,11 +1,12 @@
 import type * as React from "react";
 import { useState } from "react";
+import { isReadonlyJsonArray } from "../v2/model.js";
 import type { ReadonlyCell, Id, TraceInspector, ViewDescriptor, ViewItem } from "../v2/model.js";
 import { CellValue } from "./value-display.js";
 
 
 function field(item: ViewItem, key: string): unknown {
-	return item.data && typeof item.data === "object" && !Array.isArray(item.data) ? item.data[key] : undefined;
+	return item.data && typeof item.data === "object" && !isReadonlyJsonArray(item.data) ? item.data[key] : undefined;
 }
 
 const EVENT_PAGE = 40;
