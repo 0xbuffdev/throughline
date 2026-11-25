@@ -30,3 +30,30 @@ describe("public documentation — schema-2 quick start", () => {
 		expect(guide).not.toMatch(/~~~thl (?:flow|bindings|binary|matrix|callstack)/);
 	});
 });
+
+
+describe("compact player documentation contract (F09)", () => {
+	const read = (path: string) => readFileSync(new URL("../../" + path, import.meta.url), "utf8");
+	it("documents the actual named tabs and separate inspector controls", () => {
+		const player = read("src/react/graph-player.tsx");
+		const panel = read("src/react/inspect-panel.tsx");
+		expect(player).toContain('role="tablist" aria-label="Visualization view"');
+		expect(player).toContain('aria-label="Inspect" aria-pressed=');
+		expect(player).toContain('aria-label="Workflow inspector"');
+		expect(panel).toContain('<summary>Source details</summary>');
+		expect(panel).toContain('<summary>Compare steps</summary>');
+		for (const path of ["README.md", "docs/schema-v2.md", "docs/user-guide.md"]) {
+			const doc = read(path);
+			expect(doc).toContain("Source details");
+			expect(doc).not.toMatch(/visible \*\*Explain \/ Inspect\*\* switch|manual \*\*Sequence\*\* option under Player options/);
+		}
+	});
+	it("does not present the AT template as completed acceptance", () => {
+		const qa = read("docs/qa/tl-u18-screen-reader-record.md");
+		expect(qa).toContain("Evidence status: NOT PERFORMED");
+		expect(qa).toContain("Workflow inspector");
+		expect(qa).toContain("Source details");
+		expect(qa).toContain("throughline.tgz");
+		expect(qa).not.toContain("throughline-u18-candidate.tgz");
+	});
+});

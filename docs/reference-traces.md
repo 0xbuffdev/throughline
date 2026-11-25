@@ -112,3 +112,7 @@ deterministic canonical JSON and no fabricated events across views.
 **What is not claimed:** human comprehension improvement, behavior of React
 internals or real payment providers, missing network telemetry as proof of
 packet loss, or a matrix/stack-specific renderer before its own review.
+
+## Read the reference evidence in the compact player
+
+Use the Graph, Sequence (where supported) or State tabs; select Inspect for the current step, an entity or a transfer. Expand Source details to compare steps, query exact modeled values and inspect cited events. Checkout's earlier/later Sequence pages preserve explicit message phases; State retains absent-entity cells and separate presence labels. This describes the native unreleased source player, not an accepted production Mermaid cutover or a published package.
