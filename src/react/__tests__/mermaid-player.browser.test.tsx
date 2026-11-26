@@ -429,6 +429,7 @@ it.each(EXAMPLES.map(example => example.id))("exposes frame-linked graph state f
   expect(card?.textContent).toContain(summarizeCell(property(item, "cell") as import("../../v2/model.js").Cell));
   expect(card?.textContent).toContain("Present");
   const node = diagram.element().querySelector('[data-thl-item-id="' + item.id + '"]');
+  expect(node?.querySelector("[data-thl-state-label]")?.textContent).toBe(summarizeCell(property(item, "cell") as import("../../v2/model.js").ReadonlyCell));
   expect(node?.hasAttribute("data-thl-written")).toBe(property(item, "changed") === true);
   expect(node?.hasAttribute("data-thl-focused")).toBe(property(item, "focused") === true);
  }
@@ -445,6 +446,23 @@ it("offers independent exact sequence source controls for identical sends", asyn
  const second = list.element().querySelector<HTMLButtonElement>('[data-source-event-ids="secondSent"]');
  expect(second).not.toBeNull();
  await userEvent.click(second!);
+ const inspector = screen.getByRole("complementary", { name: "Workflow inspector" });
+ await expect.element(inspector).toBeVisible();
+ expect(inspector.element().querySelector(".inspect-summary")?.getAttribute("data-source-event-ids")).toBe("secondSent");
+}, 60_000);
+
+
+it("keeps independent exact source selection available when sequence rendering rejects", async () => {
+ const trace = compileArtifact(stateEvidenceFixture());
+ const Renderer = createMermaidPlayerDiagram(async () => { throw new Error("simulated failure"); });
+ const screen = await render(<GraphPlayer trace={trace} initialView="sequence" DiagramRenderer={Renderer}/>);
+ await screen.getByRole("button", { name: "Step forward" }).click();
+ await expect.element(screen.getByRole("button", { name: "Retry diagram" })).toBeVisible();
+ await screen.getByText("Sequence source references", { exact: true }).click();
+ const list = screen.getByRole("list", { name: "Visible sequence source references" });
+ const source = list.element().querySelector<HTMLButtonElement>('[data-source-event-ids="secondSent"]');
+ expect(source).not.toBeNull();
+ await userEvent.click(source!);
  const inspector = screen.getByRole("complementary", { name: "Workflow inspector" });
  await expect.element(inspector).toBeVisible();
  expect(inspector.element().querySelector(".inspect-summary")?.getAttribute("data-source-event-ids")).toBe("secondSent");

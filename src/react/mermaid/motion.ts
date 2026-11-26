@@ -35,7 +35,25 @@ function placeGraphCaption(route: SVGGeometryElement, caption: SVGTextElement, o
 	}
 }
 
+/** Paint bounded state in the reserved node line without rebuilding geometry. */
+export function paintGraphState(host: HTMLElement, proof: DiagramProof): void {
+	if (proof.kind !== "graph") return;
+	const elements = new Map(proof.elements.map(entry => [entry.itemId, entry]));
+	for (const label of host.querySelectorAll("[data-thl-state-label]")) {
+		const entry = elements.get(label.getAttribute("data-thl-state-label")!);
+		if (!entry) continue;
+		const text = entry.stateText ?? "Unavailable";
+		if (label.textContent !== text) label.textContent = text;
+		label.setAttribute("aria-label", text);
+		label.setAttribute("title", text);
+		const node = label.closest("[data-thl-item-id]");
+		node?.toggleAttribute("data-thl-focused", entry.focused === true);
+		node?.toggleAttribute("data-thl-written", entry.written === true);
+	}
+}
+
 export function paintRoutes(host: HTMLElement, proof: DiagramProof, selectedId: string | null): () => void {
+	paintGraphState(host, proof);
 	const elements = new Map(proof.elements.map(entry => [entry.itemId, entry]));
 	const sources = new Set<string>(), destinations = new Set<string>();
 	const visitedNodes = new Set<string>();

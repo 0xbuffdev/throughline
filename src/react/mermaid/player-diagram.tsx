@@ -21,14 +21,16 @@ function useDiagram(proof: DiagramProof | undefined, trace: DiagramRendererProps
 	renderDiagram: typeof renderProof) {
 	const source = proof?.source;
 	const [attempt, setAttempt] = useState(0);
-	const cache = useRef(new Map<string, RenderedDiagram>());
+	const cache = useRef<{ trace: typeof trace; entries: Map<string, RenderedDiagram> }>({ trace, entries: new Map() });
 	const [result, setResult] = useState<{
 		trace: typeof trace; source: string; kind: DiagramProof["kind"]; diagram: RenderedDiagram | null; frame: number; attempt: number;
 	}>();
 	useEffect(() => {
 		if (!proof || !source) return;
 		const rendered = { trace, source, kind: proof.kind, frame: frameIndex, attempt };
-		const cached = cache.current.get(source);
+		if (cache.current.trace !== trace) cache.current = { trace, entries: new Map() };
+		const entries = cache.current.entries;
+		const cached = entries.get(source);
 		if (cached) {
 			setResult({ ...rendered, diagram: cached });
 			return;
@@ -36,9 +38,9 @@ function useDiagram(proof: DiagramProof | undefined, trace: DiagramRendererProps
 		const request = new AbortController();
 		void renderDiagram(proof, request.signal).then(diagram => {
 			if (request.signal.aborted) return;
-			cache.current.set(source, diagram);
-			if (cache.current.size > CACHE_LIMIT)
-				cache.current.delete(cache.current.keys().next().value!);
+			entries.set(source, diagram);
+			if (entries.size > CACHE_LIMIT)
+				entries.delete(entries.keys().next().value!);
 			setResult({ ...rendered, diagram });
 		}, () => {
 			if (!request.signal.aborted) setResult({ ...rendered, diagram: null });
@@ -369,16 +371,36 @@ function MermaidPlayerDiagramImpl({
 			if (event.key === "Enter" || event.key === " ") select(event);
 		},
 	};
+	// Essential source selection uses ordinary host-owned buttons, independent
+	// of generated SVG class names, route geometry or renderer availability.
+	const sourceControls = proof && <details className="mermaid-source-references" style={{ flex: "0 0 auto", maxHeight: "25%", overflow: "auto" }}>
+		<summary>{proof.kind === "sequence" ? "Sequence source references" : "Graph source references"}</summary>
+		<ul aria-label={proof.kind === "sequence" ? "Visible sequence source references" : "Visible graph source references"}>
+			{proof.elements.map(entry => <li key={entry.itemId}>
+				<button type="button" className="diagram-evidence-action" data-source-item={entry.itemId}
+					data-source-entity-ids={entry.source.entityIds?.join(" ")}
+					data-source-relation-ids={entry.source.relationIds?.join(" ")}
+					data-source-group-ids={entry.source.groupIds?.join(" ")}
+					data-source-event-ids={entry.source.eventIds?.join(" ")}
+					onClick={() => entry.role === "entity" && entry.source.entityIds?.[0]
+						? onSelectEntity(entry.source.entityIds[0]) : onSelectItem(entry.itemId)}>
+					{entry.rowToken ? entry.rowToken + " · " : ""}{entry.label}
+				</button>
+			</li>)}
+		</ul>
+	</details>;
 	if (!proof || diagram === null) return <div className="mermaid-fallback">
 		<div className="mermaid-status">
 			<p role="status">{proof ? "The diagram couldn’t be rendered." : "This diagram exceeds the preview display limit."}</p>
 			{proof && <button type="button" className="diagram-evidence-action" onClick={retry}>Retry diagram</button>}
 			<button type="button" className="diagram-evidence-action" onClick={onOpenEvidence}>Changes and evidence</button>
 		</div>
+		{sourceControls}
 		{fallback()}
 	</div>;
 	if (!visible) return <div className="mermaid-loading">
 		<p role="status">Preparing {proof.kind === "graph" ? "graph" : "sequence"}…</p>
+		{sourceControls}
 	</div>;
 	const markup = { __html: visible.svg };
 	if (proof.kind === "sequence") return <div className="sequence-view mermaid-sequence" aria-busy={!diagram}>
@@ -399,16 +421,7 @@ function MermaidPlayerDiagramImpl({
 			</nav>}
 			<button type="button" className="diagram-evidence-action" onClick={onOpenEvidence}>Changes and evidence</button>
 		</div>
-		{diagram && <details className="mermaid-source-references" style={{ flex: "0 0 auto", maxHeight: "25%", overflow: "auto" }}>
-			<summary>Sequence source references</summary>
-			<ul aria-label="Visible sequence source references">
-				{proof.elements.filter(entry => entry.role === "event").map(entry => <li key={entry.itemId}>
-					<button type="button" className="diagram-evidence-action"
-						data-source-event-ids={entry.source.eventIds?.join(" ")}
-						onClick={() => onSelectItem(entry.itemId)}>{entry.rowToken} · {entry.label}</button>
-				</li>)}
-			</ul>
-		</details>}
+		{sourceControls}
 	</div>;
 	return <div ref={host} className="mermaid-markup" data-mermaid-kind="graph">
 		<GraphViewport key={proof.source} diagram={visible} proof={proof}
@@ -431,5 +444,6 @@ function MermaidPlayerDiagramImpl({
 			follow={unfollowedTrace !== trace} onFollowChange={enabled => setUnfollowedTrace(enabled ? null : trace)}>
 			<g {...interactive} dangerouslySetInnerHTML={markup}/>
 		</GraphViewport>
+		{sourceControls}
 	</div>;
 }

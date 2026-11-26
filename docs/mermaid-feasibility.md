@@ -136,3 +136,20 @@ Per-area recommendation (maintainer decision still required):
 The read-only Mermaid feasibility workflow captures browser-specific packed proof, workload measurements/screenshots and the dependency inventory as retained artifacts. Its browser suite is separate from final release acceptance. Browser heap snapshots are explicitly method-labeled (or unavailable); they do not establish peak process memory.
 
 Record subsequent exact commit, engine versions, actual timings, asset hashes/bytes and failure outcomes; never replace missing measurements with estimates. No human AT or native zoom was performed for this candidate. The display-reference and Graph state-strip design choices require explicit review. Graph/Sequence/collapse/source selection/performance/browser safety each remain unaccepted until reviewed against the evidence. Do not start production cutover or publication on this report alone.
+
+## Follow-up feasibility candidate — review and measurement required
+
+This branch adds a fixed host-owned Graph value slot per mapped node, painted from the same bounded value summary as the native player, without putting frame values into Mermaid syntax or triggering layout on writes. The state strip remains a textual equivalent. Graph/Sequence source controls are ordinary host-owned buttons derived directly from the descriptor and remain available during loading or failure; visual route/phase clicks and motion still use the guarded pinned SVG association. Global row-token uniqueness now includes participant captions and rejects duplicated rendered references. The authoritative independent controls do not establish that optional direct diagram clicks are independent of private SVG structure; MR-04/MR-10 remain NO-GO until reviewed or a supported alternative is demonstrated. The cache is trace-scoped; retries and stale request cancellation retain the existing abort boundary.
+
+The independent packed proof now includes the shared primitive/shape summary helper. Source and packed measurement scripts record Linux process-tree RSS samples (100 ms requested interval), baseline and sampled maximum. The measure includes the dedicated Node measurement runner and descendants, may double-count shared pages, and is not exact peak or browser-only unique memory. Do not compare across differing process trees or interpret unavailable measurements as zero. CI runs the focused browser suite on all three engines and retains reports. The package is still native; this is copied-adapter feasibility, not U29 production proof.
+
+| Requirement | Candidate change / required fresh evidence | Disposition |
+| --- | --- | --- |
+| MR-01–03 | Repeat pure/packed boundary, hierarchy and topology checks | Pending exact-head results |
+| MR-04–06 | Global row references, independent source controls, repeated/orphan phases, windows and perturbations | NO-GO for direct visual association until review |
+| MR-07–08 | Native State unchanged; inline state slot and current focus/write cues, unchanged-topology seek, motion lifecycle | Pending three-engine parity and legibility review |
+| MR-09–10 | Host-owned selection/fallback, hostile content, trace-scoped cache, retry and SSR | NO-GO pending exact results, direct SVG association review and required human evidence |
+| MR-11 | Sampled process-tree RSS, asset/lock/inventory and workload reports | Pending actual measured results and notice review |
+| MR-12 | Review all four references and failures with exact SHA | NO-GO until reviewed evidence |
+
+No measurements, screenshots, human AT or native zoom results are claimed for this candidate before its workflows execute. No production integration, package export change, release or ticket closure is authorized. A failure of the reserved state slot must fall back rather than silently omit modeled values. If direct visual selection cannot be made reliable through supported interfaces, retain native rendering and seek a reviewed disposition; do not equate independent source buttons with approved visual parity.

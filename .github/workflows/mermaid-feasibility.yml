@@ -44,6 +44,10 @@ jobs:
           git diff --exit-code -- pnpm-lock.yaml
       - name: Install browser
         run: pnpm exec playwright install --with-deps "$THROUGHLINE_QA_BROWSER"
+      - name: Verify process-memory measurement helper
+        run: node --test scripts/mermaid-process-memory.test.mjs
+      - name: Verify focused Mermaid browser feasibility
+        run: pnpm test:browser:run src/react/__tests__/mermaid-proof src/react/__tests__/mermaid-player.browser.test.tsx
       - name: Build and inventory proof dependency boundary
         run: |
           mkdir -p "$RUNNER_TEMP/mermaid-proof"

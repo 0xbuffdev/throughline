@@ -1,5 +1,4 @@
 import type { ReadonlyCell, ReadonlyJsonValue, QueryCell } from "./model.js";
-import { encodeJson } from "./validator.js";
 
 /** Bounded summaries describe shape, never synthesize domain meaning. */
 export function summarizeValue(value: ReadonlyJsonValue): string {
@@ -9,7 +8,7 @@ export function summarizeValue(value: ReadonlyJsonValue): string {
 		return count + (count === 1 ? " field" : " fields");
 	}
 	const bounded = typeof value === "string" && value.length > 46 ? value.slice(0, 45).replace(/[\uD800-\uDBFF]$/, "") + "…" : value;
-	const text = encodeJson(bounded);
+	const text = JSON.stringify(bounded);
 	return text.length > 48 ? text.slice(0, 47) + "…" : text;
 }
 

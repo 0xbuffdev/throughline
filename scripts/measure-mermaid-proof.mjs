@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { cpus, platform, release } from "node:os";
 import { captureSource, sameSource } from "./mermaid-source-identity.mjs";
+import { sampleProcessMemory } from "./mermaid-process-memory.mjs";
 
 const before = captureSource();
 
@@ -13,6 +14,7 @@ const base = process.env.THROUGHLINE_PROOF_URL ?? "http://127.0.0.1:5174";
 const output = resolve(process.argv[3] ?? "/tmp/throughline-mermaid-proof-" + engine);
 mkdirSync(output, { recursive: true });
 const customLauncher = engine === "webkit" ? process.env.THROUGHLINE_QA_WEBKIT_EXECUTABLE : undefined;
+const memory = sampleProcessMemory();
 const browser = await type.launch({ headless: true, ...(customLauncher ? { executablePath: customLauncher } : {}) });
 try {
 	const page = await browser.newPage({ viewport: { width: 960, height: 900 } });
@@ -112,9 +114,9 @@ try {
 	const report = { sourceSha: before.sourceSha, dirty: Boolean(before.status), sourceStable,
 		inputFingerprint: before.fingerprint, after,
 		mermaid: "12.3.0", engine, browserVersion: browser.version(), customLauncher: Boolean(customLauncher), platform: platform(), release: release(),
-		cpu: cpus()[0]?.model, network, errors, ...findings };
+		cpu: cpus()[0]?.model, network, errors, processMemory: memory.stop(), ...findings };
 	writeFileSync(join(output, "measurements.json"), JSON.stringify(report, null, 2) + "\n");
 	console.log(JSON.stringify({ output, sourceSha: report.sourceSha, dirty: report.dirty,
 		graphs: report.graphs, sequence: report.sequence, network, errors }, null, 2));
 	if (errors.length || network.length || !sourceStable) process.exitCode = 1;
-} finally { await browser.close(); }
+} finally { memory.stop(); await browser.close(); }

@@ -88,6 +88,16 @@ export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiag
 		const byToken = new Map(events.map(entry => [entry.rowToken, entry]));
 		if (byToken.size !== events.length || byToken.has(undefined))
 			throw new Error("Sequence proof lacks unique source references");
+		// Validate allocated textual references globally before associating optional
+		// geometry. A participant or duplicated caption must not impersonate a row.
+		const occurrences = new Map<string, number>();
+		for (const text of root.querySelectorAll("text")) {
+			for (const token of text.textContent?.match(/TL\d{6}/g) ?? []) {
+				if (byToken.has(token)) occurrences.set(token, (occurrences.get(token) ?? 0) + 1);
+			}
+		}
+		if ([...byToken.keys()].some(token => !token || occurrences.get(token) !== 1))
+			throw new Error("Missing or duplicated sequence source reference");
 		const bound = new Set<string>();
 		const resolve = (labels: readonly Element[], sent: boolean) => {
 			// The adapter reserves all reference-shaped authored caption strings
@@ -199,6 +209,7 @@ export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiag
 		const nodes = root.getElementsByClassName(entry.id + "_source");
 		if (nodes.length !== 1) throw new Error("Rendered entity mapping unavailable");
 		bindItem(nodes[0], entry.itemId, (entry.collapsed ? "Expand group " : "Inspect entity ") + entry.label);
+		bindGraphState(nodes[0], entry);
 	}
 	for (const entry of proof.elements.filter(item => item.role === "group" && !item.collapsed)) {
 		// Region geometry is optional. Group selection uses the host's source control.
@@ -206,6 +217,34 @@ export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiag
 		region?.setAttribute("data-thl-region-id", entry.itemId);
 	}
 	return normalizedSize(root);
+}
+
+/** Replace only the trusted reserved text line; never parse authored values as markup.
+ * Fail closed if this pinned renderer does not preserve the reserved line.
+ */
+function bindGraphState(node: Element, entry: DiagramProof["elements"][number]): void {
+	if (!entry.stateSlot) return;
+	const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+	const slots: Text[] = [];
+	while (walker.nextNode()) {
+		const text = walker.currentNode as Text;
+		if (text.data.trim() === entry.stateSlot) slots.push(text);
+	}
+	if (slots.length !== 1) throw new Error("Rendered graph state slot unavailable");
+	const text = slots[0], parent = text.parentElement;
+	if (!parent) throw new Error("Rendered graph state slot has no parent");
+	if (parent.namespaceURI === "http://www.w3.org/1999/xhtml") {
+		const span = document.createElementNS(parent.namespaceURI, "span");
+		span.setAttribute("data-thl-state-label", entry.itemId);
+		span.setAttribute("style", "display:inline-block;max-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom");
+		span.textContent = entry.stateText ?? "Unavailable";
+		text.replaceWith(span);
+	} else {
+		// SVG text fallback must have a dedicated line, not the entity caption.
+		if (parent.textContent?.trim() !== entry.stateSlot) throw new Error("Ambiguous SVG graph state slot");
+		parent.setAttribute("data-thl-state-label", entry.itemId);
+		parent.textContent = entry.stateText ?? "Unavailable";
+	}
 }
 
 function normalizedSize(root: SVGSVGElement): Pick<RenderedDiagram, "svg" | "width" | "height"> {

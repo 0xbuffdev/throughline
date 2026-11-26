@@ -9,6 +9,7 @@ import { createHash } from "node:crypto";
 import { chromium, firefox, webkit } from "@playwright/test";
 import { build, preview } from "vite";
 import { captureSource, sameSource } from "./mermaid-source-identity.mjs";
+import { sampleProcessMemory } from "./mermaid-process-memory.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const before = captureSource(root);
@@ -17,7 +18,7 @@ const browserType = { chromium, firefox, webkit }[engine];
 assert(browserType, "Unsupported packed proof browser");
 const scratch = mkdtempSync(join(tmpdir(), "throughline-mermaid-packed-"));
 const output = resolve(process.argv[2] ?? join(tmpdir(), "throughline-mermaid-packed-report.json"));
-let browser, server;
+let browser, server, memory;
 const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
 function run(command, args, cwd) {
 	const result = spawnSync(command, args, { cwd, encoding: "utf8", maxBuffer: 8 * 1024 * 1024 });
@@ -86,14 +87,15 @@ try {
 	mkdirSync(join(consumer, "proof"));
 	// Copy the actual test host/adapter, changing import boundaries only. Runtime
 	// model, query, examples and player imports resolve to the installed tarball.
-	for (const name of ["adapter.ts", "diagram.tsx", "render.ts", "motion.ts", "evidence.tsx", "sequence-layout.ts"]) {
-		const directory = name === "sequence-layout.ts" ? "src/v2"
+	for (const name of ["adapter.ts", "diagram.tsx", "render.ts", "motion.ts", "evidence.tsx", "sequence-layout.ts", "value-summary.ts"]) {
+		const directory = ["sequence-layout.ts", "value-summary.ts"].includes(name) ? "src/v2"
 			: name.endsWith(".tsx") ? "src/react/__tests__/mermaid-proof" : "src/react/mermaid";
 		const original = readFileSync(join(root, directory, name), "utf8");
 		const copied = original.replace(/"\.\.\/(?:\.\.\/)+v2\/model\.js"/g, '"@0xbuff/throughline"')
 			.replaceAll('"../../mermaid/', '"./');
 		writeFileSync(join(consumer, "proof", name), copied
 			.replace('"../../v2/sequence-layout.js"', '"./sequence-layout.js"')
+			.replace('"../../v2/value-summary.js"', '"./value-summary.js"')
 			.replace('"./model.js"', '"@0xbuff/throughline"'));
 	}
 	let host = readFileSync(join(root, "scripts/mermaid-proof.tsx"), "utf8");
@@ -121,6 +123,7 @@ try {
 		build: { outDir: "dist" }, preview: { host: "127.0.0.1", port: 0, strictPort: false } });
 	const base = "http://127.0.0.1:" + server.httpServer.address().port;
 	const executablePath = engine === "webkit" ? process.env.THROUGHLINE_QA_WEBKIT_EXECUTABLE : undefined;
+	memory = sampleProcessMemory();
 	browser = await browserType.launch(executablePath ? { executablePath } : {});
 	const page = await browser.newPage({ viewport: { width: 375, height: 812 }, reducedMotion: "reduce" });
 	const errors = [], nonLocal = [], requested = new Set();
@@ -255,11 +258,12 @@ try {
 		referenceResults, responsive, dependencyEvidence,
 		archiveSha256: createHash("sha256").update(readFileSync(tarball)).digest("hex"),
 		initialAssets, sequenceAssets,
-		assets, errors, nonLocal, packedCore: true, proofHostBuild: true, candidateBrowser: true, productionMermaid: false };
+		processMemory: memory.stop(), assets, errors, nonLocal, packedCore: true, proofHostBuild: true, candidateBrowser: true, productionMermaid: false };
 	writeFileSync(output, JSON.stringify(report, null, 2) + "\n");
 	assert(report.sourceStable, "Source changed during packed-candidate verification");
 	console.log("Packed native package + copied Mermaid feasibility adapter passed; NOT a production Mermaid cutover: " + output);
 } finally {
+	memory?.stop();
 	await browser?.close();
 	if (server) await new Promise(resolve => server.httpServer.close(resolve));
 	rmSync(scratch, { recursive: true, force: true });
