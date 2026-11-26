@@ -125,12 +125,13 @@ it("updates Graph transfer paint without relayout and opens the exact source in 
 	expect(screen.container.querySelector(".thl-v2-inspect")).toBeNull();
 }, 60_000);
 
-it("inspects the exact message when selecting a drawn sequence arrow, including when seeking backwards", async () => {
+it("inspects the exact message from its explicit sequence row reference, including when seeking backwards", async () => {
 	const trace = compileArtifact(retryCheckout());
 	const screen = await render(<GraphPlayer trace={trace} initialView="sequence" DiagramRenderer={MermaidPlayerDiagram}/>);
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	const arrow = screen.getByRole("button", { name: /^Inspect transfer / });
 	await expect.element(arrow).toBeVisible();
+	expect(arrow.element().hasAttribute("data-thl-source-reference")).toBe(true);
 	(arrow.element() as SVGElement).focus();
 	await userEvent.keyboard("{Enter}");
 	const panel = screen.getByRole("complementary", { name: "Workflow inspector" });
@@ -326,7 +327,7 @@ it("follows the latest recorded Sequence event vertically and resets on rewind",
 	await userEvent.keyboard("{End}");
 	await expect.poll(() => {
 		const header = scroller.querySelector("[data-thl-sequence-header]")?.getBoundingClientRect();
-		const current = scroller.querySelector('[aria-label="Inspect received · noticeReceived"][data-thl-active]');
+		const current = scroller.querySelector('[data-thl-phase-item][data-thl-active]');
 		const mark = current?.getBoundingClientRect();
 		const viewport = scroller.getBoundingClientRect();
 		return Boolean(scroller.scrollTop > 0 && header && mark &&

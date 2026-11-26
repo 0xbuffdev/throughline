@@ -426,7 +426,7 @@ function MermaidPlayerDiagramImpl({
 	return <div ref={host} className="mermaid-markup" data-mermaid-kind="graph">
 		<GraphViewport key={proof.source} diagram={visible} proof={proof}
 			groupId={groupId} captionId={captionId} onOpenEvidence={onOpenEvidence}
-			stateEvidence={<section className="mermaid-graph-state" role="region" aria-label="Graph modeled state" tabIndex={0}>
+			stateEvidence={<><section className="mermaid-graph-state" role="region" aria-label="Graph modeled state" tabIndex={0}>
 				{view.items.filter(item => item.role === "entity" || (item.role === "group" && property(item, "collapsed") === true)).map(item => {
 					const group = item.role === "group";
 					const focused = property(item, "focused") === true, changed = property(item, "changed") === true;
@@ -440,10 +440,9 @@ function MermaidPlayerDiagramImpl({
 						{focused && <span> · Focus</span>}{changed && <span> · Write</span>}
 					</button>;
 				})}
-			</section>}
+			</section>{sourceControls}</>}
 			follow={unfollowedTrace !== trace} onFollowChange={enabled => setUnfollowedTrace(enabled ? null : trace)}>
 			<g {...interactive} dangerouslySetInnerHTML={markup}/>
 		</GraphViewport>
-		{sourceControls}
 	</div>;
 }

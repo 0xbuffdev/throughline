@@ -88,16 +88,7 @@ export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiag
 		const byToken = new Map(events.map(entry => [entry.rowToken, entry]));
 		if (byToken.size !== events.length || byToken.has(undefined))
 			throw new Error("Sequence proof lacks unique source references");
-		// Validate allocated textual references globally before associating optional
-		// geometry. A participant or duplicated caption must not impersonate a row.
-		const occurrences = new Map<string, number>();
-		for (const text of root.querySelectorAll("text")) {
-			for (const token of text.textContent?.match(/TL\d{6}/g) ?? []) {
-				if (byToken.has(token)) occurrences.set(token, (occurrences.get(token) ?? 0) + 1);
-			}
-		}
-		if ([...byToken.keys()].some(token => !token || occurrences.get(token) !== 1))
-			throw new Error("Missing or duplicated sequence source reference");
+		bindSequenceSourceReferences(root, proof);
 		const bound = new Set<string>();
 		const resolve = (labels: readonly Element[], sent: boolean) => {
 			// The adapter reserves all reference-shaped authored caption strings
@@ -135,12 +126,9 @@ export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiag
 			}
 			const id = entry.itemId;
 			arrow.setAttribute("data-thl-motion-item", id);
-			arrow.setAttribute("data-thl-item-id", id);
 			bindDirection(root, arrow);
-			bindItem(labels[0], id, "Inspect transfer " + (entry.flowLabel ?? entry.label));
 			for (const label of labels) {
 				label.setAttribute("data-thl-motion-label", id);
-				label.setAttribute("data-thl-item-id", id);
 			}
 		});
 		const phases = events.filter(entry => !entry.sent);
@@ -153,7 +141,8 @@ export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiag
 			const entry = resolve([...group.querySelectorAll(".noteText")], false);
 			if (entry !== phases[index]) throw new Error("Rendered phase order unavailable");
 			group.setAttribute("data-thl-phase-item", entry.itemId);
-			bindItem(group, entry.itemId, "Inspect " + entry.label);
+			// The phase box is decorative geometry; only its trusted row
+			// reference caption and the independent host control select evidence.
 		});
 		if (bound.size !== events.length) throw new Error("Incomplete sequence source mapping");
 
@@ -217,6 +206,32 @@ export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiag
 		region?.setAttribute("data-thl-region-id", entry.itemId);
 	}
 	return normalizedSize(root);
+}
+
+/** Bind event selection to explicit host-generated text references, using
+ * ordinary SVG text rather than Mermaid's classes, IDs, ordering or geometry.
+ * The separately guarded private bridge is presentation only.
+ */
+export function bindSequenceSourceReferences(root: SVGSVGElement, proof: DiagramProof): void {
+	const events = proof.elements.filter(entry => entry.role === "event");
+	const byToken = new Map(events.map(entry => [entry.rowToken, entry]));
+	if (byToken.size !== events.length || byToken.has(undefined))
+		throw new Error("Sequence proof lacks unique source references");
+	const found = new Map<string, SVGTextElement>();
+	for (const text of root.querySelectorAll("text")) {
+		const tokens = (text.textContent?.match(/TL\d{6}/g) ?? []).filter(token => byToken.has(token));
+		if (!tokens.length) continue;
+		const token = tokens[0];
+		if (tokens.length !== 1 || found.has(token) || !text.textContent?.trimEnd().endsWith(token))
+			throw new Error("Missing or duplicated sequence source reference");
+		found.set(token, text);
+	}
+	if (found.size !== events.length) throw new Error("Missing or duplicated sequence source reference");
+	for (const [token, text] of found) {
+		const entry = byToken.get(token)!;
+		bindItem(text, entry.itemId, entry.sent ? "Inspect transfer " + (entry.flowLabel ?? entry.label) : "Inspect " + entry.label);
+		text.setAttribute("data-thl-source-reference", token);
+	}
 }
 
 /** Replace only the trusted reserved text line; never parse authored values as markup.
