@@ -46,20 +46,25 @@ jobs:
         run: pnpm exec playwright install --with-deps "$THROUGHLINE_QA_BROWSER"
       - name: Verify process-memory measurement helper
         run: node --test scripts/mermaid-process-memory.test.mjs
-      - name: Verify focused Mermaid browser feasibility
-        run: pnpm test:browser:run src/react/__tests__/mermaid-proof src/react/__tests__/mermaid-player.browser.test.tsx
       - name: Build and inventory proof dependency boundary
         run: |
+          git status --porcelain --untracked-files=all
+          test -z "$(git status --porcelain --untracked-files=all)"
           mkdir -p "$RUNNER_TEMP/mermaid-proof"
           pnpm build
           node scripts/audit-mermaid-proof.mjs "$RUNNER_TEMP/mermaid-proof/dependencies.json"
       - name: Measure independent packed feasibility host
-        run: node scripts/audit-mermaid-packed.mjs "$RUNNER_TEMP/mermaid-proof/packed.json"
+        run: |
+          git status --porcelain --untracked-files=all
+          test -z "$(git status --porcelain --untracked-files=all)"
+          node scripts/audit-mermaid-packed.mjs "$RUNNER_TEMP/mermaid-proof/packed.json"
       - name: Measure source workload and capture actual rendered screenshots
         if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -euo pipefail
+          git status --porcelain --untracked-files=all
+          test -z "$(git status --porcelain --untracked-files=all)"
           mkdir -p "$RUNNER_TEMP/mermaid-proof"
           pnpm exec vite --host 127.0.0.1 --port 5174 > "$RUNNER_TEMP/mermaid-proof/vite.log" 2>&1 &
           server=$!
@@ -70,11 +75,18 @@ jobs:
           done
           curl --fail --silent http://127.0.0.1:5174/scripts/mermaid-proof.html > /dev/null
           node scripts/measure-mermaid-proof.mjs "$THROUGHLINE_QA_BROWSER" "$RUNNER_TEMP/mermaid-proof"
+      # Vitest writes failure screenshots into the checkout. Run these tests
+      # after measurements so failed regressions cannot contaminate source evidence.
+      - name: Verify focused Mermaid browser feasibility
+        if: ${{ !cancelled() }}
+        run: pnpm test:browser:run src/react/__tests__/mermaid-proof src/react/__tests__/mermaid-player.browser.test.tsx
       - name: Retain actual evidence, including failures where available
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
           name: mermaid-feasibility-${{ matrix.browser }}-${{ github.run_id }}
-          path: ${{ runner.temp }}/mermaid-proof/
+          path: |
+            ${{ runner.temp }}/mermaid-proof/
+            src/react/__tests__/__screenshots__/
           if-no-files-found: warn
           retention-days: 30

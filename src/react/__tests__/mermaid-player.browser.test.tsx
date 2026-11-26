@@ -459,14 +459,20 @@ it("offers independent exact sequence source controls for identical sends", asyn
 }, 60_000);
 
 
-it("keeps independent exact source selection available when sequence rendering rejects", async () => {
+it.each([260, 375, 720])("keeps independent exact source selection available when sequence rendering rejects at %ipx", async width => {
  const trace = compileArtifact(stateEvidenceFixture());
  const Renderer = createMermaidPlayerDiagram(async () => { throw new Error("simulated failure"); });
- const screen = await render(<GraphPlayer trace={trace} initialView="sequence" DiagramRenderer={Renderer}/>);
+ const screen = await render(<div style={{ width }}><GraphPlayer trace={trace} initialView="sequence" DiagramRenderer={Renderer}/></div>);
  await screen.getByRole("button", { name: "Step forward" }).click();
  await expect.element(screen.getByRole("button", { name: "Retry diagram" })).toBeVisible();
- await screen.getByText("Sequence source references", { exact: true }).click();
+ const disclosure = screen.getByText("Sequence source references", { exact: true });
+ const table = screen.getByRole("region", { name: "State and event table" });
+ await expect.element(table).toBeVisible();
+ expect(disclosure.element().getBoundingClientRect().bottom).toBeLessThanOrEqual(table.element().getBoundingClientRect().top + 1);
+ await disclosure.click();
  const list = screen.getByRole("list", { name: "Visible sequence source references" });
+ const details = disclosure.element().parentElement!;
+ expect(details.getBoundingClientRect().bottom).toBeLessThanOrEqual(table.element().getBoundingClientRect().top + 1);
  const source = list.element().querySelector<HTMLButtonElement>('[data-source-event-ids="secondSent"]');
  expect(source).not.toBeNull();
  await userEvent.click(source!);
