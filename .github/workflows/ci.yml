@@ -52,6 +52,8 @@ jobs:
         run: pnpm preview:typecheck
       - name: Bundle local preview
         run: pnpm preview:build
+      - name: Bundle public authoring studio
+        run: pnpm studio:build
       - name: Compiler, release performance and hostile-input tests
         env:
           THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -76,6 +78,8 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Browser tests
         run: pnpm test:browser:run
+      - name: Built public studio smoke test
+        run: pnpm audit:playground
       - name: Record verified Chromium browser evidence
         env:
           THL_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -136,11 +140,13 @@ jobs:
           pnpm typecheck
           pnpm preview:typecheck
           pnpm preview:build
+          pnpm studio:build
           pnpm test:run
           node scripts/verify-release-evidence.mjs
           node scripts/test-release-evidence.mjs
           node --test scripts/release-candidate-gate.test.mjs
           pnpm test:browser:run
+          pnpm audit:playground
           pnpm build
           pnpm audit:licenses
           pnpm audit:pack

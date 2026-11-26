@@ -7,6 +7,8 @@ All notable changes to Throughline are recorded here. Package versions follow
 
 ## [Unreleased]
 
+- Reconcile the public authoring studio with current schema-2 source and the native compact player, keeping the Mermaid feasibility host and its build separate. Add independent studio build and browser smoke coverage; no deployment or npm publication is implied.
+
 - Reconcile compact-player documentation and manual AT instructions with supported view tabs, Inspect toggle, responsive Workflow inspector and source-detail tools; preserve the NOT PERFORMED human acceptance record.
 - Separate authored mutable shapes from readonly validated/derived public declarations, with source and packed declaration regressions.
 - Enforce strict release evidence identity and schemas, immutable exact-archive preparation and separately authorized staging. Production audit and final human acceptance remain mandatory and outstanding.
