@@ -262,6 +262,7 @@ try {
 	writeFileSync(output, JSON.stringify(report, null, 2) + "\n");
 	assert(report.sourceStable, "Source changed during packed-candidate verification");
 	console.log("Packed native package + copied Mermaid feasibility adapter passed; NOT a production Mermaid cutover: " + output);
+	console.log("TL_U26_PACKED_PROCESS_MEMORY " + JSON.stringify(report.processMemory));
 } finally {
 	memory?.stop();
 	await browser?.close();

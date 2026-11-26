@@ -22,11 +22,12 @@ export function processTreeRss(snapshot, root) {
 export function sampleProcessMemory() {
  const intervalMs = 100;
  const method = "Linux ps RSS sum of dedicated Node measurement process and descendants; shared pages may be counted twice; sampled max, not exact peak or unique memory";
- let samples = 0, baseline, max, failure, finished, timer;
+ let samples = 0, baseline, max, failure, finished, timer, largestTree = 0;
  function sample() {
   try {
    const value = processTreeRss(execFileSync("ps", ["-eo", "pid=,ppid=,rss=,comm="], { encoding: "utf8" }), process.pid);
    baseline ??= value;
+   largestTree = Math.max(largestTree, value.processes);
    if (!max || value.rssBytes > max.rssBytes) max = value;
    samples++;
   } catch (error) { failure = String(error); }
@@ -37,7 +38,7 @@ export function sampleProcessMemory() {
   clearInterval(timer);
   if (platform() === "linux") sample();
   finished = { method, intervalMs, samples, baseline: baseline ?? null, max: max ?? null,
-   available: samples >= 2 && !failure, ...(failure ? { failure } : {}),
+   largestTree, available: samples >= 2 && largestTree > 1 && !failure, ...(failure ? { failure } : {}),
    ...(platform() !== "linux" ? { reason: "NOT PERFORMED — Linux ps sampler only" } : {}) };
   return finished;
  } };

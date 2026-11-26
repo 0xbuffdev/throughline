@@ -6,7 +6,7 @@ import { EXAMPLES } from "../../../examples.js";
 import { distributedGraph } from "../../../__tests__/v2-graph-fixture.js";
 import { retryCheckout } from "../../../__tests__/v2-sequence-fixture.js";
 import { graphProof, sequenceProof, type DiagramProof } from "../../mermaid/adapter.js";
-import { renderProof, retryableLoader } from "../../mermaid/render.js";
+import { bindSequenceSourceReferences, renderProof, retryableLoader } from "../../mermaid/render.js";
 
 const hosts: HTMLDivElement[] = [];
 afterEach(() => { for (const host of hosts.splice(0)) host.remove(); });
@@ -229,3 +229,52 @@ it("keeps authored reference-shaped labels and message IDs distinct from trusted
   await expect(renderProof(proof, undefined, svg => svg.replaceAll(tokens[0], tokens[0] + " " + tokens[0]))).rejects.toThrow();
  }
 }, 60_000);
+
+
+it("binds row selection by host tokens without generated classes, IDs, positions or order", () => {
+ const artifact = retryCheckout();
+ const trace = compileArtifact(artifact);
+ const proof = sequenceProof(trace, projectView(inspectTrace(trace), { kind: "sequence", frameIndex: 2 }));
+ const events = proof.elements.filter(entry => entry.role === "event");
+ expect(events.length).toBeGreaterThan(1);
+ const root = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+ for (const entry of [...events].reverse()) {
+  const text = document.createElementNS(root.namespaceURI!, "text");
+  text.setAttribute("class", "unknown-renderer-class");
+  text.textContent = "arbitrary caption " + entry.rowToken;
+  root.append(text);
+ }
+ bindSequenceSourceReferences(root, proof);
+ for (const entry of events) {
+  const caption = root.querySelector('[data-thl-source-reference="' + entry.rowToken + '"]');
+  expect(caption?.getAttribute("data-thl-item-id")).toBe(entry.itemId);
+  expect(caption?.getAttribute("role")).toBe("button");
+  expect(caption?.getAttribute("tabindex")).toBe("0");
+ }
+ const duplicate = root.firstElementChild!.cloneNode(true);
+ root.append(duplicate);
+ expect(() => bindSequenceSourceReferences(root, proof)).toThrow("duplicated");
+});
+
+it("reserves participant caption lookalikes before allocating sequence row references", async () => {
+ const artifact = retryCheckout();
+ artifact.entities[0].label = "TL000000";
+ const trace = compileArtifact(artifact);
+ const proof = sequenceProof(trace, projectView(inspectTrace(trace), { kind: "sequence", frameIndex: 2 }));
+ const events = proof.elements.filter(entry => entry.role === "event");
+ expect(events.map(entry => entry.rowToken)).not.toContain("TL000000");
+ const host = await mount(proof);
+ expect(host.querySelectorAll("[data-thl-source-reference]")).toHaveLength(events.length);
+ for (const entry of events) {
+  const caption = host.querySelector('[data-thl-source-reference="' + entry.rowToken + '"]');
+  expect(caption?.getAttribute("data-thl-item-id")).toBe(entry.itemId);
+ }
+});
+
+it("fails closed rather than omitting graph state when a reserved line is missing", async () => {
+ const trace = compileArtifact(distributedGraph());
+ const proof = graphProof(trace, projectView(inspectTrace(trace), { kind: "graph", frameIndex: 1 }));
+ const entry = proof.elements.find(item => item.stateSlot)!;
+ expect(entry.stateSlot).toBeDefined();
+ await expect(renderProof(proof, undefined, svg => svg.replaceAll(entry.stateSlot!, "missing"))).rejects.toThrow("graph state slot");
+});

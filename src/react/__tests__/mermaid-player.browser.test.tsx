@@ -414,10 +414,13 @@ it.each(EXAMPLES.map(example => example.id))("exposes frame-linked graph state f
  const source = EXAMPLES.find(example => example.id === id)!.artifact;
  source.steps[0].focusEntityIds = [source.entities[0].id];
  const trace = compileArtifact(source);
- const screen = await render(<GraphPlayer trace={trace} initialView="graph" DiagramRenderer={MermaidPlayerDiagram}/>);
+ let renders = 0;
+ const Renderer = createMermaidPlayerDiagram((proof, signal) => { renders++; return renderProof(proof, signal); });
+ const screen = await render(<GraphPlayer trace={trace} initialView="graph" DiagramRenderer={Renderer}/>);
  const strip = screen.getByRole("region", { name: "Graph modeled state" });
  await expect.element(strip).toBeVisible();
  expect(strip.element().querySelectorAll("[data-graph-state-item]").length).toBeGreaterThan(0);
+ const initialRenderCount = renders;
  await screen.getByRole("button", { name: "Step forward" }).click();
  const diagram = screen.getByRole("group", { name: "Source-linked graph at current frame" });
  await expect.element(diagram).toBeVisible();
@@ -425,6 +428,9 @@ it.each(EXAMPLES.map(example => example.id))("exposes frame-linked graph state f
  const view = (await import("../../v2/views.js")).projectView(inspector, { kind: "graph", frameIndex: 1 });
  const { property } = await import("../mermaid/adapter.js");
  const { summarizeCell } = await import("../value-display.js");
+ const before = (await import("../mermaid/adapter.js")).graphProof(trace, (await import("../../v2/views.js")).projectView(inspector, { kind: "graph", frameIndex: 0 }));
+ const after = (await import("../mermaid/adapter.js")).graphProof(trace, view);
+ if (before.source === after.source) expect(renders).toBe(initialRenderCount);
  for (const item of view.items.filter(item => item.role === "entity")) {
   const card = strip.element().querySelector('[data-graph-state-item="' + item.id + '"]');
   expect(card?.textContent).toContain(summarizeCell(property(item, "cell") as import("../../v2/model.js").Cell));

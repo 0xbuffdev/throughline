@@ -117,6 +117,6 @@ try {
 		cpu: cpus()[0]?.model, network, errors, processMemory: memory.stop(), ...findings };
 	writeFileSync(join(output, "measurements.json"), JSON.stringify(report, null, 2) + "\n");
 	console.log(JSON.stringify({ output, sourceSha: report.sourceSha, dirty: report.dirty,
-		graphs: report.graphs, sequence: report.sequence, network, errors }, null, 2));
+		graphs: report.graphs, sequence: report.sequence, processMemory: report.processMemory, network, errors }, null, 2));
 	if (errors.length || network.length || !sourceStable) process.exitCode = 1;
 } finally { memory.stop(); await browser.close(); }

@@ -66,8 +66,9 @@ function bindDirection(root: SVGSVGElement, route: SVGElement): void {
 }
 
 /** Bind host-authored paint/row tokens to the current descriptor. Graph
- * tokens do not rely on generated SVG IDs; Sequence still has a pinned local
- * caption/mark bridge. Source controls provide an independent text path.
+ * tokens do not rely on generated SVG IDs. Sequence event selection uses
+ * explicit text references; its optional geometry bridge remains pinned.
+ * Host source controls provide an independent text path.
  * Missing/duplicated/ambiguous routes fail closed rather than guessing.
  */
 export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiagram, "svg" | "width" | "height"> {
