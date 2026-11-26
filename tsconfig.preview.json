@@ -7,6 +7,8 @@
 	"include": [
 		"src",
 		"playground/main.tsx",
-		"playground/vite.config.ts"
+		"playground/vite.config.ts",
+		"playground/studio/**/*.ts",
+		"playground/studio/**/*.tsx"
 	]
 }

@@ -295,6 +295,15 @@ Open http://localhost:5173 to inspect states and source events and
 read the matched explanations/questions at desktop, tablet and mobile
 widths. The preview is excluded from the published npm package.
 
+## Public authoring studio
+
+The [Playground authoring studio](playground/studio/README.md) uses the current
+native public React player with four reference artifacts, strict JSON editing,
+compiler diagnostics and validated JSON/Markdown export. Run `pnpm studio:dev`
+and open http://localhost:5174. Build with `pnpm studio:build`; the static site
+is separate from the experimental Mermaid host above and from the npm package.
+Deployment requires separate maintainer approval.
+
 ## Behind the model
 
 1. **Validate:** strict schema-2 input is detached and checked for
