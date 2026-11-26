@@ -154,6 +154,18 @@ try {
 	assert.equal(await diagram.locator("[data-thl-motion-item]").count(), 1);
 	assert.notEqual(await diagram.locator("[data-thl-motion-item]").evaluate(node => getComputedStyle(node).stroke), "none",
 		"Packed sequence arrow has no painted stroke");
+	const caption = diagram.locator("[data-thl-source-reference][role=button]");
+	assert.equal(await caption.count(), 1, "Packed sequence has no unique source reference");
+	await caption.click();
+	const selectedSource = page.getByRole("region", { name: "Selected exact source" });
+	await selectedSource.waitFor();
+	assert.deepEqual(JSON.parse(await selectedSource.locator("[data-proof-source]").textContent()).eventIds, ["requestSent"]);
+	await selectedSource.getByRole("button", { name: "Clear selection" }).click();
+	await caption.focus();
+	await page.keyboard.press("Enter");
+	await selectedSource.waitFor();
+	assert.deepEqual(JSON.parse(await selectedSource.locator("[data-proof-source]").textContent()).eventIds, ["requestSent"]);
+	await selectedSource.getByRole("button", { name: "Clear selection" }).click();
 	await page.getByText("Complete evidence at selected frame", { exact: true }).click();
 	await page.getByRole("button", { name: "requestSent", exact: true }).click();
 	assert((await page.getByRole("region", { name: "Selected exact source" }).textContent()).includes("requestSent"));
@@ -222,6 +234,25 @@ try {
 		};
 		const mark = diagram.locator('[data-thl-item-id="' + expected.itemId + '"][role="button"]');
 		assert.equal(await mark.count(), 1, "Missing or duplicate rendered entity");
+		// Compare the inline slot against the installed core's independently
+		// queried cell, using the native summary contract rather than SVG text.
+		const cell = expected.cells[0].cell;
+		let expectedSummary;
+		if (cell.status === "unknown") expectedSummary = "Unknown";
+		else if (cell.status === "absent") expectedSummary = "Absent";
+		else {
+			const value = cell.value;
+			if (Array.isArray(value)) expectedSummary = value.length + (value.length === 1 ? " item" : " items");
+			else if (value !== null && typeof value === "object") {
+				const count = Object.keys(value).length;
+				expectedSummary = count + (count === 1 ? " field" : " fields");
+			} else {
+				const bounded = typeof value === "string" && value.length > 46 ? value.slice(0, 45).replace(/[\uD800-\uDBFF]$/, "") + "…" : value;
+				const text = JSON.stringify(bounded);
+				expectedSummary = text.length > 48 ? text.slice(0, 47) + "…" : text;
+			}
+		}
+		assert.equal(await mark.locator("[data-thl-state-label]").textContent(), expectedSummary, "Inline Graph value differs from installed core");
 		await clear(); await mark.click(); await verify();
 		await clear(); await mark.focus();
 		assert(await mark.evaluate(node => document.activeElement === node), "SVG mark did not receive keyboard focus");
@@ -249,13 +280,13 @@ try {
 			noMessageFallback = { diagnostic: expected.diagnostics, eventCount: expected.eventSources.length };
 		}
 		referenceResults.push({ exampleIndex: Number(value), id: expected.id, title, initialNodes,
-			expectedSource: expected.source, expectedCells: expected.cells, svgPointer: true, svgKeyboard: true, list: true, noMessageFallback });
+			expectedSource: expected.source, expectedCells: expected.cells, inlineState: expectedSummary, svgPointer: true, svgKeyboard: true, list: true, noMessageFallback });
 	}
 	assert.deepEqual(errors, []); assert.deepEqual(nonLocal, []);
 	const after = captureSource(root);
 	const report = { sourceSha: before.sourceSha, dirty: Boolean(before.status), sourceStable: sameSource(before, after),
 		inputFingerprint: before.fingerprint, mermaid: "12.3.0", engine, browser: browser.version(),
-		referenceResults, responsive, dependencyEvidence,
+		referenceResults, sequenceCaptionPointer: true, sequenceCaptionKeyboard: true, responsive, dependencyEvidence,
 		archiveSha256: createHash("sha256").update(readFileSync(tarball)).digest("hex"),
 		initialAssets, sequenceAssets,
 		processMemory: memory.stop(), assets, errors, nonLocal, packedCore: true, proofHostBuild: true, candidateBrowser: true, productionMermaid: false };
