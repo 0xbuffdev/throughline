@@ -9,6 +9,7 @@ import { createHash } from "node:crypto";
 import { chromium, firefox, webkit } from "@playwright/test";
 import { build, preview } from "vite";
 import { captureSource, sameSource } from "./mermaid-source-identity.mjs";
+import { sampleProcessMemory } from "./mermaid-process-memory.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const before = captureSource(root);
@@ -17,7 +18,7 @@ const browserType = { chromium, firefox, webkit }[engine];
 assert(browserType, "Unsupported packed proof browser");
 const scratch = mkdtempSync(join(tmpdir(), "throughline-mermaid-packed-"));
 const output = resolve(process.argv[2] ?? join(tmpdir(), "throughline-mermaid-packed-report.json"));
-let browser, server;
+let browser, server, memory;
 const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
 function run(command, args, cwd) {
 	const result = spawnSync(command, args, { cwd, encoding: "utf8", maxBuffer: 8 * 1024 * 1024 });
@@ -86,14 +87,15 @@ try {
 	mkdirSync(join(consumer, "proof"));
 	// Copy the actual test host/adapter, changing import boundaries only. Runtime
 	// model, query, examples and player imports resolve to the installed tarball.
-	for (const name of ["adapter.ts", "diagram.tsx", "render.ts", "motion.ts", "evidence.tsx", "sequence-layout.ts"]) {
-		const directory = name === "sequence-layout.ts" ? "src/v2"
+	for (const name of ["adapter.ts", "diagram.tsx", "render.ts", "motion.ts", "evidence.tsx", "sequence-layout.ts", "value-summary.ts"]) {
+		const directory = ["sequence-layout.ts", "value-summary.ts"].includes(name) ? "src/v2"
 			: name.endsWith(".tsx") ? "src/react/__tests__/mermaid-proof" : "src/react/mermaid";
 		const original = readFileSync(join(root, directory, name), "utf8");
 		const copied = original.replace(/"\.\.\/(?:\.\.\/)+v2\/model\.js"/g, '"@0xbuff/throughline"')
 			.replaceAll('"../../mermaid/', '"./');
 		writeFileSync(join(consumer, "proof", name), copied
 			.replace('"../../v2/sequence-layout.js"', '"./sequence-layout.js"')
+			.replace('"../../v2/value-summary.js"', '"./value-summary.js"')
 			.replace('"./model.js"', '"@0xbuff/throughline"'));
 	}
 	let host = readFileSync(join(root, "scripts/mermaid-proof.tsx"), "utf8");
@@ -121,6 +123,7 @@ try {
 		build: { outDir: "dist" }, preview: { host: "127.0.0.1", port: 0, strictPort: false } });
 	const base = "http://127.0.0.1:" + server.httpServer.address().port;
 	const executablePath = engine === "webkit" ? process.env.THROUGHLINE_QA_WEBKIT_EXECUTABLE : undefined;
+	memory = sampleProcessMemory();
 	browser = await browserType.launch(executablePath ? { executablePath } : {});
 	const page = await browser.newPage({ viewport: { width: 375, height: 812 }, reducedMotion: "reduce" });
 	const errors = [], nonLocal = [], requested = new Set();
@@ -151,6 +154,18 @@ try {
 	assert.equal(await diagram.locator("[data-thl-motion-item]").count(), 1);
 	assert.notEqual(await diagram.locator("[data-thl-motion-item]").evaluate(node => getComputedStyle(node).stroke), "none",
 		"Packed sequence arrow has no painted stroke");
+	const caption = diagram.locator("[data-thl-source-reference][role=button]");
+	assert.equal(await caption.count(), 1, "Packed sequence has no unique source reference");
+	await caption.click();
+	const selectedSource = page.getByRole("region", { name: "Selected exact source" });
+	await selectedSource.waitFor();
+	assert.deepEqual(JSON.parse(await selectedSource.locator("[data-proof-source]").textContent()).eventIds, ["requestSent"]);
+	await selectedSource.getByRole("button", { name: "Clear selection" }).click();
+	await caption.focus();
+	await page.keyboard.press("Enter");
+	await selectedSource.waitFor();
+	assert.deepEqual(JSON.parse(await selectedSource.locator("[data-proof-source]").textContent()).eventIds, ["requestSent"]);
+	await selectedSource.getByRole("button", { name: "Clear selection" }).click();
 	await page.getByText("Complete evidence at selected frame", { exact: true }).click();
 	await page.getByRole("button", { name: "requestSent", exact: true }).click();
 	assert((await page.getByRole("region", { name: "Selected exact source" }).textContent()).includes("requestSent"));
@@ -219,6 +234,25 @@ try {
 		};
 		const mark = diagram.locator('[data-thl-item-id="' + expected.itemId + '"][role="button"]');
 		assert.equal(await mark.count(), 1, "Missing or duplicate rendered entity");
+		// Compare the inline slot against the installed core's independently
+		// queried cell, using the native summary contract rather than SVG text.
+		const cell = expected.cells[0].cell;
+		let expectedSummary;
+		if (cell.status === "unknown") expectedSummary = "Unknown";
+		else if (cell.status === "absent") expectedSummary = "Absent";
+		else {
+			const value = cell.value;
+			if (Array.isArray(value)) expectedSummary = value.length + (value.length === 1 ? " item" : " items");
+			else if (value !== null && typeof value === "object") {
+				const count = Object.keys(value).length;
+				expectedSummary = count + (count === 1 ? " field" : " fields");
+			} else {
+				const bounded = typeof value === "string" && value.length > 46 ? value.slice(0, 45).replace(/[\uD800-\uDBFF]$/, "") + "…" : value;
+				const text = JSON.stringify(bounded);
+				expectedSummary = text.length > 48 ? text.slice(0, 47) + "…" : text;
+			}
+		}
+		assert.equal(await mark.locator("[data-thl-state-label]").textContent(), expectedSummary, "Inline Graph value differs from installed core");
 		await clear(); await mark.click(); await verify();
 		await clear(); await mark.focus();
 		assert(await mark.evaluate(node => document.activeElement === node), "SVG mark did not receive keyboard focus");
@@ -246,20 +280,22 @@ try {
 			noMessageFallback = { diagnostic: expected.diagnostics, eventCount: expected.eventSources.length };
 		}
 		referenceResults.push({ exampleIndex: Number(value), id: expected.id, title, initialNodes,
-			expectedSource: expected.source, expectedCells: expected.cells, svgPointer: true, svgKeyboard: true, list: true, noMessageFallback });
+			expectedSource: expected.source, expectedCells: expected.cells, inlineState: expectedSummary, svgPointer: true, svgKeyboard: true, list: true, noMessageFallback });
 	}
 	assert.deepEqual(errors, []); assert.deepEqual(nonLocal, []);
 	const after = captureSource(root);
 	const report = { sourceSha: before.sourceSha, dirty: Boolean(before.status), sourceStable: sameSource(before, after),
 		inputFingerprint: before.fingerprint, mermaid: "12.3.0", engine, browser: browser.version(),
-		referenceResults, responsive, dependencyEvidence,
+		referenceResults, sequenceCaptionPointer: true, sequenceCaptionKeyboard: true, responsive, dependencyEvidence,
 		archiveSha256: createHash("sha256").update(readFileSync(tarball)).digest("hex"),
 		initialAssets, sequenceAssets,
-		assets, errors, nonLocal, packedCore: true, proofHostBuild: true, candidateBrowser: true, productionMermaid: false };
+		processMemory: memory.stop(), assets, errors, nonLocal, packedCore: true, proofHostBuild: true, candidateBrowser: true, productionMermaid: false };
 	writeFileSync(output, JSON.stringify(report, null, 2) + "\n");
 	assert(report.sourceStable, "Source changed during packed-candidate verification");
 	console.log("Packed native package + copied Mermaid feasibility adapter passed; NOT a production Mermaid cutover: " + output);
+	console.log("TL_U26_PACKED_PROCESS_MEMORY " + JSON.stringify(report.processMemory));
 } finally {
+	memory?.stop();
 	await browser?.close();
 	if (server) await new Promise(resolve => server.httpServer.close(resolve));
 	rmSync(scratch, { recursive: true, force: true });

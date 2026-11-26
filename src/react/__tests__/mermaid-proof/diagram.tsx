@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { DiagramProof, ProofElement } from "../../mermaid/adapter.js";
 import { renderProof } from "../../mermaid/render.js";
-import { animateTransfers } from "../../mermaid/motion.js";
+import { animateTransfers, paintGraphState } from "../../mermaid/motion.js";
 
 /** Test-only lifecycle proof. The host retains frame and semantic selection. */
 export function ProofDiagram({ proof, onSelect, renderer = renderProof, motion }: {
@@ -38,6 +38,7 @@ export function ProofDiagram({ proof, onSelect, renderer = renderProof, motion }
 		return () => { active = false; controller.abort(); };
 	}, [proof.source, renderer, oversized]);
 	const current = output?.source === proof.source ? output : undefined;
+	useLayoutEffect(() => { if (diagram.current && current?.svg) paintGraphState(diagram.current, proof); }, [current?.svg, proof]);
 	useEffect(() => {
 		if (!motion) return;
 		if (!instruction.current || instruction.current.revision !== motion.revision)

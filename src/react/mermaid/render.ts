@@ -66,8 +66,9 @@ function bindDirection(root: SVGSVGElement, route: SVGElement): void {
 }
 
 /** Bind host-authored paint/row tokens to the current descriptor. Graph
- * tokens do not rely on generated SVG IDs; Sequence still has a pinned local
- * caption/mark bridge. Source controls provide an independent text path.
+ * tokens do not rely on generated SVG IDs. Sequence event selection uses
+ * explicit text references; its optional geometry bridge remains pinned.
+ * Host source controls provide an independent text path.
  * Missing/duplicated/ambiguous routes fail closed rather than guessing.
  */
 export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiagram, "svg" | "width" | "height"> {
@@ -88,6 +89,7 @@ export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiag
 		const byToken = new Map(events.map(entry => [entry.rowToken, entry]));
 		if (byToken.size !== events.length || byToken.has(undefined))
 			throw new Error("Sequence proof lacks unique source references");
+		bindSequenceSourceReferences(root, proof);
 		const bound = new Set<string>();
 		const resolve = (labels: readonly Element[], sent: boolean) => {
 			// The adapter reserves all reference-shaped authored caption strings
@@ -125,12 +127,9 @@ export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiag
 			}
 			const id = entry.itemId;
 			arrow.setAttribute("data-thl-motion-item", id);
-			arrow.setAttribute("data-thl-item-id", id);
 			bindDirection(root, arrow);
-			bindItem(labels[0], id, "Inspect transfer " + (entry.flowLabel ?? entry.label));
 			for (const label of labels) {
 				label.setAttribute("data-thl-motion-label", id);
-				label.setAttribute("data-thl-item-id", id);
 			}
 		});
 		const phases = events.filter(entry => !entry.sent);
@@ -143,7 +142,8 @@ export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiag
 			const entry = resolve([...group.querySelectorAll(".noteText")], false);
 			if (entry !== phases[index]) throw new Error("Rendered phase order unavailable");
 			group.setAttribute("data-thl-phase-item", entry.itemId);
-			bindItem(group, entry.itemId, "Inspect " + entry.label);
+			// The phase box is decorative geometry; only its trusted row
+			// reference caption and the independent host control select evidence.
 		});
 		if (bound.size !== events.length) throw new Error("Incomplete sequence source mapping");
 
@@ -199,6 +199,7 @@ export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiag
 		const nodes = root.getElementsByClassName(entry.id + "_source");
 		if (nodes.length !== 1) throw new Error("Rendered entity mapping unavailable");
 		bindItem(nodes[0], entry.itemId, (entry.collapsed ? "Expand group " : "Inspect entity ") + entry.label);
+		bindGraphState(nodes[0], entry);
 	}
 	for (const entry of proof.elements.filter(item => item.role === "group" && !item.collapsed)) {
 		// Region geometry is optional. Group selection uses the host's source control.
@@ -206,6 +207,60 @@ export function bindSources(svg: string, proof: DiagramProof): Pick<RenderedDiag
 		region?.setAttribute("data-thl-region-id", entry.itemId);
 	}
 	return normalizedSize(root);
+}
+
+/** Bind event selection to explicit host-generated text references, using
+ * ordinary SVG text rather than Mermaid's classes, IDs, ordering or geometry.
+ * The separately guarded private bridge is presentation only.
+ */
+export function bindSequenceSourceReferences(root: SVGSVGElement, proof: DiagramProof): void {
+	const events = proof.elements.filter(entry => entry.role === "event");
+	const byToken = new Map(events.map(entry => [entry.rowToken, entry]));
+	if (byToken.size !== events.length || byToken.has(undefined))
+		throw new Error("Sequence proof lacks unique source references");
+	const found = new Map<string, SVGTextElement>();
+	for (const text of root.querySelectorAll("text")) {
+		const tokens = (text.textContent?.match(/TL\d{6}/g) ?? []).filter(token => byToken.has(token));
+		if (!tokens.length) continue;
+		const token = tokens[0];
+		if (tokens.length !== 1 || found.has(token) || !text.textContent?.trimEnd().endsWith(token))
+			throw new Error("Missing or duplicated sequence source reference");
+		found.set(token, text);
+	}
+	if (found.size !== events.length) throw new Error("Missing or duplicated sequence source reference");
+	for (const [token, text] of found) {
+		const entry = byToken.get(token)!;
+		bindItem(text, entry.itemId, entry.sent ? "Inspect transfer " + (entry.flowLabel ?? entry.label) : "Inspect " + entry.label);
+		text.setAttribute("data-thl-source-reference", token);
+	}
+}
+
+/** Replace only the trusted reserved text line; never parse authored values as markup.
+ * Fail closed if this pinned renderer does not preserve the reserved line.
+ */
+function bindGraphState(node: Element, entry: DiagramProof["elements"][number]): void {
+	if (!entry.stateSlot) return;
+	const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+	const slots: Text[] = [];
+	while (walker.nextNode()) {
+		const text = walker.currentNode as Text;
+		if (text.data.trim() === entry.stateSlot) slots.push(text);
+	}
+	if (slots.length !== 1) throw new Error("Rendered graph state slot unavailable");
+	const text = slots[0], parent = text.parentElement;
+	if (!parent) throw new Error("Rendered graph state slot has no parent");
+	if (parent.namespaceURI === "http://www.w3.org/1999/xhtml") {
+		const span = document.createElementNS(parent.namespaceURI, "span");
+		span.setAttribute("data-thl-state-label", entry.itemId);
+		span.setAttribute("style", "display:inline-block;max-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom");
+		span.textContent = entry.stateText ?? "Unavailable";
+		text.replaceWith(span);
+	} else {
+		// SVG text fallback must have a dedicated line, not the entity caption.
+		if (parent.textContent?.trim() !== entry.stateSlot) throw new Error("Ambiguous SVG graph state slot");
+		parent.setAttribute("data-thl-state-label", entry.itemId);
+		parent.textContent = entry.stateText ?? "Unavailable";
+	}
 }
 
 function normalizedSize(root: SVGSVGElement): Pick<RenderedDiagram, "svg" | "width" | "height"> {

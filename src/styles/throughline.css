@@ -1616,8 +1616,18 @@
  padding: 16px; color: var(--thl-muted); text-align: center;
 }
 .thl.player-shell .mermaid-loading p { margin: 0; }
-.thl.player-shell .mermaid-fallback .mermaid-status { padding-inline: 12px; }
-.thl.player-shell .mermaid-fallback .state-view { inset-block-start: 76px; }
+.thl.player-shell .mermaid-fallback {
+ position: absolute; inset: 40px 12px 12px; display: flex; flex-direction: column;
+ min-width: 0; min-height: 0; gap: 6px;
+}
+.thl.player-shell .mermaid-fallback .mermaid-status { flex: 0 0 auto; }
+.thl.player-shell .mermaid-fallback .mermaid-source-references { min-width: 0; overflow-wrap: anywhere; }
+/* Native State uses an absolute inset when rendered directly in the canvas.
+   In the Mermaid fallback it must share space with diagnostics and source
+   controls; a fixed top offset overlaps wrapped controls and disclosures. */
+.thl.player-shell .mermaid-fallback .state-view {
+ position: relative; inset: auto; flex: 1 1 0; min-height: 0; min-width: 0; overflow: auto;
+}
 
 .thl.player-shell:fullscreen { height: 100dvh; width: 100%; overflow: auto; }
 .thl.player-shell:fullscreen .player-content { flex: 1 1 0; min-height: 180px; }

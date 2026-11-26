@@ -91,3 +91,14 @@ describe("TL-U26 pure source-to-Mermaid proof", () => {
 		expect(escaped).toContain("#60;");
 	});
 });
+
+
+it("reserves stable graph state slots without embedding dynamic values in syntax", () => {
+ const trace = compileArtifact(EXAMPLES.find(example => example.id === "factorial")!.artifact);
+ const inspector = inspectTrace(trace);
+ const first = graphProof(trace, projectView(inspector, { kind: "graph", frameIndex: 0 }));
+ const next = graphProof(trace, projectView(inspector, { kind: "graph", frameIndex: 1 }));
+ expect(first.source).toBe(next.source);
+ expect(first.elements.filter(entry => entry.role === "entity").every(entry => entry.stateSlot && entry.stateText !== undefined)).toBe(true);
+ expect(next.elements.filter(entry => entry.role === "entity").some(entry => entry.written)).toBe(true);
+});

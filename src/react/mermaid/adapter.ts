@@ -1,5 +1,7 @@
 import type { CompiledTrace, SourceIds, ViewDescriptor, ViewItem } from "../../v2/model.js";
 import { sequenceActors, type SequenceActor } from "../../v2/sequence-layout.js";
+import { summarizeCell } from "../../v2/value-summary.js";
+import type { ReadonlyCell } from "../../v2/model.js";
 
 /** Internal Mermaid input and the source identities it presents. */
 export type ProofElement = Readonly<{
@@ -13,6 +15,11 @@ export type ProofElement = Readonly<{
 	context?: boolean;
 	visited?: boolean;
 	strokeToken?: string;
+	/** Fixed geometry slot; dynamic state never enters Mermaid syntax. */
+	stateSlot?: string;
+	stateText?: string;
+	focused?: boolean;
+	written?: boolean;
 	/** Host-authored sequence row reference, not a semantic event ID. */
 	rowToken?: string;
 	sent?: boolean;
@@ -114,7 +121,21 @@ export function graphProof(trace: CompiledTrace, view: ViewDescriptor,
 	if (view.kind !== "graph") throw new Error("Graph descriptor required");
 	const visible = view.items.filter(item => ["entity", "group", "relation"].includes(item.role));
 	if (visible.length > 1_400) throw new Error("Graph proof work limit exceeded");
-	const elements = visible.map(element);
+	const elements = visible.map((item, index) => {
+		const entry = element(item, index);
+		if (item.role !== "entity" && !entry.collapsed) return entry;
+		// A fixed-size host-owned line reserves space in every topology render.
+		// Avoid collisions with authored labels (including joined wrapped lines).
+		let serial = index;
+		let stateSlot: string;
+		const caption = wrappedLabel(item.label, 20, 4).replaceAll("<br/>", "").replace(/\s/g, "");
+		do { stateSlot = "THLSTATE" + String(serial++).padStart(6, "0"); }
+		while (caption.includes(stateSlot));
+		return Object.freeze({ ...entry, stateSlot,
+			stateText: entry.collapsed ? String(property(item, "count")) + " present" :
+				summarizeCell((property(item, "cell") ?? null) as ReadonlyCell | null),
+			focused: property(item, "focused") === true, written: property(item, "changed") === true });
+	});
 	const byItem = new Map(elements.map(item => [item.itemId, item]));
 	const groups = visible.filter(item => item.role === "group");
 	const groupBySource = new Map(groups.map(item => [item.source.groupIds![0], item]));
@@ -142,7 +163,7 @@ export function graphProof(trace: CompiledTrace, view: ViewDescriptor,
 				emit(item.id);
 				lines.push("end");
 			} else {
-				lines.push(entry.id + '("' + wrappedLabel(item.label, 20, 4) + '")');
+				lines.push(entry.id + '("' + wrappedLabel(item.label, 20, 4) + '<br/>' + entry.stateSlot + '")');
 				// A host-owned class is an explicit map key, not Mermaid's private ID.
 				lines.push("class " + entry.id + " " + entry.id + "_source");
 			}
@@ -215,7 +236,7 @@ export function sequenceProof(trace: CompiledTrace, view: ViewDescriptor,
 	// adjacent lines. Numeric escapes cannot emit ASCII letters/digits (those
 	// are emitted literally); decode them once to cover punctuation too.
 	const reserved = new Set<string>();
-	for (const { caption } of rows) {
+	for (const caption of [...rows.map(row => row.caption), ...actors.map(actor => wrappedLabel(actor.label, 15, 3))]) {
 		const text = caption.replaceAll("<br/>", "").replace(/#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)));
 		for (const token of text.replace(/\s/g, "").match(/TL\d{6}/g) ?? []) reserved.add(token);
 	}

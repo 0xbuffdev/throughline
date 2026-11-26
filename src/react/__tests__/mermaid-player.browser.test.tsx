@@ -39,13 +39,21 @@ it("keeps three Sequence lanes fixed through a send, receipt and explicit reply"
 	const cues = new Set<string>();
 	const observer = new MutationObserver(records => {
 		for (const record of records) for (const node of record.addedNodes) {
-			if (node instanceof Element && node.matches("[data-thl-transfer]"))
-				cues.add(node.querySelector("text")?.textContent ?? "");
+			if (node instanceof Element && node.matches("[data-thl-transfer]")) {
+				const id = node.getAttribute("data-thl-transfer");
+				const caption = diagram.element().querySelector('[data-thl-source-reference][data-thl-item-id="' + id + '"]');
+				const labels = [...diagram.element().querySelectorAll('[data-thl-motion-label="' + id + '"]')];
+				if (caption && labels.includes(caption) && labels.every(label =>
+					!label.hasAttribute("data-thl-label-in-motion") && getComputedStyle(label).visibility === "visible") &&
+					!node.querySelector("text") && node.querySelectorAll("animateMotion").length === 1 &&
+					caption.getAttribute("role") === "button")
+					cues.add(labels.map(label => label.textContent).join("").replace(/\s/g, ""));
+			}
 		}
 	});
 	observer.observe(screen.getByRole("tabpanel").element(), { childList: true, subtree: true });
 	await screen.getByRole("button", { name: "Step forward" }).click();
-	await expect.poll(() => cues.has("Checkout request")).toBe(true);
+	await expect.poll(() => [...cues].some(caption => caption.includes("Checkoutrequest"))).toBe(true);
 	expect(lanes()).toEqual(initial);
 	const route = diagram.element().querySelector(".messageLine0");
 	expect(route?.getAttribute("data-from")).toBe("thl_node_0");
@@ -71,7 +79,7 @@ it("keeps three Sequence lanes fixed through a send, receipt and explicit reply"
 	await next.click();
 	await expect.poll(() => diagram.element().querySelector("[data-thl-source], [data-thl-destination]")).toBeNull();
 	await next.click();
-	await expect.poll(() => cues.has("Checkout reply")).toBe(true);
+	await expect.poll(() => [...cues].some(caption => caption.includes("Checkoutreply"))).toBe(true);
 	observer.disconnect();
 	const reply = diagram.element().querySelector(".messageLine0[data-thl-active]")!;
 	expect(reply.getAttribute("data-from")).toBe("thl_node_1");
@@ -125,12 +133,13 @@ it("updates Graph transfer paint without relayout and opens the exact source in 
 	expect(screen.container.querySelector(".thl-v2-inspect")).toBeNull();
 }, 60_000);
 
-it("inspects the exact message when selecting a drawn sequence arrow, including when seeking backwards", async () => {
+it("inspects the exact message from its explicit sequence row reference, including when seeking backwards", async () => {
 	const trace = compileArtifact(retryCheckout());
 	const screen = await render(<GraphPlayer trace={trace} initialView="sequence" DiagramRenderer={MermaidPlayerDiagram}/>);
 	await screen.getByRole("button", { name: "Step forward" }).click();
 	const arrow = screen.getByRole("button", { name: /^Inspect transfer / });
 	await expect.element(arrow).toBeVisible();
+	expect(arrow.element().hasAttribute("data-thl-source-reference")).toBe(true);
 	(arrow.element() as SVGElement).focus();
 	await userEvent.keyboard("{Enter}");
 	const panel = screen.getByRole("complementary", { name: "Workflow inspector" });
@@ -326,7 +335,7 @@ it("follows the latest recorded Sequence event vertically and resets on rewind",
 	await userEvent.keyboard("{End}");
 	await expect.poll(() => {
 		const header = scroller.querySelector("[data-thl-sequence-header]")?.getBoundingClientRect();
-		const current = scroller.querySelector('[aria-label="Inspect received · noticeReceived"][data-thl-active]');
+		const current = scroller.querySelector('[data-thl-phase-item][data-thl-active]');
 		const mark = current?.getBoundingClientRect();
 		const viewport = scroller.getBoundingClientRect();
 		return Boolean(scroller.scrollTop > 0 && header && mark &&
@@ -413,10 +422,13 @@ it.each(EXAMPLES.map(example => example.id))("exposes frame-linked graph state f
  const source = EXAMPLES.find(example => example.id === id)!.artifact;
  source.steps[0].focusEntityIds = [source.entities[0].id];
  const trace = compileArtifact(source);
- const screen = await render(<GraphPlayer trace={trace} initialView="graph" DiagramRenderer={MermaidPlayerDiagram}/>);
+ let renders = 0;
+ const Renderer = createMermaidPlayerDiagram((proof, signal) => { renders++; return renderProof(proof, signal); });
+ const screen = await render(<GraphPlayer trace={trace} initialView="graph" DiagramRenderer={Renderer}/>);
  const strip = screen.getByRole("region", { name: "Graph modeled state" });
  await expect.element(strip).toBeVisible();
  expect(strip.element().querySelectorAll("[data-graph-state-item]").length).toBeGreaterThan(0);
+ const initialRenderCount = renders;
  await screen.getByRole("button", { name: "Step forward" }).click();
  const diagram = screen.getByRole("group", { name: "Source-linked graph at current frame" });
  await expect.element(diagram).toBeVisible();
@@ -424,11 +436,15 @@ it.each(EXAMPLES.map(example => example.id))("exposes frame-linked graph state f
  const view = (await import("../../v2/views.js")).projectView(inspector, { kind: "graph", frameIndex: 1 });
  const { property } = await import("../mermaid/adapter.js");
  const { summarizeCell } = await import("../value-display.js");
+ const before = (await import("../mermaid/adapter.js")).graphProof(trace, (await import("../../v2/views.js")).projectView(inspector, { kind: "graph", frameIndex: 0 }));
+ const after = (await import("../mermaid/adapter.js")).graphProof(trace, view);
+ if (before.source === after.source) expect(renders).toBe(initialRenderCount);
  for (const item of view.items.filter(item => item.role === "entity")) {
   const card = strip.element().querySelector('[data-graph-state-item="' + item.id + '"]');
   expect(card?.textContent).toContain(summarizeCell(property(item, "cell") as import("../../v2/model.js").Cell));
   expect(card?.textContent).toContain("Present");
   const node = diagram.element().querySelector('[data-thl-item-id="' + item.id + '"]');
+  expect(node?.querySelector("[data-thl-state-label]")?.textContent).toBe(summarizeCell(property(item, "cell") as import("../../v2/model.js").ReadonlyCell));
   expect(node?.hasAttribute("data-thl-written")).toBe(property(item, "changed") === true);
   expect(node?.hasAttribute("data-thl-focused")).toBe(property(item, "focused") === true);
  }
@@ -445,6 +461,29 @@ it("offers independent exact sequence source controls for identical sends", asyn
  const second = list.element().querySelector<HTMLButtonElement>('[data-source-event-ids="secondSent"]');
  expect(second).not.toBeNull();
  await userEvent.click(second!);
+ const inspector = screen.getByRole("complementary", { name: "Workflow inspector" });
+ await expect.element(inspector).toBeVisible();
+ expect(inspector.element().querySelector(".inspect-summary")?.getAttribute("data-source-event-ids")).toBe("secondSent");
+}, 60_000);
+
+
+it.each([260, 375, 720])("keeps independent exact source selection available when sequence rendering rejects at %ipx", async width => {
+ const trace = compileArtifact(stateEvidenceFixture());
+ const Renderer = createMermaidPlayerDiagram(async () => { throw new Error("simulated failure"); });
+ const screen = await render(<div style={{ width }}><GraphPlayer trace={trace} initialView="sequence" DiagramRenderer={Renderer}/></div>);
+ await screen.getByRole("button", { name: "Step forward" }).click();
+ await expect.element(screen.getByRole("button", { name: "Retry diagram" })).toBeVisible();
+ const disclosure = screen.getByText("Sequence source references", { exact: true });
+ const table = screen.getByRole("region", { name: "State and event table" });
+ await expect.element(table).toBeVisible();
+ expect(disclosure.element().getBoundingClientRect().bottom).toBeLessThanOrEqual(table.element().getBoundingClientRect().top + 1);
+ await disclosure.click();
+ const list = screen.getByRole("list", { name: "Visible sequence source references" });
+ const details = disclosure.element().parentElement!;
+ expect(details.getBoundingClientRect().bottom).toBeLessThanOrEqual(table.element().getBoundingClientRect().top + 1);
+ const source = list.element().querySelector<HTMLButtonElement>('[data-source-event-ids="secondSent"]');
+ expect(source).not.toBeNull();
+ await userEvent.click(source!);
  const inspector = screen.getByRole("complementary", { name: "Workflow inspector" });
  await expect.element(inspector).toBeVisible();
  expect(inspector.element().querySelector(".inspect-summary")?.getAttribute("data-source-event-ids")).toBe("secondSent");

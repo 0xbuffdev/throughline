@@ -35,7 +35,25 @@ function placeGraphCaption(route: SVGGeometryElement, caption: SVGTextElement, o
 	}
 }
 
+/** Paint bounded state in the reserved node line without rebuilding geometry. */
+export function paintGraphState(host: HTMLElement, proof: DiagramProof): void {
+	if (proof.kind !== "graph") return;
+	const elements = new Map(proof.elements.map(entry => [entry.itemId, entry]));
+	for (const label of host.querySelectorAll("[data-thl-state-label]")) {
+		const entry = elements.get(label.getAttribute("data-thl-state-label")!);
+		if (!entry) continue;
+		const text = entry.stateText ?? "Unavailable";
+		if (label.textContent !== text) label.textContent = text;
+		label.setAttribute("aria-label", text);
+		label.setAttribute("title", text);
+		const node = label.closest("[data-thl-item-id]");
+		node?.toggleAttribute("data-thl-focused", entry.focused === true);
+		node?.toggleAttribute("data-thl-written", entry.written === true);
+	}
+}
+
 export function paintRoutes(host: HTMLElement, proof: DiagramProof, selectedId: string | null): () => void {
+	paintGraphState(host, proof);
 	const elements = new Map(proof.elements.map(entry => [entry.itemId, entry]));
 	const sources = new Set<string>(), destinations = new Set<string>();
 	const visitedNodes = new Set<string>();
@@ -131,7 +149,9 @@ export function animateTransfers(host: HTMLElement, proof: DiagramProof, duratio
 		text.setAttribute("y", "-13");
 		caption.append(text);
 		for (const [element, rotate] of [[head, "auto"], [caption, "0"]] as const) {
-			if (element === caption && !text.textContent) continue;
+			// Sequence captions carry the authoritative selectable row reference.
+			// Keep them stationary and visible; a moving duplicate obscures them.
+			if (element === caption && (proof.kind === "sequence" || !text.textContent)) continue;
 			const animation = document.createElementNS(ns, "animateMotion");
 			animation.setAttribute("dur", duration / 1000 + "s"); animation.setAttribute("repeatCount", "1");
 			animation.setAttribute("rotate", rotate); animation.setAttribute("fill", "freeze");
@@ -151,7 +171,7 @@ export function animateTransfers(host: HTMLElement, proof: DiagramProof, duratio
 			destination.setAttribute("data-thl-cue-running", "");
 			destinations.add(destination);
 		}
-		for (const label of host.querySelectorAll('[data-thl-motion-label="' + entry.itemId + '"]')) {
+		if (proof.kind === "graph") for (const label of host.querySelectorAll('[data-thl-motion-label="' + entry.itemId + '"]')) {
 			label.setAttribute("data-thl-label-in-motion", "");
 			labels.push(label);
 		}
