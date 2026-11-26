@@ -149,7 +149,9 @@ export function animateTransfers(host: HTMLElement, proof: DiagramProof, duratio
 		text.setAttribute("y", "-13");
 		caption.append(text);
 		for (const [element, rotate] of [[head, "auto"], [caption, "0"]] as const) {
-			if (element === caption && !text.textContent) continue;
+			// Sequence captions carry the authoritative selectable row reference.
+			// Keep them stationary and visible; a moving duplicate obscures them.
+			if (element === caption && (proof.kind === "sequence" || !text.textContent)) continue;
 			const animation = document.createElementNS(ns, "animateMotion");
 			animation.setAttribute("dur", duration / 1000 + "s"); animation.setAttribute("repeatCount", "1");
 			animation.setAttribute("rotate", rotate); animation.setAttribute("fill", "freeze");
@@ -169,7 +171,7 @@ export function animateTransfers(host: HTMLElement, proof: DiagramProof, duratio
 			destination.setAttribute("data-thl-cue-running", "");
 			destinations.add(destination);
 		}
-		for (const label of host.querySelectorAll('[data-thl-motion-label="' + entry.itemId + '"]')) {
+		if (proof.kind === "graph") for (const label of host.querySelectorAll('[data-thl-motion-label="' + entry.itemId + '"]')) {
 			label.setAttribute("data-thl-label-in-motion", "");
 			labels.push(label);
 		}

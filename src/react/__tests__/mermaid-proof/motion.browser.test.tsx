@@ -41,14 +41,26 @@ it("moves a directional graph arrow and its label along the modeled route, then 
 	cancel(); expect(host.querySelectorAll("[data-thl-transfer], animateMotion")).toHaveLength(0);
 }, 60_000);
 
-it("animates explicit Sequence sends with labels, and never turns receipt-only evidence into motion", async () => {
+it("animates only explicit Sequence sends while keeping the exact selectable caption stationary", async () => {
 	const trace = compileArtifact(retryCheckout()), inspector = inspectTrace(trace);
 	for (const frameIndex of [1, 2]) {
 		const proof = sequenceProof(trace, projectView(inspector, { kind: "sequence", frameIndex }));
 		const host = mount((await renderProof(proof)).svg);
 		const cancel = animateTransfers(host, proof, 600, true, false);
 		expect(host.querySelectorAll("[data-thl-transfer]")).toHaveLength(frameIndex === 1 ? 1 : 0);
-		if (frameIndex === 1) expect(host.querySelector("[data-thl-transfer] text")?.textContent).toBe("Checkout request");
+		if (frameIndex === 1) {
+			const entry = proof.elements.find(item => item.role === "event" && item.sent && item.current)!;
+			const caption = host.querySelector('[data-thl-source-reference="' + entry.rowToken + '"]')!;
+			const cue = host.querySelector("[data-thl-transfer]")!;
+			expect(cue.getAttribute("data-thl-transfer")).toBe(entry.itemId);
+			expect(cue.querySelectorAll("animateMotion")).toHaveLength(1);
+			expect(cue.querySelector("text")).toBeNull();
+			expect(caption.textContent?.replace(/\s/g, "")).toContain("Checkoutrequest");
+			expect(caption.getAttribute("data-thl-item-id")).toBe(entry.itemId);
+			expect(caption.hasAttribute("data-thl-label-in-motion")).toBe(false);
+			expect(caption.getAttribute("role")).toBe("button");
+			expect(getComputedStyle(caption).visibility).toBe("visible");
+		}
 		cancel();
 	}
 }, 60_000);

@@ -39,13 +39,17 @@ it("keeps three Sequence lanes fixed through a send, receipt and explicit reply"
 	const cues = new Set<string>();
 	const observer = new MutationObserver(records => {
 		for (const record of records) for (const node of record.addedNodes) {
-			if (node instanceof Element && node.matches("[data-thl-transfer]"))
-				cues.add(node.querySelector("text")?.textContent ?? "");
+			if (node instanceof Element && node.matches("[data-thl-transfer]")) {
+				const id = node.getAttribute("data-thl-transfer");
+				const caption = diagram.element().querySelector('[data-thl-source-reference][data-thl-item-id="' + id + '"]');
+				if (caption && !caption.hasAttribute("data-thl-label-in-motion") && !node.querySelector("text"))
+					cues.add(caption.textContent?.replace(/\s/g, "") ?? "");
+			}
 		}
 	});
 	observer.observe(screen.getByRole("tabpanel").element(), { childList: true, subtree: true });
 	await screen.getByRole("button", { name: "Step forward" }).click();
-	await expect.poll(() => cues.has("Checkout request")).toBe(true);
+	await expect.poll(() => [...cues].some(caption => caption.includes("Checkoutrequest"))).toBe(true);
 	expect(lanes()).toEqual(initial);
 	const route = diagram.element().querySelector(".messageLine0");
 	expect(route?.getAttribute("data-from")).toBe("thl_node_0");
@@ -71,7 +75,7 @@ it("keeps three Sequence lanes fixed through a send, receipt and explicit reply"
 	await next.click();
 	await expect.poll(() => diagram.element().querySelector("[data-thl-source], [data-thl-destination]")).toBeNull();
 	await next.click();
-	await expect.poll(() => cues.has("Checkout reply")).toBe(true);
+	await expect.poll(() => [...cues].some(caption => caption.includes("Checkoutreply"))).toBe(true);
 	observer.disconnect();
 	const reply = diagram.element().querySelector(".messageLine0[data-thl-active]")!;
 	expect(reply.getAttribute("data-from")).toBe("thl_node_1");
