@@ -42,8 +42,12 @@ it("keeps three Sequence lanes fixed through a send, receipt and explicit reply"
 			if (node instanceof Element && node.matches("[data-thl-transfer]")) {
 				const id = node.getAttribute("data-thl-transfer");
 				const caption = diagram.element().querySelector('[data-thl-source-reference][data-thl-item-id="' + id + '"]');
-				if (caption && !caption.hasAttribute("data-thl-label-in-motion") && !node.querySelector("text"))
-					cues.add(caption.textContent?.replace(/\s/g, "") ?? "");
+				const labels = [...diagram.element().querySelectorAll('[data-thl-motion-label="' + id + '"]')];
+				if (caption && labels.includes(caption) && labels.every(label =>
+					!label.hasAttribute("data-thl-label-in-motion") && getComputedStyle(label).visibility === "visible") &&
+					!node.querySelector("text") && node.querySelectorAll("animateMotion").length === 1 &&
+					caption.getAttribute("role") === "button")
+					cues.add(labels.map(label => label.textContent).join("").replace(/\s/g, ""));
 			}
 		}
 	});

@@ -55,7 +55,17 @@ it("animates only explicit Sequence sends while keeping the exact selectable cap
 			expect(cue.getAttribute("data-thl-transfer")).toBe(entry.itemId);
 			expect(cue.querySelectorAll("animateMotion")).toHaveLength(1);
 			expect(cue.querySelector("text")).toBeNull();
-			expect(caption.textContent?.replace(/\s/g, "")).toContain("Checkoutrequest");
+			// Mermaid wraps a caption into sibling text nodes; the allocated token
+			// alone is the independent selection anchor, not the whole caption.
+			const labels = [...host.querySelectorAll('[data-thl-motion-label="' + entry.itemId + '"]')];
+			expect(labels).toContain(caption);
+			expect(labels.map(label => label.textContent).join("").replace(/\s/g, "")).toContain("Checkoutrequest");
+			expect(caption.textContent?.trimEnd()).toMatch(new RegExp(entry.rowToken + "$"));
+			expect(caption.getAttribute("aria-label")).toBe("Inspect transfer Checkout request");
+			for (const label of labels) {
+				expect(label.hasAttribute("data-thl-label-in-motion")).toBe(false);
+				expect(getComputedStyle(label).visibility).toBe("visible");
+			}
 			expect(caption.getAttribute("data-thl-item-id")).toBe(entry.itemId);
 			expect(caption.hasAttribute("data-thl-label-in-motion")).toBe(false);
 			expect(caption.getAttribute("role")).toBe("button");
